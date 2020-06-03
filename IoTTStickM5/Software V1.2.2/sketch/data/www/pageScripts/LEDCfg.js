@@ -308,7 +308,6 @@ function setLEDData(sender)
 			for (var i = 0; i < configWorkData.LEDDefs[currentRow].LEDCmd.length; i++)
 			{	//for each command
 				var oldColOn = configWorkData.LEDDefs[currentRow].LEDCmd[i].ColOn;
-//				console.log(typeof oldColOn);
 				if (typeof oldColOn == "object")
 //				if (Array.isArray(oldColOn))
 					oldColOn = oldColOn[0];
@@ -435,6 +434,7 @@ function setLEDData(sender)
 				var newArray = sender.value.split(',');
 				if ((newArray.length > 0) && newArray.findIndex(function xNum(thisNum){return isNaN(thisNum)}) < 0)
 				{
+					var oldLen = Array.isArray(configWorkData.LEDDefs[thisRow].CtrlAddr) ? configWorkData.LEDDefs[thisRow].CtrlAddr.length : 1;
 					if (newArray.length > 1)
 					{
 						configWorkData.LEDDefs[thisRow].CtrlAddr = []; //make sure this is an array
@@ -443,8 +443,8 @@ function setLEDData(sender)
 					}
 					else
 						configWorkData.LEDDefs[thisRow].CtrlAddr = newArray[0];
-//					console.log(configWorkData.LEDDefs[thisRow].CtrlAddr, configWorkData.LEDDefs[thisRow].CtrlAddr.length);
-					adjustCmdLines(thisRow);
+					if (newArray.length != oldLen)
+						adjustCmdLines(thisRow);
 				}
 				else
 					alert(sender.value + " is not a valid number or array. Please verify");
@@ -759,7 +759,9 @@ function createColorSelectField(parentObj, lineIndex, cmdIndex, cmdLineData, evt
 		thisID = "ledseltext" + lineIndex.toString() + "_" + cmdIndex.toString();
 		thisText = tfText(lineIndex, cmdIndex, thisID, evtHandler);
 		thisText.innerHTML = "Select LED:";
+		upperDiv.append(tfTab(lineIndex, cmdIndex, '&nbsp;',""));
 		upperDiv.append(thisText);
+		upperDiv.append(tfTab(lineIndex, cmdIndex, '&nbsp;',""));
 		thisID = "ledselector" + lineIndex.toString() + "_" + cmdIndex.toString();
 		thisElement = tfLEDAddrSel(thisElement, lineIndex, thisID, evtHandler, cmdLineData.LEDNums);
 		thisElement.setAttribute("cmdline", cmdIndex);
@@ -939,6 +941,8 @@ function loadLEDTable(thisTable, thisData)
 			e.parentElement.style.visibility = "none";
 		else
 			e.parentElement.style.visibility = "hidden";
+		e.checked = thisData[i].MultiColor;
+//		console.log("Check Multi Color");
 		
 		var e = document.getElementById("disptypebox_" + i.toString() + "_" + "1");
 		e.selectedIndex = dispType.indexOf(thisData[i].DisplayType);
@@ -947,7 +951,6 @@ function loadLEDTable(thisTable, thisData)
 		else
 			e.parentElement.style.visibility = "hidden";
 
-		e.checked = thisData[i].MultiColor;
 		var e = document.getElementById("addressbox_" + i.toString() + "_" + "1");
 		e.value = thisData[i].CtrlAddr;
 		
