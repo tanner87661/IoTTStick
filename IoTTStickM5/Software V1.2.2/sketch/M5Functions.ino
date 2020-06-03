@@ -46,7 +46,7 @@ void getRTCTime()
 
 void processDisplay()
 {
-  if ((M5.Axp.GetVinVoltage() > 4.8) || (M5.Axp.GetVBusVoltage() > 4.8)) //check for Power Status
+  if ((M5.Axp.GetVinVoltage() > 4.8) || (M5.Axp.GetVBusVoltage() > 4.0)) //check for Power Status
     pwrOffTimer = millis();
   else
     if ((pwrOffTimer + pwrOffTimeout) < millis()) //power off after timeout without power. Device will come on automatically when power is back
