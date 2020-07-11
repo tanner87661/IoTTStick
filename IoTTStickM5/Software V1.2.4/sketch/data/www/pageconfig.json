@@ -1,0 +1,11 @@
+{
+	"Pages":[
+		{"Menue":"Node Configuration", "ProdSel":[-1], "CommSel":[], "ALMSel":[], "WebPage": "index.htm", "ID":"pgNodeCfg"}, 
+		{"Menue":"MQTT Configuration", "ProdSel":[], "CommSel":[3,4], "ALMSel":[],  "WebPage": "MQTTCfg.htm", "ID":"pgMQTTCfg"}, 
+		{"Menue":"Hardware Button Setup", "ProdSel":[], "CommSel":[], "ALMSel":[],  "WebPage": "HWBtnCfg.htm", "ID":"pgHWBtnCfg"}, 
+		{"Menue":"Button Handler Setup", "ProdSel":[], "CommSel":[], "ALMSel":[0],  "WebPage": "BtnHdlrCfg.htm", "ID":"pgBtnHdlrCfg"}, 
+		{"Menue":"LED Chain Setup", "ProdSel":[1], "CommSel":[], "ALMSel":[],  "WebPage": "LEDCfg.htm", "ID":"pgLEDCfg"},
+		{"Menue":"LocoNet Viewer", "ProdSel":[], "CommSel":[2,3,4], "ALMSel":[],  "WebPage": "LNViewer.htm", "ID":"pgLNViewer"},
+		{"Menue":"DCC Viewer", "ProdSel":[], "CommSel":[1], "ALMSel":[],  "WebPage": "DCCViewer.htm", "ID":"pgDCCViewer"}
+		]
+}
