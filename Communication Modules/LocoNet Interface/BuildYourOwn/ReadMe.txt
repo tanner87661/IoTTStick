@@ -1,1 +1,0 @@
-These files can be uploaded to JLCPCB.com for manufacturing.
