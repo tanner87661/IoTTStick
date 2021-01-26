@@ -1,1 +1,0 @@
-The JSON file can be imported into the EasyEDA design software (see jlcpcb.com). All part numbers refer to parts from LCSC.com
