@@ -1,0 +1,34 @@
+<html>
+	
+<head>
+
+<script type="text/javascript" src="/pgBase/dynloader.js"></script>
+<script type="text/javascript" src="/pgSrc/NodeCfg.js"></script>
+
+</head>
+
+<body>
+	
+<div class="pagemain">
+	<div id="MenueHolder" class="menuesectionbox"></div>	
+	<div id="TabHolder" class="tabsectionbox"></div>
+
+	<div id="FooterHolder" class="footersectionbox">
+		<div class = "inputtext_float"> 
+			<p class="inputtext_float"><img src="iottlogo.jpg" alt="IoTT Internet of Toy Trains"></p>
+<!--			<div class="inputtext_float"><font size="3">&copy; 2020 Hans Tanner</font></div> -->
+		</div>
+	</div>	
+</div>
+
+<script>
+	var url = window.location.pathname;
+	var fileName = url.substring(url.lastIndexOf('/')+1);
+	if (fileName == "")
+	  fileName = "index.htm";
+	setTimeout(function(){ initPage() }, 150);
+</script>
+
+</body>
+
+</html>
