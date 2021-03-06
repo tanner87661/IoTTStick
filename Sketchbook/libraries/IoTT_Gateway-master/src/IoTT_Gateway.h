@@ -23,7 +23,6 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #include <inttypes.h>
 #include <IoTTCommDef.h>
 #include <IoTT_LocoNetHBESP32.h>
-// #include <IoTT_OpenLCB.h>
 #include <IoTT_MQTTESP32.h>
 
 
@@ -35,21 +34,22 @@ class ln_mqttGateway
 public:
 	ln_mqttGateway();
 	ln_mqttGateway(LocoNetESPSerial * newLNPort, MQTTESP32 * newMQTTPort, cbFct newCB);
-	ln_mqttGateway(IoTT_OpenLCB * newOLCBPort, MQTTESP32 * newMQTTPort, cbFct newCB);
 	~ln_mqttGateway();
 	void processLoop();
 	uint16_t lnWriteMsg(lnTransmitMsg txData);
 	uint16_t lnWriteMsg(lnReceiveBuffer txData);
 	void setSerialPort(LocoNetESPSerial * newPort);
-	void setOLCBPort(IoTT_OpenLCB * newPort);
+//	void setOLCBPort(IoTT_OpenLCB * newPort);
 	void setMQTTPort(MQTTESP32 * newPort);
+//	void setTCPPort(IoTT_LBServer * newPort);
 	void setAppCallback(cbFct newCB);
 //	void setCommMode(cmdSourceType newMode);
 	
 private:
 	static void onLocoNetMessage(lnReceiveBuffer * newData); //this is the callback function for the LocoNet library
-	static void onOLCBMessage(lnReceiveBuffer * newData); //this is the callback function for the LocoNet library
+	static void onOLCBMessage(lnReceiveBuffer * newData); //this is the callback function for the OpenLCB library
 	static void onMQTTMessage(lnReceiveBuffer * newData); //this is the callback function for the MQTT library
+//	static void onTCPMessage(lnReceiveBuffer * newData); //this is the callback function for the MQTT library
 
 };
    

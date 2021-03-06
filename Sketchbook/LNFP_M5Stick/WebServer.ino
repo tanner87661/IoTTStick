@@ -315,6 +315,7 @@ void processWsMessage(char * newMsg, int msgLen, AsyncWebSocketClient * client)
           if (myChain) myChain->identifyLED(ledList[i]);
         }
       }
+/*
       if (thisCmd == "SetServo") //Request to move Servo for position verification purposes
       {
         JsonArray servoList = doc["ServoNr"];
@@ -324,6 +325,7 @@ void processWsMessage(char * newMsg, int msgLen, AsyncWebSocketClient * client)
           if (mySwitchList) mySwitchList->moveServo(servoList[i], doc["ServoPos"]);
         }
       }
+*/
       if (thisCmd == "CfgFiles") //Config Request Format: {"Cmd":"CfgFiles", "Type":"pgxxxxCfg"}
       {
         uint16_t fileSelector = 0xFFFF;
@@ -340,11 +342,10 @@ void processWsMessage(char * newMsg, int msgLen, AsyncWebSocketClient * client)
           addFileToTx("btn", 0, "pgHWBtnCfg", 1);
         if (fileSelector & 0x0100)  
           addFileToTx("btn", 0, "pgThrottleCfg", 1);
-        if (fileSelector & 0x0200)  
-          addFileToTx("greenhat", 0, "pgGreenHatCfg", 1);
-
-          
-          int fileCtr = 0;
+//        if (fileSelector & 0x0200)  
+//          addFileToTx("greenhat", 0, "pgGreenHatCfg", 1);
+        
+        int fileCtr = 0;
         if (fileSelector & 0x0020)  
           while (addFileToTx("led", fileCtr, "pgLEDCfg", 1))
             fileCtr++;
@@ -352,9 +353,9 @@ void processWsMessage(char * newMsg, int msgLen, AsyncWebSocketClient * client)
         if (fileSelector & 0x0040)  
           while (addFileToTx("btnevt", fileCtr, "pgBtnHdlrCfg", 1))
             fileCtr++;
-        if (fileSelector & 0x0080)  
-          while (addFileToTx("secel", fileCtr, "pgSecElCfg", 1))
-            fileCtr++;
+//        if (fileSelector & 0x0080)  
+//          while (addFileToTx("secel", fileCtr, "pgSecElCfg", 1))
+//            fileCtr++;
         addFileToTx("", 0, "pgWriteFile", 3); //Write file to disk
       }
 
