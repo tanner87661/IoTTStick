@@ -4,6 +4,9 @@ This is the support repository for the IoTT Stick, port modules and hat devices.
 For a general introduction, watch this video: https://youtu.be/00uinHvzn08
 
 Version History
+2021/03/06 Reorganized Github repository - Thank you, Alex Shepherd, for helping to set this up
+- Arduino code base including all libraries used to compile is now in the sketchbook folder
+- Binaries and install files are still maintained for a few versions back
 
 2021/02/12 Version 1.4.0
 - new event handler provides much more flexibility for simple layout automation tasks like route executen, ABS/APB signaling etc.
