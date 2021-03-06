@@ -1,0 +1,26 @@
+#######################################
+# Syntax Coloring Map
+#######################################
+
+#######################################
+# Datatypes (KEYWORD1)
+#######################################
+
+I2C_BM8563	KEYWORD1
+I2C_BM8563_DateTypeDef	KEYWORD1
+I2C_BM8563_TimeTypeDef	KEYWORD1
+
+#######################################
+# Methods and Functions (KEYWORD2)
+#######################################
+
+begin	KEYWORD2
+getTime	KEYWORD2
+getDate	KEYWORD2
+setTime	KEYWORD2
+setDate	KEYWORD2
+
+#######################################
+# Constants (LITERAL1)
+#######################################
+

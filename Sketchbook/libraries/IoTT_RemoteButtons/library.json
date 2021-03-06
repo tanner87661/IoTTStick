@@ -1,0 +1,15 @@
+{
+    "name": "IoTT_Mux64Buttons",
+    "version": "1.1.0",
+    "keywords": [
+      "serial", "io", "loconet"
+    ],
+    "description": "Implementation of Hardware Buttons on 16 Channel Mux",
+    "repository":
+    {
+        "type": "git",
+        "url": "https://github.com/tanner87661/IoTT_Mux4067Buttons"
+    },
+    "frameworks": "arduino",
+    "platforms": "espressif32"
+}

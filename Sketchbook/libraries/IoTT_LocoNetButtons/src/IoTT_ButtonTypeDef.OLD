@@ -1,0 +1,32 @@
+#include <IoTT_ButtonTypeDef.h>
+
+void doThis()
+{
+}
+
+/*
+sourceType getSourceTypeByName(String transName)
+{
+  if (transName == "button") return button;
+  if (transName == "analogvalue") return analogvalue;
+  if (transName == "switch") return trackswitch;
+  if (transName == "dccsignal") return signalmastdcc;
+  if (transName == "dynsignal") return signalmastdyn;
+  if (transName == "blockdetector") return blockdetector;
+  if (transName == "transponder") return transponder;
+  if (transName == "power") return transponder;
+  return trackswitch;
+};
+
+actionType getActionTypeByName(String actionName)
+{ //blockdet, dccswitch, dccsignal, svbutton, analoginp, powerstat
+  if (actionName == "block") return blockdet; 
+  if (actionName == "switch") return dccswitch;
+  if (actionName == "signal") return dccsignalnmra;
+  if (actionName == "button") return svbutton;
+  if (actionName == "analog") return analoginp;
+  if (actionName == "power") return powerstat;
+  return unknown; 
+}
+
+*/
