@@ -1,0 +1,15 @@
+{
+    "name": "IoTT_DigitraxBuffers",
+    "version": "1.1.2"
+    "keywords": [
+      "MQTT Gateway", "io", "LocoNet Gateway", "Digitrax Buffers"
+    ],
+    "description": "Implementation of a LocoNet Data repository for the ESP32",
+    "repository":
+    {
+        "type": "git",
+        "url": "https://github.com/tanner87661/IoTT_DigitraxBuffers"
+    },
+    "frameworks": "arduino",
+    "platforms": "espressif32"
+}

@@ -1,0 +1,24 @@
+#######################################
+# Syntax Coloring Map
+#######################################
+
+#######################################
+# Class (KEYWORD1)
+#######################################
+
+ArduinoUniqueID	KEYWORD1
+
+#######################################
+# Methods and Functions (KEYWORD2)
+#######################################
+
+UniqueIDdump	KEYWORD2
+UniqueID8dump	KEYWORD2
+
+#######################################
+# Constants (LITERAL1)
+#######################################
+
+UniqueID8	LITERAL1
+UniqueID	LITERAL1
+UniqueIDsize	LITERAL1
