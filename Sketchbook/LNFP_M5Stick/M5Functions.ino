@@ -189,7 +189,6 @@ void processDisplay()
           case 4: lnViewerPage(); break;
           case 5:;
           case 6:
-//          case 7: olcbViewerPage(); break;
           case 8: mqttViewerPage(); break;
           case 9: dccViewerPage(); break;
         }
@@ -528,25 +527,7 @@ void lnViewerPage()
   m5DispLine = 0;
   useM5Viewer = 1;
 }
-/*
-void olcbViewerPage()
-{
-  M5.Lcd.fillScreen(TFT_LIGHTGREY);
-  M5.Lcd.setTextColor(TFT_BLACK, TFT_LIGHTGREY);
-  switch (screenDef)
-  {
-    case 0: 
-      drawLogo(140, 0, 0);
-      break;
-    case 1: 
-      drawLogo(210, 0, 0);
-      break;
-  }
-  drawText("OpenLCB Viewer", 5, 3, 2);
-  m5DispLine = 0;
-  useM5Viewer = 3;
-}
-*/
+
 void dccViewerPage()
 {
   M5.Lcd.fillScreen(TFT_LIGHTGREY);
