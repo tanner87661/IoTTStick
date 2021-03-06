@@ -6,13 +6,7 @@ char BBVersion[] = {'1','4','0'};
 //Arduino published libraries. Install using the Arduino IDE or download from Github and install manually
 #include <arduino.h>
 #include <Math.h>
-//#include <Wire.h>
-//#include <esp_int_wdt.h>
-//#include <esp_task_wdt.>
 #include "M5Lite.h"
-//#define M5 M5Lite
-//#include <M5StickC.h>
-//#include <M5StickCPlus.h>
 #include <ArduinoUniqueID.h>
 #include <time.h>
 #include <FS.h>
@@ -33,10 +27,6 @@ char BBVersion[] = {'1','4','0'};
 #include <IoTT_RemoteButtons.h> //as introduced in video # 29, special version for Wire connection via 328P
 #include <IoTT_LocoNetButtons.h> //as introduced in video # 29
 #include <IoTT_LEDChain.h> //as introduced in video # 30
-//#include <IoTT_SerInjector.h> //Serial USB Port to make it an interface for LocoNet and OpenLCB
-//#include <IoTT_OpenLCB.h> //CAN port for OpenLCB
-//#include <IoTT_Switches.h>
-//#include <IoTT_SecurityElements.h> //not ready yet. This is the support for ABS/APB as described in Videos #20, 21, 23, 24
 #include <NmraDcc.h> //install via Arduino IDE
 #include <OneDimKalman.h>
 
@@ -74,14 +64,14 @@ String bufferFileName = "/buffers.dat";
 //more library object pointers. Libraries will be dynamically initialized as needed during the setup() function
 IoTT_Mux64Buttons * myButtons = NULL;
 IoTT_LocoNetButtonList * eventHandler = NULL; 
-IoTT_SecurityElementList * secElHandlerList = NULL;
+//IoTT_SecurityElementList * secElHandlerList = NULL;
 LocoNetESPSerial * lnSerial = NULL;
 //IoTT_SerInjector * usbSerial = NULL;
 //IoTT_OpenLCB *olcbSerial = NULL;
 //HardwareSerial *wireSerial = NULL;
 ln_mqttGateway * commGateway = NULL;
 IoTT_ledChain * myChain = NULL;
-IoTT_SwitchList * mySwitchList = NULL;
+//IoTT_SwitchList * mySwitchList = NULL;
 MQTTESP32 * lnMQTT = NULL;
 NmraDcc  * myDcc = NULL;
 
@@ -170,17 +160,6 @@ uint16_t sendMsg(lnTransmitMsg txData)
     case 4: if (commGateway) //LocoNet w/ Gateway
               return commGateway->lnWriteMsg(txData); 
             break;
-/*            
-    case 5: //OpenLCB
-            if (olcbSerial) olcbSerial->lnWriteMsg(txData);
-            break;
-    case 6: //OpenLCB over MQTT
-            if (lnMQTT) lnMQTT->lnWriteMsg(txData); break;
-    case 7: //OpenLCB with Gateway
-            if (commGateway) //LocoNet w/ Gateway
-              commGateway->lnWriteMsg(txData); 
-            break;
-*/            
   }
 }
 
@@ -194,27 +173,11 @@ uint16_t sendMQTTMsg(char * topic, char * payload) //used for native MQTT only
   }
 }
 
-void resetPin(uint8_t pinNr)
-{
-  pinMode(pinNr, OUTPUT);
-  digitalWrite(pinNr,0);
-  pinMode(pinNr, INPUT);
-}
-
 void setup() {
   // put your setup code here, to run once:
-//  resetPin(0);
-//  resetPin(26);
-//  resetPin(32);
-//  resetPin(33);
-//  resetPin(36);
-
   wsBuffer = (char*) malloc(16384); 
   M5.begin();
-//  M5.Axp.EnableCoulombcounter();
-  
-
- initDisplay();
+  initDisplay();
   getRTCTime();
   char time_output[30];
   strftime(time_output, 30, "%a  %d-%m-%y %T", localtime(&now));
@@ -233,8 +196,7 @@ void setup() {
   {
     Serial.printf("PubSubClient.h MQTT_MAX_PACKET_SIZE only %i. Should be >= 480\n", MQTT_MAX_PACKET_SIZE);
     delay(5000);
-//    hard_restart();
-  ESP.restart(); //configuration update requires restart to be sure dynamic allocation of objects is not messed up
+    ESP.restart(); //configuration update requires restart to be sure dynamic allocation of objects is not messed up
   }
   DynamicJsonDocument * jsonConfigObj = NULL;
   DynamicJsonDocument * jsonDataObj = NULL;
@@ -245,8 +207,6 @@ void setup() {
     if (jsonConfigObj->containsKey("wifiMode"))
       wifiCfgMode = (*jsonConfigObj)["wifiMode"];
     Serial.printf("Wifi Config Mode %i\n",wifiCfgMode);
-//    if (jsonConfigObj->containsKey("useWifiTimeout"))
-//      wifiAlwaysOn =  (!(bool)(*jsonConfigObj)["useWifiTimeout"]);
     if (jsonConfigObj->containsKey("devName"))
     {
       String thisData = (*jsonConfigObj)["devName"];
@@ -284,8 +244,6 @@ void setup() {
     {
       int listIndex = (*jsonConfigObj)["HatIndex"];
       JsonArray devTypes = (*jsonConfigObj)["HatTypeList"];
-//      String thisName = devTypes[listIndex]["Name"];
-//      useHat.devName = thisName;
       strcpy(useHat.devName, devTypes[listIndex]["Name"]);
       useHat.devId = devTypes[listIndex]["HatId"];
       JsonArray IntfList = devTypes[listIndex]["InterfaceList"];
@@ -301,7 +259,6 @@ void setup() {
     else
     {
       Serial.println("No HAT defined, go with none");
-//      useHat.devName = "none";
       strcpy(useHat.devName, "none");
       useHat.devCommMode = 0;
       useHat.devId = 0;
@@ -315,8 +272,6 @@ void setup() {
     {
       int listIndex = (*jsonConfigObj)["InterfaceIndex"];
       JsonArray commTypes = (*jsonConfigObj)["InterfaceTypeList"];
-//      String thisName = commTypes[listIndex]["Name"];
-//      useInterface.devName = thisName;
       strcpy(useInterface.devName, commTypes[listIndex]["Name"]);
       useInterface.devCommMode = commTypes[listIndex]["Type"];
       useInterface.devId = commTypes[listIndex]["IntfId"];
@@ -324,7 +279,6 @@ void setup() {
     else
     {
       Serial.println("No Interface defined, use LocoNet");
-//      useInterface.devName = "LocoNet";
       strcpy(useHat.devName, "LocoNet");
       useInterface.devCommMode = 1;
       useInterface.devId = 2;
@@ -363,17 +317,6 @@ void setup() {
     } 
     else 
       Serial.println("LocoNet not activated");
-/*
-    if ((useInterface.devId == 5) || (useInterface.devId == 7))//OpenLCB or Gateway with OpenLCB 
-    {
-      Serial.println("Init OpenLCB");  
-      olcbSerial = new IoTT_OpenLCB(groveRxCAN, groveTxCAN);
-      olcbSerial->setOlcbCallback(callbackOpenLCBMessage, true);
-      olcbSerial->begin();
-    }
-    else 
-      Serial.println("OpenLCB not activated");
-*/
     if ((useInterface.devId == 3) || (useInterface.devId == 4) || (useInterface.devId == 6) || (useInterface.devId == 7) || (useInterface.devId == 8) || (useInterface.devId == 9))
         //LN/OLCB via MQTT or LN Gateway/ALM or OpenLCB with Gateway, or native MQTT, or DCC /w Gateway
     {
@@ -389,7 +332,6 @@ void setup() {
           case 4: lnMQTT->setMQTTCallback(callbackLocoNetMessage); break;
           case 5: ;
           case 6:;
-//          case 7: lnMQTT->setMQTTCallback(callbackOpenLCBMessage); break;
           case 8: lnMQTT->setNativeMQTTCallback(callbackMQTTMessage); break;
           case 9: lnMQTT->setDCCMode(); break; //no callback as DCC is one way only
         }
@@ -473,32 +415,6 @@ void setup() {
     }
     else 
       Serial.println("BlueHat not activated");
-/*
-    if (useHat.devId == 2) //USB Serial Injector
-    {
-      jsonDataObj = getDocPtr("/configdata/usb.cfg");
-      if (jsonDataObj != NULL)
-      {
-        Serial.println("Load Serial communication interface"); 
-        usbSerial = new IoTT_SerInjector(hatRxD, hatTxD, false, 1);
-        usbSerial->setTxCallback(sendMsg);
-        usbSerial->loadLNCfgJSON(*jsonDataObj);
-        switch (useInterface.devId)
-        {
-          case 2: ; // LocoNet
-          case 3: ; //LocoNet over MQTT
-          case 4: usbSerial->setMsgType(LocoNet); break; //LocoNet with Gateway
-          case 5: ; //OpenLCB
-          case 6: ; //OpenLCB over MQTT
-          case 7: usbSerial->setMsgType(OpenLCB); break; //OpenLCB with Gateway
-        }
-        delete(jsonDataObj); 
-        Serial.println("Serial communication loaded"); 
-      }
-    }
-    else
-      Serial.println("Serial communication not activated");
-*/
     if (useHat.devId == 3) //YellowHat
     {
         Serial.println("Init YellowHat");  
@@ -545,60 +461,6 @@ void setup() {
     }
     else 
       Serial.println("YellowHat not activated");
-
-    if (useHat.devId == 4) //GreenHat
-    {
-        Serial.println("Init GreenHat");  
-        Wire.begin(hatSDA, hatSCL, 400000); //initialize the I2C interface
-        jsonDataObj = getDocPtr("/configdata/greenhat.cfg");
-        if (jsonDataObj != NULL)
-          if (jsonDataObj->containsKey("Modules"))
-          {
-            JsonArray modDefList = (*jsonDataObj)["Modules"];
-            Serial.println("Load GreenHat Module(s)");  
-            mySwitchList = new IoTT_SwitchList(); 
-            mySwitchList->begin(&Wire); // set for using I2C Bus 
-            mySwitchList->configModMem(modDefList.size());
-
-            for (uint8_t modLoop = 0; modLoop < modDefList.size(); modLoop++)
-            {
-              if (modDefList[modLoop]["Type"] == "servo")
-                mySwitchList->setGreenHatType(modLoop, servoModule);
-              else
-                mySwitchList->setGreenHatType(modLoop, comboModule);
-              JsonArray cfgArray = modDefList[modLoop]["CfgFiles"];
-              for (uint8_t cfgLoop = 0; cfgLoop < cfgArray.size(); cfgLoop++) //4 config files: switches, buttons, button handler, LEDs
-              {
-                String fileNameStr = cfgArray[cfgLoop]["FileName"];
-                DynamicJsonDocument * jsonCfgObj = getDocPtr(configDir + "/" + fileNameStr + configDotExt);
-                if (jsonCfgObj)
-                {
-                  mySwitchList->loadSwCfgJSON(modLoop, cfgLoop, *jsonCfgObj);
-                  delete(jsonCfgObj);
-                  uint16_t subFileCtr = 1;
-                  while (SPIFFS.exists(configDir + "/"  + fileNameStr + String(subFileCtr) + configDotExt))
-                  {
-                    jsonCfgObj = getDocPtr(configDir + "/"  + fileNameStr + String(subFileCtr) + configDotExt);
-                    if (jsonCfgObj)
-                    {
-                      mySwitchList->loadSwCfgJSON(modLoop, cfgLoop, *jsonDataObj, false);
-                      delete(jsonCfgObj);
-                    }
-                    subFileCtr++;
-                  }
-                  if (useInterface.devCommMode == 3) //MQTT
-                    mySwitchList->setMQTTMode(mqttTransmit);
-                  if (useInterface.devCommMode == 0) //no interface, local Mode
-                    mySwitchList->setLocalMode();
-                }
-              }
-            }
-          }
-          else
-            Serial.println("No GreenHat Modules");
-        else
-          Serial.println("GreenHat not activated");
-    }
 
     if (useHat.devId == 5) //BlackHat
     {
@@ -656,34 +518,6 @@ void setup() {
     }
     else 
       Serial.println("Button Handler not activated");
-
-    if (useALM & 0x02)
-    {
-      Serial.println("Load Security Element Data");  
-      jsonDataObj = getDocPtr("/configdata/secel.cfg");
-      if (jsonDataObj != NULL)
-      {
-        secElHandlerList = new(IoTT_SecurityElementList);
-        secElHandlerList->loadSecElCfgJSON(*jsonDataObj);
-        delete(jsonDataObj);
-        uint16_t subFileCtr = 1;
-        while (SPIFFS.exists("/configdata/secel" + String(subFileCtr) + ".cfg"))
-        {
-          jsonDataObj = getDocPtr("/configdata/secel" + String(subFileCtr) + ".cfg");
-          if (jsonDataObj)
-          {
-            secElHandlerList->loadSecElCfgJSON(*jsonDataObj, false);
-            delete(jsonDataObj);
-          }
-          subFileCtr++;
-        }
-      }
-      else 
-        Serial.println("Security Elements not activated");
-      }
-    else 
-      Serial.println("Security Elements not loaded");
-
     Serial.println("Connect WiFi");  
     establishWifiConnection(myWebServer,dnsServer);
     
@@ -739,12 +573,9 @@ void loop() {
   else
     lastMillis = millis();  
 
-  if (secElHandlerList) secElHandlerList->processLoop(); //calculates speeds in all blocks and sets signals accordingly
   if (myDcc) myDcc->process(); //receives and decodes track signals
   if (eventHandler) eventHandler->processButtonHandler(); //drives the outgoing buffer and time delayed commands
-//  if (usbSerial) usbSerial->processLoop(); //drives the USB interface serial traffic
   if (lnSerial) lnSerial->processLoop(); //handling all LocoNet communication
-//  if (olcbSerial) olcbSerial->processLoop(); //handling all OpenLCB communication
 
   if (myChain)
     hatVerified = myChain->isVerified();
@@ -752,7 +583,6 @@ void loop() {
     hatVerified = true;
   if (hatVerified)
     if (myButtons) myButtons->processButtons(); //checks if a button was pressed and sends button messages
-  if (mySwitchList) mySwitchList->processLoop();
   if (myChain) 
     myChain->processChain(); //updates all LED's based on received status information for switches, inputs, buttons, etc.
 
@@ -805,12 +635,5 @@ void loop() {
     sendKeepAlive();
   M5.update();
   processDisplay();
-//  while (Serial.available())
-//  {
-//    char c = Serial.read();
-//    sendBlockDetectorCommand(150,1);
-//    sendAnalogCommand(22,17);
-//  }
-
   processBufferUpdates(); //updating DigitraxBuffers by querying information from LocoNet, e.g. slot statuses
 }
