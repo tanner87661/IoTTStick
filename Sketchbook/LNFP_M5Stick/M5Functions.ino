@@ -480,12 +480,14 @@ void setStatusPage()
   String modList = "[";
   if (eventHandler)
     modList += "Evnt Hdlr";
+/*
   if (secElHandlerList)
   {
     if (modList.length() > 1)
       modList += ", ";
     modList += "Sec El";
   }
+*/  
 //  if (sensorIntegrHandlerList)
 //  {
 //    if (modList.length > 1)
