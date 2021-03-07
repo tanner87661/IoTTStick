@@ -1,3 +1,5 @@
+Download from the Sketchbook directory!
+
 Firmware for YellowHat ATMEGA 328P
 Compile for Arduino Uno or Arduino Nano
 Download to YellowHat either
