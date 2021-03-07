@@ -1,1 +1,422 @@
-function tfSetCoordinate(a,b,c,d,e){a.setAttribute("id",e),a.setAttribute("row",b),a.setAttribute("col",c),a.setAttribute("index",d)}function tfPos(a,b,c,d){var e=tfText(a,b,c,d);return tfSetCoordinate(e,a,b,0,c),e.setAttribute("class","posfield"),e.innerHTML=a+1,e}function tfText(a,b,c){var e=document.createElement("div");return tfSetCoordinate(e,a,b,0,c),e.setAttribute("class","numinputstandard"),e.append(document.createTextNode(c.toString())),e}function tfLink(a,b,c,d,e,f){var g=document.createElement("a");return tfSetCoordinate(g,a,b,c,d),g.setAttribute("class","numinputstandard"),g.setAttribute("href","javascript:void function nop(){}();"),g.setAttribute("onclick",f),g.innerHTML=e,g}function tfTab(a,b,c){var e=document.createElement("div");return tfSetCoordinate(e,a,b,0,0),e.setAttribute("class","numinputstandard"),e.innerHTML=c,e}function tfTemplateTypeSel(a,b,c,d){var e=document.createElement("select");return tfSetCoordinate(e,a,b,0,c),e.setAttribute("class","selectorbox"),e.setAttribute("onchange",d),e}function tfInpTypeSel(a,b,c,d){var e=tfTemplateTypeSel(a,b,c,d);return createOptions(e,btnArray),e}function tfEvtTypeSrcSel(a,b,c,d){var e=tfTemplateTypeSel(a,b,c,d);return createOptions(e,sourceArray),e}function tfBtnEvtSel(a,b,c,d){var e=tfTemplateTypeSel(a,b,c,d);return createOptions(e,["Off","Digital","Analog"]),e}function tfBtnEvtMask(a,b,c,d){function e(c,e,f){var g="eventmask_"+a.toString()+"_"+b.toString()+"_"+e.toString(),h=tfCheckBox(a,b,g,d);return h.childNodes[0].setAttribute("index",e),h.childNodes[1].innerHTML=f,c.append(h),h}var f=document.createElement("div");return f.setAttribute("class","eventmask"),tfSetCoordinate(f,a,b,0,c),e(f,0,"Btn Down"),e(f,1,"Btn Up"),e(f,2,"Btn Click"),e(f,4,"Btn Dbl Click"),e(f,3,"Btn Hold"),f}function tfNumeric(a,b,c,d){var e=document.createElement("input");return e.setAttribute("class","numinputmedium"),tfSetCoordinate(e,a,b,0,c),e.setAttribute("onchange",d),e}function tfNumericLong(a,b,c,d){var e=document.createElement("input");return e.setAttribute("class","inputtext_long"),tfSetCoordinate(e,a,b,0,c),e.setAttribute("onchange",d),e}function tfBtnGen(a,b,c,d,e){var f=document.createElement("button");tfSetCoordinate(f,a,b,0,c),f.setAttribute("onclick",d),f.setAttribute("class","slim-button");var g=document.createTextNode(e);return f.append(g),f}function tfBtnAdd(a,b,c,d){return tfBtnGen(a,b,c,d,"Add")}function tfBtnNew(a,b,c,d){return tfBtnGen(a,b,c,d,"New")}function tfBtnUpdate(a,b,c,d){return tfBtnGen(a,b,c,d,"Update")}function tfBtnCancel(a,b,c,d){return tfBtnGen(a,b,c,d,"Cancel")}function tfBtnDelete(a,b,c,d){return tfBtnGen(a,b,c,d,"Delete")}function tfColorPicker(a,b,c,d){var e=document.createElement("input");return tfSetCoordinate(e,a,b,0,c),e.setAttribute("class","colorpicker"),e.setAttribute("type","color"),e.setAttribute("onchange",d),e.value="#ff0000",e}function tfTableStarterBox(a,b,c,d){var e=document.createElement("div");e.setAttribute("class","manipulatorbox"),tfSetCoordinate(e,a,b,0,c);var f;return f=document.createElement("img"),f.setAttribute("src","Add.png"),f.setAttribute("alt","Add"),f.setAttribute("class","img_icon"),f.setAttribute("name","add_"+i),tfSetCoordinate(f,a,b,1,c),f.setAttribute("onclick",d),e.append(f),e}function tfManipulatorBox(a,b,c,d){var e=document.createElement("div");e.setAttribute("class","manipulatorbox"),tfSetCoordinate(e,a,b,0,c);var f;return f=document.createElement("img"),f.setAttribute("src","Add.png"),f.setAttribute("alt","Add"),f.setAttribute("class","img_icon"),f.setAttribute("name","add_"+i),tfSetCoordinate(f,a,b,1,c),f.setAttribute("onclick",d),e.append(f),f=document.createElement("img"),f.setAttribute("src","Delete.png"),f.setAttribute("alt","Delete"),f.setAttribute("class","img_icon"),f.setAttribute("name","del_"+i),tfSetCoordinate(f,a,b,2,c),f.setAttribute("onclick",d),e.append(f),f=document.createElement("img"),f.setAttribute("src","Up.png"),f.setAttribute("alt","Up"),f.setAttribute("class","img_icon"),f.setAttribute("name","up_"+i),tfSetCoordinate(f,a,b,3,c),f.setAttribute("onclick",d),e.append(f),f=document.createElement("img"),f.setAttribute("src","Down.png"),f.setAttribute("alt","Down"),f.setAttribute("class","img_icon"),f.setAttribute("name","down_"+i),tfSetCoordinate(f,a,b,4,c),f.setAttribute("onclick",d),e.append(f),e}function tfCommandEvtSelector(a,b,c,d){var e=document.createElement("div");e.setAttribute("class","sourcesel"),tfSetCoordinate(e,a,b,0,c);var f=document.createElement("div");f.setAttribute("class","editorpanel"),e.append(f);var g="manipulatorbox_"+a.toString()+"_"+b.toString(),h=tfManipulatorBox(a,b,g,d);return f.append(h),createEvtElements(e,a,b,c,d),e}function tfCommandSwiSelector(a,b,c,d){var e=document.createElement("div");return e.setAttribute("class","sourcesel"),tfSetCoordinate(e,a,b,0,c),createEvtElements(e,a,b,c,d),e}function createEvtElements(a,b,c,d,e){var f=document.createElement("div");f.setAttribute("class","editorpanel"),a.append(f);var g=tfText(b,c,d,e);g.innerHTML="Event Type:&nbsp;",f.append(g),thisId="evttypebox_"+b.toString()+"_"+c.toString();var h=tfEvtTypeSrcSel(b,c,thisId,e);h.setAttribute("index",11),f.append(h);var i=document.createElement("div");i.setAttribute("class","editorpanel"),a.append(i);var g=tfText(b,c,d,e);g.innerHTML="Addr:&nbsp;",i.append(g),thisId="addressbox_"+b.toString()+"_"+c.toString();var j=tfNumeric(b,c,thisId,e);j.setAttribute("index",12),i.append(j);var g=tfText(b,c,d,e);g.innerHTML="&nbsp;Event:&nbsp;",i.append(g),thisId="cmdlistbox_"+b.toString()+"_"+c.toString();var k=tfInpTypeSel(b,c,thisId,e);k.setAttribute("index",13),i.append(k);var l=document.createElement("div");l.setAttribute("class","editorpanel"),thisId="parambox_"+b.toString()+"_"+c.toString(),l.setAttribute("id",thisId),a.append(l);var g=tfText(b,c,d,e);thisId="paramtext_"+b.toString()+"_"+c.toString(),g.setAttribute("id",thisId),g.innerHTML="Param:&nbsp;",l.append(g),thisId="address2box_"+b.toString()+"_"+c.toString();var j=tfNumeric(b,c,thisId,e);j.setAttribute("index",14),l.append(j),l.append(tfTab(b,c,"&nbsp;","")),thisId="btn_add_"+b.toString()+"_"+c.toString();var m=tfBtnNew(b,c,thisId,e);m.setAttribute("index",15),l.append(m),l.append(tfTab(b,c,"&nbsp;","")),thisId="btn_cancel_"+b.toString()+"_"+c.toString();var n=tfBtnDelete(b,c,thisId,e);n.setAttribute("index",16),l.append(n)}function tfLEDSelector(a,b,c,d){var e=document.createElement("div");e.setAttribute("class","cmdsel"),tfSetCoordinate(e,a,b,0,c);var f=document.createElement("div");f.setAttribute("class","editorpanel"),e.append(f);var g="manipulatorbox_"+a.toString()+"_"+b.toString(),h=tfManipulatorBox(a,b,g,d);f.append(h),g="lednrtext_"+a.toString()+"_"+b.toString();var i=tfLink(a,b,0,c,"LED ##:",d);i.setAttribute("index",21),f.append(i),f.append(tfTab(a,b,"&nbsp;","")),g="lednrbox_"+a.toString()+"_"+b.toString();var j=tfNumeric(a,b,g,d);j.setAttribute("index",5),f.append(j),g="multicolor_"+a.toString()+"_"+b.toString();var k=tfCheckBox(a,b,g,d);k.childNodes[0].setAttribute("index",6),k.childNodes[1].innerHTML="Individual Colors",f.append(k);var l=document.createElement("div");l.setAttribute("class","editorpanel"),e.append(l);var m=document.createElement("div");m.setAttribute("class","manipulatorbox"),l.append(m),g="cmdlistbox_"+a.toString()+"_"+b.toString();var n=tfLEDCtrlTypeSel(a,b,g,d);n.setAttribute("index",7),l.append(n);var i=tfText(a,b,c,d);i.innerHTML="Addr.:",l.append(tfTab(a,b,"&nbsp;","")),l.append(i),l.append(tfTab(a,b,"&nbsp;","")),g="addressbox_"+a.toString()+"_"+b.toString();var o=tfNumeric(a,b,g,d);o.setAttribute("index",8),l.append(o);var l=document.createElement("div");l.setAttribute("class","editorpanel"),e.append(l);var m=document.createElement("div");m.setAttribute("class","manipulatorbox"),l.append(m);var i=tfText(a,b,c,d);i.innerHTML="Color Adj.:",l.append(tfTab(a,b,"&nbsp;","")),l.append(i),l.append(tfTab(a,b,"&nbsp;","")),g="disptypebox_"+a.toString()+"_"+b.toString();var n=tfLEDDispTypeSel(a,b,g,d);n.setAttribute("index",9),l.append(n);var p=document.createElement("div");p.setAttribute("class","editorpanel"),e.append(p);var m=document.createElement("div");m.setAttribute("class","manipulatorbox"),p.append(m);var i=tfText(a,b,c,d);i.innerHTML="Locos:",p.append(tfTab(a,b,"&nbsp;","")),p.append(i),p.append(tfTab(a,b,"&nbsp;","")),g="transpselbox_"+a.toString()+"_"+b.toString();var n=tfNumeric(a,b,g,d);return n.setAttribute("index",10),p.append(n),e}var sourceArray=["Switch","Dyn. Signal","DCC Signal","Button","Analog Value","Block Detector","Transponder","Power State"],btnArray=["Btn Down","Btn Up","Btn Click","Btn Hold","Btn Dbl Click"];
+var sourceArray = ["Switch", "Dyn. Signal", "DCC Signal", "Button","Analog Value", "Block Detector", "Transponder", "Power State"];
+var btnArray = ["Btn Down","Btn Up","Btn Click","Btn Hold", "Btn Dbl Click"];
+var btnArray0x03 = ["Btn Down","Btn Up"];
+
+function tfSetCoordinate(element, row, col, index, id)
+{
+	element.setAttribute("id", id);
+	element.setAttribute("row", row);
+	element.setAttribute("col", col);
+	element.setAttribute("index", index);
+}
+
+function tfPos(y, x, id, evtHandler)
+{
+	var newRB = tfText(y, x, id, evtHandler);
+	tfSetCoordinate(newRB, y, x, 0, id);
+	newRB.setAttribute("class", "posfield");
+	newRB.innerHTML = y + 1;
+	return newRB;
+}
+
+function tfText(y, x, id, evtHandler)
+{
+	var textDiv = document.createElement("div");
+	tfSetCoordinate(textDiv, y, x, 0, id);
+	textDiv.setAttribute("class", "numinputstandard");
+	textDiv.append(document.createTextNode(id.toString()));
+	return textDiv;
+}
+
+function tfLink(y, x, index, id, linkText, evtHandler)
+{
+	var textDiv = document.createElement("a");
+	tfSetCoordinate(textDiv, y, x, index, id);
+	textDiv.setAttribute("class", "numinputstandard");
+	textDiv.setAttribute("href", "javascript:void function nop(){}();");
+	textDiv.setAttribute("onclick", evtHandler);
+	textDiv.innerHTML = linkText;
+	return textDiv;
+}
+
+function tfTab(y, x, dispText, evtHandler)
+{
+	var textDiv = document.createElement("div");
+	tfSetCoordinate(textDiv, y, x, 0, 0);
+	textDiv.setAttribute("class", "numinputstandard");
+	textDiv.innerHTML = dispText;
+//	textDiv.append(document.createTextNode(dispText));
+	return textDiv;
+}
+
+
+function tfTemplateTypeSel(y, x, id, evtHandler)
+{
+	var selectList = document.createElement("select");
+	tfSetCoordinate(selectList, y, x, 0, id);
+	selectList.setAttribute("class", "selectorbox");
+	selectList.setAttribute("onchange", evtHandler);
+	return selectList;
+}
+
+function tfInpTypeSel(y, x, id, evtHandler)
+{
+	var selectList = tfTemplateTypeSel(y, x, id, evtHandler);
+	createOptions(selectList, btnArray);
+	return selectList;
+}
+
+function tfEvtTypeSrcSel(y, x, id, evtHandler)
+{
+	var selectList = tfTemplateTypeSel(y, x, id, evtHandler);
+	createOptions(selectList, sourceArray);
+	return selectList;
+}
+
+function tfBtnEvtSel(y, x, id, evtHandler)
+{
+	var selectList = tfTemplateTypeSel(y, x, id, evtHandler);
+	createOptions(selectList, ["Off","Digital","Analog"]);
+	return selectList;
+}
+
+function tfBtnEvtMask(y, x, id, evtHandler)
+{
+	function createCB(appenddiv, index, disptext)
+	{
+		var thisId = "eventmask_" + y.toString() + "_" + x.toString() + "_" + index.toString();
+		var cchBox = tfCheckBox(y, x, thisId, evtHandler);
+		cchBox.childNodes[0].setAttribute("index", index);
+		cchBox.childNodes[1].innerHTML = disptext;
+		appenddiv.append(cchBox);
+		return cchBox;
+	}
+		
+	var evtMaskDiv = document.createElement("div");
+	evtMaskDiv.setAttribute("class", "eventmask");
+	tfSetCoordinate(evtMaskDiv, y, x, 0, id);
+	createCB(evtMaskDiv, 0, "Btn Down");
+	createCB(evtMaskDiv, 1, "Btn Up");
+	createCB(evtMaskDiv, 2, "Btn Click");
+	createCB(evtMaskDiv, 4, "Btn Dbl Click");
+	createCB(evtMaskDiv, 3, "Btn Hold");
+	
+	return evtMaskDiv;
+}
+
+function tfNumeric(y, x, id, evtHandler)
+{
+	var inpElement = document.createElement("input");
+	inpElement.setAttribute("class", "numinputmedium");
+	tfSetCoordinate(inpElement, y, x, 0, id);
+	inpElement.setAttribute("onchange", evtHandler);
+	return inpElement;
+}
+
+function tfNumericLong(y, x, id, evtHandler)
+{
+	var inpElement = document.createElement("input");
+	inpElement.setAttribute("class", "inputtext_long");
+	tfSetCoordinate(inpElement, y, x, 0, id);
+	inpElement.setAttribute("onchange", evtHandler);
+	return inpElement;
+}
+
+function tfBtnGen(y, x, id, evtHandler, label)
+{
+	var thisButton = document.createElement("button");
+	tfSetCoordinate(thisButton, y, x, 0, id);
+	thisButton.setAttribute("onclick", evtHandler);
+	thisButton.setAttribute('class', 'slim-button');
+	var textElement = document.createTextNode(label);
+	thisButton.append(textElement);
+	return thisButton;
+}
+
+function tfBtnAdd(y, x, id, evtHandler)
+{
+	return tfBtnGen(y,x,id,evtHandler, "Add");
+}
+
+function tfBtnNew(y, x, id, evtHandler)
+{
+	return tfBtnGen(y,x,id,evtHandler, "New");
+}
+
+function tfBtnUpdate(y, x, id, evtHandler)
+{
+	return tfBtnGen(y,x,id,evtHandler, "Update");
+}
+
+function tfBtnCancel(y, x, id, evtHandler)
+{
+	return tfBtnGen(y,x,id,evtHandler, "Cancel");
+}
+
+function tfBtnDelete(y, x, id, evtHandler)
+{
+	return tfBtnGen(y,x,id,evtHandler, "Delete");
+}
+
+function tfColorPicker(y, x, id, evtHandler)
+{
+	var inpElement = document.createElement("input");
+	tfSetCoordinate(inpElement, y, x, 0, id);
+	inpElement.setAttribute("class", "colorpicker");
+	inpElement.setAttribute("type", "color");
+	inpElement.setAttribute("onchange", evtHandler);
+	inpElement.value = "#ff0000";
+	return inpElement;
+	
+}
+
+function tfTableStarterBox(y, x, id, evtHandler)
+{
+	var divElement = document.createElement("div");
+	divElement.setAttribute("class", "manipulatorbox");
+	tfSetCoordinate(divElement, y, x, 0, id);
+	var imgElement;
+	imgElement = document.createElement("img");
+	imgElement.setAttribute('src', 'Add.png');
+	imgElement.setAttribute('alt', 'Add');
+	imgElement.setAttribute('class', 'img_icon');
+	imgElement.setAttribute('name', "add_" + i);
+	tfSetCoordinate(imgElement, y, x, 1, id);
+	imgElement.setAttribute("onclick", evtHandler);
+	divElement.append(imgElement);
+	return divElement;
+}
+
+function tfManipulatorBox(y, x, id, evtHandler)
+{
+	var divElement = document.createElement("div");
+	divElement.setAttribute("class", "manipulatorbox");
+	tfSetCoordinate(divElement, y, x, 0, id);
+	var imgElement;
+	imgElement = document.createElement("img");
+	imgElement.setAttribute('src', 'Add.png');
+	imgElement.setAttribute('alt', 'Add');
+	imgElement.setAttribute('class', 'img_icon');
+	imgElement.setAttribute('name', "add_" + i);
+	tfSetCoordinate(imgElement, y, x, 1, id);
+	imgElement.setAttribute("onclick", evtHandler);
+	divElement.append(imgElement);
+	imgElement = document.createElement("img");
+	imgElement.setAttribute('src', 'Delete.png');
+	imgElement.setAttribute('alt', 'Delete');
+	imgElement.setAttribute('class', 'img_icon');
+	imgElement.setAttribute('name', "del_" + i);
+	tfSetCoordinate(imgElement, y, x, 2, id);
+	imgElement.setAttribute("onclick", evtHandler);
+	divElement.append(imgElement);
+	imgElement = document.createElement("img");
+	imgElement.setAttribute('src', 'Up.png');
+	imgElement.setAttribute('alt', 'Up');
+	imgElement.setAttribute('class', 'img_icon');
+	imgElement.setAttribute('name', "up_" + i);
+	tfSetCoordinate(imgElement, y, x, 3, id);
+	imgElement.setAttribute("onclick", evtHandler);
+	divElement.append(imgElement);
+	imgElement = document.createElement("img");
+	imgElement.setAttribute('src', 'Down.png');
+	imgElement.setAttribute('alt', 'Down');
+	imgElement.setAttribute('class', 'img_icon');
+	imgElement.setAttribute('name', "down_" + i);
+	tfSetCoordinate(imgElement, y, x, 4, id);
+	imgElement.setAttribute("onclick", evtHandler);
+	divElement.append(imgElement);
+	return divElement;
+}
+
+function tfCommandEvtSelector(y, x, id, evtHandler)
+{
+	var divElement = document.createElement("div");
+	divElement.setAttribute("class", "sourcesel");
+	tfSetCoordinate(divElement, y, x, 0, id);
+	var topDiv = document.createElement("div");
+	topDiv.setAttribute("class", "editorpanel");
+	divElement.append(topDiv);
+
+	var thisId = "manipulatorbox_" + y.toString() + "_" + x.toString();
+	var manpulatorElement = tfManipulatorBox(y, x, thisId, evtHandler);
+	topDiv.append(manpulatorElement);
+	createEvtElements(divElement, y, x, id, evtHandler);
+	return divElement;
+
+}
+
+function tfCommandSwiSelector(y, x, id, evtHandler)
+{
+	var divElement = document.createElement("div");
+	divElement.setAttribute("class", "sourcesel");
+	tfSetCoordinate(divElement, y, x, 0, id);
+	createEvtElements(divElement, y, x, id, evtHandler);
+	var upperDiv = document.createElement("div");
+	upperDiv.setAttribute("class", "editorpanel");
+	divElement.append(upperDiv);
+
+	var thisId = "templatelink" + y.toString() + "_" + x.toString();
+	var templateLink = tfLink(y, x, 25, thisId, "Run as template", evtHandler);
+	upperDiv.append(templateLink);
+	return divElement;
+}
+
+function createEvtElements(divElement, y, x, id, evtHandler)
+{
+	var upperDiv = document.createElement("div");
+	upperDiv.setAttribute("class", "editorpanel");
+	divElement.append(upperDiv);
+	
+	var thisText = tfText(y, x, id, evtHandler);
+	thisText.innerHTML = "Event Type:&nbsp;";
+	upperDiv.append(thisText);
+
+	thisId = "evttypebox_" + y.toString() + "_" + x.toString();
+	var typeBox = tfEvtTypeSrcSel(y, x, thisId, evtHandler);
+	typeBox.setAttribute("index", 11);
+	upperDiv.append(typeBox);
+
+	var lowerDiv = document.createElement("div");
+	lowerDiv.setAttribute("class", "editorpanel");
+	divElement.append(lowerDiv);
+	
+	var thisText = tfText(y, x, id, evtHandler);
+	thisText.innerHTML = "Addr:&nbsp;";
+	lowerDiv.append(thisText);
+
+	thisId = "addressbox_" + y.toString() + "_" + x.toString();
+	var addrBox = tfNumeric(y, x, thisId, evtHandler);
+	addrBox.setAttribute("index", 12);
+	lowerDiv.append(addrBox);
+	var thisText = tfText(y, x, id, evtHandler);
+	thisText.innerHTML = "&nbsp;Event:&nbsp;";
+	lowerDiv.append(thisText);
+	thisId = "cmdlistbox_" + y.toString() + "_" + x.toString();
+	var selBox = tfInpTypeSel(y, x, thisId, evtHandler);
+	selBox.setAttribute("index", 13);
+	lowerDiv.append(selBox);
+
+	var bottomDiv = document.createElement("div");
+	bottomDiv.setAttribute("class", "editorpanel");
+	thisId = "parambox_" + y.toString() + "_" + x.toString();
+	bottomDiv.setAttribute("id", thisId);
+	divElement.append(bottomDiv);
+	
+	var thisText = tfText(y, x, id, evtHandler);
+	thisId = "paramtext_" + y.toString() + "_" + x.toString();
+	thisText.setAttribute("id", thisId);
+	thisText.innerHTML = "Param:&nbsp;";
+	bottomDiv.append(thisText);
+	thisId = "address2box_" + y.toString() + "_" + x.toString();
+	var addrBox = tfNumeric(y, x, thisId, evtHandler);
+	addrBox.setAttribute("index", 14);
+	bottomDiv.append(addrBox);
+
+	bottomDiv.append(tfTab(y, x, '&nbsp;',""));
+	thisId = "btn_add_" + y.toString() + "_" + x.toString();
+	var btnNew = tfBtnNew(y, x, thisId, evtHandler);
+	btnNew.setAttribute("index", 15);
+	bottomDiv.append(btnNew);
+	bottomDiv.append(tfTab(y, x, '&nbsp;',""));
+	thisId = "btn_cancel_" + y.toString() + "_" + x.toString();
+	var btnDelete = tfBtnDelete(y, x, thisId, evtHandler);
+	btnDelete.setAttribute("index", 16);
+	bottomDiv.append(btnDelete);
+}
+
+function tfLEDSelector(y, x, id, evtHandler)
+{
+	var divElement = document.createElement("div");
+	divElement.setAttribute("class", "cmdsel");
+	tfSetCoordinate(divElement, y, x, 0, id);
+	
+	var upperDiv = document.createElement("div");
+	upperDiv.setAttribute("class", "editorpanel");
+	divElement.append(upperDiv);
+	
+	var thisId = "manipulatorbox_" + y.toString() + "_" + x.toString();
+	var manpulatorElement = tfManipulatorBox(y, x, thisId, evtHandler);
+	upperDiv.append(manpulatorElement);
+
+	thisId = "lednrtext_" + y.toString() + "_" + x.toString();
+	var thisText = tfLink(y, x, 0, id, "LED ##:", evtHandler);
+	thisText.setAttribute("index", 21); //high index not causing LED table reload
+	upperDiv.append(thisText);
+	upperDiv.append(tfTab(y, x, '&nbsp;',""));
+
+	thisId = "lednrbox_" + y.toString() + "_" + x.toString();
+	var ledBox = tfNumeric(y, x, thisId, evtHandler);
+	ledBox.setAttribute("index", 5);
+	upperDiv.append(ledBox);
+
+	
+	thisId = "multicolor_" + y.toString() + "_" + x.toString();
+	var cchBox = tfCheckBox(y, x, thisId, evtHandler);
+	cchBox.childNodes[0].setAttribute("index", 6);
+	cchBox.childNodes[1].innerHTML = "Individual Colors";
+	upperDiv.append(cchBox);
+
+	var lowerDiv = document.createElement("div");
+	lowerDiv.setAttribute("class", "editorpanel");
+	divElement.append(lowerDiv);
+
+	var thisSpacer = document.createElement("div");
+	thisSpacer.setAttribute("class", "manipulatorbox");
+	lowerDiv.append(thisSpacer);
+
+	thisId = "cmdlistbox_" + y.toString() + "_" + x.toString();
+	var selBox = tfLEDCtrlTypeSel(y, x, thisId, evtHandler);
+	selBox.setAttribute("index", 7);
+	lowerDiv.append(selBox);
+
+	var thisText = tfText(y, x, id, evtHandler);
+	thisText.innerHTML = "Addr.:";
+	lowerDiv.append(tfTab(y, x, '&nbsp;',""));
+	lowerDiv.append(thisText);
+	lowerDiv.append(tfTab(y, x, '&nbsp;',""));
+
+	thisId = "addressbox_" + y.toString() + "_" + x.toString();
+	var addrBox = tfNumeric(y, x, thisId, evtHandler);
+	addrBox.setAttribute("index", 8);
+	lowerDiv.append(addrBox);
+
+
+	var lowerDiv = document.createElement("div");
+	lowerDiv.setAttribute("class", "editorpanel");
+	divElement.append(lowerDiv);
+
+	var thisSpacer = document.createElement("div");
+	thisSpacer.setAttribute("class", "manipulatorbox");
+	lowerDiv.append(thisSpacer);
+
+	var thisText = tfText(y, x, id, evtHandler);
+	thisText.innerHTML = "Color Adj.:";
+	lowerDiv.append(tfTab(y, x, '&nbsp;',""));
+	lowerDiv.append(thisText);
+	lowerDiv.append(tfTab(y, x, '&nbsp;',""));
+
+	thisId = "disptypebox_" + y.toString() + "_" + x.toString();
+	var selBox = tfLEDDispTypeSel(y, x, thisId, evtHandler);
+	selBox.setAttribute("index", 9);
+	lowerDiv.append(selBox);
+
+	var bottomDiv = document.createElement("div");
+	bottomDiv.setAttribute("class", "editorpanel");
+	divElement.append(bottomDiv);
+
+	var thisSpacer = document.createElement("div");
+	thisSpacer.setAttribute("class", "manipulatorbox");
+	bottomDiv.append(thisSpacer);
+
+	var thisText = tfText(y, x, id, evtHandler);
+	thisText.innerHTML = "Locos:";
+	bottomDiv.append(tfTab(y, x, '&nbsp;',""));
+	bottomDiv.append(thisText);
+	bottomDiv.append(tfTab(y, x, '&nbsp;',""));
+
+	thisId = "transpselbox_" + y.toString() + "_" + x.toString();
+	var selBox = tfNumeric(y, x, thisId, evtHandler);
+	selBox.setAttribute("index", 10);
+	bottomDiv.append(selBox);
+	return divElement;
+}

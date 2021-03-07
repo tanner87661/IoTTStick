@@ -183,14 +183,21 @@ void processDisplay()
 //        Serial.println(useInterface.devId);
         switch (useInterface.devId)
         {
-          case 1: dccViewerPage(); break;
+          case 1:;
+          case 9:;
+          case 10: dccViewerPage(); break;
+          
           case 2:;
           case 3:;
-          case 4: lnViewerPage(); break;
+          case 4:;
+          case 11:;
+          case 12:;
+          case 13: lnViewerPage(); break;
+          
           case 5:;
-          case 6:
+          case 6:;
+          case 7: olcbViewerPage(); break;
           case 8: mqttViewerPage(); break;
-          case 9: dccViewerPage(); break;
         }
         clearDisplay();
         m5DispLine = 0;
@@ -459,6 +466,10 @@ void setStatusPage()
     case 7: drawText("using OpenLCB", 5, 18, 2); break; //OpenLCB 
     case 8: drawText("using MQTT", 5, 18, 2); break; //native MQTT 
     case 9: drawText("using DCC to MQTT", 5, 18, 2); break;
+    case 10: drawText("using DCC from MQTT", 5, 18, 2); break;
+    case 11: drawText("using LN/TCP(Server)", 5, 18, 2); break;
+    case 12: drawText("using LN/TCP(Client)", 5, 18, 2); break;
+    case 13: drawText("using LN/MQTT/TCP(Server)", 5, 18, 2); break;
     default: drawText("unknown", 5, 18, 2); break;
   }
   if ((useInterface.devId == 4) || (useInterface.devId == 7))
@@ -469,6 +480,18 @@ void setStatusPage()
   String modList = "[";
   if (eventHandler)
     modList += "Evnt Hdlr";
+  if (secElHandlerList)
+  {
+    if (modList.length() > 1)
+      modList += ", ";
+    modList += "Sec El";
+  }
+//  if (sensorIntegrHandlerList)
+//  {
+//    if (modList.length > 1)
+//      modList += ", ";
+//    modList += "Sensor Chain";
+//  }
   modList += "]";
   drawText(&modList[0], 5, 63, 2); 
 }
@@ -528,6 +551,24 @@ void lnViewerPage()
   useM5Viewer = 1;
 }
 
+void olcbViewerPage()
+{
+  M5.Lcd.fillScreen(TFT_LIGHTGREY);
+  M5.Lcd.setTextColor(TFT_BLACK, TFT_LIGHTGREY);
+  switch (screenDef)
+  {
+    case 0: 
+      drawLogo(140, 0, 0);
+      break;
+    case 1: 
+      drawLogo(210, 0, 0);
+      break;
+  }
+  drawText("OpenLCB Viewer", 5, 3, 2);
+  m5DispLine = 0;
+  useM5Viewer = 3;
+}
+
 void dccViewerPage()
 {
   M5.Lcd.fillScreen(TFT_LIGHTGREY);
@@ -575,17 +616,40 @@ void mqttViewerPage()
 String getLNString(lnReceiveBuffer * newData)
 {
   String outText;
+  char hexbuf[4];
   for (byte i=0; i < newData->lnMsgSize; i++)
   { 
-    if (i > 0)
-      outText += ",0x";
+    sprintf(hexbuf, "0x%02X", newData->lnData[i]);
+    if (i==0)
+      outText += String(hexbuf);
     else
-      outText += "0x";
-    if (newData->lnData[i] < 16)
-      outText += "0";
-    String thisData = String(newData->lnData[i],16);
-    thisData.toUpperCase();
-    outText += thisData;
+      outText += ',' + String(hexbuf);
+  }
+  return outText;  
+}
+
+String getOLCBString(lnReceiveBuffer * newData)
+{
+  String outText = "";
+  olcbMsg thisMsg;
+  if (gc_format_parse_olcb(&thisMsg, newData) >= 0)
+  {
+    String mtiData = String(thisMsg.MTI,16) + " ";
+    mtiData.toUpperCase();
+    outText += String(thisMsg.canFrameType) + " ";
+    outText += "M:0x" + mtiData;
+    for (byte i=0; i < thisMsg.dlc; i++)
+    { 
+      if (i > 0)
+        outText += ",0x";
+      else
+        outText += "0x";
+      if (thisMsg.olcbData.u8[i] < 16)
+        outText += "0";
+      String thisData = String(thisMsg.olcbData.u8[i],16);
+      thisData.toUpperCase();
+      outText += thisData;
+    }
   }
   return outText;  
 }
@@ -593,7 +657,6 @@ String getLNString(lnReceiveBuffer * newData)
 String getMQTTString(char * topic, byte * payload)
 {
   String outText = "sample message";
-
   return outText;  
 }
 
@@ -613,6 +676,21 @@ void processLNtoM5(lnReceiveBuffer * newData)
 {
   String emptyLine = "                                                                      ";
   String outText = getLNString(newData);
+  strncpy(dispBuffer[m5DispLine], outText.c_str(), dccStrLen);
+  uint8_t dispY = 0;
+  for (int i = 0; i < oneShotBufferSize; i++)
+  {
+    dispY = (15 * (i+1)) + 5;
+    drawText(&emptyLine[0], 5, dispY, 1);
+    drawText(&dispBuffer[(m5DispLine+oneShotBufferSize-i) % oneShotBufferSize][0], 5, dispY, 1);
+  }
+  m5DispLine = (m5DispLine + 1) % oneShotBufferSize; //line
+}
+
+void processOLCBtoM5(lnReceiveBuffer * newData)
+{
+  String emptyLine = "                                                                      ";
+  String outText = getOLCBString(newData);
   strncpy(dispBuffer[m5DispLine], outText.c_str(), dccStrLen);
   uint8_t dispY = 0;
   for (int i = 0; i < oneShotBufferSize; i++)
@@ -666,3 +744,12 @@ void processDCCtoM5(bool oneTime, String dispText)
     Serial.println(dispText);
   }
 }
+
+/*
+void hard_restart() 
+{
+  esp_task_wdt_init(1,true);
+  esp_task_wdt_add(NULL);
+  while(true);
+}
+*/

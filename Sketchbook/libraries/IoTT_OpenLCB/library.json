@@ -1,0 +1,15 @@
+{
+    "name": "IoTT_ESPLocoNetSWSerial",
+    "version": "1.0.3",
+    "keywords": [
+      "serial", "LocoNet", "IoTT", "Digitrax"
+    ],
+    "description": "Implementation of the LocoNet Interface for ESP32",
+    "repository":
+    {
+        "type": "git",
+        "url": "https://github.com/tanner87661/LocoNetESP32"
+    },
+    "frameworks": "arduino",
+    "platforms": "espressif32"
+}

@@ -1,1 +1,467 @@
-function loadPageList(a,b,c,d){var e=new XMLHttpRequest;e.onreadystatechange=function(){if(4==this.readyState&&200==this.status){for(scriptList=JSON.parse(this.response),i=0;i<scriptList.Pages.length;i++)scriptList.Pages[i].WebPage==a?(currentPage=i,createMenueTabElement(b,"button","tablink",scriptList.Pages[i].ID,scriptList.Pages[i].Menue,!0,"")):createMenueTabElement(b,"button","tablink",scriptList.Pages[i].ID,scriptList.Pages[i].Menue,!1,"loadPage('"+scriptList.Pages[i].WebPage+"')");updateMenueTabs(scriptList.Pages[currentPage].ID,"grey"),constructPageContent(c),constructFooterContent(d)}},e.open("GET","pageconfig.json",!0),e.setRequestHeader("Cache-Control","no-cache"),e.send()}function updateMenueTabs(a,b){for(tablinks=document.getElementsByClassName("tablink"),i=0;i<tablinks.length;i++)tablinks[i].style.backgroundColor=tablinks[i].id==a?b:""}function setLEDTestDisplay(a){ws.send('{"Cmd":"SetLED", "LedNr":['+a+"]}")}function setServoPos(a,b){ws.send('{"Cmd":"SetServo", "ServoNr":['+a+'], "ServoPos":'+b+"}")}function downloadConfig(a){ws.send('{"Cmd":"CfgFiles", "Type":'+a+"}")}function showMenueTabs(a){for(i=0;i<scriptList.Pages.length;i++){var b=!1,c=document.getElementById(scriptList.Pages[i].ID);(scriptList.Pages[i].ProdSel.indexOf(-1)>=0||scriptList.Pages[i].CommSel.indexOf(-1)>=0)&&(b=!0);var d=parseInt(a.HatTypeList[a.HatIndex].HatId);scriptList.Pages[i].ProdSel.indexOf(d)>=0&&(b=!0),d=parseInt(a.InterfaceTypeList[a.InterfaceIndex].IntfId),scriptList.Pages[i].CommSel.indexOf(d)>=0&&(b=!0);for(var e=0;e<a.ALMIndex.length;e++)scriptList.Pages[i].ALMSel.indexOf(a.ALMIndex[e])>=0&&(b=!0);setVisibility(b,c)}}function loadPage(a){window.location.href=a}function sendFileData(a,b,c,d,e){var f='{"Cmd":"CfgUpdate", "FileNameType": "'+b+'", "FileName": "'+c+'", "Restart": '+e+', "Type":"'+a+'", "Data":'+d+"}";ws.send(f),console.log(JSON.parse(f))}function sendDeleteFile(a,b,c,d){var e='{"Cmd":"CfgUpdate", "FileNameType": "'+b+'", "FileName": "'+c+'", "Type":"'+a+'", "Index":'+d+"}";ws.send(e),console.log(JSON.parse(e))}function startProgressDialog(a){var b=document.createElement("div");b.setAttribute("class","modal");var c=document.createElement("div");c.setAttribute("class","modal-content"),b.append(c);var d=document.createElement("div");d.setAttribute("class","modal-header"),c.append(d);var e=document.createElement("span");e.setAttribute("class","close"),e.innerHTML="&times;",d.append(e);var f=document.createElement("h2");f.innerHTML="Please wait... Configuration files are being transferred.",d.append(f),d=document.createElement("div"),d.setAttribute("class","modal-body"),c.append(d),dlgTextDispArea=document.createElement("textarea"),dlgTextDispArea.setAttribute("readonly","true"),dlgTextDispArea.setAttribute("rows",10),dlgTextDispArea.setAttribute("style","width:100%"),d.append(dlgTextDispArea),d=document.createElement("div"),d.setAttribute("class","modal-footer"),c.append(d);var f=document.createElement("h3");f.innerHTML="Thank you for using the IoTT Stick!",d.append(f),a.append(b);var g=document.getElementsByClassName("close");return g[0].onclick=function(){progressDlg.style.display="none"},b}function closeDlg(){wsInitNode=!0,wsInitData=!0,setTimeout(function(){startWebsockets()},2500),progressDlg&&(progressDlg.style.display="none")}function uploadConfig(a){function c(a){return a.ID==b}var b="";transferData=[];for(var d=0;d<a.length;d++){if(void 0==a[d].FileName){b=a[d].Type;var e=scriptList.Pages.findIndex(c);isNaN(e)||(a[d].FileName=scriptList.Pages[e].FileName+".cfg")}sendDeleteFile("pgDelete",a[d].FileNameType,a[d].FileName,0),transferData.push(JSON.parse(JSON.stringify(a[d])))}progressDlg&&(dlgTextDispArea.innerHTML=""),fileSendIndex=0,sendMultiFile()}function setCTS(){}function clearCTS(){}function sendSingleFile(){console.log("Create Single File Dlg ",fileGroupIndex,fileSendIndex),null==progressDlg&&(progressDlg=startProgressDialog(document.getElementById("TabHolder"))),progressDlg.style.display="block";var a=transferData[fileGroupIndex],b=a.FileName;fileSendIndex>0&&(b+=fileSendIndex.toString()),b+=".cfg";var c=fileGroupIndex==transferData.length-1&&fileSendIndex==a.FileList.length-1;sendFileData(a.Type,a.FileName,b,JSON.stringify(a.FileList[fileSendIndex]),c),clearCTS(),dlgTextDispArea.innerHTML+="Send file "+b+" to IoTT Stick\n",fileSendIndex++,fileSendIndex<a.FileList.length?setTimeout(function(){sendSingleFile()},4e3):(fileGroupIndex++,fileGroupIndex<transferData.length?(fileSendIndex=0,setTimeout(function(){sendSingleFile()},4e3)):("function"==typeof clearDisplay&&clearDisplay(),setTimeout(function(){closeDlg()},4e3)))}function sendMultiFile(){null==progressDlg&&(progressDlg=startProgressDialog(document.getElementById("TabHolder"))),progressDlg.style.display="block",dlgTextDispArea.innerHTML+="Send file "+transferData[fileSendIndex].FileName+" to IoTT Stick\n",sendFileData(transferData[fileSendIndex].Type,transferData[fileSendIndex].FileNameType,transferData[fileSendIndex].FileName,JSON.stringify(transferData[fileSendIndex].Data),fileSendIndex==transferData.length-1),fileSendIndex++,fileSendIndex<transferData.length?setTimeout(function(){sendMultiFile()},500):setTimeout(function(){closeDlg()},2500)}function saveJSONConfig(a,b,c,d){var e=transferData.push(JSON.parse(JSON.stringify({Type:"",FileName:"",FileNameType:"",FileList:[]})))-1;if(transferData[e].Type=a,transferData[e].FileName=b,transferData[e].FileNameType=b,"function"==typeof d)d(c,e),transferData[e].FileList.length>0&&sendDeleteFile("pgDelete",transferData[e].FileNameType,transferData[e].FileName,transferData[e].FileList.length);else{var f=JSON.parse(JSON.stringify(c));transferData[e].FileList.push(f)}}function saveSettings(){transferData=[],saveConfigFileSettings(),progressDlg&&(dlgTextDispArea.innerHTML=""),fileSendIndex=0,fileGroupIndex=0,console.log(transferData),sendSingleFile()}function cancelSettings(){configData[2]=JSON.parse(JSON.stringify(configData[1])),loadDataFields(configData[workCfg])}function loadInitData(){console.log("loadInitData"),wsInitNode?("pgNodeCfg"!=scriptList.Pages[currentPage].ID?(ws.send('{"Cmd":"CfgData", "Type":"pgNodeCfg", "FileName": "node"}'),console.log('{"Cmd":"CfgData", "Type":"pgNodeCfg", "FileName": "node"}')):wsInitNode=!1,setTimeout(loadInitData,1e3)):wsInitData&&(ws.send('{"Cmd":"CfgData", "Type":"'+scriptList.Pages[currentPage].ID+'", "FileName":"'+scriptList.Pages[currentPage].FileName+'"}'),console.log('{"Cmd":"CfgData", "Type":"'+scriptList.Pages[currentPage].ID+'", "FileName":"'+scriptList.Pages[currentPage].FileName+'"}'))}function startWebsockets(){ws=new WebSocket(serverIP),ws.onopen=function(){console.log("websock opening"),(wsInitData||wsInitNode)&&setTimeout(loadInitData,1e3)},ws.onclose=function(){console.log("websock close"),setTimeout(startWebsockets,3e3)},ws.onerror=function(a){console.log(a)},ws.onmessage=function(a){var b=JSON.parse(a.data);if("CTS"==b.Cmd&&setCTS(),"STATS"==b.Cmd&&processStatsData(b.Data),"HWBtn"==b.Cmd&&"pgHWBtnCfg"==scriptList.Pages[currentPage].ID&&processLocoNetInput(b.Data),"HWBtn"==b.Cmd&&"pgThrottleCfg"==scriptList.Pages[currentPage].ID&&processLocoNetInput(b.Data),"LN"==b.Cmd&&"pgLNViewer"==scriptList.Pages[currentPage].ID&&processLocoNetInput(b.Data),"OLCB"==b.Cmd&&"pgOLCBViewer"==scriptList.Pages[currentPage].ID&&processOLCBInput(b),"DCC"==b.Cmd&&"pgDCCViewer"==scriptList.Pages[currentPage].ID&&processDCCInput(b.Data),String(b.Cmd).indexOf("MQTT")>=0&&"pgMQTTViewer"==scriptList.Pages[currentPage].ID&&processMQTTInput(b),"CfgFiles"==b.Cmd)switch(b.FileMode){case 1:dlgTextDispArea.innerHTML+="Receive file "+b.FileName+" from IoTT Stick\n",transferData.push(JSON.parse(JSON.stringify(b)));break;case 2:transferData=[],null==progressDlg&&(progressDlg=startProgressDialog(document.getElementById("TabHolder"))),dlgTextDispArea.innerHTML="",progressDlg.style.display="block";break;case 3:progressDlg&&(progressDlg.style.display="none");var c=document.createElement("a");c.href=URL.createObjectURL(new Blob([JSON.stringify(transferData,null,2)],{type:"text/plain"})),c.setAttribute("download","M5Config.json"),document.body.appendChild(c),c.click(),document.body.removeChild(c)}"CfgData"==b.Cmd&&("pgNodeCfg"==b.Type&&(wsInitNode=!1,configData[nodeCfg]=JSON.parse(JSON.stringify(b.Data)),showMenueTabs(configData[nodeCfg]),loadNodeDataFields(configData[nodeCfg])),b.Type==scriptList.Pages[currentPage].ID?(b.ResetData?(wsInitData=!1,configData[loadCfg]=JSON.parse(JSON.stringify(b.Data)),configData[workCfg]=JSON.parse(JSON.stringify(b.Data))):"function"==typeof addFileSeq&&addFileSeq(b.Data,configData),loadDataFields(configData[workCfg])):"pgNodeCfg"!=b.Type&&"function"==typeof addDataFile&&addDataFile(b))}}var systemTime=new Date,serverIP="ws://"+location.hostname+"/ws",ws=null,scriptList,currentPage=0,wsInitNode=!0,wsInitData=!0,flagCTS=!0,ctsTimeout,transferDataObj={Type:"",FileName:"",FileNameType:"",FileList:[]},nodeCfg=0,loadCfg=1,workCfg=2,configData=[{},{},{}],transferData,progressDlg=null,dlgTextDispArea,fileGroupIndex=0,fileSendIndex=0,targetSize=10240;
+var systemTime = new Date();
+var serverIP = "ws://" + location.hostname + "/ws";  
+var ws = null; // = new WebSocket(serverIP);
+//var loadedScripts = [];
+var scriptList;
+var currentPage = 0;
+
+var wsInitNode = true;
+var wsInitData = true;
+var flagCTS = true;
+var ctsTimeout;
+
+var	transferDataObj = {"Type": "", "FileName": "", "FileNameType": "", "FileList" : []};
+
+var nodeCfg = 0;
+var loadCfg = 1;
+var workCfg = 2;
+var configData = [{},{},{}];
+
+var transferData; //multifile system to save large data structure in multiple files
+var progressDlg = null;
+var dlgTextDispArea;
+var fileGroupIndex = 0;
+var fileSendIndex = 0;
+
+var targetSize = 10240; //10kb target length of file strings, should always fit into 16kB wsBuffer of asyncServer
+//var configFileTransfer;
+
+function loadPageList(pageName, menueTab, contentTab, footerTab)
+{
+    var request = new XMLHttpRequest();
+	request.onreadystatechange = function()
+	{
+		if (this.readyState == 4) 
+		{
+			if (this.status == 200) 
+			{
+				scriptList = JSON.parse(this.response);
+//				console.log(scriptList, scriptList.Pages.length);
+				for (i=0; i<scriptList.Pages.length;i++)
+				{
+//					console.log("Loading Page", pageName, scriptList.Pages[i].WebPage );
+					if (scriptList.Pages[i].WebPage == pageName)
+					{
+//						console.log("Setting ID", pageName, scriptList.Pages[i].ID );
+						currentPage = i; //scriptList.Pages[i].ID;
+						createMenueTabElement(menueTab, "button", "tablink", scriptList.Pages[i].ID, scriptList.Pages[i].Menue, true, "");
+					}
+					else
+						createMenueTabElement(menueTab, "button", "tablink", scriptList.Pages[i].ID, scriptList.Pages[i].Menue, false,"loadPage('" + scriptList.Pages[i].WebPage+ "')");
+						
+				}
+				updateMenueTabs(scriptList.Pages[currentPage].ID, "grey");
+				constructPageContent(contentTab);
+				constructFooterContent(footerTab);
+			}
+		}
+	}
+	request.open("GET", "pageconfig.json", true);
+	request.setRequestHeader('Cache-Control', 'no-cache');
+	request.send();
+}
+
+function updateMenueTabs(pageID, color) 
+{
+	tablinks = document.getElementsByClassName("tablink");
+	for (i = 0; i < tablinks.length; i++) 
+	{
+//		console.log(tablinks[i].id, pageID);
+		if (tablinks[i].id == pageID)
+			tablinks[i].style.backgroundColor = color;
+		else
+			tablinks[i].style.backgroundColor = "";
+	}
+}
+
+function setLEDTestDisplay(ledNr)
+{
+//	console.log("Setting LED: {\"Cmd\":\"SetLED\", \"LedNr\":[" + ledNr + "]}");
+	ws.send("{\"Cmd\":\"SetLED\", \"LedNr\":[" + ledNr + "]}");
+}
+
+function setServoPos(servoNr, servoPos)
+{
+//	console.log("{\"Cmd\":\"SetServo\", \"ServoNr\":[" + servoNr + "], \"ServoPos\":" + servoPos + "}");
+	ws.send("{\"Cmd\":\"SetServo\", \"ServoNr\":[" + servoNr + "], \"ServoPos\":" + servoPos + "}");
+}
+
+function downloadConfig(fileSelect) //get files from Stick and store to file
+{
+	ws.send("{\"Cmd\":\"CfgFiles\", \"Type\":" + fileSelect + "}");
+}
+
+function showMenueTabs(thisConfigData)
+{
+	for (i=0; i<scriptList.Pages.length;i++)
+	{
+		var isVisible = false;
+		var tabElement = document.getElementById(scriptList.Pages[i].ID);
+		if ((scriptList.Pages[i].ProdSel.indexOf(-1) >= 0) || (scriptList.Pages[i].CommSel.indexOf(-1) >= 0))
+		{
+			isVisible = true;
+		}
+		var thisId = parseInt(thisConfigData.HatTypeList[thisConfigData.HatIndex].HatId);
+		if (scriptList.Pages[i].ProdSel.indexOf(thisId) >= 0)
+		{
+			isVisible = true;
+		}
+		thisId = parseInt(thisConfigData.InterfaceTypeList[thisConfigData.InterfaceIndex].IntfId);
+		if (scriptList.Pages[i].CommSel.indexOf(thisId) >= 0)
+		{
+			isVisible = true;
+		}
+		for (var j=0; j < thisConfigData.ALMIndex.length; j++)
+			if (scriptList.Pages[i].ALMSel.indexOf(thisConfigData.ALMIndex[j]) >= 0)
+		{
+			isVisible = true;
+		}
+
+		setVisibility(isVisible, tabElement);
+	}
+}
+
+function loadPage(pageURL)
+{
+	window.location.href = pageURL;
+}
+
+function sendFileData(itemType, filenametype, filename, itemData, restart)
+{
+	var configStr = "{\"Cmd\":\"CfgUpdate\", \"FileNameType\": \"" + filenametype + "\", \"FileName\": \"" + filename + "\", \"Restart\": " + restart + ", \"Type\":\"" + itemType + "\", \"Data\":" + itemData  + "}";
+	ws.send(configStr);
+	console.log(JSON.parse(configStr));
+}
+
+function sendDeleteFile(itemType, filenametype, filename, startIndex)
+{
+	var configStr = "{\"Cmd\":\"CfgUpdate\", \"FileNameType\": \"" + filenametype + "\", \"FileName\": \"" + filename + "\", \"Type\":\"" + itemType + "\", \"Index\":" + startIndex  + "}";
+	ws.send(configStr);
+	console.log(JSON.parse(configStr));
+}
+
+function startProgressDialog(parentObj)
+{
+	var mainDlg = document.createElement("div");
+	mainDlg.setAttribute('class', "modal");
+	
+		var dlgDiv = document.createElement("div");
+		dlgDiv.setAttribute('class', "modal-content");
+		mainDlg.append(dlgDiv);
+	
+			var dlgSubDiv = document.createElement("div");
+			dlgSubDiv.setAttribute('class', "modal-header");
+			dlgDiv.append(dlgSubDiv);
+				var dlgSpan = document.createElement("span");
+				dlgSpan.setAttribute('class', "close");
+				dlgSpan.innerHTML = "&times;";
+				dlgSubDiv.append(dlgSpan);
+				var dlgHeader = document.createElement("h2");
+				dlgHeader.innerHTML = "Please wait... Configuration files are being transferred.";
+				dlgSubDiv.append(dlgHeader);
+	
+			dlgSubDiv = document.createElement("div");
+			dlgSubDiv.setAttribute('class', "modal-body");
+			dlgDiv.append(dlgSubDiv);
+				dlgTextDispArea = document.createElement("textarea"); //global var
+				dlgTextDispArea.setAttribute('readonly', "true");
+				dlgTextDispArea.setAttribute('rows', 10);
+				dlgTextDispArea.setAttribute('style', "width:100%"); 
+				dlgSubDiv.append(dlgTextDispArea);
+
+			dlgSubDiv = document.createElement("div");
+			dlgSubDiv.setAttribute('class', "modal-footer");
+			dlgDiv.append(dlgSubDiv);
+				var dlgHeader = document.createElement("h3");
+				dlgHeader.innerHTML = "Thank you for using the IoTT Stick!";
+				dlgSubDiv.append(dlgHeader);
+	
+	parentObj.append(mainDlg);
+	var span = document.getElementsByClassName("close"); //get array of close elements, should only be 1
+	span[0].onclick = function() {progressDlg.style.display = "none";}
+	return mainDlg;
+}
+
+function closeDlg()
+{
+	wsInitNode = true;
+	wsInitData = true;
+	setTimeout(function(){startWebsockets() }, 2500);
+	if (progressDlg)
+		progressDlg.style.display = "none";
+}
+
+function uploadConfig(fromJSON) //load config data files (from disk file) to IoTT Stick
+{
+	var fileTypeName = "";
+	function findFileName(pageEntry)
+	{
+		return pageEntry.ID == fileTypeName;
+	}
+	
+	transferData = [];
+	
+	for (var i = 0; i < fromJSON.length; i++)
+	{
+		if (fromJSON[i].FileName == undefined)
+		{
+			fileTypeName = fromJSON[i].Type;
+			var thisIndex = scriptList.Pages.findIndex(findFileName);
+			if (!isNaN(thisIndex))
+				fromJSON[i].FileName = scriptList.Pages[thisIndex].FileName + ".cfg";
+		}
+		sendDeleteFile("pgDelete", fromJSON[i].FileNameType, fromJSON[i].FileName, 0); //delete the one file after the last, otherwise it will be loaded
+		transferData.push(JSON.parse(JSON.stringify(fromJSON[i])));
+	}
+	if (progressDlg)	 
+		dlgTextDispArea.innerHTML = "";
+	fileSendIndex = 0;
+	sendMultiFile();
+}
+
+function setCTS()
+{
+//	console.log("set CTS");
+//	flagCTS = true;
+//	clearTimeout(ctsTimeout);
+}
+
+function clearCTS()
+{
+//	console.log("clear CTS");
+//	flagCTS = false;
+//	ctsTimeout = setTimeout(function(){setCTS() }, 5000);
+}
+
+function sendSingleFile()
+{
+//	if (flagCTS == true)
+	{
+		console.log("Create Single File Dlg ", fileGroupIndex, fileSendIndex );
+		if (progressDlg ==  null)
+			progressDlg = startProgressDialog(document.getElementById("TabHolder"));
+		progressDlg.style.display = "block";
+	
+		var thisTransferData = transferData[fileGroupIndex];
+		var thisFileName = thisTransferData.FileName;
+		if (fileSendIndex > 0)
+			thisFileName += fileSendIndex.toString();
+		thisFileName += ".cfg";
+		var doRestart = (fileGroupIndex == transferData.length - 1) && (fileSendIndex == thisTransferData.FileList.length - 1);
+		sendFileData(thisTransferData.Type, thisTransferData.FileName, thisFileName, JSON.stringify(thisTransferData.FileList[fileSendIndex]), doRestart);
+		clearCTS();
+		dlgTextDispArea.innerHTML += "Send file " + thisFileName + " to IoTT Stick\n";
+		fileSendIndex++; //now number of files sent so far
+	}
+	if (fileSendIndex < thisTransferData.FileList.length) //more to send
+		setTimeout(function(){sendSingleFile() }, 4000);
+	else
+	{
+		fileGroupIndex++; //now number of groups completed so far
+		if (fileGroupIndex < transferData.length)
+		{
+			fileSendIndex = 0;
+			setTimeout(function(){sendSingleFile() }, 4000);
+		}
+		else
+		{
+			if (typeof clearDisplay == 'function')
+				clearDisplay();
+			setTimeout(function(){closeDlg() }, 4000);
+		}
+	}
+}
+
+function sendMultiFile()
+{
+//	console.log("Create Multi File Dlg");
+	if (progressDlg ==  null)
+		progressDlg = startProgressDialog(document.getElementById("TabHolder"));
+	progressDlg.style.display = "block";
+	dlgTextDispArea.innerHTML += "Send file " + transferData[fileSendIndex].FileName + " to IoTT Stick\n";
+	sendFileData(transferData[fileSendIndex].Type, transferData[fileSendIndex].FileNameType, transferData[fileSendIndex].FileName, JSON.stringify(transferData[fileSendIndex].Data), fileSendIndex == transferData.length - 1);
+	fileSendIndex++;
+	if (fileSendIndex < transferData.length)
+	{
+		setTimeout(function(){sendMultiFile() }, 500);
+	}
+	else
+	{
+		setTimeout(function(){closeDlg() }, 2500);
+	}
+}
+	
+function saveJSONConfig(fileType, fileName, configData, fileSequencer)
+{
+	var thisIndex = transferData.push(JSON.parse(JSON.stringify({"Type": "", "FileName": "", "FileNameType": "", "FileList" : []}))) - 1;
+	transferData[thisIndex].Type = fileType;
+	transferData[thisIndex].FileName = fileName;
+	transferData[thisIndex].FileNameType = fileName;
+	if (typeof fileSequencer == 'function') 
+	{ 
+		fileSequencer(configData, thisIndex); 
+		if (transferData[thisIndex].FileList.length > 0)
+			sendDeleteFile("pgDelete", transferData[thisIndex].FileNameType, transferData[thisIndex].FileName, transferData[thisIndex].FileList.length); //delete the one file after the last, otherwise it will be loaded
+	}
+	else
+	{
+		var objCopy = JSON.parse(JSON.stringify(configData));
+		transferData[thisIndex].FileList.push(objCopy);
+	}
+}
+
+function saveSettings(sender)
+{
+	transferData = []; //empty array
+	saveConfigFileSettings(); //this must be a function in each config.js
+	if (progressDlg)	 
+		dlgTextDispArea.innerHTML = "";
+	fileSendIndex = 0;
+	fileGroupIndex = 0;
+	console.log(transferData);
+	sendSingleFile();
+}
+
+function cancelSettings(sender)
+{
+	configData[2] = JSON.parse(JSON.stringify(configData[1]));
+	loadDataFields(configData[workCfg]);
+}
+
+function loadInitData()
+{
+	console.log("loadInitData");
+	if (wsInitNode)
+	{
+		if (scriptList.Pages[currentPage].ID != "pgNodeCfg")
+		{
+			ws.send("{\"Cmd\":\"CfgData\", \"Type\":\"pgNodeCfg\", \"FileName\": \"node\"}");
+			console.log("{\"Cmd\":\"CfgData\", \"Type\":\"pgNodeCfg\", \"FileName\": \"node\"}");
+		}
+		else
+			wsInitNode = false;
+		setTimeout(loadInitData, 1000);
+	}
+	else
+		if (wsInitData)
+		{
+			ws.send("{\"Cmd\":\"CfgData\", \"Type\":\"" + scriptList.Pages[currentPage].ID + "\", \"FileName\":\"" + scriptList.Pages[currentPage].FileName+ "\"}");
+			console.log("{\"Cmd\":\"CfgData\", \"Type\":\"" + scriptList.Pages[currentPage].ID + "\", \"FileName\":\"" + scriptList.Pages[currentPage].FileName+ "\"}");
+		}
+}
+
+function startWebsockets()
+{
+	ws = new WebSocket(serverIP);
+	  
+    ws.onopen = function() 
+    {
+		console.log("websock opening");
+		
+		if (wsInitData || wsInitNode)
+			setTimeout(loadInitData, 1000);
+    };
+ 
+	ws.onclose = function (evt) 
+	{
+		console.log("websock close");
+		setTimeout(startWebsockets, 3000);
+//		conStatusError();
+	};
+
+	ws.onerror = function (evt) 
+	{
+		console.log(evt);
+//		  conStatusError();
+	};
+
+    ws.onmessage = function(evt) 
+    {
+//		console.log(evt.data);
+//		console.log(currentPage);
+  		var myArr = JSON.parse(evt.data);
+  		if (myArr.Cmd == "CTS")
+			setCTS();
+  		
+  		if (myArr.Cmd == "STATS")
+  		{
+//			console.log(JSON.stringify(myArr.Data));
+			processStatsData(myArr.Data);
+		}
+  		if ((myArr.Cmd == "HWBtn") && (scriptList.Pages[currentPage].ID == "pgHWBtnCfg"))
+			processLocoNetInput(myArr.Data);
+  		if ((myArr.Cmd == "HWBtn") && (scriptList.Pages[currentPage].ID == "pgThrottleCfg"))
+			processLocoNetInput(myArr.Data);
+  		if ((myArr.Cmd == "LN") && (scriptList.Pages[currentPage].ID == "pgLNViewer"))
+			processLocoNetInput(myArr.Data);
+  		if ((myArr.Cmd == "OLCB") && (scriptList.Pages[currentPage].ID == "pgOLCBViewer"))
+			processOLCBInput(myArr);
+  		if ((myArr.Cmd == "DCC") && (scriptList.Pages[currentPage].ID == "pgDCCViewer"))
+			processDCCInput(myArr.Data);
+  		if ((String(myArr.Cmd).indexOf("MQTT") >= 0) && (scriptList.Pages[currentPage].ID == "pgMQTTViewer"))
+			processMQTTInput(myArr);
+
+  		if (myArr.Cmd == "CfgFiles")
+  		{
+//			console.log(myArr);
+			switch (myArr.FileMode)
+			{
+				case 1: //add file to list
+					dlgTextDispArea.innerHTML += "Receive file " + myArr.FileName + " from IoTT Stick\n";
+					transferData.push(JSON.parse(JSON.stringify(myArr)));
+					break;
+				case 2: //delete list and restart
+					transferData = [];
+					if (progressDlg ==  null)
+						progressDlg = startProgressDialog(document.getElementById("TabHolder"));
+					dlgTextDispArea.innerHTML = "";
+					progressDlg.style.display = "block";
+					break;
+				case 3: //write file to disk
+					if (progressDlg)
+						progressDlg.style.display = "none";
+					var a = document.createElement("a");
+					a.href = URL.createObjectURL(new Blob([JSON.stringify(transferData, null, 2)], {type: "text/plain"}));
+					a.setAttribute("download", "M5Config.json");
+					document.body.appendChild(a);
+					a.click();
+					document.body.removeChild(a);			
+					break;
+			}
+		}
+
+  		if (myArr.Cmd == "CfgData")
+  		{
+//			console.log(myArr);
+			if (myArr.Type == "pgNodeCfg") //this is pgNodeCfg for all other pages
+			{
+				wsInitNode = false;
+				configData[nodeCfg] = JSON.parse(JSON.stringify(myArr.Data));
+				showMenueTabs(configData[nodeCfg]);
+				loadNodeDataFields(configData[nodeCfg]);
+			}
+			if (myArr.Type == scriptList.Pages[currentPage].ID)
+			{
+				if (myArr.ResetData) //new data to be loaded
+				{
+					wsInitData = false;
+					configData[loadCfg] = JSON.parse(JSON.stringify(myArr.Data));
+					configData[workCfg] = JSON.parse(JSON.stringify(myArr.Data));
+				}
+				else //data is additional file to current block
+				{
+					if (typeof addFileSeq == 'function')
+						addFileSeq(myArr.Data, configData);
+				}
+				loadDataFields(configData[workCfg]);
+			}
+			else //additional config files for e.g. GreenHat
+				if (myArr.Type != "pgNodeCfg") //pgNodeCfg already loaded above
+				{
+//					console.log(myArr.Type, scriptList.Pages[currentPage].ID);
+					if (typeof addDataFile == 'function')
+						addDataFile(myArr);
+				}
+		}
+	}
+};
