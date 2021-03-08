@@ -300,6 +300,15 @@ function adjustLEDAspectList(ledIndex, numAspects)
 		ledData[workCfg].LEDDefs[ledIndex].LEDCmd[i].Val = i;
 }
 
+function runTemplate()
+{
+}
+
+function cancelTemplate()
+{
+	templateDlg.style.display = "none";
+}
+
 function startTemplateDialog(parentObj, templateChannel)
 {
 	var mainDlg = document.createElement("div");
@@ -366,7 +375,7 @@ function startTemplateDialog(parentObj, templateChannel)
 				dlgHeader.setAttribute('style', "height: 70px; width:100%"); 
 				dlgHeader.innerHTML = "&nbsp;";
 				createButton(dlgHeader, "", "Run Template", "btnRun", "runTemplate(this)");
-				createButton(dlgHeader, "", "Cancel", "btnCancel", "cancelSettings(this)");
+				createButton(dlgHeader, "", "Cancel", "btnCancel", "cancelTemplate(this)");
 			footerDiv.append(dlgHeader);
 
 //				dlgHeader.innerHTML = "Thank you for using the IoTT Stick!";
