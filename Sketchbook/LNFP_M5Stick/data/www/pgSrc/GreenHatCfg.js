@@ -329,14 +329,15 @@ function startTemplateDialog(parentObj, templateChannel)
 
 				level0Div = document.createElement("div"); //global var
 				level0Div.setAttribute('style', "height: 50px; width:100%"); 
+				level0Div.setAttribute('id', "temptitle"); 
 				level0Div.innerHTML = "Set channel characterstics based on settings of channel #" + templateChannel.toString();
 				dlgTextDispArea.append(level0Div);
 
 				level1Div = document.createElement("div"); //global var
 				level1Div.setAttribute('style', "height: 50px; width:100%"); 
 				dlgTextDispArea.append(level1Div);
-				createTextInput(level1Div, "tile-1_2", "Run from Channel:", "n/a", "startchannel", "setTemplateParams(this)");
-				createTextInput(level1Div, "tile-1_2", "to Channel:", "n/a", "endchannel", "setTemplateParams(this)");
+				var tempField = createTextInput(level1Div, "tile-1_2", "Run from Channel:", templateChannel.toString(), "startchannel", "setTemplateParams(this)");
+				tempField = createTextInput(level1Div, "tile-1_2", "to Channel:", Math.min(16, templateChannel+5).toString(), "endchannel", "setTemplateParams(this)");
 
 				level2Div = document.createElement("div"); //global var
 				level2Div.setAttribute('style', "height: 50px; width:100%"); 
@@ -459,6 +460,9 @@ function setSwitchData(sender)
 						templateDlg = startTemplateDialog(document.getElementById("TabHolder"), thisRow+1);
 					else
 						level0Div.innerHTML = "Set channel characterstics based on settings of channel #" + (thisRow+1).toString();
+					document.getElementById("temptitle").innerHTML = "Set channel characterstics based on settings of channel #" + (thisRow+1).toString();
+					document.getElementById("startchannel").value = (thisRow+1).toString();
+					document.getElementById("endchannel").value = Math.min(16, thisRow+6).toString();
 					templateDlg.style.display = "block";
 					break;
 			}
