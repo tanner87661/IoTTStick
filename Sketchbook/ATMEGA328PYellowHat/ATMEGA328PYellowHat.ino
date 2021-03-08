@@ -1,11 +1,9 @@
   #include <Arduino.h>
-//  #include <Wire.h>
-  #include <TinyWireS.h>
+  #include <Wire.h>
 
-  #define readProc receive
-  #define writeProc send
-  #define i2cConnection TinyWireS
-  
+  #define readProc read
+  #define writeProc write
+  #define i2cConnection Wire
   #define clockFreq 400000
 
   #define devType 0x55 //yellow hat, used to request data
@@ -19,20 +17,7 @@ extern char *__brkval;
 #endif  // __arm__
 */
 
-/************************************************************************************************************************************
- * Firmware for YellowHat ATMEGA 328P
- * Compile for Arduino Uno or Arduino Nano
- * Download to YellowHat either
- * - using ICSP Programmer (using installed Bootloader) or
- * - Arduino as ISP (no bootloader)
- * 
- * See http://myiott.org for more information
- * 
- */
-
-
-#include <Adafruit_NeoPixel.h>    //needed for the WS2812
-#include <avr/pgmspace.h>         //needed for PROGMEM
+#include <FastLED.h>
 #include <avr/eeprom.h>
 
 // The default buffer size, Can't recall the scope of defines right now
@@ -48,13 +33,12 @@ extern char *__brkval;
 #define I2C_SLAVE_ADDRESS 0x18 // the 7-bit address (remember to change this when adapting this example)
 
 // How many NeoPixels are attached to the Arduino?
-const uint16_t LED_COUNT = 25;
+const uint16_t LED_COUNT = 525;
 
-Adafruit_NeoPixel * strip; // = Adafruit_NeoPixel(LED_COUNT, LED_PIN, NEO_GRB + NEO_KHZ800);
-//CRGB ledChain[LED_COUNT]; // = NULL;
+CRGB ledChain[LED_COUNT]; // = NULL;
 uint16_t chainLength = LED_COUNT;
 uint8_t wdtTimer = 0;
-uint32_t lastCol;
+CHSV lastCol;
 
 void(* resetFunc) (void) = 0; //declare reset function @ address 0
 
@@ -65,8 +49,8 @@ void setup() {
     eeprom_update_word((uint16_t *) 2, 0102); //chain type
   }
   initLEDChain();
-//  fillStrip(CHSV(0,0,0)); //initialize dark
-//  initMUX();
+  fillStrip(CHSV(0,0,0)); //initialize dark
+  initMUX();
   initI2C();
   wdtTimer = 0;
 }
@@ -77,5 +61,4 @@ void loop()
   wdtTimer++;
   if (wdtTimer > 50) 
     resetFunc(); //if communication with Hat breaks down, we reset the Arduino to rearbitrate the I2C bus
-  TinyWireS_stop_check();
 }
