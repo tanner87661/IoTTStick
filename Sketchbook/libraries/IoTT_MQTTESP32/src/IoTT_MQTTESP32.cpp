@@ -238,7 +238,7 @@ void MQTTESP32::setPingTopicName(char * newName)
 
 bool MQTTESP32::connectToBroker()
 {
-	if (connect(thisNodeName)) 
+	if (connect(thisNodeName, mqtt_user, mqtt_password)) 
 	{
 		// ... and resubscribe
 		if (mqttCallback)

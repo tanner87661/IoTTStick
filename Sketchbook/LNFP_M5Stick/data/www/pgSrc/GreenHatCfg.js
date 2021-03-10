@@ -300,11 +300,53 @@ function adjustLEDAspectList(ledIndex, numAspects)
 		ledData[workCfg].LEDDefs[ledIndex].LEDCmd[i].Val = i;
 }
 
-function runTemplate()
+function runTemplate(sender)
 {
+	function incrementAddr(thisAddr, incrBy)
+	{
+		var resArray = [];
+		if (Array.isArray(thisAddr))
+		{
+			for (var i = 0; i < thisAddr.length; i++)
+				resArray.push(parseInt(thisAddr[i]) + incrBy);
+		}
+		else
+			if (thisAddr != undefined)
+				resArray = thisAddr + incrBy;
+		return resArray;
+	}
+	
+	var templId = templateDlg.getAttribute('templchid') - 1;
+	var templSwi = JSON.parse(JSON.stringify(swiCfgData[workCfg].Drivers[templId]));
+	var templBtn1 = JSON.parse(JSON.stringify(btnCfgData[workCfg].Buttons[2 * templId]));
+	var templBtn2 = JSON.parse(JSON.stringify(btnCfgData[workCfg].Buttons[(2 * templId) + 1]));
+	var templEvt1 = JSON.parse(JSON.stringify(evtHdlrCfgData[workCfg].ButtonHandler[2 * templId]));
+	var templEvt2 = JSON.parse(JSON.stringify(evtHdlrCfgData[workCfg].ButtonHandler[(2 * templId) + 1]));
+	var templLED1 = JSON.parse(JSON.stringify(ledData[workCfg].LEDDefs[(2 * templId) + 1]));
+	var templLED2 = JSON.parse(JSON.stringify(ledData[workCfg].LEDDefs[(2 * templId) + 2]));
+	var startIndex = Math.min(16, Math.max(1, document.getElementById("startchannel").value));
+	var endIndex = Math.max(1, Math.min(16, document.getElementById("endchannel").value));
+	var incrSwi =  document.getElementById("mainaddrincr").value;
+	var incrBtn =  document.getElementById("btnaddrincr").value;
+	var incrCtrlAddr =  document.getElementById("evtaddrincr").value;
+	for (var i = startIndex; i <= endIndex; i++)
+	{
+		swiCfgData[workCfg].Drivers[i-1] = JSON.parse(JSON.stringify(templSwi));
+		swiCfgData[workCfg].Drivers[i-1].Addr = incrementAddr(swiCfgData[workCfg].Drivers[i-1].Addr, (i-startIndex) * incrSwi);
+		btnCfgData[workCfg].Buttons[2 * (i-1)] = JSON.parse(JSON.stringify(templBtn1));
+		btnCfgData[workCfg].Buttons[2 * (i-1)].ButtonAddr = incrementAddr(btnCfgData[workCfg].Buttons[2 * (i-1)].ButtonAddr, (i-startIndex) * incrBtn);
+		btnCfgData[workCfg].Buttons[2 * (i-1)+1] = JSON.parse(JSON.stringify(templBtn2));
+		btnCfgData[workCfg].Buttons[2 * (i-1)+1].ButtonAddr = incrementAddr(btnCfgData[workCfg].Buttons[2 * (i-1)+1].ButtonAddr, (i-startIndex) * incrBtn);
+		evtHdlrCfgData[workCfg].ButtonHandler[2 * (i-1)] = JSON.parse(JSON.stringify(templEvt1));
+//		evtHdlrCfgData[workCfg].ButtonHandler[2 * (i-1)].ButtonNr = templEvt1.ButtonNr + ((i - startIndex) * incrCtrlAddr);
+		evtHdlrCfgData[workCfg].ButtonHandler[2 * (i-1)+1] = JSON.parse(JSON.stringify(templEvt2));
+//		evtHdlrCfgData[workCfg].ButtonHandler[2 * (i-1)].ButtonNr = templEvt1.ButtonNr + ((i - startIndex) * incrCtrlAddr);
+	}
+	loadTableData(switchTable, swiCfgData[workCfg].Drivers, btnCfgData[workCfg].Buttons, evtHdlrCfgData[workCfg].ButtonHandler, ledData[workCfg].LEDDefs);
+	templateDlg.style.display = "none";
 }
 
-function cancelTemplate()
+function cancelTemplate(sender)
 {
 	templateDlg.style.display = "none";
 }
@@ -313,6 +355,7 @@ function startTemplateDialog(parentObj, templateChannel)
 {
 	var mainDlg = document.createElement("div");
 	mainDlg.setAttribute('class', "modal");
+	mainDlg.setAttribute('templchid', templateChannel);
 	
 		var dlgDiv = document.createElement("div");
 		dlgDiv.setAttribute('class', "modal-content");
@@ -345,19 +388,19 @@ function startTemplateDialog(parentObj, templateChannel)
 				level1Div = document.createElement("div"); //global var
 				level1Div.setAttribute('style', "height: 50px; width:100%"); 
 				dlgTextDispArea.append(level1Div);
-				var tempField = createTextInput(level1Div, "tile-1_2", "Run from Channel:", templateChannel.toString(), "startchannel", "setTemplateParams(this)");
-				tempField = createTextInput(level1Div, "tile-1_2", "to Channel:", Math.min(16, templateChannel+5).toString(), "endchannel", "setTemplateParams(this)");
+				var tempField = createTextInput(level1Div, "tile-1_2", "Run from Channel:", templateChannel.toString(), "startchannel", "");
+				tempField = createTextInput(level1Div, "tile-1_2", "to Channel:", Math.min(16, templateChannel+5).toString(), "endchannel", "");
 
 				level2Div = document.createElement("div"); //global var
 				level2Div.setAttribute('style', "height: 50px; width:100%"); 
 				dlgTextDispArea.append(level2Div);
-				createTextInput(level2Div, "tile-1_2", "Increment Servo Control Address by:", "1", "mainaddrincr", "setTemplateParams(this)");
+				createTextInput(level2Div, "tile-1_2", "Increment Servo Control Address by:", "1", "mainaddrincr", "");
 
 				level3Div = document.createElement("div"); //global var
 				level3Div.setAttribute('style', "height: 50px; width:100%"); 
 				dlgTextDispArea.append(level3Div);
-				createTextInput(level3Div, "tile-1_2", "Increment Button Address by:", "2", "btnaddrincr", "setTemplateParams(this)");
-				createTextInput(level3Div, "tile-1_2", "Increment Button Event Address by:", "2", "evtaddrincr", "setTemplateParams(this)");
+				createTextInput(level3Div, "tile-1_2", "Increment Button Address by:", "2", "btnaddrincr", "");
+				createTextInput(level3Div, "tile-1_2", "Increment Button Event Address by:", "2", "evtaddrincr", "");
 
 /*
 				level4Div = document.createElement("div"); //global var
@@ -472,6 +515,7 @@ function setSwitchData(sender)
 					document.getElementById("temptitle").innerHTML = "Set channel characterstics based on settings of channel #" + (thisRow+1).toString();
 					document.getElementById("startchannel").value = (thisRow+1).toString();
 					document.getElementById("endchannel").value = Math.min(16, thisRow+6).toString();
+					templateDlg.setAttribute('templchid', thisRow+1);
 					templateDlg.style.display = "block";
 					break;
 			}

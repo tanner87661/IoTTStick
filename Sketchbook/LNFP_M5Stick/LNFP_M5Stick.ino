@@ -2,16 +2,20 @@
 char BBVersion[] = {'1','5','D'};
 
 //#define measurePerformance //uncomment this to display the number of loop cycles per second
-
+#define useM5Lite
 //Arduino published libraries. Install using the Arduino IDE or download from Github and install manually
 #include <arduino.h>
 #include <Math.h>
 //#include <Wire.h>
 //#include <esp_int_wdt.h>
 //#include <esp_task_wdt.>
-#include "M5Lite.h"
-//#define M5 M5Lite
-//#include <M5StickC.h>
+
+#ifdef useM5Lite
+  #include "M5Lite.h"
+  //#define M5 M5Lite
+#else
+  #include <M5StickC.h>
+#endif
 //#include <M5StickCPlus.h>
 #include <ArduinoUniqueID.h>
 #include <time.h>

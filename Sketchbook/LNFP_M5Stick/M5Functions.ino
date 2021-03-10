@@ -234,7 +234,12 @@ void processDisplay()
         break;
     }
   }
-  uint8_t pwrBtn = M5.BtnC.getPwrPin();
+  #ifdef useM5Lite
+    uint8_t pwrBtn = M5.BtnC.getPwrPin();
+  #else
+    uint8_t pwrBtn = M5.Axp.GetBtnPress(); //the power button, 1 for long, 2 for short
+  #endif
+  
   if(pwrBtn) 
   {
     pwrOffTimer = millis();

@@ -32,7 +32,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #include <PubSubClient.h> //standard library, install using library manager
 
 
-#define reconnectInterval 60000  //if not connected, try to reconnect every 5 Secs
+#define reconnectInterval 5000  //if not connected, try to reconnect every 5 Secs
 #define queBufferSize 50 //messages that can be written in one burst before buffer overflow
 
 class MQTTESP32 : public PubSubClient
@@ -84,7 +84,7 @@ private:
 	uint8_t  respOpCode;
 	uint16_t respID;
    
-	uint16_t lastReconnectAttempt = millis();
+	uint32_t lastReconnectAttempt = millis();
 	
 	char mqtt_server[50] = "broker.hivemq.com"; // = Mosquitto Server IP "192.168.xx.xx" as loaded from mqtt.cfg
 	uint16_t mqtt_port = 1883; // = Mosquitto port number, standard is 1883, 8883 for SSL connection;
