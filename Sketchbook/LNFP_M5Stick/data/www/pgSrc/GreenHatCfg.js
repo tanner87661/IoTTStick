@@ -114,7 +114,7 @@ function addDataFile(ofObj)
 				btnCfgData[workCfg].Buttons.pop();
 			while (btnCfgData[workCfg].Buttons.length < 32)
 				btnCfgData[workCfg].Buttons.push(JSON.parse(JSON.stringify(newButtonTemplate)));
-			console.log(btnCfgData[workCfg]);
+//			console.log(btnCfgData[workCfg]);
 			break;
 		case "pgBtnHdlrCfg":
 //			if (evtHdlrCfgData[loadCfg].ButtonHandler == undefined)
@@ -131,7 +131,7 @@ function addDataFile(ofObj)
 				evtHdlrCfgData[workCfg].ButtonHandler[i].ButtonNr = btnCfgData[workCfg].Buttons[i].ButtonAddr;
 				adjustHdlrEventList(evtHdlrCfgData[workCfg].ButtonHandler[i], btnCfgData[workCfg].Buttons[i].EventMask == 0x03 ? 2 : 5);
 			}
-			console.log(evtHdlrCfgData[workCfg]);
+//			console.log(evtHdlrCfgData[workCfg]);
 			break;
 		case "pgLEDCfg":
 //			if (ledData[loadCfg].LEDDefs == undefined)
@@ -281,9 +281,6 @@ function setLEDBasics(sender)
 			}
 			for (var i = 0; i < 33; i++)
 				newLEDDefs[i].LEDNums = [i];
-			console.log(ledData[workCfg].LEDDefs);
-			console.log(newLEDDefs);
-			
 			ledData[workCfg].LEDDefs = JSON.parse(JSON.stringify(newLEDDefs));
 			loadTableData(switchTable, swiCfgData[workCfg].Drivers, btnCfgData[workCfg].Buttons, evtHdlrCfgData[workCfg].ButtonHandler, ledData[workCfg].LEDDefs);
 		}
@@ -326,21 +323,39 @@ function runTemplate(sender)
 	var templLED2 = JSON.parse(JSON.stringify(ledData[workCfg].LEDDefs[(2 * templId) + 2]));
 	var startIndex = Math.min(16, Math.max(1, document.getElementById("startchannel").value));
 	var endIndex = Math.max(1, Math.min(16, document.getElementById("endchannel").value));
-	var incrSwi =  document.getElementById("mainaddrincr").value;
-	var incrBtn =  document.getElementById("btnaddrincr").value;
-	var incrCtrlAddr =  document.getElementById("evtaddrincr").value;
+	var incrSwi =  parseInt(document.getElementById("mainaddrincr").value);
+	var incrBtn =  parseInt(document.getElementById("btnaddrincr").value);
+	var incrCtrlAddr =  parseInt(document.getElementById("evtaddrincr").value);
 	for (var i = startIndex; i <= endIndex; i++)
 	{
 		swiCfgData[workCfg].Drivers[i-1] = JSON.parse(JSON.stringify(templSwi));
 		swiCfgData[workCfg].Drivers[i-1].Addr = incrementAddr(swiCfgData[workCfg].Drivers[i-1].Addr, (i-startIndex) * incrSwi);
 		btnCfgData[workCfg].Buttons[2 * (i-1)] = JSON.parse(JSON.stringify(templBtn1));
+		btnCfgData[workCfg].Buttons[2 * (i-1)].PortNr = 2 * (i-1);
 		btnCfgData[workCfg].Buttons[2 * (i-1)].ButtonAddr = incrementAddr(btnCfgData[workCfg].Buttons[2 * (i-1)].ButtonAddr, (i-startIndex) * incrBtn);
 		btnCfgData[workCfg].Buttons[2 * (i-1)+1] = JSON.parse(JSON.stringify(templBtn2));
+		btnCfgData[workCfg].Buttons[2 * (i-1)+1].PortNr = 2 * (i-1)+1;
 		btnCfgData[workCfg].Buttons[2 * (i-1)+1].ButtonAddr = incrementAddr(btnCfgData[workCfg].Buttons[2 * (i-1)+1].ButtonAddr, (i-startIndex) * incrBtn);
 		evtHdlrCfgData[workCfg].ButtonHandler[2 * (i-1)] = JSON.parse(JSON.stringify(templEvt1));
-//		evtHdlrCfgData[workCfg].ButtonHandler[2 * (i-1)].ButtonNr = templEvt1.ButtonNr + ((i - startIndex) * incrCtrlAddr);
+		for (var j = 0; j < evtHdlrCfgData[workCfg].ButtonHandler[2 * (i-1)].CtrlCmd.length; j++)
+			if (evtHdlrCfgData[workCfg].ButtonHandler[2 * (i-1)].CtrlCmd[j].CmdList[0] != undefined)
+				evtHdlrCfgData[workCfg].ButtonHandler[2 * (i-1)].CtrlCmd[j].CmdList[0].CtrlAddr += (i-startIndex) * incrCtrlAddr;
 		evtHdlrCfgData[workCfg].ButtonHandler[2 * (i-1)+1] = JSON.parse(JSON.stringify(templEvt2));
-//		evtHdlrCfgData[workCfg].ButtonHandler[2 * (i-1)].ButtonNr = templEvt1.ButtonNr + ((i - startIndex) * incrCtrlAddr);
+		for (var j = 0; j < evtHdlrCfgData[workCfg].ButtonHandler[2 * (i-1)+1].CtrlCmd.length; j++)
+			if (evtHdlrCfgData[workCfg].ButtonHandler[2 * (i-1)+1].CtrlCmd[j].CmdList[0] != undefined)
+				evtHdlrCfgData[workCfg].ButtonHandler[2 * (i-1)+1].CtrlCmd[j].CmdList[0].CtrlAddr += (i-startIndex) * incrCtrlAddr;
+		ledData[workCfg].LEDDefs[2 * (i-1)+1] = JSON.parse(JSON.stringify(templLED1));
+		ledData[workCfg].LEDDefs[2 * (i-1)+1].LEDNums = [2 * (i-1)+1];
+		if (ledOptionArray.indexOf(ledData[workCfg].LEDDefs[2 * (i-1)+1].CtrlSource) == 0)
+			ledData[workCfg].LEDDefs[2 * (i-1)+1].CtrlAddr = incrementAddr(swiCfgData[workCfg].Drivers[i-1].Addr, 0);
+		else
+			ledData[workCfg].LEDDefs[2 * (i-1)+1].CtrlAddr = incrementAddr(btnCfgData[workCfg].Buttons[2 * (i-1)].ButtonAddr, 0);
+		ledData[workCfg].LEDDefs[2 * (i-1)+2] = JSON.parse(JSON.stringify(templLED2));
+		ledData[workCfg].LEDDefs[2 * (i-1)+2].LEDNums = [2 * (i-1)+2];
+		if (ledOptionArray.indexOf(ledData[workCfg].LEDDefs[2 * (i-1)+1].CtrlSource) == 0)
+			ledData[workCfg].LEDDefs[2 * (i-1)+2].CtrlAddr = incrementAddr(swiCfgData[workCfg].Drivers[i-1].Addr, 0);
+		else
+			ledData[workCfg].LEDDefs[2 * (i-1)+2].CtrlAddr = incrementAddr(btnCfgData[workCfg].Buttons[2 * (i-1)+1].ButtonAddr, 0);
 	}
 	loadTableData(switchTable, swiCfgData[workCfg].Drivers, btnCfgData[workCfg].Buttons, evtHdlrCfgData[workCfg].ButtonHandler, ledData[workCfg].LEDDefs);
 	templateDlg.style.display = "none";
@@ -434,7 +449,7 @@ function setSwitchData(sender)
 	var thisRow = parseInt(sender.getAttribute("row"));
 	var thisCol = parseInt(sender.getAttribute("col"));
 	var thisIndex = parseInt(sender.getAttribute("index"));
-	console.log(thisRow, thisCol, thisIndex);
+//	console.log(thisRow, thisCol, thisIndex);
 	switch (thisCol)
 	{
 		case 1:
@@ -585,7 +600,7 @@ function setSwitchData(sender)
 			}
 			break;
 		case 3: 
-			console.log("Set Input data", thisRow, thisCol, thisIndex);
+//			console.log("Set Input data", thisRow, thisCol, thisIndex);
 			var dataRow = (2 * thisRow) + ((thisIndex & 0x100) >> 8);
 			var maskIndex = (thisIndex & 0x00FF);
 			switch (maskIndex)
@@ -626,7 +641,7 @@ function setSwitchData(sender)
 			}
 			break;
 		case 4: 
-			console.log("Set LED data", thisRow, thisCol, thisIndex);
+//			console.log("Set LED data", thisRow, thisCol, thisIndex);
 			var dataRow;
 			if (configData[workCfg].Modules[0].LEDPattern == 0) //continuous
 				dataRow = (2 * thisRow) + ((thisIndex & 0x100) >> 8) +1; //LED 0 not used for switches

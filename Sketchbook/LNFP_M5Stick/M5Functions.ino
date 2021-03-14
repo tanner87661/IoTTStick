@@ -71,6 +71,7 @@ void getRTCTime()
 
 void processDisplay()
 {
+  M5.Axp.setEXTEN((M5.Axp.GetVinVoltage() > 4.0) || (M5.Axp.GetVBusVoltage() > 4.6));
   if (!(batCurrent.getEstimate(M5.Axp.GetBatCurrent()) < (-5))) //check for Power Status, but not for BlackHat
   {
 //  if !((M5.Axp.GetVinCurrent() > 0) || (M5.Axp.GetVBusCurrent() > 0)) //check for Power Status

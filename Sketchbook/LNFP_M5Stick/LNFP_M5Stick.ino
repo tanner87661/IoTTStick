@@ -12,7 +12,7 @@ char BBVersion[] = {'1','5','D'};
 
 #ifdef useM5Lite
   #include "M5Lite.h"
-  //#define M5 M5Lite
+  #define M5 M5Lite
 #else
   #include <M5StickC.h>
 #endif
