@@ -134,6 +134,11 @@ void IoTT_SwitchBase::loadSwitchCfgJSON(JsonObject thisObj)
 		hesPoint = thisObj["HesPoint"];
 	if (thisObj.containsKey("HesSpeed"))
 		hesSpeed = thisObj["HesSpeed"];
+	if (thisObj.containsKey("PowerOff"))
+		endMovePwrOff = thisObj["PowerOff"];
+
+
+
 //	if (thisObj.containsKey("ActivationTime"))
 //		activationTime = thisObj["ActivationTime"];
 	currentPos = initPos;
@@ -188,134 +193,150 @@ void IoTT_SwitchBase::processServoComplex()
 	{
 		uint16_t currPos = round(currentPos);
 		if (targetMove)
-		if (targetMove->aspectPos != currPos)
 		{
-			if (microsElapsed(lastMoveTime) > nextMoveWait)
+			if (targetMove->aspectPos != currPos)
 			{
-				lastMoveTime = micros();
-				//analyze the current status for further decision making
-				bool moveUp = targetMove->aspectPos > currPos;
-				uint8_t adjMode = moveUp ? (targetMove->moveCfg & 0x0F) : ((targetMove->moveCfg & 0xF0) >> 4);
-				float_t linSpeed = moveUp ? (float_t) upSpeed : (float_t)(-1) * downSpeed; //set linSpeed to incr/s
-				bool correctDir = (sgn(currSpeed) == sgn(linSpeed)) || (currSpeed == 0.0);
-				bool softStop = ((adjMode & 0x03) == 1); //soft stop
-				bool softStart = (adjMode & 0x04); //overshoot or soft stop
-				bool beforeHesitate = adjMode & 0x08 ? (moveUp ? currPos < hesPoint : currPos > hesPoint) : false; 
-				uint16_t moveEndPoint = beforeHesitate ? hesPoint : targetMove->aspectPos; //end point or hesitate
-				float moveEndSpeed = (beforeHesitate ? (sgn(linSpeed) * hesSpeed) : (adjMode & 0x02 ? (linSpeed) : (adjMode == 0 ? (linSpeed) : (0)))); //speed when arriving at end point, incr/s
-				int32_t breakDistance = round(sq(linSpeed - moveEndSpeed) / (2 * (int32_t)decelRate)); //s = v2 /2a
-				uint16_t breakPoint = moveEndPoint - (sgn(linSpeed) * breakDistance);
-				bool beforeBreakPoint = ((int)(breakPoint - currPos) * (int)sgn(linSpeed)) > 0;
-
-				//calculate dynamic data for step duration and width 
-				uint32_t stepDelay = currSpeed == 0 ? refreshInterval : round(1000000 / abs(currSpeed)); //calculating the duration of 1 step in micros/incr
-				float stepFactor = currSpeed == 0 ? 1 : 1 + (refreshInterval / stepDelay);  //calculate how many steps to take assuming 5ms cycle time
-
-//				Serial.printf("Correct Dir: %i Lin Speed %f Curr Sp %f before break: %i \n", correctDir, linSpeed, currSpeed, beforeBreakPoint);
-				if (correctDir)
+				if (microsElapsed(lastMoveTime) > nextMoveWait)
 				{
-					if (linSpeed != 0)
+					lastMoveTime = micros();
+					//analyze the current status for further decision making
+					bool moveUp = targetMove->aspectPos > currPos;
+					uint8_t adjMode = moveUp ? (targetMove->moveCfg & 0x0F) : ((targetMove->moveCfg & 0xF0) >> 4);
+					float_t linSpeed = moveUp ? (float_t) upSpeed : (float_t)(-1) * downSpeed; //set linSpeed to incr/s
+					bool correctDir = (sgn(currSpeed) == sgn(linSpeed)) || (currSpeed == 0.0);
+					bool softStop = ((adjMode & 0x03) == 1); //soft stop
+					bool softStart = (adjMode & 0x04); //overshoot or soft stop
+					bool beforeHesitate = adjMode & 0x08 ? (moveUp ? currPos < hesPoint : currPos > hesPoint) : false; 
+					uint16_t moveEndPoint = beforeHesitate ? hesPoint : targetMove->aspectPos; //end point or hesitate
+					float moveEndSpeed = (beforeHesitate ? (sgn(linSpeed) * hesSpeed) : (adjMode & 0x02 ? (linSpeed) : (adjMode == 0 ? (linSpeed) : (0)))); //speed when arriving at end point, incr/s
+					int32_t breakDistance = round(sq(linSpeed - moveEndSpeed) / (2 * (int32_t)decelRate)); //s = v2 /2a
+					uint16_t breakPoint = moveEndPoint - (sgn(linSpeed) * breakDistance);
+					bool beforeBreakPoint = ((int)(breakPoint - currPos) * (int)sgn(linSpeed)) > 0;
+
+					//calculate dynamic data for step duration and width 
+					uint32_t stepDelay = currSpeed == 0 ? refreshInterval : round(1000000 / abs(currSpeed)); //calculating the duration of 1 step in micros/incr
+					float stepFactor = currSpeed == 0 ? 1 : 1 + (refreshInterval / stepDelay);  //calculate how many steps to take assuming 5ms cycle time
+
+//					Serial.printf("Correct Dir: %i Lin Speed %f Curr Sp %f before break: %i \n", correctDir, linSpeed, currSpeed, beforeBreakPoint);
+					if (correctDir)
 					{
-						if (beforeBreakPoint)
+						if (linSpeed != 0)
 						{
-							if (abs(currSpeed) < abs(linSpeed))
+							if (beforeBreakPoint)
 							{
-								if (softStart)
-								//accelerate
-									currSpeed += round((sgn(linSpeed) * stepFactor * (stepDelay * (int32_t)accelRate) / 1000000)); //v = v0 + at
-								else
-									currSpeed = linSpeed;
-								if (abs(currSpeed) > abs(linSpeed))
-									currSpeed = linSpeed;
-							}
-							//keep moving
-							currentPos += round(stepFactor * sgn(linSpeed)); //set the position
-							nextMoveWait = round(stepFactor * stepDelay); //set the delay time
-						}
-						else
-						{
-							if (currPos == targetMove->aspectPos) //final position
-							{
-								currentPos = targetMove->aspectPos;
-								nextMoveWait = refreshInterval; //1ms wait                
+								if (abs(currSpeed) < abs(linSpeed))
+								{
+									if (softStart)
+									//accelerate
+										currSpeed += round((sgn(linSpeed) * stepFactor * (stepDelay * (int32_t)accelRate) / 1000000)); //v = v0 + at
+									else
+										currSpeed = linSpeed;
+									if (abs(currSpeed) > abs(linSpeed))
+										currSpeed = linSpeed;
+								}
+								//keep moving
+								currentPos += round(stepFactor * sgn(linSpeed)); //set the position
+								nextMoveWait = round(stepFactor * stepDelay); //set the delay time
 							}
 							else
 							{
-								//accel-/decel to moveEndSpeed
-								bool endAccel = false;
-								if (abs(moveEndSpeed) > abs(currSpeed))
-								//accelerate
+								if (currPos == targetMove->aspectPos) //final position
 								{
-									//add comparison to target speed at position, adjust acceleration if needed
-									currSpeed += round((sgn(linSpeed) * stepFactor * (stepDelay * (int32_t)accelRate) / 1000000)); //v = v0 + at
-									if (abs(moveEndSpeed) <= abs(currSpeed))
-										currSpeed = moveEndSpeed;
-									endAccel = currSpeed == moveEndSpeed;
-								}
-								else
-								//decelerate
-								{
-									//add comparison to target speed at position, adjust deceleration if needed
-									int sgnSpeed = sgn(currSpeed);
-									currSpeed -= round((sgn(linSpeed) * stepFactor * (stepDelay * (int32_t)decelRate) / 1000000)); //v = v0 - at
-									if (sgn(currSpeed) != sgnSpeed)
-										currSpeed = 0;
-									endAccel = currSpeed == 0;
-								}
-								//advance to moveEndPoint
-								if (endAccel)
-								{
-									currentPos = moveEndPoint;
+									currentPos = targetMove->aspectPos;
 									nextMoveWait = refreshInterval; //1ms wait                
 								}
 								else
 								{
-									currentPos += round(stepFactor * sgn(linSpeed)); //set the position
-									nextMoveWait = round(stepFactor * stepDelay); //set the delay time
+									//accel-/decel to moveEndSpeed
+									bool endAccel = false;
+									if (abs(moveEndSpeed) > abs(currSpeed))
+									//accelerate
+									{
+										//add comparison to target speed at position, adjust acceleration if needed
+										currSpeed += round((sgn(linSpeed) * stepFactor * (stepDelay * (int32_t)accelRate) / 1000000)); //v = v0 + at
+										if (abs(moveEndSpeed) <= abs(currSpeed))
+											currSpeed = moveEndSpeed;
+										endAccel = currSpeed == moveEndSpeed;
+									}
+									else
+									//decelerate
+									{
+										//add comparison to target speed at position, adjust deceleration if needed
+										int sgnSpeed = sgn(currSpeed);
+										currSpeed -= round((sgn(linSpeed) * stepFactor * (stepDelay * (int32_t)decelRate) / 1000000)); //v = v0 - at
+										if (sgn(currSpeed) != sgnSpeed)
+											currSpeed = 0;
+										endAccel = currSpeed == 0;
+									}
+									//advance to moveEndPoint
+									if (endAccel)
+									{
+										currentPos = moveEndPoint;
+										nextMoveWait = refreshInterval; //1ms wait                
+									}
+									else
+									{
+										currentPos += round(stepFactor * sgn(linSpeed)); //set the position
+										nextMoveWait = round(stepFactor * stepDelay); //set the delay time
+									}
 								}
 							}
+							//when there, execute move end
+							bool currMoveUp = targetMove->aspectPos > currentPos;
+							if ((currentPos == targetMove->aspectPos) || (moveUp != currMoveUp)) //overshooting when speed > 1 incr per cycle
+								if ((adjMode & 0x03) > 1) //bounce back or overshooting
+								{
+									currentPos = targetMove->aspectPos;
+									currMoveMode = 1; //enter oscillation phase
+									timeNull = micros();
+								}
+								else
+									currSpeed = 0;
 						}
-						//when there, execute move end
-						bool currMoveUp = targetMove->aspectPos > currentPos;
-						if ((currentPos == targetMove->aspectPos) || (moveUp != currMoveUp)) //overshooting when speed > 1 incr per cycle
-							if ((adjMode & 0x03) > 1) //bounce back or overshooting
-							{
-								currentPos = targetMove->aspectPos;
-								currMoveMode = 1; //enter oscillation phase
-								timeNull = micros();
-							}
-							else
-								currSpeed = 0;
+						else
+						{
+							currentPos = targetMove->aspectPos;
+							nextMoveWait = 0;
+						}
 					}
 					else
 					{
-						currentPos = targetMove->aspectPos;
-						nextMoveWait = 0;
+						if (softStop)
+						{
+							//decelerate and change direction. Speed is incr/s, accel/decel is incr/s2, time intervl is 1ms
+							int sgnSpeed = sgn(currSpeed);
+							currSpeed += round((sgn(linSpeed) * stepFactor * (stepDelay * (int32_t)decelRate) / 1000000)); //v = v0 - at
+							if (sgn(currSpeed) != sgnSpeed)
+							currSpeed = 0;
+						}
+						else
+							currSpeed = 0;
+						if (currSpeed != 0)
+						{
+							currentPos += round(stepFactor * 64 * sgn(linSpeed)); //set the position
+							nextMoveWait = round(stepFactor * stepDelay); //set the delay time
+						}
+						else
+							nextMoveWait = refreshInterval; //standard 1ms wait
 					}
+					parentObj->setPWMValue(modIndex, round(currentPos));
+//					endMoveTimeout = millis() + endMoveDelay;
 				}
-				else
+			}
+			else
+			{
+				if ((endMovePwrOff) && (endMoveTimeout < millis()) && (endMoveTimeout > 0))
 				{
-					if (softStop)
-					{
-						//decelerate and change direction. Speed is incr/s, accel/decel is incr/s2, time intervl is 1ms
-						int sgnSpeed = sgn(currSpeed);
-						currSpeed += round((sgn(linSpeed) * stepFactor * (stepDelay * (int32_t)decelRate) / 1000000)); //v = v0 - at
-						if (sgn(currSpeed) != sgnSpeed)
-						currSpeed = 0;
-					}
-					else
-						currSpeed = 0;
-					if (currSpeed != 0)
-					{
-						currentPos += round(stepFactor * 64 * sgn(linSpeed)); //set the position
-						nextMoveWait = round(stepFactor * stepDelay); //set the delay time
-					}
-					else
-						nextMoveWait = refreshInterval; //standard 1ms wait
+					endMoveTimeout = 0;
+					parentObj->setPWMValue(modIndex, 0);
 				}
-				parentObj->setPWMValue(modIndex, round(currentPos));
 			}
 		}
+//		else
+//		{
+//			if ((endMovePwrOff) && (endMoveTimeout < millis()))
+//				parentObj->setPWMValue(modIndex, 0);
+//		}
 	}
 	else //oscillator mode
 	{
@@ -341,12 +362,17 @@ void IoTT_SwitchBase::processServoComplex()
 				//PWM to targetPos - abs(newAmpl)
 				pwmVal = moveUp ? pwmVal - abs(currVal) : pwmVal + abs(currVal);
 			parentObj->setPWMValue(modIndex, pwmVal);
+//			endMoveTimeout = millis() + endMoveDelay;
 		} 
 		else //done, back to linear mode
 		{
-			parentObj->setPWMValue(modIndex, round(currentPos));
+			if (endMovePwrOff)
+				parentObj->setPWMValue(modIndex, 0);
+			else
+				parentObj->setPWMValue(modIndex, round(currentPos));
 			currMoveMode = 0; 
 			currSpeed = 0; 
+//			endMoveTimeout = millis() + endMoveDelay;
 		}
 		nextMoveWait = refreshInterval; //standard 1ms wait
 	}
@@ -355,34 +381,37 @@ void IoTT_SwitchBase::processServoComplex()
 void IoTT_SwitchBase::processServoSimple()
 {
 	if (targetMove)
-	if (targetMove->aspectPos != currentPos)
-	{
-		if (microsElapsed(lastMoveTime) > nextMoveWait)
+		if (targetMove->aspectPos != currentPos)
 		{
-			lastMoveTime = micros();
-			bool moveUp = targetMove->aspectPos > currentPos;
-			uint16_t stepSpeed = moveUp ? upSpeed : downSpeed; //incr/s 
-			if (stepSpeed > 0) //valid speed settings
+			if (microsElapsed(lastMoveTime) > nextMoveWait)
 			{
-				uint32_t stepDelay = round(1000000 / stepSpeed); //calculating the duration of 1 step
-				float stepFactor = 1 + (refreshInterval / stepDelay);  //calculate how many steps to take assuming 5ms cycle time
-				currentPos += stepFactor * (moveUp ? 1 : (-1)); //set the position
-				nextMoveWait = round(stepFactor * stepDelay); //set the delay time
-				bool nextDir = targetMove->aspectPos > round(currentPos);
-				if (moveUp != nextDir) //reached targetPos, so break the movement
+				lastMoveTime = micros();
+				bool moveUp = targetMove->aspectPos > currentPos;
+				uint16_t stepSpeed = moveUp ? upSpeed : downSpeed; //incr/s 
+				if (stepSpeed > 0) //valid speed settings
+				{
+					uint32_t stepDelay = round(1000000 / stepSpeed); //calculating the duration of 1 step
+					float stepFactor = 1 + (refreshInterval / stepDelay);  //calculate how many steps to take assuming 5ms cycle time
+					currentPos += stepFactor * (moveUp ? 1 : (-1)); //set the position
+					nextMoveWait = round(stepFactor * stepDelay); //set the delay time
+					bool nextDir = targetMove->aspectPos > round(currentPos);
+					if (moveUp != nextDir) //reached targetPos, so break the movement
+					{
+						currentPos = targetMove->aspectPos; //make sure to stop in case of overshoot nextMoveWait = refreshInterval;
+					}
+				}
+				else //no settings, go with maximum speed to the target
 				{
 					currentPos = targetMove->aspectPos; //make sure to stop in case of overshooting
 					nextMoveWait = refreshInterval;
 				}
+				parentObj->setPWMValue(modIndex, round(currentPos));
+//				endMoveTimeout = millis() + endMoveDelay;
 			}
-			else //no settings, go with maximum speed to the target
-			{
-				currentPos = targetMove->aspectPos; //make sure to stop in case of overshooting
-				nextMoveWait = refreshInterval;
-			}
-			parentObj->setPWMValue(modIndex, round(currentPos));
 		}
-	}
+		else
+			if ((endMovePwrOff) && (endMoveTimeout < millis()))
+				parentObj->setPWMValue(modIndex, 0);
 }
 
 //----------------------------------------------------------------------------------------------------------------
@@ -435,7 +464,7 @@ void IoTT_ServoDrive::processSwitch()
 			{
 				targetMove = &aspectList[swiStatus];
 				extSwiPos = swiStatus;
-				Serial.printf("Updating Statich Switch %i Addr  for Status %i  \n", switchAddrListLen, swiStatus);
+//				Serial.printf("Updating Static Switch %i Addr  for Status %i  \n", switchAddrListLen, swiStatus);
 			}
 			break;
 		}
@@ -694,8 +723,12 @@ void IoTT_GreenHat::loadGreenHatCfgJSON(uint8_t fileNr, JsonObject thisObj, bool
 
 void IoTT_GreenHat::setPWMValue(uint8_t lineNr, uint16_t pwmVal)
 {
-//	Serial.printf("Process Servo %i to %i @ %x\n", lineNr, pwmVal, (micros() & 0x00FFFFFF));
+//	Serial.printf("Process Servo %i to %i\n", lineNr, pwmVal);
+//	yield();
 	ghPWM->setPWM(lineNr, 0, pwmVal);
+	IoTT_SwitchBase * thisSwiMod = switchModList[lineNr];
+	if (pwmVal > 0)
+		thisSwiMod->endMoveTimeout = millis() + endMoveDelay;
 }
 
 void IoTT_GreenHat::processBtnEvent(sourceType inputEvent, uint16_t btnAddr, uint16_t eventValue)
@@ -748,6 +781,7 @@ void IoTT_GreenHat::processSwitch()
 
 void IoTT_GreenHat::moveServo(uint8_t servoNr, uint16_t servoPos)
 {
+	Serial.printf("Servo Nr %i to Pos %i\n", servoNr, servoPos);
 	setPWMValue(servoNr, servoPos);
 }
 
@@ -833,5 +867,6 @@ void IoTT_SwitchList::loadSwCfgJSON(uint8_t ghNr, uint8_t fileNr, DynamicJsonDoc
 void IoTT_SwitchList::moveServo(uint8_t servoNr, uint16_t servoPos)
 {
 	uint8_t ghNr = trunc(servoNr / 16);
+	Serial.printf("GreenHat Index %i\n", ghNr);
 	greenHatList[ghNr]->moveServo(servoNr % 16, servoPos);
 }

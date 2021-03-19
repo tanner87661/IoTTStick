@@ -538,6 +538,14 @@ void AXP192::PowerOff()
     Write1Byte(0x32, Read8bit(0x32) | 0x80);     // MSB for Power Off
 }
 
+void AXP192::setEXTEN(bool enable)
+{
+	if (enable)
+		Write1Byte(0x12, Read8bit(0x12) | 0x40);     
+	else
+		Write1Byte(0x12, Read8bit(0x12) & 0xBF);     
+}
+
 void AXP192::SetAdcState(bool state)
 {
     Write1Byte(0x82, state ? 0xff : 0x00);  // Enable / Disable all ADCs

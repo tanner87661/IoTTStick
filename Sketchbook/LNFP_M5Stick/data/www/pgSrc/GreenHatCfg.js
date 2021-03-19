@@ -336,14 +336,18 @@ function runTemplate(sender)
 		btnCfgData[workCfg].Buttons[2 * (i-1)+1] = JSON.parse(JSON.stringify(templBtn2));
 		btnCfgData[workCfg].Buttons[2 * (i-1)+1].PortNr = 2 * (i-1)+1;
 		btnCfgData[workCfg].Buttons[2 * (i-1)+1].ButtonAddr = incrementAddr(btnCfgData[workCfg].Buttons[2 * (i-1)+1].ButtonAddr, (i-startIndex) * incrBtn);
+
 		evtHdlrCfgData[workCfg].ButtonHandler[2 * (i-1)] = JSON.parse(JSON.stringify(templEvt1));
+		evtHdlrCfgData[workCfg].ButtonHandler[2 * (i-1)].ButtonNr += (i-startIndex) * incrBtn;
 		for (var j = 0; j < evtHdlrCfgData[workCfg].ButtonHandler[2 * (i-1)].CtrlCmd.length; j++)
 			if (evtHdlrCfgData[workCfg].ButtonHandler[2 * (i-1)].CtrlCmd[j].CmdList[0] != undefined)
 				evtHdlrCfgData[workCfg].ButtonHandler[2 * (i-1)].CtrlCmd[j].CmdList[0].CtrlAddr += (i-startIndex) * incrCtrlAddr;
 		evtHdlrCfgData[workCfg].ButtonHandler[2 * (i-1)+1] = JSON.parse(JSON.stringify(templEvt2));
+		evtHdlrCfgData[workCfg].ButtonHandler[2 * (i-1)+1].ButtonNr += (i-startIndex) * incrBtn;
 		for (var j = 0; j < evtHdlrCfgData[workCfg].ButtonHandler[2 * (i-1)+1].CtrlCmd.length; j++)
 			if (evtHdlrCfgData[workCfg].ButtonHandler[2 * (i-1)+1].CtrlCmd[j].CmdList[0] != undefined)
 				evtHdlrCfgData[workCfg].ButtonHandler[2 * (i-1)+1].CtrlCmd[j].CmdList[0].CtrlAddr += (i-startIndex) * incrCtrlAddr;
+
 		ledData[workCfg].LEDDefs[2 * (i-1)+1] = JSON.parse(JSON.stringify(templLED1));
 		ledData[workCfg].LEDDefs[2 * (i-1)+1].LEDNums = [2 * (i-1)+1];
 		if (ledOptionArray.indexOf(ledData[workCfg].LEDDefs[2 * (i-1)+1].CtrlSource) == 0)
@@ -597,6 +601,9 @@ function setSwitchData(sender)
 				case 18: //Bounce Back
 					swiCfgData[workCfg].Drivers[thisRow].Positions[swiCfgData[workCfg].Drivers[thisRow].CurrDisp].MoveCfg |= 0x03;
 					break;
+				case 20: //Power Off Move End
+					swiCfgData[workCfg].Drivers[thisRow].PowerOff = sender.checked;
+					break;
 			}
 			break;
 		case 3: 
@@ -715,6 +722,7 @@ function dispSwitchData(swiData, thisRow)
 	document.getElementById("movespeeddown_" + thisRow.toString() + "_" + "2").value = swiData[thisRow].DownSpeed;
 	document.getElementById("accel_" + thisRow.toString() + "_" + "2").value = swiData[thisRow].AccelRate;
 	document.getElementById("decel_" + thisRow.toString() + "_" + "2").value = swiData[thisRow].DecelRate;
+	document.getElementById("pwroff_" + thisRow.toString() + "_" + "2").checked = swiData[thisRow].PowerOff;
 	document.getElementById("lambda_" + thisRow.toString() + "_" + "2").value = swiData[thisRow].Lambda;
 	document.getElementById("oscfrequ_" + thisRow.toString() + "_" + "2").value = swiData[thisRow].Frequency;
 	document.getElementById("hesitate_" + thisRow.toString() + "_" + "2").checked = (swiData[thisRow].UseHesi > 0);
@@ -841,6 +849,7 @@ function setButtonDisplay(btnData, btnEvtArray, thisRow, thisIndex)
 
 		if (btnEvtArray)
 		{
+//			console.log(btnEvtArray);
 			var btnHdlrData = btnEvtArray[(2*thisRow) + thisIndex]; //.find(evtByAddr);
 			if (btnHdlrData)
 				loadTargEvtOptions(btnHdlrData.CtrlCmd[btnData.currDisp]);

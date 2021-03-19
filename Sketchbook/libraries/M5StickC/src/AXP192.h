@@ -84,6 +84,7 @@ public:
     
     // -- Power Off
     void PowerOff();
+    void setEXTEN(bool enable);
 
     // Power Maintained Storage
     void Read6BytesStorage( uint8_t *bufPtr );

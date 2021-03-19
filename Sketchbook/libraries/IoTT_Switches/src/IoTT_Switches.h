@@ -42,7 +42,7 @@ const uint8_t ioExtAddr = 0x06;
 const uint8_t pwmDriverAddr = 0x43;
 const uint8_t ghInterval = 5; //ms delay between calls to process function
 const uint8_t wdtInterval = 100; //ms delay between calls to process function
-
+const uint16_t endMoveDelay = 2500; //ms until servo shutoff after target is reached (if configured)
 #define minPos 210
 #define initPos 215
 
@@ -93,6 +93,8 @@ public:
 	uint16_t hesSpeed = 0;
 	uint16_t activationTime = 1500; //ms, used for coil based drivers
 	uint8_t aspectListLen = 0;
+	uint32_t endMoveTimeout = 0;
+	bool endMovePwrOff = false;
 	aspectEntry * aspectList = NULL;
 	
 //runtime variables

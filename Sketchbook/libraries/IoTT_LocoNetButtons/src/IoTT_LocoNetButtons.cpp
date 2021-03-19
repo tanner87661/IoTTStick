@@ -583,7 +583,7 @@ void IoTT_LocoNetButtonList::processBtnEvent(sourceType inputEvent, uint16_t btn
 	while (lastButton != 0xFFFF) //allow for multiple  button lines with same button Addr
 	{
 		IoTT_LocoNetButtons * thisButton = &btnList[lastButton];
-//		Serial.printf("Process Index %i\n", lastButton);
+		Serial.printf("Process Index %i\n", lastButton);
 		if (thisButton)
 			switch (thisButton->getEventSource())
 			{

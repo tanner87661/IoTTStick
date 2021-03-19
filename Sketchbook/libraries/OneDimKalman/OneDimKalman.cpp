@@ -10,6 +10,11 @@
 #include <Arduino.h>
 
 
+OneDimKalman::OneDimKalman(double_t initErrMeasure, double_t initGain, double_t initErrEst, double_t initEst)
+{
+	setInitValues(initErrMeasure, initGain, initErrEst, initEst);
+}
+
 OneDimKalman::OneDimKalman()
 {
 //	setInitValues();
@@ -40,5 +45,10 @@ double_t OneDimKalman::getEstimate(double_t Measurement)
 	errEst = (1.0 - kGain) * errEst + fabs(lastEst - currEst);
 	errEst = errEst * (1 - kGain);
 //	Serial.printf("Gain: %f EstErr %f InVal %f OutVal %f ErrMeas %f LastEst %f \n", kGain, errEst, Measurement, currEst, errMeasure, lastEst);
+	return currEst;
+}
+
+double_t OneDimKalman::getCurrVal()
+{
 	return currEst;
 }

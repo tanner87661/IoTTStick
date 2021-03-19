@@ -36,13 +36,17 @@ uint32_t pwrDispTimer = millis();
 uint32_t dccDispTimer = millis();
 
 bool darkScreen = false;
+bool hatPresent = false;
+bool pwrUSB = false;
+bool pwrDC = false;
+
+float axpBusVoltage = 0;
+float axpInVoltage = 0;
 
 uint8_t wifiResetCtr = 0;
 uint32_t wifiResetLastClick = 0;
 #define wifiResetMaxDelay 2000
 #define wifiResetReqCount 3
-
-OneDimKalman batCurrent;
 
 char dispBuffer[oneShotBufferSize][dccStrLen];
 
@@ -71,11 +75,15 @@ void getRTCTime()
 
 void processDisplay()
 {
-  M5.Axp.setEXTEN((M5.Axp.GetVinVoltage() > 4.0) || (M5.Axp.GetVBusVoltage() > 4.6));
-  if (!(batCurrent.getEstimate(M5.Axp.GetBatCurrent()) < (-5))) //check for Power Status, but not for BlackHat
+  axpBusVoltage = M5.Axp.GetVBusVoltage();
+  axpInVoltage = M5.Axp.GetVinVoltage();
+  hatPresent = axpInVoltage > 0.5;
+  pwrUSB = axpBusVoltage > 4.5;
+  pwrDC = axpInVoltage > 4.7;
+  M5.Axp.setEXTEN(pwrUSB || pwrDC);
+  
+  if (pwrUSB || pwrDC) //check for Power Status, but not for BlackHat
   {
-//  if !((M5.Axp.GetVinCurrent() > 0) || (M5.Axp.GetVBusCurrent() > 0)) //check for Power Status
-//  if ((M5.Axp.GetVinVoltage() > 4.8) || (M5.Axp.GetVBusVoltage() > 4.6)) //check for Power Status
     pwrOffTimer = millis();
     if (darkScreen)
     {
@@ -520,18 +528,19 @@ void setPwrStatusPage()
   }
   sprintf(outText, "IoTT Stick V. %c.%c.%c", BBVersion[0], BBVersion[1], BBVersion[2]);
   drawText(outText, 5, 3, 2);
-
   sprintf(outText, "Stick Temp: %.1f C \n", M5.Axp.GetTempInAXP192());
   drawText(outText, 5, 20, 1);
   sprintf(outText, "Bat:  V: %.1fV I: %.1fmA\n", M5.Axp.GetBatVoltage(), M5.Axp.GetBatCurrent());
   drawText(outText, 5, 30, 1);
-  sprintf(outText, "USB:  V: %.1fV I: %.1fmA\n", M5.Axp.GetVBusVoltage(), M5.Axp.GetVBusCurrent());
+  M5.Lcd.setTextColor(pwrUSB ? TFT_BLACK : TFT_RED, TFT_LIGHTGREY);
+  sprintf(outText, "USB:  V: %.1fV I: %.1fmA\n", axpBusVoltage, M5.Axp.GetVBusCurrent());
   drawText(outText, 5, 40, 1);
-  sprintf(outText, "5VIn: V: %.1fV I: %.1fmA\n", M5.Axp.GetVinVoltage(), M5.Axp.GetVinCurrent());
+  M5.Lcd.setTextColor(pwrDC ? TFT_BLACK : hatPresent ? TFT_BLUE : TFT_RED, TFT_LIGHTGREY);
+  sprintf(outText, "5VIn: V: %.1fV I: %.1fmA\n", axpInVoltage, M5.Axp.GetVinCurrent());                                                                                                                                                               
   drawText(outText, 5, 50, 1);
+  M5.Lcd.setTextColor(TFT_BLACK, TFT_LIGHTGREY);
   sprintf(outText, "Bat Pwr: %.1fmW", M5.Axp.GetBatPower());
   drawText(outText, 5, 60, 1);
-
   unsigned long allSeconds=millis()/1000;
   int runHours= allSeconds/3600;
   int secsRemaining=allSeconds%3600;

@@ -82,6 +82,12 @@ function tfServoEditor(y, x, id, evtHandler)
 	speedBox.setAttribute("index", 4);
 	top2Div.append(speedBox);
 
+	thisId = "pwroff_" + y.toString() + "_" + x.toString();
+	var cchBox = tfCheckBox(y, x, thisId, evtHandler);
+	cchBox.childNodes[0].setAttribute("index", 20);
+	cchBox.childNodes[1].innerHTML = "Power off";
+	top2Div.append(cchBox);
+
 	var top3Div = document.createElement("div");
 	top3Div.setAttribute("class", "servotile");
 	divElement.append(top3Div);
