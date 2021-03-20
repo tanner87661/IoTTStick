@@ -201,7 +201,9 @@ void processDisplay()
           case 4:;
           case 11:;
           case 12:;
-          case 13: lnViewerPage(); break;
+          case 13:;
+          case 14:;
+          case 15: lnViewerPage(); break;
           
           case 5:;
           case 6:;
@@ -484,6 +486,8 @@ void setStatusPage()
     case 11: drawText("using LN/TCP(Server)", 5, 18, 2); break;
     case 12: drawText("using LN/TCP(Client)", 5, 18, 2); break;
     case 13: drawText("using LN/MQTT/TCP(Server)", 5, 18, 2); break;
+    case 14: drawText("using LN Loopback/TCP(Server)", 5, 18, 2); break;
+    case 15: drawText("using LN-LB/MQTT/TCP(Server)", 5, 18, 2); break;
     default: drawText("unknown", 5, 18, 2); break;
   }
   if ((useInterface.devId == 4) || (useInterface.devId == 7))

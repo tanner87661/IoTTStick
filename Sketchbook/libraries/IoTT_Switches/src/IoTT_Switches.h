@@ -36,7 +36,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 enum driveType : byte {dualcoilAC=0, dualcoilDC=1, bipolarcoil=2, stallmotor=3, rcservo=4, dcmotor=5};
 enum greenHatType : byte {comboModule=1, servoModule=0};
 
-const uint16_t refreshInterval = 5000; //microseconds
+const uint16_t refreshInterval = 8000; //microseconds
 const uint8_t ledChainAddr = 0x33;
 const uint8_t ioExtAddr = 0x06;
 const uint8_t pwmDriverAddr = 0x43;
@@ -89,7 +89,7 @@ public:
 	uint16_t downSpeed = 320;
 	uint8_t lambda = 3;
 	uint8_t frequency = 5;
-	uint16_t hesPoint = 550;
+	uint16_t hesPoint = 0;
 	uint16_t hesSpeed = 0;
 	uint16_t activationTime = 1500; //ms, used for coil based drivers
 	uint8_t aspectListLen = 0;
@@ -102,7 +102,7 @@ public:
 	uint16_t  extSwiPos = 0xFFFF;
 //	uint16_t targetPos = minPos;
 	aspectEntry * targetMove = NULL;
-	float_t currentPos = initPos;
+	uint16_t currentPos = initPos;
 	uint32_t nextMoveWait = refreshInterval;
 	uint32_t lastMoveTime = micros();
 	float_t currSpeed = 0;

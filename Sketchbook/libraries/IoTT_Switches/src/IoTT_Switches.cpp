@@ -130,10 +130,19 @@ void IoTT_SwitchBase::loadSwitchCfgJSON(JsonObject thisObj)
 		lambda = thisObj["Lambda"];
 	if (thisObj.containsKey("Frequency"))
 		frequency = thisObj["Frequency"];
-	if (thisObj.containsKey("HesPoint"))
-		hesPoint = thisObj["HesPoint"];
-	if (thisObj.containsKey("HesSpeed"))
-		hesSpeed = thisObj["HesSpeed"];
+	hesPoint = 0;
+	hesSpeed = 0;
+	if (thisObj.containsKey("UseHesi"))
+	{
+		bool useHesi = (thisObj["UseHesi"]);
+		if (useHesi)
+		{
+			if (thisObj.containsKey("HesPoint"))
+				hesPoint = thisObj["HesPoint"];
+			if (thisObj.containsKey("HesSpeed"))
+				hesSpeed = thisObj["HesSpeed"];
+		}
+	}
 	if (thisObj.containsKey("PowerOff"))
 		endMovePwrOff = thisObj["PowerOff"];
 
@@ -148,7 +157,7 @@ void IoTT_SwitchBase::loadSwitchCfgJSON(JsonObject thisObj)
         aspectListLen = thisParams.size();
         if (aspectListLen > 0)
 			aspectList = (aspectEntry*) realloc (aspectList, aspectListLen * sizeof(aspectEntry));
-		currentPos = 0;
+//		currentPos = 0;
         for (int i=0; i < aspectListLen; i++)
         {
 			aspectList[i].isUsed = thisParams[i]["Used"];
@@ -201,12 +210,13 @@ void IoTT_SwitchBase::processServoComplex()
 					lastMoveTime = micros();
 					//analyze the current status for further decision making
 					bool moveUp = targetMove->aspectPos > currPos;
-					uint8_t adjMode = moveUp ? (targetMove->moveCfg & 0x0F) : ((targetMove->moveCfg & 0xF0) >> 4);
+					uint8_t adjMode = targetMove->moveCfg & 0x0F;
+//					uint8_t adjMode = moveUp ? (targetMove->moveCfg & 0x0F) : ((targetMove->moveCfg & 0xF0) >> 4);
 					float_t linSpeed = moveUp ? (float_t) upSpeed : (float_t)(-1) * downSpeed; //set linSpeed to incr/s
 					bool correctDir = (sgn(currSpeed) == sgn(linSpeed)) || (currSpeed == 0.0);
 					bool softStop = ((adjMode & 0x03) == 1); //soft stop
 					bool softStart = (adjMode & 0x04); //overshoot or soft stop
-					bool beforeHesitate = adjMode & 0x08 ? (moveUp ? currPos < hesPoint : currPos > hesPoint) : false; 
+					bool beforeHesitate = hesPoint > 0 ? (moveUp ? currPos < hesPoint : currPos > hesPoint) : false; 
 					uint16_t moveEndPoint = beforeHesitate ? hesPoint : targetMove->aspectPos; //end point or hesitate
 					float moveEndSpeed = (beforeHesitate ? (sgn(linSpeed) * hesSpeed) : (adjMode & 0x02 ? (linSpeed) : (adjMode == 0 ? (linSpeed) : (0)))); //speed when arriving at end point, incr/s
 					int32_t breakDistance = round(sq(linSpeed - moveEndSpeed) / (2 * (int32_t)decelRate)); //s = v2 /2a
@@ -215,9 +225,9 @@ void IoTT_SwitchBase::processServoComplex()
 
 					//calculate dynamic data for step duration and width 
 					uint32_t stepDelay = currSpeed == 0 ? refreshInterval : round(1000000 / abs(currSpeed)); //calculating the duration of 1 step in micros/incr
-					float stepFactor = currSpeed == 0 ? 1 : 1 + (refreshInterval / stepDelay);  //calculate how many steps to take assuming 5ms cycle time
+					float stepFactor = currSpeed == 0 ? 1 : 1 + (refreshInterval / stepDelay);  //calculate how many steps to take assuming X ms cycle time
 
-//					Serial.printf("Correct Dir: %i Lin Speed %f Curr Sp %f before break: %i \n", correctDir, linSpeed, currSpeed, beforeBreakPoint);
+//					Serial.printf("Correct Dir: %i Lin Speed %f Curr Sp %f before break: %i going to %i \n", correctDir, linSpeed, currSpeed, beforeBreakPoint, moveEndPoint);
 					if (correctDir)
 					{
 						if (linSpeed != 0)
@@ -307,20 +317,20 @@ void IoTT_SwitchBase::processServoComplex()
 							int sgnSpeed = sgn(currSpeed);
 							currSpeed += round((sgn(linSpeed) * stepFactor * (stepDelay * (int32_t)decelRate) / 1000000)); //v = v0 - at
 							if (sgn(currSpeed) != sgnSpeed)
-							currSpeed = 0;
+								currSpeed = 0;
 						}
 						else
 							currSpeed = 0;
 						if (currSpeed != 0)
 						{
-							currentPos += round(stepFactor * 64 * sgn(linSpeed)); //set the position
+							currentPos += round(stepFactor * sgn(currSpeed)); //set the position
+//							Serial.printf("New Pos %i Speed curr %f lin %f StepFactor %f\n", currentPos, currSpeed, linSpeed, stepFactor);
 							nextMoveWait = round(stepFactor * stepDelay); //set the delay time
 						}
 						else
 							nextMoveWait = refreshInterval; //standard 1ms wait
 					}
 					parentObj->setPWMValue(modIndex, round(currentPos));
-//					endMoveTimeout = millis() + endMoveDelay;
 				}
 			}
 			else
@@ -332,18 +342,14 @@ void IoTT_SwitchBase::processServoComplex()
 				}
 			}
 		}
-//		else
-//		{
-//			if ((endMovePwrOff) && (endMoveTimeout < millis()))
-//				parentObj->setPWMValue(modIndex, 0);
-//		}
 	}
 	else //oscillator mode
 	{
+//Serial.println("end move");
 		bool moveUp = currentPos == targetMove->aspectPos;
-		uint8_t adjMode = moveUp ? (targetMove->moveCfg & 0x0F) : ((targetMove->moveCfg & 0xF0) >> 4);
-		float thisLambda = (float)((moveUp ? (lambda & 0x0F) : ((lambda & 0xF0) >> 4)) + 1) / 2;
-		float thisFreq = (float)((moveUp ? (frequency & 0x0F) : ((frequency & 0xF0) >> 4)) + 1) / 2;
+		uint8_t adjMode = targetMove->moveCfg & 0x0F;
+		float thisLambda = lambda; //(float)((moveUp ? (lambda & 0x0F) : ((lambda & 0xF0) >> 4)) + 1) / 2;
+		float thisFreq = frequency; //(float)((moveUp ? (frequency & 0x0F) : ((frequency & 0xF0) >> 4)) + 1) / 2;
 		float timePassed2 = (float)(micros() - timeNull) / 1000;
 		float timePassed = timePassed2 / 1000;
 		//calculate y(t)
@@ -357,10 +363,10 @@ void IoTT_SwitchBase::processServoComplex()
 			//PWM to targetPos
 			if ((adjMode & 0x03) == 3) //bounce back
 				//PWM to targetPos + newAmpl
-				pwmVal = pwmVal + currVal;
+				pwmVal = moveUp ? pwmVal - currVal : pwmVal + currVal;
 			else //2, overshoot
 				//PWM to targetPos - abs(newAmpl)
-				pwmVal = moveUp ? pwmVal - abs(currVal) : pwmVal + abs(currVal);
+				pwmVal = moveUp ? pwmVal + currVal : pwmVal - currVal;
 			parentObj->setPWMValue(modIndex, pwmVal);
 //			endMoveTimeout = millis() + endMoveDelay;
 		} 
@@ -385,6 +391,7 @@ void IoTT_SwitchBase::processServoSimple()
 		{
 			if (microsElapsed(lastMoveTime) > nextMoveWait)
 			{
+//		Serial.printf("s %i\n", targetMove->moveCfg);
 				lastMoveTime = micros();
 				bool moveUp = targetMove->aspectPos > currentPos;
 				uint16_t stepSpeed = moveUp ? upSpeed : downSpeed; //incr/s 
@@ -410,11 +417,14 @@ void IoTT_SwitchBase::processServoSimple()
 			}
 		}
 		else
-			if ((endMovePwrOff) && (endMoveTimeout < millis()))
+			if ((endMovePwrOff) && (endMoveTimeout < millis()) && (endMoveTimeout > 0))
+			{
+				endMoveTimeout = 0;
 				parentObj->setPWMValue(modIndex, 0);
+			}
 }
 
-//----------------------------------------------------------------------------------------------------------------
+//------------2----------------------------------------------------------------------------------------------------
 IoTT_ServoDrive::IoTT_ServoDrive():IoTT_SwitchBase()
 {
 	
@@ -445,10 +455,12 @@ void IoTT_ServoDrive::processExtEvent(sourceType inputEvent, uint16_t btnAddr, u
 		}
 	}
 	if (targetMove)
+	{
 		if (targetMove->moveCfg == 0)
 			processServoSimple();
 		else
 			processServoComplex();
+	}
 }
 
 void IoTT_ServoDrive::processSwitch()
@@ -723,7 +735,8 @@ void IoTT_GreenHat::loadGreenHatCfgJSON(uint8_t fileNr, JsonObject thisObj, bool
 
 void IoTT_GreenHat::setPWMValue(uint8_t lineNr, uint16_t pwmVal)
 {
-//	Serial.printf("Process Servo %i to %i\n", lineNr, pwmVal);
+//	Serial.printf("Process Servo %i to %i @ %i\n", lineNr, pwmVal, millis());
+	Serial.println(pwmVal);
 //	yield();
 	ghPWM->setPWM(lineNr, 0, pwmVal);
 	IoTT_SwitchBase * thisSwiMod = switchModList[lineNr];
@@ -741,7 +754,6 @@ void IoTT_GreenHat::processBtnEvent(sourceType inputEvent, uint16_t btnAddr, uin
 			IoTT_SwitchBase * thisSwiMod = switchModList[i];
 			thisSwiMod->processExtEvent(inputEvent, btnAddr, eventValue); //transponder info is not buffered, so we process the event
 		}
-	
 }
 
 bool IoTT_GreenHat::isVerified()
@@ -781,7 +793,7 @@ void IoTT_GreenHat::processSwitch()
 
 void IoTT_GreenHat::moveServo(uint8_t servoNr, uint16_t servoPos)
 {
-	Serial.printf("Servo Nr %i to Pos %i\n", servoNr, servoPos);
+//	Serial.printf("Servo Nr %i to Pos %i\n", servoNr, servoPos);
 	setPWMValue(servoNr, servoPos);
 }
 

@@ -54,6 +54,7 @@ public:
 	LocoNetESPSerial(int uartNr = 2);
 	~LocoNetESPSerial();
 	void begin(int receivePin, int transmitPin, bool inverse_logicRx, bool inverse_logicTx);
+	void begin();
 	void processLoop();
 	void setBusyLED(int8_t ledNr, bool logLevel = true);
 	uint16_t lnWriteMsg(lnTransmitMsg txData);
@@ -71,6 +72,7 @@ private:
    void processLNMsg(lnReceiveBuffer * recData);
    void processLNReceive();
    void processLNTransmit();
+   void processLoopBack();
 
 //   void sendBreakSequence();
    uint8_t getXORCheck(uint8_t * msgData, uint8_t * msgLen);
@@ -85,7 +87,9 @@ private:
    bool m_invertTx = true;
    uint8_t m_uart = 2;
    uint8_t m_buffsize = 64;
-   bool receiveMode;
+   bool receiveMode = true;
+   bool loopbackMode = false;
+   uint8_t busyLED;
    uint8_t m_bitTime = 60;
    bool m_highSpeed = true;
    uint32_t m_StartCD;

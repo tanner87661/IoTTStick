@@ -175,7 +175,9 @@ uint16_t sendMsg(lnTransmitMsg txData)
     case 3: if (lnMQTT) return lnMQTT->lnWriteMsg(txData); break;
     case 4:; //LocoNet w/ MQTT Gateway
     case 11:; //LocoNet /w lbServer
-    case 13: if (commGateway) //LocoNet w/ Gateway lbServer or MQTT
+    case 14:; //LocoNet Loopback /w lbServer
+    case 15:; //LocoNet Loopback /w lbServer and MQTT
+    case 13: if (commGateway) //LocoNet w/ Gateway lbServer and MQTT
               return commGateway->lnWriteMsg(txData); 
             break;
 /*            
@@ -380,11 +382,14 @@ void setup() {
     else 
       Serial.println("DCC Interface not activated");
 
-    if ((useInterface.devId == 2) || (useInterface.devId == 4) || (useInterface.devId == 11) || (useInterface.devId == 13)) //LocoNet or Gateway with LocoNet or LocoNet with lbServer or MQTT/TCP
+    if ((useInterface.devId == 2) || (useInterface.devId == 4) || (useInterface.devId == 11) || (useInterface.devId == 13) || (useInterface.devId == 14)  || (useInterface.devId == 15)) //LocoNet or Gateway with LocoNet or LocoNet with lbServer or MQTT/TCP
     {
       Serial.println("Init LocoNet");  
       lnSerial = new LocoNetESPSerial(); //UART2 by default
-      lnSerial->begin(groveRxD, groveTxD, true, true); //true is inverted signals on Rx, Tx
+      if ((useInterface.devId == 14) || (useInterface.devId == 15))
+        lnSerial->begin(); //Initialize as Loopback
+      else
+        lnSerial->begin(groveRxD, groveTxD, true, true); //true is inverted signals on Rx, Tx
       lnSerial->setBusyLED(stickLED, false);
       lnSerial->setLNCallback(callbackLocoNetMessage);
     } 
@@ -401,7 +406,7 @@ void setup() {
     else 
       Serial.println("OpenLCB not activated");
 */
-    if ((useInterface.devId == 3) || (useInterface.devId == 4) || (useInterface.devId == 6) || (useInterface.devId == 7) || (useInterface.devId == 8) || (useInterface.devId == 9) || (useInterface.devId == 10) || (useInterface.devId == 13))
+    if ((useInterface.devId == 3) || (useInterface.devId == 4) || (useInterface.devId == 6) || (useInterface.devId == 7) || (useInterface.devId == 8) || (useInterface.devId == 9) || (useInterface.devId == 10) || (useInterface.devId == 13)  || (useInterface.devId == 15))
         //LN/OLCB via MQTT or LN Gateway/ALM or OpenLCB with Gateway, or native MQTT, or DCC /w Gateway, or DCC from Gateway, or LocoNet with MQTT/TCP
     {
       Serial.println("Init MQTT");  
@@ -428,7 +433,7 @@ void setup() {
     else 
       Serial.println("MQTT not activated");
 
-    if ((useInterface.devId == 11) || (useInterface.devId == 12) || (useInterface.devId == 13))  // LocoNet with lbServer or lbServer Client or lbServer with MQTT
+    if ((useInterface.devId == 11) || (useInterface.devId == 12) || (useInterface.devId == 13) || (useInterface.devId == 14 || (useInterface.devId == 15)))  // LocoNet with lbServer or lbServer Client or lbServer with MQTT
     {
       Serial.println("Load LocoNet over TCP / lbServer");  
       jsonDataObj = getDocPtr("/configdata/lbserver.cfg");
@@ -439,7 +444,9 @@ void setup() {
         switch (useInterface.devId)
         {
           case 11:; //lbServer Mode
-          case 13: //lbServer Mode with MQTT
+          case 13:; //lbServer Mode with MQTT
+          case 14:; //Loopback with lbServer
+          case 15:  //Loopback with lbServer and MQTT
             lbServer->initLBServer(true);
             break; 
           case 12: //LocoNet over TCP client mode
@@ -454,7 +461,7 @@ void setup() {
     else 
       Serial.println("LocoNet over TCP / lbServer not activated");
 
-    if ((useInterface.devId == 4) || (useInterface.devId == 7) || (useInterface.devId == 13) || (useInterface.devId == 11)) // && (modMode == 1))) //LocoNet or OpenLCB Gateway/ALM or lbServer
+    if ((useInterface.devId == 4) || (useInterface.devId == 7) || (useInterface.devId == 13) || (useInterface.devId == 11) || (useInterface.devId == 14) || (useInterface.devId == 15)) // && (modMode == 1))) //LocoNet or Loopback or OpenLCB Gateway/ALM or lbServer
     {
       Serial.println("Load Gateway");  
       switch (useInterface.devId)
@@ -462,6 +469,8 @@ void setup() {
         case 4: commGateway = new ln_mqttGateway(lnSerial, lnMQTT, &callbackLocoNetMessage); break;
 //        case 7: commGateway = new ln_mqttGateway(olcbSerial, lnMQTT, &callbackOpenLCBMessage); break;
         case 11:;
+        case 14:;
+        case 15:;
         case 13: commGateway = new ln_mqttGateway(lnSerial, lnMQTT, lbServer, &callbackLocoNetMessage); break;
       }
     }

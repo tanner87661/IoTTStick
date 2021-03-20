@@ -68,7 +68,7 @@ void processDataToWebClient(String thisCmd, lnReceiveBuffer * newData) //if a we
 
 void handleTranspondingEvent(uint16_t zoneAddr, uint16_t locoAddr, uint8_t eventVal)
 {
-  Serial.printf("Incoming Transponder Command for Zone %i Loco %i Status %i\n", zoneAddr, locoAddr, eventVal);
+//  Serial.printf("Incoming Transponder Command for Zone %i Loco %i Status %i\n", zoneAddr, locoAddr, eventVal);
   if (eventHandler) eventHandler->processBtnEvent(evt_transponder, zoneAddr, locoAddr | (eventVal << 15));
   if (mySwitchList) mySwitchList->processBtnEvent(evt_transponder, zoneAddr, locoAddr | (eventVal << 15));
   if (myChain) myChain->processBtnEvent(evt_transponder, zoneAddr, locoAddr | (eventVal << 15));
@@ -77,7 +77,7 @@ void handleTranspondingEvent(uint16_t zoneAddr, uint16_t locoAddr, uint8_t event
 void handleSwiEvent(uint16_t swiAddr, uint8_t swiPos, uint8_t coilStat)
 {
   //add code here for event actions other than updating internal buffer
-  Serial.printf("Incoming Switch Command for Switch %i Position %i Status %i\n", swiAddr, swiPos, coilStat);
+//  Serial.printf("Incoming Switch Command for Switch %i Position %i Status %i\n", swiAddr, swiPos, coilStat);
   if (eventHandler) eventHandler->processBtnEvent(evt_trackswitch, swiAddr, swiPos);
   if (mySwitchList) mySwitchList->processBtnEvent(evt_trackswitch, swiAddr, swiPos);
 //  if (myChain) myChain->processBtnEvent(evt_trackswitch, swiAddr, swiPos);
@@ -86,7 +86,7 @@ void handleSwiEvent(uint16_t swiAddr, uint8_t swiPos, uint8_t coilStat)
 void handleInputEvent(uint16_t inpAddr, uint8_t inpStatus)
 {
   //add code here for event actions other than updating internal buffer
-  Serial.printf("Incoming Input Command for Detector %i Level %i\n", inpAddr, inpStatus);
+//  Serial.printf("Incoming Input Command for Detector %i Level %i\n", inpAddr, inpStatus);
   if (eventHandler) eventHandler->processBtnEvent(evt_blockdetector, inpAddr, inpStatus);
   if (mySwitchList) mySwitchList->processBtnEvent(evt_blockdetector, inpAddr, inpStatus);
 }
@@ -94,7 +94,7 @@ void handleInputEvent(uint16_t inpAddr, uint8_t inpStatus)
 void handleSignalEvent(uint16_t sigAddr, uint8_t sigAspect)
 {
   //add code here for event actions other than updating internal buffer
-  Serial.printf("Incoming Signal Command for Signal %i Aspect %i\n", sigAddr, sigAspect);
+//  Serial.printf("Incoming Signal Command for Signal %i Aspect %i\n", sigAddr, sigAspect);
   if (eventHandler) eventHandler->processBtnEvent(evt_signalmastdcc, sigAddr, sigAspect);
   if (mySwitchList) mySwitchList->processBtnEvent(evt_signalmastdcc, sigAddr, sigAspect);
 }
@@ -102,14 +102,14 @@ void handleSignalEvent(uint16_t sigAddr, uint8_t sigAspect)
 void handlePowerStatus()
 {
   //add code here for event actions other than updating internal buffer
-  Serial.printf("Incoming Power Status Event. New Status: %i\n", getPowerStatus());
+//  Serial.printf("Incoming Power Status Event. New Status: %i\n", getPowerStatus());
   if (eventHandler) eventHandler->processBtnEvent(evt_powerstat, 0, getPowerStatus());
 }
 
 void handleAnalogValue(uint16_t analogAddr, uint16_t inputValue)
 {
   //add code here for event actions other than updating internal buffer
-  Serial.printf("Incoming Analog Event for Input %i Value %i\n", analogAddr, inputValue);
+//  Serial.printf("Incoming Analog Event for Input %i Value %i\n", analogAddr, inputValue);
   if (eventHandler) eventHandler->processBtnEvent(evt_analogvalue, analogAddr, inputValue);
   if (mySwitchList) mySwitchList->processBtnEvent(evt_analogvalue, analogAddr, inputValue);
 }
@@ -117,7 +117,7 @@ void handleAnalogValue(uint16_t analogAddr, uint16_t inputValue)
 void handleButtonValue(uint16_t btnAddr, uint8_t inputValue)
 {
   //for buttons, we always check if there is an entry in the command list, and execute if ture
-  Serial.printf("Incoming Button Event for Button %i Event %i\n", btnAddr, inputValue);
+//  Serial.printf("Incoming Button Event for Button %i Event %i\n", btnAddr, inputValue);
   if (eventHandler) eventHandler->processBtnEvent(evt_button, btnAddr, inputValue);
   if (mySwitchList) mySwitchList->processBtnEvent(evt_button, btnAddr, inputValue);
 }

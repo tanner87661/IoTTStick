@@ -54,6 +54,7 @@ void LocoNetESPSerial::begin(int receivePin, int transmitPin, bool inverse_logic
 	m_StartCD = micros();
 	que_rdPos = que_wrPos = 0;
 	receiveMode = true;
+	loopbackMode = false;
 	transmitStatus = 0;
 	HardwareSerial::begin(16667, SERIAL_8N1, m_rxPin, -1, m_invertRx);
 	m_highSpeed = true;
@@ -61,6 +62,12 @@ void LocoNetESPSerial::begin(int receivePin, int transmitPin, bool inverse_logic
 	pinMode(m_rxPin, INPUT_PULLUP); //needed to set this when using Software Serial. Seems to work here
 	hybrid_begin(m_rxPin, m_txPin, m_invertRx, m_invertTx);
 	HardwareSerial::flush();
+}
+
+void LocoNetESPSerial::begin()
+{
+	receiveMode = true;
+	loopbackMode = true;
 }
 
 void LocoNetESPSerial::loadLNCfgJSON(DynamicJsonDocument doc)
@@ -261,12 +268,31 @@ void LocoNetESPSerial::handleLNIn(uint8_t inData, uint8_t inFlags) //called for 
   }    
 }
 
+void LocoNetESPSerial::processLoopBack()
+{
+	lnReceiveBuffer recData;
+	while (que_wrPos != que_rdPos)
+	{
+		digitalWrite(busyLED, 0);
+		recData.lnMsgSize = transmitQueue[que_rdPos].lnMsgSize;
+		recData.reqID = transmitQueue[que_rdPos].reqID;
+		recData.reqRecTime = micros();
+		memcpy(recData.lnData, transmitQueue[que_rdPos].lnData, transmitQueue[que_rdPos].lnMsgSize);
+		processLNMsg(&recData);
+		que_rdPos = (que_rdPos + 1) % queBufferSize;
+		digitalWrite(busyLED, 1);
+	}
+}
+
 void LocoNetESPSerial::processLoop()
 {
-	if (receiveMode)
-		processLNReceive();
+	if (loopbackMode)
+		processLoopBack();
 	else
-		processLNTransmit();
+		if (receiveMode)
+			processLNReceive();
+		else
+			processLNTransmit();
 }
 
 void LocoNetESPSerial::processLNReceive()
@@ -363,7 +389,10 @@ bool LocoNetESPSerial::carrierOK()
 void LocoNetESPSerial::setBusyLED(int8_t ledNr, bool logLevel)
 {
 	if (ledNr >= 0)
+	{
 		hybrid_setBusyLED(ledNr, logLevel);
+		busyLED = ledNr;
+	}
 }
 
 /*
