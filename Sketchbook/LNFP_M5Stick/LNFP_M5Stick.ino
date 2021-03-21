@@ -171,6 +171,7 @@ uint16_t sendMsg(lnTransmitMsg txData)
   {
     case 0: break; //none
     case 1: break; //DCC
+    case 16:; //LocoNet Loopback
     case 2: if (lnSerial) return lnSerial->lnWriteMsg(txData); break;
     case 3: if (lnMQTT) return lnMQTT->lnWriteMsg(txData); break;
     case 4:; //LocoNet w/ MQTT Gateway
@@ -382,11 +383,11 @@ void setup() {
     else 
       Serial.println("DCC Interface not activated");
 
-    if ((useInterface.devId == 2) || (useInterface.devId == 4) || (useInterface.devId == 11) || (useInterface.devId == 13) || (useInterface.devId == 14)  || (useInterface.devId == 15)) //LocoNet or Gateway with LocoNet or LocoNet with lbServer or MQTT/TCP
+    if ((useInterface.devId == 2) || (useInterface.devId == 4) || (useInterface.devId == 11) || (useInterface.devId == 13) || (useInterface.devId == 14)  || (useInterface.devId == 15) || (useInterface.devId == 16)) //LocoNet or Gateway with LocoNet or LocoNet with lbServer or MQTT/TCP
     {
       Serial.println("Init LocoNet");  
       lnSerial = new LocoNetESPSerial(); //UART2 by default
-      if ((useInterface.devId == 14) || (useInterface.devId == 15))
+      if ((useInterface.devId == 14) || (useInterface.devId == 15) || (useInterface.devId == 16))
         lnSerial->begin(); //Initialize as Loopback
       else
         lnSerial->begin(groveRxD, groveTxD, true, true); //true is inverted signals on Rx, Tx

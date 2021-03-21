@@ -10,7 +10,7 @@
 		{"Menue":"LB Server", "ProdSel":[], "CommSel":[11,12,13,14,15], "ALMSel":[],  "WebPage": "LBServer.htm", "ID":"pgLBSCfg", "FileName": "lbserver"}, 
 		{"Menue":"Smart Throttle", "ProdSel":[5], "CommSel":[], "ALMSel":[],  "WebPage": "Throttle.htm", "ID":"pgThrottleCfg", "FileName": "throttle"}, 
 		{"Menue":"GreenHat", "ProdSel":[4], "CommSel":[], "ALMSel":[],  "WebPage": "GreenHat.htm", "ID":"pgGreenHatCfg", "FileName": "greenhat"}, 
-		{"Menue":"LocoNet Viewer", "ProdSel":[], "CommSel":[2,3,4,11,12,13,14,15], "ALMSel":[],  "WebPage": "LNViewer.htm", "ID":"pgLNViewer", "FileName": ""},
+		{"Menue":"LocoNet Viewer", "ProdSel":[], "CommSel":[2,3,4,11,12,13,14,15,16], "ALMSel":[],  "WebPage": "LNViewer.htm", "ID":"pgLNViewer", "FileName": ""},
 		{"Menue":"OpenLCB Viewer", "ProdSel":[], "CommSel":[5,6,7], "ALMSel":[],  "WebPage": "OLCBViewer.htm", "ID":"pgOLCBViewer", "FileName": ""},
 		{"Menue":"MQTT Viewer", "ProdSel":[], "CommSel":[8], "ALMSel":[],  "WebPage": "MQTTViewer.htm", "ID":"pgMQTTViewer", "FileName": ""},
 		{"Menue":"DCC Viewer", "ProdSel":[], "CommSel":[1,9,10], "ALMSel":[],  "WebPage": "DCCViewer.htm", "ID":"pgDCCViewer", "FileName": ""}
