@@ -29,7 +29,7 @@ void sendSwitchCommand(uint16_t swiNr, uint8_t swiTargetPos, uint8_t coilStatus)
 
 void sendSignalCommand(uint16_t signalNr, uint8_t signalAspect)
 {
-//  Serial.printf("Signal Nr %i Aspect %i \n", signalNr, signalAspect);
+  Serial.printf("Signal Nr %i Aspect %i \n", signalNr, signalAspect);
   lnTransmitMsg txData;
   uint8_t boardAddr = (((signalNr-1) & 0x07FC)>>2) + 1;
   uint8_t turnoutIndex = (signalNr-1) & 0x03;
@@ -62,6 +62,7 @@ void sendSignalCommand(uint16_t signalNr, uint8_t signalAspect)
 
 void sendBlockDetectorCommand(uint16_t bdNr, uint8_t bdStatus)
 {
+  Serial.printf("Block Detector Nr %i Status %i \n", bdNr, bdStatus);
   lnTransmitMsg txData;
   txData.lnMsgSize = 4;
   txData.lnData[0] = 0xB2; //OPC_INPUT_REP

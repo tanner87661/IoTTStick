@@ -85,6 +85,7 @@ void LocoNetESPSerial::loadLNCfgJSON(DynamicJsonDocument doc)
 
 uint16_t LocoNetESPSerial::lnWriteMsg(lnTransmitMsg txData)
 {
+//	Serial.println("Serial lnWriteMsg");
     uint8_t hlpQuePtr = (que_wrPos + 1) % queBufferSize;
     if (hlpQuePtr != que_rdPos) //override protection
     {
@@ -136,29 +137,12 @@ void LocoNetESPSerial::setLNCallback(cbFct newCB)
 	lnCallback = newCB;
 }
 
-/*
-void LocoNetESPSerial::sendBreakSequence()
-{
-//	Serial.println(!m_invertTx ? LOW : HIGH);
-    digitalWrite(m_txPin, !m_invertTx ? LOW : HIGH); //not sure this is working. The Serial port may not let me set the Tx pin from outside. Alternatives?
-	uint32_t startSeq = micros();
-	while (micros() < (startSeq + (15 * m_bitTime))) 
-	{
-		digitalWrite(m_txPin, !m_invertTx ? LOW : HIGH);
-//		Serial.print('.');
-	}
-    digitalWrite(m_txPin, m_invertTx ? LOW : HIGH);
-}
-*/
 void LocoNetESPSerial::processLNMsg(lnReceiveBuffer * recData)
 {
 //	Serial.println();
 //	Serial.printf("LN Rx %2X\n", recData->lnData[0]);
 	if (lnCallback != NULL)
 		lnCallback(recData);
-//	else
-//		if (onLocoNetMessage) 
-//			onLocoNetMessage(recData);
 }
 
 void LocoNetESPSerial::handleLNIn(uint8_t inData, uint8_t inFlags) //called for stuff that comes in through the HW uart
@@ -271,15 +255,17 @@ void LocoNetESPSerial::handleLNIn(uint8_t inData, uint8_t inFlags) //called for 
 void LocoNetESPSerial::processLoopBack()
 {
 	lnReceiveBuffer recData;
-	while (que_wrPos != que_rdPos)
+	if (que_wrPos != que_rdPos)
 	{
 		digitalWrite(busyLED, 0);
+		que_rdPos = (que_rdPos + 1) % queBufferSize;
+		recData.msgType = LocoNet;
 		recData.lnMsgSize = transmitQueue[que_rdPos].lnMsgSize;
 		recData.reqID = transmitQueue[que_rdPos].reqID;
 		recData.reqRecTime = micros();
+		recData.errorFlags = msgEcho;
 		memcpy(recData.lnData, transmitQueue[que_rdPos].lnData, transmitQueue[que_rdPos].lnMsgSize);
 		processLNMsg(&recData);
-		que_rdPos = (que_rdPos + 1) % queBufferSize;
 		digitalWrite(busyLED, 1);
 	}
 }

@@ -5,6 +5,7 @@
 void callbackLocoNetMessage(lnReceiveBuffer * newData) //this is the landing point for incoming LocoNet messages
                                                        //from LocoNet, MQTT, or Gateway
 {
+//  Serial.println("App Callback");
   if ((newData->errorFlags & (~msgEcho)) == 0)// && (newData->lnMsgSize > 0))//filter out echo flag
     processLNValidMsg(newData);
   else
@@ -43,7 +44,6 @@ void processLNValidMsg(lnReceiveBuffer * newData)
     processLNtoM5(newData);
   if (usbSerial)
     usbSerial->lnWriteMsg(*newData);
-  
   processLocoNetMsg(newData);
 //  if (secElHandlerList) secElHandlerList->processLocoNetMsg(newData); //do not call this before buffer processing as it will read new buffer values
 //   Serial.println("Done");
