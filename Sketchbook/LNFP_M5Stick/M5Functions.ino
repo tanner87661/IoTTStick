@@ -104,7 +104,7 @@ void processDisplay()
       }
       else
       {
-        saveToFile(bufferFileName);
+        prepareShutDown();
         M5.Axp.PowerOff();
       }
     }
@@ -256,7 +256,7 @@ void processDisplay()
   {
     pwrOffTimer = millis();
     if (pwrBtn == 1) //long press
-      saveToFile(bufferFileName); //could be on the way to power off, so we save the data to SPIFFS
+      prepareShutDown(); //could be on the way to power off, so we save the data to SPIFFS
     switch (m5CurrentPage)
     {
       case 3: //Wifi Status page active

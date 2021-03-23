@@ -78,7 +78,7 @@ void sendBlockDetectorCommand(uint16_t bdNr, uint8_t bdStatus)
 
 void sendButtonCommand(uint16_t btnNr, uint8_t  btnEvent)
 {
-  Serial.printf("Button Nr %i Command %i \n", btnNr, btnEvent);
+//  Serial.printf("Button Nr %i Command %i \n", btnNr, btnEvent);
   lnTransmitMsg txData;
   txData.lnMsgSize = 16;
   txData.lnData[0] = 0xE5; //OPC_PEER_XFER
@@ -170,14 +170,14 @@ void sendPowerCommand(uint8_t cmdType, uint8_t pwrStatus)
 
 void onButtonEvent(uint16_t btnAddr, buttonEvent thisEvent)
 {
+//  Serial.printf("Button %i has event %i. \n", btnAddr, thisEvent);
   sendButtonCommand(btnAddr, thisEvent);
-  Serial.printf("Button %i has event %i. \n", btnAddr, thisEvent);
 }
 
 void onAnalogData(uint16_t inpNr, uint16_t analogValue )
 {
+//  Serial.printf("Analog Input %i has value %i.\n", inpNr, analogValue);
   sendAnalogCommand(inpNr, analogValue);
-  Serial.printf("Analog Input %i has value %i.\n", inpNr, analogValue);
 }
 
 void onBtnDiagnose(uint8_t evtType, uint8_t portNr, uint16_t inpAddr, uint16_t btnValue)

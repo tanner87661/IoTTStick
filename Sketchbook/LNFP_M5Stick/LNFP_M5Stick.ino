@@ -170,7 +170,11 @@ uint16_t sendMsg(lnTransmitMsg txData)
   switch (useInterface.devId)
   {
     case 0: break; //none
-    case 1: break; //DCC
+    case 10:; //DCC from MQTT
+    case 1: //DCC 
+      Serial.println("DCC. Not going anywhere");
+      if (lnSerial) return lnSerial->lnWriteMsg(txData);
+      break; 
     case 16:; //LocoNet Loopback
     case 2: if (lnSerial) return lnSerial->lnWriteMsg(txData); break;
     case 3: if (lnMQTT) return lnMQTT->lnWriteMsg(txData); break;
@@ -601,6 +605,15 @@ void setup() {
     if (useHat.devId == 4) //GreenHat
     {
         Serial.println("Init GreenHat");  
+        //if Comm Interfae = DCC or DCC from MQTT, we also initialize LocoNet Loopback top enable local buttons
+        if ((useInterface.devId == 1) || (useInterface.devId == 10)) //DCC or DCC from MQTT
+        {
+          Serial.println("Init LocoNet Loopback for local buttons");  
+          lnSerial = new LocoNetESPSerial(); //UART2 by default
+          lnSerial->begin(); //Initialize as Loopback
+          lnSerial->setBusyLED(stickLED, false);
+          lnSerial->setLNCallback(callbackLocoNetMessage);
+        } 
         Wire.begin(hatSDA, hatSCL, 400000); //initialize the I2C interface
         jsonDataObj = getDocPtr("/configdata/greenhat.cfg");
         if (jsonDataObj != NULL)
@@ -611,6 +624,7 @@ void setup() {
             mySwitchList = new IoTT_SwitchList(); 
             mySwitchList->begin(&Wire); // set for using I2C Bus 
             mySwitchList->configModMem(modDefList.size());
+//            mySwitchList->loadRunTimeData();
 
             for (uint8_t modLoop = 0; modLoop < modDefList.size(); modLoop++)
             {

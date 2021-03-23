@@ -813,10 +813,10 @@ function setButtonDisplay(btnData, btnEvtArray, thisRow, thisIndex)
 				case 0: currCmdOptions = swiCmdOptions; break;
 				case 1: break; //Signal, display aspect field
 				case 2: currCmdOptions = blockCmdOptions; break;
-				case 3: //local, display options selector
-					currCmdOptions = getOptionList("cmdlistbox_" + thisRow.toString() + "_1");
-					break;
-				case 4: break; //none. Hide everything
+//				case 3: //local, display options selector
+//					currCmdOptions = getOptionList("cmdlistbox_" + thisRow.toString() + "_1");
+//					break;
+				default: break; //none. Hide everything
 			}
 			createOptions(targEvtSel, currCmdOptions); 
 			if (currCmdOptions != [])

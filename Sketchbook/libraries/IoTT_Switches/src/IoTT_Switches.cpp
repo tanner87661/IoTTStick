@@ -93,6 +93,7 @@ void IoTT_SwitchBase::begin(IoTT_GreenHat * ownerObj, uint8_t listIndex)
 {
 	parentObj = ownerObj;
 	modIndex = listIndex;
+	parentObj->setPWMValue(modIndex, 0);
 }
 
 void IoTT_SwitchBase::loadSwitchCfgJSON(JsonObject thisObj)
@@ -148,9 +149,6 @@ void IoTT_SwitchBase::loadSwitchCfgJSON(JsonObject thisObj)
 
 
 
-//	if (thisObj.containsKey("ActivationTime"))
-//		activationTime = thisObj["ActivationTime"];
-	currentPos = initPos;
 	if (thisObj.containsKey("Positions"))
 	{
 		JsonArray thisParams = thisObj["Positions"];
@@ -164,9 +162,8 @@ void IoTT_SwitchBase::loadSwitchCfgJSON(JsonObject thisObj)
 			aspectList[i].aspectID = thisParams[i]["AspVal"];
 			aspectList[i].aspectPos = thisParams[i]["PosPt"];
 			aspectList[i].moveCfg = thisParams[i]["MoveCfg"];
-			currentPos += (aspectList[i].aspectPos / aspectListLen);
 		}
-		Serial.printf("Init %i with %f\n", switchAddrList[0], currentPos);
+		Serial.printf("Init %i with %i\n", switchAddrList[0], currentPos);
 	}
 }
 
@@ -200,9 +197,10 @@ void IoTT_SwitchBase::processServoComplex()
 {
 	if (currMoveMode == 0) //linear movement mode
 	{
-		uint16_t currPos = round(currentPos);
+		uint16_t currPos = currentPos;
 		if (targetMove)
 		{
+//			Serial.println("Target");
 			if (targetMove->aspectPos != currPos)
 			{
 				if (microsElapsed(lastMoveTime) > nextMoveWait)
@@ -375,7 +373,7 @@ void IoTT_SwitchBase::processServoComplex()
 			if (endMovePwrOff)
 				parentObj->setPWMValue(modIndex, 0);
 			else
-				parentObj->setPWMValue(modIndex, round(currentPos));
+				parentObj->setPWMValue(modIndex, currentPos);
 			currMoveMode = 0; 
 			currSpeed = 0; 
 //			endMoveTimeout = millis() + endMoveDelay;
@@ -399,9 +397,9 @@ void IoTT_SwitchBase::processServoSimple()
 				{
 					uint32_t stepDelay = round(1000000 / stepSpeed); //calculating the duration of 1 step
 					float stepFactor = 1 + (refreshInterval / stepDelay);  //calculate how many steps to take assuming 5ms cycle time
-					currentPos += stepFactor * (moveUp ? 1 : (-1)); //set the position
+					currentPos += round(stepFactor * (moveUp ? 1 : (-1))); //set the position
 					nextMoveWait = round(stepFactor * stepDelay); //set the delay time
-					bool nextDir = targetMove->aspectPos > round(currentPos);
+					bool nextDir = targetMove->aspectPos > currentPos;
 					if (moveUp != nextDir) //reached targetPos, so break the movement
 					{
 						currentPos = targetMove->aspectPos; //make sure to stop in case of overshoot nextMoveWait = refreshInterval;
@@ -412,7 +410,7 @@ void IoTT_SwitchBase::processServoSimple()
 					currentPos = targetMove->aspectPos; //make sure to stop in case of overshooting
 					nextMoveWait = refreshInterval;
 				}
-				parentObj->setPWMValue(modIndex, round(currentPos));
+				parentObj->setPWMValue(modIndex, currentPos);
 //				endMoveTimeout = millis() + endMoveDelay;
 			}
 		}
@@ -447,6 +445,7 @@ void IoTT_ServoDrive::processExtEvent(sourceType inputEvent, uint16_t btnAddr, u
 				for (uint8_t i = 0; i < condDataListLen; i++)
 					if (condDataList[i] == locoAddr)
 					{
+						Serial.println("Ext Tg Move 447");
 						targetMove = &aspectList[evtType];
 						break;
 					}
@@ -474,6 +473,7 @@ void IoTT_ServoDrive::processSwitch()
 				swiStatus = (2 * swiStatus) + ((getSwiPosition(switchAddrList[i]) >> 5) & 0x01);
 			if ((swiStatus != extSwiPos) && aspectList[swiStatus].isUsed)
 			{
+//				Serial.printf("Ext Tg Move 475 %i %i\n", extSwiPos, swiStatus);
 				targetMove = &aspectList[swiStatus];
 				extSwiPos = swiStatus;
 //				Serial.printf("Updating Static Switch %i Addr  for Status %i  \n", switchAddrListLen, swiStatus);
@@ -501,9 +501,10 @@ void IoTT_ServoDrive::processSwitch()
 					aspectNr++; //this is the final aspect #
 				if ((extSwiPos != aspectNr)  && aspectList[aspectNr].isUsed)
 				{
+//				Serial.println("Ext Tg Move 503");
 					targetMove = &aspectList[aspectNr];
 					extSwiPos = aspectNr;
-					Serial.printf("Updating Aspect %i  for Switch %i\n", aspectNr, switchAddrList[dynSwi]);
+//					Serial.printf("Updating Aspect %i  for Switch %i\n", aspectNr, switchAddrList[dynSwi]);
 				}
 			}
 			break;
@@ -525,9 +526,10 @@ void IoTT_ServoDrive::processSwitch()
 				}
 				if ((nextInd != extSwiPos) && aspectList[nextInd].isUsed)
 				{
+//				Serial.println("Ext Tg Move 528");
 					targetMove = &aspectList[nextInd];
 					extSwiPos = nextInd;
-					Serial.printf("Process Signal %i to Aspect %i Pos %i \n", switchAddrList[0], extSwiPos, targetMove->aspectPos);
+//					Serial.printf("Process Signal %i to Aspect %i Pos %i \n", switchAddrList[0], extSwiPos, targetMove->aspectPos);
 				}
 			}
 			break;
@@ -548,11 +550,15 @@ void IoTT_ServoDrive::processSwitch()
 						default:
 							if (extSwiPos < condDataList[0])
 								if (aspectList[1].isUsed)
+								{
 									targetMove = &aspectList[1];
+								}
 								else ;
 							else
 								if (aspectList[2].isUsed)
+								{
 									targetMove = &aspectList[2];
+								}
 								else ;
 							break;
 					}
@@ -564,7 +570,7 @@ void IoTT_ServoDrive::processSwitch()
 						aspectList[1].aspectPos = round(deltaVal >= 0 ? aspectList[0].aspectPos + deltaVal: aspectList[3].aspectPos + deltaVal);
 						aspectList[1].moveCfg = 0;
 						targetMove = &aspectList[1];
-						Serial.printf("Process Analog Inp %i to linear Value %i -> %i\n", switchAddrList[0], extSwiPos, aspectList[1].aspectPos);
+//						Serial.printf("Process Analog Inp %i to linear Value %i -> %i\n", switchAddrList[0], extSwiPos, aspectList[1].aspectPos);
 					}
 			}
 			break;
@@ -575,7 +581,7 @@ void IoTT_ServoDrive::processSwitch()
 				{
 					extSwiPos = getButtonValue(switchAddrList[0]);
 					targetMove = &aspectList[extSwiPos];
-					Serial.printf("Process Button %i to Status %i \n", switchAddrList[0], extSwiPos);
+//					Serial.printf("Process Button %i to Status %i \n", switchAddrList[0], extSwiPos);
 				}
 			}
 			break;
@@ -588,7 +594,7 @@ void IoTT_ServoDrive::processSwitch()
 			{
 				targetMove = &aspectList[swiStatus];
 				extSwiPos = swiStatus;
-				Serial.printf("Updating Block Detector %i Sensors  for Status %i  \n", switchAddrListLen, swiStatus);
+//				Serial.printf("Updating Block Detector %i Sensors  for Status %i  \n", switchAddrListLen, swiStatus);
 			}
 			break;
 		}
@@ -599,10 +605,20 @@ void IoTT_ServoDrive::processSwitch()
 			break;
 	}
 	if (targetMove)
+	{
 		if (targetMove->moveCfg == 0)
 			processServoSimple();
 		else
 			processServoComplex();
+	}
+	else
+	{
+		if ((endMovePwrOff) && (endMoveTimeout < millis()) && (endMoveTimeout > 0))
+		{
+			endMoveTimeout = 0;
+			parentObj->setPWMValue(modIndex, 0);
+		}
+	}
 }
 
 void IoTT_ServoDrive::loadSwitchCfgJSON(JsonObject thisObj)
@@ -651,7 +667,7 @@ void IoTT_GreenHat::begin(IoTT_SwitchList * ownerObj, uint8_t listIndex)
 	ghPWM->setPWMFreq(92); // Analog servos run at ~50 - 200 Hz updates. 92 is the closest I get to 100Hz measured
     for (int i=0; i < 16; i++)
     {
-		ghPWM->setPWM(i, 0, 210);
+		ghPWM->setPWM(i, 0, 0); //Servo off
 		delay(10);
 	}
     myButtons = new IoTT_Mux64Buttons();
@@ -766,16 +782,28 @@ bool IoTT_GreenHat::isVerified()
 
 void IoTT_GreenHat::processSwitch()
 {
-	startUpCtr = max(startUpCtr-1,0);
-	if (startUpCtr == 0)
+	if (millis() > startupTimer)
 	{
-		for (int i=0; i < switchModListLen; i++)
+		if (startUpCtr == 0)
+			myChain->refreshAnyway = true;
+		startupTimer += startupInterval;
+		startUpCtr = max(startUpCtr-1,0);
+	}
+	for (int i=0; i < switchModListLen; i++)
+	{
+		if (i >= startUpCtr)
 		{
 			IoTT_SwitchBase * thisSwiMod = switchModList[i];
 			thisSwiMod->processSwitch();
 		}
+	}
+	if (startUpCtr == 0)
+	{
 		if (buttonHandler) 
 			buttonHandler->processButtonHandler(); //drives the outgoing buffer and time delayed commands
+	}
+	if (startUpCtr < 10)
+	{
 		if (myChain)
 		{
 			if (myChain->isVerified())
@@ -788,6 +816,45 @@ void IoTT_GreenHat::processSwitch()
 			}
 			myChain->processChain();
 		}
+	}
+}
+
+void IoTT_GreenHat::saveRunTimeData(File * dataFile)
+{
+	uint8_t buf[2];
+	for (int i=0; i < switchModListLen; i++)
+	{
+		IoTT_SwitchBase * thisSwiMod = switchModList[i];
+		buf[0] = (thisSwiMod->currentPos >> 8);
+		buf[1] = (thisSwiMod->currentPos & 0x00FF);
+		dataFile->write(buf, 2);
+		buf[0] = (thisSwiMod->extSwiPos >> 8);
+		buf[1] = (thisSwiMod->extSwiPos & 0x00FF);
+		dataFile->write(buf, 2);
+	}
+}
+
+void IoTT_GreenHat::loadRunTimeData(File * dataFile)
+{
+	uint8_t buf[2];
+	IoTT_SwitchBase * thisSwiMod;
+	for (int i=0; i < switchModListLen; i++)
+	{
+		thisSwiMod = switchModList[i];
+		if (dataFile)
+		{
+			dataFile->read(buf,2);
+			thisSwiMod->currentPos = (buf[0]<<8) + buf[1]+1; //incr by 1 to make sure it is processed during startup
+			dataFile->read(buf,2);
+//			thisSwiMod->extSwiPos = (buf[0]<<8) + buf[1];
+//			Serial.printf("Curr Pos %i Swi Pos %i\n", thisSwiMod->currentPos, thisSwiMod->extSwiPos);
+		}
+		else
+		{
+			Serial.println("No data file, InitPos");
+			thisSwiMod->currentPos = initPos;
+		}
+//		setPWMValue(i, 0); //set power to 0 at this time
 	}
 }
 
@@ -829,6 +896,42 @@ void IoTT_SwitchList::setMQTTMode(mqttTxFct txFct)
 
 void IoTT_SwitchList::setLocalMode()
 {
+}
+
+void IoTT_SwitchList::saveRunTimeData()
+{
+	for (int i=0; i < greenHatListLen; i++)
+	{
+		File dataFile = SPIFFS.open(servoFileName + String(i), "w");
+		if (dataFile)
+		{
+			greenHatList[i]->saveRunTimeData(&dataFile);
+			dataFile.close();
+			Serial.println("Writing Servo File " + String(i) + " complete");
+		}
+		else
+		{
+			Serial.println("Unable to write Servo File " + String(i));
+		}
+	}
+}
+
+void IoTT_SwitchList::loadRunTimeData(uint8_t ghNr)
+{
+    File dataFile = SPIFFS.open(servoFileName + String(ghNr), "r");
+    if ((dataFile) && (dataFile.size() == 64))
+    {
+		greenHatList[ghNr]->loadRunTimeData(&dataFile);
+		dataFile.close();
+		Serial.printf("Servo File %i loaded\n", ghNr);
+	}
+    else
+    {
+		if (dataFile)
+			dataFile.close();
+		greenHatList[ghNr]->loadRunTimeData(NULL);
+		Serial.println("Unable to read Servo File " + String(ghNr));
+	}
 }
 
 void IoTT_SwitchList::processLoop()
@@ -874,6 +977,8 @@ void IoTT_SwitchList::loadSwCfgJSON(uint8_t ghNr, uint8_t fileNr, DynamicJsonDoc
 	Serial.printf("IoTT_SwitchList::loadSwCfgJSON Module %i File %i\n", ghNr, fileNr);
 	JsonObject thisObj = doc.as<JsonObject>();
 	greenHatList[ghNr]->loadGreenHatCfgJSON(fileNr, thisObj, resetList);
+	if (fileNr == 0)
+		loadRunTimeData(ghNr);
 }
 
 void IoTT_SwitchList::moveServo(uint8_t servoNr, uint16_t servoPos)

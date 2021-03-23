@@ -42,9 +42,12 @@ const uint8_t ioExtAddr = 0x06;
 const uint8_t pwmDriverAddr = 0x43;
 const uint8_t ghInterval = 5; //ms delay between calls to process function
 const uint8_t wdtInterval = 100; //ms delay between calls to process function
+const uint16_t startupInterval = 500; //ms delay for decrementing startup counter
 const uint16_t endMoveDelay = 2500; //ms until servo shutoff after target is reached (if configured)
 #define minPos 210
 #define initPos 215
+
+#define servoFileName "/servos.dat"
 
 typedef struct
 {
@@ -102,7 +105,7 @@ public:
 	uint16_t  extSwiPos = 0xFFFF;
 //	uint16_t targetPos = minPos;
 	aspectEntry * targetMove = NULL;
-	uint16_t currentPos = initPos;
+	uint16_t currentPos = 0;
 	uint32_t nextMoveWait = refreshInterval;
 	uint32_t lastMoveTime = micros();
 	float_t currSpeed = 0;
@@ -146,6 +149,8 @@ public:
 	void setPWMValue(uint8_t lineNr, uint16_t pwmVal);
 	bool isVerified();
 	void moveServo(uint8_t servoNr, uint16_t servoPos);
+	void saveRunTimeData(File * dataFile);
+	void loadRunTimeData(File * dataFile);
 private:
 	Adafruit_PWMServoDriver * ghPWM = NULL;
 	IoTT_SwitchBase ** switchModList = NULL;
@@ -158,7 +163,8 @@ private:
 	uint8_t oddCtr = 0;
 	uint32_t ghUpdateTimer = millis() + ghInterval;
 	uint32_t wdtResetTime = millis() + wdtInterval;
-	int16_t startUpCtr = 50;
+	uint32_t startupTimer = millis() + startupInterval;
+	int16_t startUpCtr = 20;
 public:
 	IoTT_SwitchList * parentObj = NULL;
 };
@@ -177,6 +183,8 @@ public:
 	void configModMem(uint8_t numModules);
 	void setGreenHatType(uint8_t modNr, greenHatType modType);
 	void loadSwCfgJSON(uint8_t ghNr, uint8_t fileNr, DynamicJsonDocument doc, bool resetList = true);
+	void saveRunTimeData();
+	void loadRunTimeData(uint8_t ghNr);
 	bool isVerified();
 	void moveServo(uint8_t servoNr, uint16_t servoPos);
 private:

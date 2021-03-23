@@ -126,3 +126,10 @@ DynamicJsonDocument * getDocPtr(String cmdFile)
   else
       return NULL;
 }
+
+void prepareShutDown()
+{
+  saveToFile(bufferFileName);
+  if (mySwitchList)
+    mySwitchList->saveRunTimeData();
+}
