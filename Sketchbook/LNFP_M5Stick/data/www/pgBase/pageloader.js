@@ -89,7 +89,7 @@ function setServoPos(servoNr, servoPos)
 function downloadConfig(fileSelect) //get files from Stick and store to file
 {
 	var moduleID = 0;
-	if (fileSelect & 0x0200) //Greenhat, so we filter out module
+	if ((fileSelect & 0xFFFC) == 0x0200) //Greenhat, so we filter out module
 	{
 		moduleID = fileSelect & 0x0003;
 		fileSelect &= 0x0200;
