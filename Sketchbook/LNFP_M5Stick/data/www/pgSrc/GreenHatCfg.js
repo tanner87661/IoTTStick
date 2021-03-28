@@ -17,6 +17,8 @@ var currDispPage = 0;
 var maxButtons = 0;
 var numChannels = 16;
 
+var updateServoPos = true;
+
 var btnStatus = ["off", "digital", "analog"];
 
 var ledOptionArray = ["switch", "signaldyn", "signal", "button", "analog", "block", "transponder", "power", "constant", "signalstat"];
@@ -28,7 +30,7 @@ var newCmdTemplate = {"BtnCondAddr": [], "CmdList": [{"CtrlTarget": "switch", "C
 var newColTemplate = {"Name": "New Color","RGBVal": [255, 255, 255]};
 var newLEDTemplate = {"LEDNums":[],"CtrlSource": "","CtrlAddr": [],"DisplayType":"discrete","LEDCmd": []};
 var newLEDCmdTemplate = {"Val": 0,"ColOn": "", "ColOff": "", "Mode": "static", "Rate":0, "Transition":"soft"};
-var cmdOptions = ["switch", "signal", "block", "local", "none"];
+var cmdOptions = ["switch", "signal", "block", "none"];
 var swiCmdOptions = ["thrown","closed","toggle"];
 var blockCmdOptions = ["occupied","free"];
 //var blockCmdOptions = ["occupied","free"];
@@ -129,15 +131,15 @@ function addDataFile(ofObj)
 			for (var i = 0; i < 32; i++)
 			{
 				evtHdlrCfgData[workCfg].ButtonHandler[i].ButtonNr = btnCfgData[workCfg].Buttons[i].ButtonAddr;
-				adjustHdlrEventList(evtHdlrCfgData[workCfg].ButtonHandler[i], btnCfgData[workCfg].Buttons[i].EventMask == 0x03 ? 2 : 5);
+				evtHdlrCfgData[workCfg].ButtonHandler[i] = adjustHdlrEventList(evtHdlrCfgData[workCfg].ButtonHandler[i], btnCfgData[workCfg].Buttons[i].EventMask == 0x03 ? 2 : 5);
 			}
 //			console.log(evtHdlrCfgData[workCfg]);
 			break;
 		case "pgLEDCfg":
-//			if (ledData[loadCfg].LEDDefs == undefined)
+			if (ledData[loadCfg].LEDDefs == undefined)
 				ledData[loadCfg] = JSON.parse(JSON.stringify(ofObj.Data));
-//			else
-//				addFileSeqLED(ofObj, ledData);
+			else
+				addFileSeqLED(ofObj, ledData);
 			ledData[workCfg] = upgradeJSONVersionLED(JSON.parse(JSON.stringify(ledData[loadCfg])));
 			while (ledData[workCfg].LEDDefs.length > 33)
 				ledData[workCfg].LEDDefs.pop();
@@ -287,14 +289,17 @@ function setLEDBasics(sender)
 	}
 }
 
-function adjustLEDAspectList(ledIndex, numAspects)
+function adjustLEDAspectList(ledIndex, numAspects, aspVals)
 {
 	while (ledData[workCfg].LEDDefs[ledIndex].LEDCmd.length > numAspects)
 		ledData[workCfg].LEDDefs[ledIndex].LEDCmd.pop();
 	while (ledData[workCfg].LEDDefs[ledIndex].LEDCmd.length < numAspects)
 		ledData[workCfg].LEDDefs[ledIndex].LEDCmd.push(JSON.parse(JSON.stringify(newLEDCmdTemplate)));
 	for (var i = 0; i < numAspects; i++)
-		ledData[workCfg].LEDDefs[ledIndex].LEDCmd[i].Val = i;
+		if (aspVals)
+			ledData[workCfg].LEDDefs[ledIndex].LEDCmd[i].Val = aspVals[i].AspVal;
+		else
+			ledData[workCfg].LEDDefs[ledIndex].LEDCmd[i].Val = i;
 }
 
 function runTemplate(sender)
@@ -326,6 +331,7 @@ function runTemplate(sender)
 	var incrSwi =  parseInt(document.getElementById("mainaddrincr").value);
 	var incrBtn =  parseInt(document.getElementById("btnaddrincr").value);
 	var incrCtrlAddr =  parseInt(document.getElementById("evtaddrincr").value);
+	updateServoPos = false;
 	for (var i = startIndex; i <= endIndex; i++)
 	{
 		swiCfgData[workCfg].Drivers[i-1] = JSON.parse(JSON.stringify(templSwi));
@@ -363,6 +369,7 @@ function runTemplate(sender)
 	}
 	loadTableData(switchTable, swiCfgData[workCfg].Drivers, btnCfgData[workCfg].Buttons, evtHdlrCfgData[workCfg].ButtonHandler, ledData[workCfg].LEDDefs);
 	templateDlg.style.display = "none";
+	updateServoPos = true;
 }
 
 function cancelTemplate(sender)
@@ -475,6 +482,8 @@ function setSwitchData(sender)
 					swiCfgData[workCfg].Drivers[thisRow].Addr = newRes; //verifyNumber(sender.value, swiCfgData[workCfg].Drivers[thisRow].Addr[0]);
 					sender.value = newRes;
 					adjustSourceSelector(swiCfgData[workCfg].Drivers, thisRow, thisCol);
+					setSwitchData(document.getElementById("srclistbox0_" + thisRow.toString() + "_4"));
+					setSwitchData(document.getElementById("srclistbox1_" + thisRow.toString() + "_4"));
 					break;
 				case 13: //select event
 					swiCfgData[workCfg].Drivers[thisRow].CurrDisp = sender.selectedIndex;
@@ -641,14 +650,18 @@ function setSwitchData(sender)
 					if (sender.checked)
 						btnCfgData[workCfg].Buttons[dataRow].EventMask = 0x1F;
 					else
+					{
 						btnCfgData[workCfg].Buttons[dataRow].EventMask = 0x03;
-					adjustHdlrEventList(evtHdlrCfgData[workCfg].ButtonHandler[dataRow], btnCfgData[workCfg].Buttons[dataRow].EventMask == 0x03 ? 2 : 5);
+						if (sender.selectgedIndex > 1)
+							sender.selectedIndex = 1;
+					}
+					evtHdlrCfgData[workCfg].ButtonHandler[dataRow] = adjustHdlrEventList(evtHdlrCfgData[workCfg].ButtonHandler[dataRow], btnCfgData[workCfg].Buttons[dataRow].EventMask == 0x03 ? 2 : 5);
 					setButtonDisplay(btnCfgData[workCfg].Buttons[dataRow], evtHdlrCfgData[workCfg].ButtonHandler, thisRow, ((thisIndex & 0x100) >> 8));
 					break;
 			}
 			break;
 		case 4: 
-//			console.log("Set LED data", thisRow, thisCol, thisIndex);
+			console.log("Set LED data", thisRow, thisCol, thisIndex);
 			var dataRow;
 			if (configData[workCfg].Modules[0].LEDPattern == 0) //continuous
 				dataRow = (2 * thisRow) + ((thisIndex & 0x100) >> 8) +1; //LED 0 not used for switches
@@ -664,23 +677,24 @@ function setSwitchData(sender)
 							//set source and address
 							var swiSource = sourceOptionArray.indexOf(swiCfgData[workCfg].Drivers[thisRow].CmdSource);
 							var swiAddr = swiCfgData[workCfg].Drivers[thisRow].Addr;
+							var swiPosList = swiCfgData[workCfg].Drivers[thisRow].Positions;
 							ledData[workCfg].LEDDefs[dataRow].CtrlSource = ledOptionArray[swiSource];
 							ledData[workCfg].LEDDefs[dataRow].CtrlAddr = swiAddr;
 							//adjust length of aspects
-							adjustLEDAspectList(dataRow, getOptionList("cmdlistbox_" + thisRow.toString() + "_1").length);
+							adjustLEDAspectList(dataRow, getOptionList("cmdlistbox_" + thisRow.toString() + "_1").length, swiPosList);
 							//display LED
 							break;
-						case 1:
+						case 1: //Button 1
 							var btn1Addr = btnCfgData[workCfg].Buttons[2*thisRow].ButtonAddr;
 							ledData[workCfg].LEDDefs[dataRow].CtrlSource = ledOptionArray[3];
 							ledData[workCfg].LEDDefs[dataRow].CtrlAddr = btn1Addr;
-							adjustLEDAspectList(dataRow, getOptionList("cmdlistbox0_" + thisRow.toString() + "_3").length);
+							adjustLEDAspectList(dataRow, getOptionList("cmdlistbox0_" + thisRow.toString() + "_3").length, null);
 							break;
-						case 2:
+						case 2: //Button 2
 							var btn2Addr = btnCfgData[workCfg].Buttons[2*thisRow+1].ButtonAddr;
 							ledData[workCfg].LEDDefs[dataRow].CtrlSource = ledOptionArray[3];
 							ledData[workCfg].LEDDefs[dataRow].CtrlAddr = btn2Addr;
-							adjustLEDAspectList(dataRow, getOptionList("cmdlistbox1_" + thisRow.toString() + "_3").length);
+							adjustLEDAspectList(dataRow, getOptionList("cmdlistbox1_" + thisRow.toString() + "_3").length, null);
 							break;
 					}
 					setLEDDisplay(ledData[workCfg].LEDDefs, thisRow, ((thisIndex & 0x100) >> 8));
@@ -736,7 +750,8 @@ function dispSwitchData(swiData, thisRow)
 	writeRBInputField("stopmode_" + thisRow.toString() + "_2", swiData[thisRow].Positions[swiData[thisRow].CurrDisp].MoveCfg & 0x03);
 	if (updateServoPos)
 		if (swiData[thisRow].Positions[swiData[thisRow].CurrDisp].Used)
-			setServoPos(thisRow, swiData[thisRow].Positions[swiData[thisRow].CurrDisp].PosPt);
+			if (updateServoPos)
+				setServoPos(thisRow, swiData[thisRow].Positions[swiData[thisRow].CurrDisp].PosPt);
 	var enBounce = ((swiData[thisRow].CurrDisp == 0) || (swiData[thisRow].CurrDisp == (swiData[thisRow].Positions.length - 1)));
 	setVisibility(enBounce, document.getElementById("stopmode_" + thisRow.toString() + "_" + "2_3"));
 	setVisibility(enBounce, document.getElementById("stopmode_" + thisRow.toString() + "_" + "2_tx_3"));
@@ -776,7 +791,7 @@ function setButtonDisplay(btnData, btnEvtArray, thisRow, thisIndex)
 				setVisibility(false, targAddrField);
 				setVisibility(false, targetAddrText);
 			}
-			if ([0,1,2,3].indexOf(cmdOptions.indexOf(CtrlCmdData.CmdList[0].CtrlTarget)) >= 0)
+			if ([0,1,2].indexOf(cmdOptions.indexOf(CtrlCmdData.CmdList[0].CtrlTarget)) >= 0)
 			{
 				setVisibility(true, tatgetEvtText);
 			}
@@ -784,13 +799,15 @@ function setButtonDisplay(btnData, btnEvtArray, thisRow, thisIndex)
 			{
 				setVisibility(false, tatgetEvtText);
 			}
-			if ([0,2,3].indexOf(cmdOptions.indexOf(CtrlCmdData.CmdList[0].CtrlTarget)) >= 0)
+			if ([0,2].indexOf(cmdOptions.indexOf(CtrlCmdData.CmdList[0].CtrlTarget)) >= 0)
 				setVisibility(true, targEvtSel);
 			else
 				setVisibility(false, targEvtSel);
 			if ([1].indexOf(cmdOptions.indexOf(CtrlCmdData.CmdList[0].CtrlTarget)) >= 0)
 			{
 				setVisibility(true, targEvtVal);
+				if (isNaN(CtrlCmdData.CmdList[0].CtrlValue))
+					CtrlCmdData.CmdList[0].CtrlValue = 0; //changing to Signal
 				targEvtVal.value = CtrlCmdData.CmdList[0].CtrlValue;
 			}
 			else
@@ -1081,6 +1098,16 @@ function adjustHdlrEventList(ofHandler, newLength)
 		ofHandler.CtrlCmd.splice(ofHandler.CtrlCmd.length-1, 1); //remove last element
 	while (ofHandler.CtrlCmd.length < newLength) 
 		ofHandler.CtrlCmd.push(JSON.parse(JSON.stringify(newCmdTemplate)));
+//	console.log("Adj Array " + ofHandler.CtrlCmd.length.toString());
+	for (var i = 0; i < ofHandler.CtrlCmd.length; i++)
+	{
+		if (ofHandler.CtrlCmd[i].CmdList.length == 0)
+		{
+//			console.log("Fix Array");
+			ofHandler.CtrlCmd[i].CmdList = JSON.parse(JSON.stringify([{"CtrlTarget": "switch", "CtrlAddr": 0, "CtrlType":"toggle", "CtrlValue":"on", "ExecDelay":250}]));
+		}
+	}
+	return ofHandler;
 }
 
 function adjustEventList(ofSwitch, newLength)

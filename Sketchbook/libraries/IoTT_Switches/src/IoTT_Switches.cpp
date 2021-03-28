@@ -163,7 +163,7 @@ void IoTT_SwitchBase::loadSwitchCfgJSON(JsonObject thisObj)
 			aspectList[i].aspectPos = thisParams[i]["PosPt"];
 			aspectList[i].moveCfg = thisParams[i]["MoveCfg"];
 		}
-		Serial.printf("Init %i with %i\n", switchAddrList[0], currentPos);
+//		Serial.printf("Init %i with %i\n", switchAddrList[0], currentPos);
 	}
 }
 
@@ -445,7 +445,6 @@ void IoTT_ServoDrive::processExtEvent(sourceType inputEvent, uint16_t btnAddr, u
 				for (uint8_t i = 0; i < condDataListLen; i++)
 					if (condDataList[i] == locoAddr)
 					{
-						Serial.println("Ext Tg Move 447");
 						targetMove = &aspectList[evtType];
 						break;
 					}
@@ -510,29 +509,39 @@ void IoTT_ServoDrive::processSwitch()
 			break;
 		}
 		case evt_signalmastdcc:
-			if (getSignalAspect(switchAddrList[0]) != extSwiPos)
+		{
+			uint16_t sigAddress = switchAddrList[0];
+			uint8_t sigAspect = getSignalAspect(sigAddress);
+			if (sigAspect != extSwiPos)
 			{
-				uint16_t newSwiPos = getSignalAspect(switchAddrList[0]);
+//				Serial.printf("Get %i Ext %i\n", sigAspect, extSwiPos);
+				uint16_t newSwiPos = sigAspect;
 				int16_t nextVal = -1;
 				int16_t nextInd = -1;
 				uint8_t distance = 0;
+				
+				
+				
+				
 				for (int i = 0; i < aspectListLen; i++)
 				{
+//					Serial.println(aspectList[i].aspectID);
 					if ((newSwiPos <= aspectList[i].aspectID) && (newSwiPos > nextVal))
 					{
 						nextInd = i;
 						nextVal = aspectList[i].aspectID;
 					}
 				}
-				if ((nextInd != extSwiPos) && aspectList[nextInd].isUsed)
+				if (aspectList[nextInd].aspectID != extSwiPos)
 				{
-//				Serial.println("Ext Tg Move 528");
-					targetMove = &aspectList[nextInd];
-					extSwiPos = nextInd;
-//					Serial.printf("Process Signal %i to Aspect %i Pos %i \n", switchAddrList[0], extSwiPos, targetMove->aspectPos);
+					if (aspectList[nextInd].isUsed)
+						targetMove = &aspectList[nextInd];
+					extSwiPos = sigAspect;
+//					Serial.printf("Process Signal %i to Aspect %i Pos %i \n", sigAddress, sigAspect, targetMove->aspectPos);
 				}
 			}
 			break;
+		}
 		case evt_analogvalue:
 			if (getAnalogValue(switchAddrList[0]) != extSwiPos)
 			{
@@ -751,9 +760,7 @@ void IoTT_GreenHat::loadGreenHatCfgJSON(uint8_t fileNr, JsonObject thisObj, bool
 
 void IoTT_GreenHat::setPWMValue(uint8_t lineNr, uint16_t pwmVal)
 {
-//	Serial.printf("Process Servo %i to %i @ %i\n", lineNr, pwmVal, millis());
-	Serial.println(pwmVal);
-//	yield();
+//	Serial.println(pwmVal);
 	ghPWM->setPWM(lineNr, 0, pwmVal);
 	IoTT_SwitchBase * thisSwiMod = switchModList[lineNr];
 	if (pwmVal > 0)
@@ -851,7 +858,7 @@ void IoTT_GreenHat::loadRunTimeData(File * dataFile)
 		}
 		else
 		{
-			Serial.println("No data file, InitPos");
+//			Serial.println("No data file, InitPos");
 			thisSwiMod->currentPos = initPos;
 		}
 //		setPWMValue(i, 0); //set power to 0 at this time
@@ -974,7 +981,7 @@ void IoTT_SwitchList::setGreenHatType(uint8_t modNr, greenHatType modType)
 
 void IoTT_SwitchList::loadSwCfgJSON(uint8_t ghNr, uint8_t fileNr, DynamicJsonDocument doc, bool resetList)
 {
-	Serial.printf("IoTT_SwitchList::loadSwCfgJSON Module %i File %i\n", ghNr, fileNr);
+//	Serial.printf("IoTT_SwitchList::loadSwCfgJSON Module %i File %i\n", ghNr, fileNr);
 	JsonObject thisObj = doc.as<JsonObject>();
 	greenHatList[ghNr]->loadGreenHatCfgJSON(fileNr, thisObj, resetList);
 	if (fileNr == 0)
@@ -984,6 +991,6 @@ void IoTT_SwitchList::loadSwCfgJSON(uint8_t ghNr, uint8_t fileNr, DynamicJsonDoc
 void IoTT_SwitchList::moveServo(uint8_t servoNr, uint16_t servoPos)
 {
 	uint8_t ghNr = trunc(servoNr / 16);
-	Serial.printf("GreenHat Index %i\n", ghNr);
+//	Serial.printf("GreenHat Index %i\n", ghNr);
 	greenHatList[ghNr]->moveServo(servoNr % 16, servoPos);
 }

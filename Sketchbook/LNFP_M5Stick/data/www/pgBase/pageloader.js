@@ -88,7 +88,13 @@ function setServoPos(servoNr, servoPos)
 
 function downloadConfig(fileSelect) //get files from Stick and store to file
 {
-	ws.send("{\"Cmd\":\"CfgFiles\", \"Type\":" + fileSelect + "}");
+	var moduleID = 0;
+	if (fileSelect & 0x0200) //Greenhat, so we filter out module
+	{
+		moduleID = fileSelect & 0x0003;
+		fileSelect &= 0x0200;
+	}
+	ws.send("{\"Cmd\":\"CfgFiles\", \"Type\":" + fileSelect + ", \"ModuleNr\":" + moduleID + "}");
 }
 
 function showMenueTabs(thisConfigData)

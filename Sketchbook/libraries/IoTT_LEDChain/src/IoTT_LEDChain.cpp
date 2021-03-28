@@ -948,7 +948,7 @@ void IoTT_ledChain::loadLEDChainJSONObj(JsonObject doc, bool resetList)
     }
     else
 		Serial.println("No Chain Params");
-//	Serial.println("Load Colors");
+	Serial.println("Load Colors");
     if (doc.containsKey("LEDCols"))
     {
         JsonArray LEDCols = doc["LEDCols"];
@@ -978,7 +978,7 @@ void IoTT_ledChain::loadLEDChainJSONObj(JsonObject doc, bool resetList)
 			LEDHandlerList[LEDHandlerListLen + i] = thisLEDHandlerEntry;
 		}
 		LEDHandlerListLen += newListLen;
-//        Serial.printf("%i LED Defs loaded\n", LEDHandlerListLen);
+        Serial.printf("%i LED Defs loaded\n", LEDHandlerListLen);
 	}
 	else
 		Serial.println("No LED Chain defined");

@@ -226,6 +226,7 @@ bool addFileToTx(String fileName, int fileIndex, String cmdType, uint8_t multiMo
         return true;
       }
   }
+//  Serial.println("failed");
   return false;
 }
 
@@ -343,12 +344,22 @@ void processWsMessage(char * newMsg, int msgLen, AsyncWebSocketClient * client)
         if (fileSelector & 0x0100)  
           addFileToTx("btn", 0, "pgThrottleCfg", 1);
         if (fileSelector & 0x0200)  
-          addFileToTx("greenhat", 0, "pgGreenHatCfg", 1);
+        {
+          if (addFileToTx("greenhat", 0, "pgGreenHatCfg", 1))
+          {
+            uint8_t modNr = 0;
+            if (doc.containsKey("ModuleNr"))
+              modNr = doc["ModuleNr"];
+            String fileNameStr = "gh/" + String(modNr);
+            addFileToTx(fileNameStr + "/switches", 0, "pgSwitchCfg", 1);
+            addFileToTx(fileNameStr + "/btn", 0, "pgHWBtnCfg", 1);
+            addFileToTx(fileNameStr + "/btnevt", 0, "pgBtnHdlrCfg", 1);
+            addFileToTx(fileNameStr + "/led", 0, "pgLEDCfg", 1);
+          }
+        }
         if (fileSelector & 0x0400)  
           addFileToTx("lbserver", 0, "pgLBSCfg", 1);
-
-          
-          int fileCtr = 0;
+        int fileCtr = 0;
         if (fileSelector & 0x0020)  
           while (addFileToTx("led", fileCtr, "pgLEDCfg", 1))
             fileCtr++;
