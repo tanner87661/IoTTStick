@@ -1,5 +1,4 @@
-//uint8_t BBVersion[] = {1,4,0};
-char BBVersion[] = {'1','5','0'};
+char BBVersion[] = {'1','5','D'};
 
 //#define measurePerformance //uncomment this to display the number of loop cycles per second
 #define useM5Lite
