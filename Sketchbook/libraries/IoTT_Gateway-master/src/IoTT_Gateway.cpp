@@ -6,6 +6,7 @@
  *  rtc1: originally received on MQTT interface ("From" is not us, echo flag cleared), routed to LocoNet, and echo of it to application and as echoTopic to MQTT
  *  rtc2: when echo flag is set when receiving from LocoNet: outgoing message from application, routed to LocoNet, and echo of it to application and MQTT
  *        when echo flag is cleared when receiving from LocoNet: reply to earlier outgoing message from application, routed to application and MQTT
+ *  rtc3: originally received from a TCP client
  */
 #define rtc0 0x0000
 #define rtc1 0x4000
@@ -16,20 +17,11 @@
 
 cbFct appCallback = NULL;
 LocoNetESPSerial * serialPort = NULL;
-//IoTT_OpenLCB * olcbPort = NULL;
+IoTT_OpenLCB * olcbPort = NULL;
 MQTTESP32 * mqttPort = NULL;
-//IoTT_LBServer * tcpPort = NULL;
+IoTT_LBServer * tcpPort = NULL;
 //cmdSourceType workMode = GW;
 messageType gwType = LocoNet;
-/*
-cmdSourceType getCmdTypeOfName(String ofName)
-{
-  if (ofName == "LN") return LN;
-  if (ofName == "MQTT") return MQTT;
-  if (ofName == "GW") return GW;
-  return OFF;
-}
-*/
 
 ln_mqttGateway::ln_mqttGateway()
 {
@@ -46,6 +38,24 @@ ln_mqttGateway::ln_mqttGateway(LocoNetESPSerial * newLNPort, MQTTESP32 * newMQTT
   	  setAppCallback(newCB);
 }
 
+ln_mqttGateway::ln_mqttGateway(LocoNetESPSerial * newLNPort, MQTTESP32 * newMQTTPort, IoTT_LBServer * newTCPPort, cbFct newCB)
+{
+	ln_mqttGateway(newLNPort, newMQTTPort, newCB);
+	if (newTCPPort)
+  	  setTCPPort(newTCPPort);
+}
+
+ln_mqttGateway::ln_mqttGateway(IoTT_OpenLCB * newOLCBPort, MQTTESP32 * newMQTTPort, cbFct newCB)
+{
+	gwType = OpenLCB;
+	if (newOLCBPort)
+	  setOLCBPort(newOLCBPort);
+	if (newMQTTPort)
+  	  setMQTTPort(newMQTTPort);
+	if (newCB)
+  	  setAppCallback(newCB);
+}
+
 ln_mqttGateway::~ln_mqttGateway()
 {
 }
@@ -56,10 +66,22 @@ void ln_mqttGateway::setSerialPort(LocoNetESPSerial * newPort)
 	serialPort->setLNCallback(&onLocoNetMessage);
 }
 
+void ln_mqttGateway::setOLCBPort(IoTT_OpenLCB * newPort)
+{
+	olcbPort = newPort;
+	olcbPort->setOlcbCallback(&onOLCBMessage, false);
+}
+
 void ln_mqttGateway::setMQTTPort(MQTTESP32 * newPort)
 {
 	mqttPort = newPort;
 	mqttPort->setMQTTCallback(&onMQTTMessage);
+}
+
+void ln_mqttGateway::setTCPPort(IoTT_LBServer * newPort)
+{
+	tcpPort = newPort;
+	tcpPort->setLNCallback(&onTCPMessage);
 }
 
 void ln_mqttGateway::setAppCallback(cbFct newCB)
@@ -84,8 +106,8 @@ void ln_mqttGateway::onLocoNetMessage(lnReceiveBuffer * newData) //this is the c
 			appCallback(newData);
           if (mqttPort)
 			mqttPort->lnWriteMsg(*newData); //send to MQTT        
-//          if (tcpPort)
-//			tcpPort->lnWriteMsg(*newData); // then send to TCP
+          if (tcpPort)
+			tcpPort->lnWriteMsg(*newData); // then send to TCP
           break;    
         case 1: //originally received from MQTT, than transmitted on LocoNet, now going to the application and TCP
           newData->reqID &= (~rtc3); //clear routing flags
@@ -93,8 +115,8 @@ void ln_mqttGateway::onLocoNetMessage(lnReceiveBuffer * newData) //this is the c
 			if (mqttPort)
 				mqttPort->lnWriteMsg(*newData); // then send to MQTT
           newData->errorFlags &= ~msgEcho; //clear echo flag as this was an original incoming message
-//		  if (tcpPort)
-//			tcpPort->lnWriteMsg(*newData);
+		  if (tcpPort)
+			tcpPort->lnWriteMsg(*newData);
 		  if (appCallback)
 			appCallback(newData);
           break;    
@@ -105,10 +127,9 @@ void ln_mqttGateway::onLocoNetMessage(lnReceiveBuffer * newData) //this is the c
           newData->errorFlags &= ~msgEcho; //clear echo flag, 
           if (mqttPort)
 			mqttPort->lnWriteMsg(*newData); // then send to MQTT
-//          if (tcpPort)
-//			tcpPort->lnWriteMsg(*newData); // then send to MQTT
+          if (tcpPort)
+			tcpPort->lnWriteMsg(*newData); // then send to MQTT
           break;    
-/*
         case 3: //originally received from TPC, than transmitted on LocoNet, now going to the application and MQTT 
 //          Serial.printf("GW LN Size %i Errors %i\n", newData->lnMsgSize, newData->errorFlags); 
           newData->reqID &= (~rtc3); //clear routing flags
@@ -120,8 +141,15 @@ void ln_mqttGateway::onLocoNetMessage(lnReceiveBuffer * newData) //this is the c
 		  if (appCallback)
 			appCallback(newData);
           break;    
-*/
       }
+}
+
+void ln_mqttGateway::onOLCBMessage(lnReceiveBuffer * newData) //this is the callback function for the OLCB library
+{
+//	Serial.printf("GW onOLCBMsg %2X %2X\n", newData->lnData[0], newData->errorFlags);
+	newData->reqID |= 0xC000; //set router flag
+	if (appCallback) appCallback(newData); 
+	if (mqttPort) mqttPort->lnWriteMsg(*newData);        
 }
 
 void ln_mqttGateway::onMQTTMessage(lnReceiveBuffer * newData) //this is the callback function for the MQTT library
@@ -136,7 +164,6 @@ void ln_mqttGateway::onMQTTMessage(lnReceiveBuffer * newData) //this is the call
 				if (serialPort) serialPort->lnWriteMsg(*newData); 
 				break;
 			}
-/*
 		case OpenLCB: 
 			if ((newData->errorFlags & msgEcho) == 0)
 			{
@@ -144,11 +171,9 @@ void ln_mqttGateway::onMQTTMessage(lnReceiveBuffer * newData) //this is the call
 				if (olcbPort) olcbPort->lnWriteMsg(*newData); 
 			}
 			break;
-*/
 	}
 }
 
-/*
 void ln_mqttGateway::onTCPMessage(lnReceiveBuffer * newData) //this is the callback function for the MQTT library
 {
 //	Serial.printf("GW onTCPMsg %2X %2X\n", newData->lnData[0], newData->errorFlags);
@@ -161,7 +186,6 @@ void ln_mqttGateway::onTCPMessage(lnReceiveBuffer * newData) //this is the callb
 				if (serialPort) serialPort->lnWriteMsg(*newData); 
 				break;
 			}
-
 		case OpenLCB: 
 			if ((newData->errorFlags & msgEcho) == 0)
 			{
@@ -169,10 +193,8 @@ void ln_mqttGateway::onTCPMessage(lnReceiveBuffer * newData) //this is the callb
 				if (olcbPort) olcbPort->lnWriteMsg(*newData); 
 			}
 			break;
-
 	}
 }
-*/
 
 uint16_t ln_mqttGateway::lnWriteMsg(lnTransmitMsg txData)
 {
@@ -184,7 +206,6 @@ uint16_t ln_mqttGateway::lnWriteMsg(lnTransmitMsg txData)
     switch (gwType)
     {
 		case LocoNet: if (serialPort) return serialPort->lnWriteMsg(txData); else return 0; break;
-/*
 		case OpenLCB:
 			lnReceiveBuffer txDataCopy;
 			txDataCopy.msgType = txData.msgType;
@@ -196,7 +217,6 @@ uint16_t ln_mqttGateway::lnWriteMsg(lnTransmitMsg txData)
 			if (appCallback) appCallback(&txDataCopy);
 			if (olcbPort) return olcbPort->lnWriteMsg(txData); else return 0; 
 			break;
-*/
 	}
 }
 
@@ -209,7 +229,6 @@ uint16_t ln_mqttGateway::lnWriteMsg(lnReceiveBuffer txData)
     switch (gwType)
     {
 		case LocoNet: if (serialPort) return serialPort->lnWriteMsg(txData); else return 0; break;
-/*
 		case OpenLCB: 
 			txData.reqID = (txData.reqID & 0x3FFF); //clear router flag
 //			txData.reqId |= rtc2;
@@ -217,7 +236,6 @@ uint16_t ln_mqttGateway::lnWriteMsg(lnReceiveBuffer txData)
 			if (appCallback) appCallback(&txData);
 			if (olcbPort) return olcbPort->lnWriteMsg(txData); else return 0; 
 			break;
-*/
 	}
 }
 
@@ -226,10 +244,10 @@ void ln_mqttGateway::processLoop()
     switch (gwType)
     {
 		case LocoNet: if (serialPort) serialPort->processLoop(); break;
-//		case OpenLCB: if (olcbPort) olcbPort->processLoop(); break;
+		case OpenLCB: if (olcbPort) olcbPort->processLoop(); break;
 	}
     if (mqttPort)
 		mqttPort->processLoop();
-//    if (tcpPort)
-//		tcpPort->processLoop();
+    if (tcpPort)
+		tcpPort->processLoop();
 }

@@ -76,15 +76,15 @@ bool writeJSONFile(String fileName, DynamicJsonDocument * writeThis)
 {
   String fileStr;
   serializeJson(*writeThis, fileStr);
-  Serial.println(fileName);
-  Serial.println(fileStr);
+//  Serial.println(fileName);
+//  Serial.println(fileStr);
   uint32_t startTime = millis();
   File dataFile = SPIFFS.open(fileName, "w");
   if (dataFile)
   {
     dataFile.println(fileStr);
     dataFile.close();
-    Serial.printf("Writing Config File from JSON complete %i bytes in %i ms\n", fileStr.length(), millis() - startTime);
+//    Serial.printf("Writing Config File from JSON complete %i bytes in %i ms\n", fileStr.length(), millis() - startTime);
     return true;
   }
   else
@@ -93,10 +93,10 @@ bool writeJSONFile(String fileName, DynamicJsonDocument * writeThis)
 
 bool writeJSONFile(String fileName, String * fileStr)
 {
-  Serial.println(fileName);
+//  Serial.println(fileName);
   
-  Serial.println(*fileStr);
-  Serial.println("Writing Config File from FileStr");
+//  Serial.println(*fileStr);
+//  Serial.println("Writing Config File from FileStr");
   uint32_t startTime = millis();
   File dataFile = SPIFFS.open(fileName, "w");
   if (dataFile)
@@ -125,4 +125,11 @@ DynamicJsonDocument * getDocPtr(String cmdFile)
   }
   else
       return NULL;
+}
+
+void prepareShutDown()
+{
+  saveToFile(bufferFileName);
+  if (mySwitchList)
+    mySwitchList->saveRunTimeData();
 }

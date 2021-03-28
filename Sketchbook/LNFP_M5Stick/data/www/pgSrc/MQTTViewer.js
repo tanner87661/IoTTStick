@@ -1,1 +1,133 @@
-function loadTableData(){}function constructPageContent(a){var b;mainScrollBox=createEmptyDiv(a,"div","pagetopicboxscroll-y","btnconfigdiv"),createPageTitle(mainScrollBox,"div","tile-1","","h1","MQTT Traffic Viewer"),b=createEmptyDiv(mainScrollBox,"div","tile-1","");var c=createEmptyDiv(b,"div","tile-1_2","leftside");createPageTitle(c,"div","tile-1","","h2","Received on Subscriptions"),listViewerRot=createListViewer(c,"viewerbox","MQTTViewerSubscribe");var d=createEmptyDiv(c,"div","tile-1","");createButton(d,"tile-1_4","Stop","btnStop","stopRotFlow(this)"),createButton(d,"tile-1_4","Clear","btnClear","clearRotList(this)");var e=createEmptyDiv(b,"div","tile-1_2","rightside");createPageTitle(e,"div","tile-1","","h2","Published to Broker"),listViewerSingle=createListViewer(e,"viewerbox","MQTTViewerPublish"),d=createEmptyDiv(e,"div","tile-1",""),createButton(d,"tile-1_4","Stop","btnStop","stopSingleFlow(this)"),createButton(d,"tile-1_4","Clear","btnClear","clearSingleList(this)"),b=createEmptyDiv(mainScrollBox,"div","tile-1","")}function loadNodeDataFields(){}function loadDataFields(){}function stopRotFlow(a){flowActiveSubscribe=!flowActiveSubscribe,a.innerHTML=flowActiveSubscribe?"Stop":"Resume"}function clearRotList(){for(;listViewerRot.childNodes.length>0;)listViewerRot.removeChild(listViewerRot.childNodes[0])}function stopSingleFlow(a){flowActivePublish=!flowActivePublish,a.innerHTML=flowActivePublish?"Stop":"Resume"}function clearSingleList(){for(;listViewerSingle.childNodes.length>0;)listViewerSingle.removeChild(listViewerSingle.childNodes[0])}function processMQTTInput(a){var b;for("MQTTOut"==a.CmdType?flowActivePublish&&(b=document.createElement("li"),b.innerHTML=a.Topic+" "+a.Payload,listViewerSingle.append(b)):"MQTTIn"==a.CmdType&&flowActiveSubscribe&&(b=document.createElement("li"),b.innerHTML=a.Topic+" "+a.Payload,listViewerRot.append(b));listViewerSingle.childNodes.length>numMsgLines;)listViewerSingle.removeChild(listViewerSingle.childNodes[0]);for(;listViewerRot.childNodes.length>numMsgLines;)listViewerRot.removeChild(listViewerRot.childNodes[0])}var mainScrollBox,listViewerRot,listViewerSingle,flowActivePublish=!0,flowActiveSubscribe=!0,numMsgLines=20;
+var mainScrollBox;
+var listViewerRot;
+var listViewerSingle;
+
+var flowActivePublish = true;
+var flowActiveSubscribe = true;
+
+var numMsgLines = 20;
+
+function loadTableData(thisTable, thisData)
+{
+/*	while (thisData.length > maxButtons)
+		thisData.pop();
+	while (thisData.length < maxButtons)
+	{
+	}
+	console.log(thisData);
+	var th = document.getElementById(buttonTable.id + "_head");
+	var tb = document.getElementById(buttonTable.id + "_body");
+	var numCols = th.childNodes[0].children.length;
+
+/*	createDataTableLines(thisTable, [tfPos,tfText,tfBtnEvtSel,tfNumeric, tfText], thisData.length, "setButtonData(this)");	
+	for (var i=0; i<thisData.length;i++)
+	{
+		function selByName(prmVal)
+		{
+			return (prmVal == thisData[i].ButtonType);
+		}
+
+		var pinNr = nodeConfigData.BtnModConfig.DataPins[Math.trunc(i/16)];
+		var pinPort = i % 16;
+		var e = document.getElementById(thisTable.id + "_" + i.toString() + "_" + "1");
+		writeTextField(e.id, thisData[i].PortNr.toString() + " - Port " + pinPort.toString() + " at Pin " + pinNr.toString());
+		var e = document.getElementById(thisTable.id + "_" + i.toString() + "_" + "2");
+		e.childNodes[0].selectedIndex = btnStatus.findIndex(selByName);
+		var e = document.getElementById(thisTable.id + "_" + i.toString() + "_" + "3");
+		e.childNodes[0].value = thisData[i].ButtonAddr;
+		var e = document.getElementById(thisTable.id + "_" + i.toString() + "_" + "4");
+		writeTextField(e.id, "");
+	}
+*/
+}
+
+function constructPageContent(contentTab)
+{
+	var tempObj;
+	mainScrollBox = createEmptyDiv(contentTab, "div", "pagetopicboxscroll-y", "btnconfigdiv");
+		createPageTitle(mainScrollBox, "div", "tile-1", "", "h1", "MQTT Traffic Viewer");
+		tempObj = createEmptyDiv(mainScrollBox, "div", "tile-1", "");
+			var leftDiv = createEmptyDiv(tempObj, "div", "tile-1_2", "leftside");
+				createPageTitle(leftDiv, "div", "tile-1", "", "h2", "Received on Subscriptions");
+				listViewerRot = createListViewer(leftDiv, "viewerbox", "MQTTViewerSubscribe");
+				var thisObj = createEmptyDiv(leftDiv, "div", "tile-1", "");
+					createButton(thisObj, "tile-1_4", "Stop", "btnStop", "stopRotFlow(this)");
+					createButton(thisObj, "tile-1_4", "Clear", "btnClear", "clearRotList(this)");
+
+			var rightDiv = createEmptyDiv(tempObj, "div", "tile-1_2", "rightside");
+				createPageTitle(rightDiv, "div", "tile-1", "", "h2", "Published to Broker");
+				listViewerSingle = createListViewer(rightDiv, "viewerbox", "MQTTViewerPublish");
+				thisObj = createEmptyDiv(rightDiv, "div", "tile-1", "");
+					createButton(thisObj, "tile-1_4", "Stop", "btnStop", "stopSingleFlow(this)");
+					createButton(thisObj, "tile-1_4", "Clear", "btnClear", "clearSingleList(this)");
+
+		tempObj = createEmptyDiv(mainScrollBox, "div", "tile-1", "");
+}
+
+function loadNodeDataFields(jsonData)
+{
+}
+
+function loadDataFields(jsonData)
+{
+}
+
+function stopRotFlow(sender)
+{
+	flowActiveSubscribe = !flowActiveSubscribe;
+	if (flowActiveSubscribe)
+		sender.innerHTML  = "Stop"
+	else
+		sender.innerHTML  = "Resume";
+		
+}
+
+function clearRotList(sender)
+{
+	while (listViewerRot.childNodes.length > 0)
+	  listViewerRot.removeChild(listViewerRot.childNodes[0]);
+}
+
+function stopSingleFlow(sender)
+{
+	flowActivePublish = !flowActivePublish;
+	if (flowActivePublish)
+		sender.innerHTML  = "Stop"
+	else
+		sender.innerHTML  = "Resume";
+		
+}
+
+function clearSingleList(sender)
+{
+	while (listViewerSingle.childNodes.length > 0)
+	  listViewerSingle.removeChild(listViewerSingle.childNodes[0]);
+}
+
+function processMQTTInput(jsonData)
+{
+//	console.log(jsonData);
+	var newLine;
+	if (jsonData.CmdType == "MQTTOut")
+		if (flowActivePublish)
+		{
+			newLine = document.createElement("li");
+			newLine.innerHTML = jsonData.Topic + " " + jsonData.Payload;
+			listViewerSingle.append(newLine);
+		}
+		else
+		{}
+	else
+		if (jsonData.CmdType == "MQTTIn")
+			if (flowActiveSubscribe)
+			{
+				newLine = document.createElement("li");
+				newLine.innerHTML = jsonData.Topic + " " + jsonData.Payload;
+				listViewerRot.append(newLine);
+			}
+	while (listViewerSingle.childNodes.length > numMsgLines)
+		listViewerSingle.removeChild(listViewerSingle.childNodes[0]);
+	while (listViewerRot.childNodes.length > numMsgLines)
+		listViewerRot.removeChild(listViewerRot.childNodes[0]);
+
+}

@@ -1,1 +1,1037 @@
-function getMaximumLED(){switch(configData[0].HatTypeList[configData[0].HatIndex].HatId){case 3:return i2cMaxNum;default:return 65535}}function saveConfigFileSettings(){saveJSONConfig(scriptList.Pages[currentPage].ID,scriptList.Pages[currentPage].FileName,configData[workCfg],prepareFileSeqLED)}function upgradeJSONVersion(a){return upgradeJSONVersionLED(a)}function addFileSeq(a,b,c){addFileSeqLED(a,b,c)}function downloadSettings(){downloadConfig(32)}function setLEDBasics(a){if("colorseq"==a.id)switch(a.selectedIndex){case 0:configData[2].ChainParams.ColorSeq="RGB";break;case 1:configData[2].ChainParams.ColorSeq="GRB"}if("numleds"==a.id){var b=verifyNumber(a.value,configData[2].NumLEDs);b>getMaximumLED()?(a.value=i2cMaxNum,alert("Maximum number of LED's is limited to "+i2cMaxNum.toString()+" for this hat type!")):configData[2].ChainParams.NumLEDs=b}"blinkperiod"==a.id&&(configData[2].ChainParams.BlinkPeriod=verifyNumber(a.value,configData[2].ChainParams.BlinkPeriod)),"brightnessctrl"==a.id&&(configData[2].ChainParams.Brightness.CtrlSource=a.value),"brightnessaddr"==a.id&&(configData[2].ChainParams.Brightness.Addr=verifyNumber(a.value,configData[2].ChainParams.Brightness.Addr)),"brightnesslevel"==a.id&&(configData[2].ChainParams.Brightness.InitLevel=verifyNumber(a.value,configData[2].ChainParams.Brightness.InitLevel)),"mqtopledset"==a.id&&(configData[2].MQTT.Subscribe[0].Topic=a.value),"incladdrset"==a.id&&(configData[2].MQTT.Subscribe[0].InclAddr=a.checked),"mqtopledask"==a.id&&(configData[2].MQTT.Subscribe[1].Topic=a.value),"incladdrask"==a.id&&(configData[2].MQTT.Subscribe[1].InclAddr=a.checked),"mqtopledreply"==a.id&&(configData[2].MQTT.Publish[0].Topic=a.value),"incladdrreply"==a.id&&(configData[2].MQTT.Publish[0].InclAddr=a.checked)}function HSVtoRGB(a,b,c){var g,h,i,j,k,l,m,n,d=a/255,e=b/255,f=c/255;switch(1===arguments.length&&(e=d.s,f=d.v,d=d.h),j=Math.floor(6*d),k=6*d-j,l=f*(1-e),m=f*(1-k*e),n=f*(1-(1-k)*e),j%6){case 0:g=f,h=n,i=l;break;case 1:g=m,h=f,i=l;break;case 2:g=l,h=f,i=n;break;case 3:g=l,h=m,i=f;break;case 4:g=n,h=l,i=f;break;case 5:g=f,h=l,i=m}return[Math.round(255*g),Math.round(255*h),Math.round(255*i)]}function rgbToHsv(a,b,c){a/=255,b/=255,c/=255;var f,g,d=Math.max(a,b,c),e=Math.min(a,b,c),h=d,i=d-e;if(g=0==d?0:i/d,d==e)f=0;else{switch(d){case a:f=(b-c)/i+(b<c?6:0);break;case b:f=(c-a)/i+2;break;case c:f=(a-b)/i+4}f/=6}return[Math.round(255*f),Math.round(255*g),Math.round(255*h)]}function findColorByName(a,b){function c(a){return a.Name==b}var d=a.LEDCols.findIndex(c);return d>=0?a.LEDCols[d]:null}function setColorData(a){var b=parseInt(a.getAttribute("row")),c=parseInt(a.getAttribute("col")),d=parseInt(a.getAttribute("index"));switch(c){case-1:configData[2].LEDCols.push(JSON.parse(JSON.stringify(newColTemplate))),loadColorTable(colorTable,configData[2].LEDCols);break;case 1:configData[2].LEDCols[b].Name=a.value;break;case 2:var e=a.value.replace("#","0x"),f=parseInt(e);configData[2].LEDCols[b].RGBVal[0]=(16711680&f)>>16,configData[2].LEDCols[b].RGBVal[1]=(65280&f)>>8,configData[2].LEDCols[b].RGBVal[2]=255&f,configData[2].LEDCols[b].HSVVal=rgbToHsv(configData[2].LEDCols[b].RGBVal[0],configData[2].LEDCols[b].RGBVal[1],configData[2].LEDCols[b].RGBVal[2]);break;case 3:{var h;a.id}if(1==d&&configData[2].LEDCols.splice(b+1,0,JSON.parse(JSON.stringify(newColTemplate))),2==d){for(var i=!0,j=configData[2].LEDCols[b].Name,k=0;k<configData[2].LEDDefs.length;k++)for(var l=0;l<configData[2].LEDDefs[k].LEDCmd.length;l++){if(Array.isArray(configData[2].LEDDefs[k].LEDCmd[l].ColOn)){if(configData[2].LEDDefs[k].LEDCmd[l].ColOn.indexOf(j)>=0){i=!1;break}}else if(configData[2].LEDDefs[k].LEDCmd[l].ColOn==j){i=!1;break}if(void 0!=configData[2].LEDDefs[k].LEDCmd[l].ColOff)if(Array.isArray(configData[2].LEDDefs[k].LEDCmd[l].ColOn)){if(configData[2].LEDDefs[k].LEDCmd[l].ColOn.indexOf(j)>=0){i=!1;break}}else if(configData[2].LEDDefs[k].LEDCmd[l].ColOn==j){i=!1;break}}i?configData[2].LEDCols.splice(b,1):alert(j+" is currently used in the table below. Remove any reference before deleting this color!")}3==d&&b>0&&(h=configData[2].LEDCols.splice(b,1),configData[2].LEDCols.splice(b-1,0,h[0])),4==d&&b<configData[2].LEDCols.length&&(h=configData[2].LEDCols.splice(b,1),configData[2].LEDCols.splice(b+1,0,h[0])),loadColorTable(colorTable,configData[2].LEDCols)}}function setLEDData(a){function b(a){var b,c=1;switch(Array.isArray(configData[2].LEDDefs[a].CtrlAddr)&&(c=configData[2].LEDDefs[a].CtrlAddr.length),ledCtrlType.indexOf(configData[2].LEDDefs[a].CtrlSource)){case 0:b=Math.pow(2,c);break;case 1:b=2*c;break;case 2:b=1;break;case 3:b=5;break;case 4:b=1;break;case 5:b=Math.pow(2,c);break;case 6:b=2;break;case 7:b=3;break;case 8:b=1}for(;configData[2].LEDDefs[a].LEDCmd.length<b;)configData[2].LEDDefs[a].LEDCmd.push(JSON.parse(JSON.stringify(newCmdTemplate)));for(;configData[2].LEDDefs[a].LEDCmd.length>b;)configData[2].LEDDefs[a].LEDCmd.splice(configData[2].LEDDefs[a].LEDCmd.length-1,1)}function c(a){if(configData[2].LEDDefs[a].MultiColor)for(var b=configData[2].LEDDefs[a].LEDNums.length,c=0;c<configData[2].LEDDefs[a].LEDCmd.length;c++){var d=configData[2].LEDDefs[a].LEDCmd[c].ColOn;"object"==typeof d&&(d=d[0]);var e=configData[2].LEDDefs[a].LEDCmd[c].ColOff;void 0==e&&(e=""),Array.isArray(e)&&(e=e[0]);var f=configData[2].LEDDefs[a].LEDCmd[c].Mode;Array.isArray(f)&&(f=f[0]);var g=configData[2].LEDDefs[a].LEDCmd[c].Rate;Array.isArray(g)&&(g=g[0]);var h=configData[2].LEDDefs[a].LEDCmd[c].Transition;Array.isArray(h)&&(h=h[0]),configData[2].LEDDefs[a].LEDCmd[c].ColOn=[],configData[2].LEDDefs[a].LEDCmd[c].ColOff=[],configData[2].LEDDefs[a].LEDCmd[c].Mode=[],configData[2].LEDDefs[a].LEDCmd[c].Rate=[],configData[2].LEDDefs[a].LEDCmd[c].Transition=[];for(var i=0;i<b;i++)configData[2].LEDDefs[a].LEDCmd[c].ColOn.push(d),configData[2].LEDDefs[a].LEDCmd[c].ColOff.push(e),configData[2].LEDDefs[a].LEDCmd[c].Mode.push(f),configData[2].LEDDefs[a].LEDCmd[c].Rate.push(g),configData[2].LEDDefs[a].LEDCmd[c].Transition.push(h)}else for(var c=0;c<configData[2].LEDDefs[a].LEDCmd.length;c++){var d=configData[2].LEDDefs[a].LEDCmd[c].ColOn;"object"==typeof d&&(d=configData[2].LEDDefs[a].LEDCmd[c].ColOn[0]);var e;try{e=configData[2].LEDDefs[a].LEDCmd[c].ColOff,"object"==typeof e&&(e=configData[2].LEDDefs[a].LEDCmd[c].ColOff[0])}catch(j){e=""}configData[2].LEDDefs[a].LEDCmd[c].ColOn=d,configData[2].LEDDefs[a].LEDCmd[c].ColOff=e,configData[2].LEDDefs[a].LEDCmd[c].Mode.splice(1,configData[2].LEDDefs[a].LEDCmd[c].Mode.length-1),configData[2].LEDDefs[a].LEDCmd[c].Rate.splice(1,configData[2].LEDDefs[a].LEDCmd[c].Rate.length-1),configData[2].LEDDefs[a].LEDCmd[c].Transition.splice(1,configData[2].LEDDefs[a].LEDCmd[c].Transition.length-1)}}var d=parseInt(a.getAttribute("row")),e=parseInt(a.getAttribute("col")),f=parseInt(a.getAttribute("index"));switch(e){case-1:configData[2].LEDDefs.push(JSON.parse(JSON.stringify(newLEDTemplate))),loadLEDTable(ledDefTable,configData[2].LEDDefs);break;case 1:{var h;a.id}switch(f){case 1:event.ctrlKey?configData[2].LEDDefs.splice(d+1,0,JSON.parse(JSON.stringify(configData[2].LEDDefs[d]))):configData[2].LEDDefs.splice(d+1,0,JSON.parse(JSON.stringify(newLEDTemplate)));break;case 2:configData[2].LEDDefs.splice(d,1);break;case 3:d>0&&(h=configData[2].LEDDefs.splice(d,1),configData[2].LEDDefs.splice(d-1,0,h[0]));break;case 4:d<configData[2].LEDDefs.length&&(h=configData[2].LEDDefs.splice(d,1),configData[2].LEDDefs.splice(d+1,0,h[0]));break;case 5:var i=verifyNumArray(a.value,",");if(i.length>0)if(i.length>1){configData[2].LEDDefs[d].LEDNums=[];for(var j=0;j<i.length;j++)configData[2].LEDDefs[d].LEDNums.push(i[j]);c(d)}else configData[2].LEDDefs[d].LEDNums=[i[0]],configData[2].LEDDefs[d].MultiColor=!1;else alert(a.value+" is not a valid number or array. Please verify");break;case 6:configData[2].LEDDefs[d].MultiColor=a.checked,c(d);break;case 7:var k=configData[workCfg].LEDDefs[d].CtrlSource;configData[workCfg].LEDDefs[d].CtrlSource=ledCtrlType[a.selectedIndex],configData[workCfg].LEDDefs[d].CtrlSource!=k&&b(d);break;case 8:var i=verifyNumArray(a.value,",");if(i.length>0){var l=Array.isArray(configData[2].LEDDefs[d].CtrlAddr)?configData[2].LEDDefs[d].CtrlAddr.length:1;if(configData[2].LEDDefs[d].CtrlAddr=i.length>1?i:i[0],[0,1,5].indexOf(ledCtrlType.indexOf(configData[2].LEDDefs[d].CtrlSource))>=0)for(;i.length>3;)i.pop();else for(;i.length>1;)i.pop();a.value=i,i.length!=l&&b(d)}else alert(a.value+" is not a valid number or array. Please verify");break;case 9:configData[2].LEDDefs[d].DisplayType=dispType[a.selectedIndex];break;case 10:var i=verifyNumArray(a.value,",");configData[2].LEDDefs[d].CondAddr=i.length>0?i:[];break;case 21:setLEDTestDisplay(configData[2].LEDDefs[d].LEDNums)}loadLEDTable(ledDefTable,configData[2].LEDDefs)}}function loadColorTable(a,b){function c(a){for(var b=a[0].toString(16),c=a[1].toString(16),d=a[2].toString(16);b.length<2;)b="0"+b;for(;c.length<2;)c="0"+c;for(;d.length<2;)d="0"+d;return"#"+b+c+d}{var d=document.getElementById(a.id+"_head");document.getElementById(a.id+"_body"),d.childNodes[0].children.length}createDataTableLines(a,[tfPos,tfNumericLong,tfColorPicker,tfManipulatorBox],b.length,"setColorData(this)");for(var g=0;g<b.length;g++){var h=document.getElementById(a.id+"_"+g.toString()+"_1");h.childNodes[0].value=b[g].Name;var h=document.getElementById(a.id+"_"+g.toString()+"_2");void 0==b[g].RGBVal&&(b[g].RGBVal=HSVtoRGB(b[g].HSVVal[0],b[g].HSVVal[1],b[g].HSVVal[2]));var i=c(b[g].RGBVal);h.childNodes[0].value=i}}function setLEDCmdData(a){var b=parseInt(a.getAttribute("row")),c=parseInt(a.getAttribute("col")),d=parseInt(a.getAttribute("index")),e=parseInt(a.getAttribute("cmdline"));isNaN(e)&&(e=parseInt(a.parentElement.getAttribute("cmdline")));var f,g;switch(d){case 1:configData[2].LEDDefs[b].LEDCmd.splice(e+1,0,JSON.parse(JSON.stringify(newCmdTemplate))),loadLEDTable(ledDefTable,configData[2].LEDDefs);break;case 2:configData[2].LEDDefs[b].LEDCmd.splice(e,1),loadLEDTable(ledDefTable,configData[2].LEDDefs);break;case 3:e>0&&(f=configData[2].LEDDefs[b].LEDCmd.splice(e,1),configData[2].LEDDefs[b].LEDCmd.splice(e-1,0,f[0])),loadLEDTable(ledDefTable,configData[2].LEDDefs);break;case 4:e<configData[2].LEDDefs[b].LEDCmd.length&&(f=configData[2].LEDDefs[b].LEDCmd.splice(e,1),configData[2].LEDDefs[b].LEDCmd.splice(e+1,0,f[0])),loadLEDTable(ledDefTable,configData[2].LEDDefs);break;case 6:configData[2].LEDDefs[b].LEDCmd[c].Val=verifyNumber(a.value,configData[2].LEDDefs[b].LEDCmd[c].Val);break;case 8:if(configData[2].LEDDefs[b].MultiColor){g="ledselector"+b.toString()+"_"+e.toString();var h=document.getElementById(g),i=h.selectedIndex;configData[2].LEDDefs[b].LEDCmd[c].ColOn[i]=configData[2].LEDCols[a.selectedIndex].Name}else configData[2].LEDDefs[b].LEDCmd[c].ColOn=configData[2].LEDCols[a.selectedIndex].Name;break;case 9:if(configData[2].LEDDefs[b].MultiColor){g="ledselector"+b.toString()+"_"+e.toString();var h=document.getElementById(g),i=h.selectedIndex;configData[2].LEDDefs[b].LEDCmd[c].ColOff[i]=configData[2].LEDCols[a.selectedIndex].Name}else configData[2].LEDDefs[b].LEDCmd[c].ColOff=configData[2].LEDCols[a.selectedIndex].Name;break;case 10:if(configData[2].LEDDefs[b].MultiColor){g="ledselector"+b.toString()+"_"+e.toString();var h=document.getElementById(g),i=h.selectedIndex;configData[2].LEDDefs[b].LEDCmd[c].Mode[i]=ledModeType[a.selectedIndex]}else configData[2].LEDDefs[b].LEDCmd[c].Mode[0]=ledModeType[a.selectedIndex];break;case 11:if(configData[2].LEDDefs[b].MultiColor){g="ledselector"+b.toString()+"_"+e.toString();var h=document.getElementById(g),i=h.selectedIndex;configData[2].LEDDefs[b].LEDCmd[c].Rate[i]=verifyNumber(a.value,configData[2].LEDDefs[b].LEDCmd[c].Rate[i])}else configData[2].LEDDefs[b].LEDCmd[c].Rate[0]=verifyNumber(a.value,configData[2].LEDDefs[b].LEDCmd[c].Rate[0]);break;case 12:if(configData[2].LEDDefs[b].MultiColor){g="ledselector"+b.toString()+"_"+e.toString();var h=document.getElementById(g),i=h.selectedIndex;configData[2].LEDDefs[b].LEDCmd[c].Transition[i]=ledTransitionType[a.selectedIndex]}else configData[2].LEDDefs[b].LEDCmd[c].Transition[0]=ledTransitionType[a.selectedIndex];break;case 15:for(var j=[],k=0;k<configData[2].LEDCols.length;k++)j.push(configData[2].LEDCols[k].Name);var d=a.selectedIndex;g="oncolsel_"+b.toString()+"_"+e.toString();var l=document.getElementById(g);g="offcolsel_"+b.toString()+"_"+e.toString();var m=document.getElementById(g);l.selectedIndex=j.indexOf(configData[2].LEDDefs[b].LEDCmd[c].ColOn[d]),m.selectedIndex=j.indexOf(configData[2].LEDDefs[b].LEDCmd[c].ColOff[d]),g="modesel_"+b.toString()+"_"+e.toString();var n=document.getElementById(g);n.selectedIndex=ledModeType.indexOf(configData[2].LEDDefs[b].LEDCmd[c].Mode[d]),g="ratesel_"+b.toString()+"_"+e.toString();var o=document.getElementById(g);o.value=configData[2].LEDDefs[b].LEDCmd[c].Rate[d],g="transitionsel_"+b.toString()+"_"+e.toString();var p=document.getElementById(g);p.selectedIndex=ledTransitionType.indexOf(configData[2].LEDDefs[b].LEDCmd[c].Transition[d])}}function createColorSelectField(a,b,c,d,e){var f=document.createElement("div");f.setAttribute("class","editorpanel");var g;if("signal"==d.CtrlSource||"analog"==d.CtrlSource){g="cmdmanipulator_"+b.toString()+"_"+c.toString();var h=tfManipulatorBox(b,1,g,e);tfSetCoordinate(h,b,c,1,g),h.setAttribute("cmdline",c),f.append(h)}var i=tfText(b,c,"",e);i.innerHTML="Value:&nbsp;",f.append(i),g="ctrlvalue_"+b.toString()+"_"+c.toString();var j;if("signal"==d.CtrlSource||"analog"==d.CtrlSource)j=tfNumeric(b,5,g,e),tfSetCoordinate(j,b,c,5,g),j.setAttribute("cmdline",c),j.value=d.LEDCmd[c].Val,tfSetCoordinate(j,b,c,6,g),j.setAttribute("index",6);else switch(j=tfText(b,6,g,e),tfSetCoordinate(j,b,c,6,g),ledCtrlType.indexOf(d.CtrlSource)){case 0:case 9:d.LEDCmd[c].Val=c;var k=1,l="",m=1,n=Array.isArray(d.CtrlAddr);n&&(m=d.CtrlAddr.length);for(var o=0;o<m;o++)o>0&&(l+=", "),l+=n?d.CtrlAddr[o].toString()+(0==(c&k)?"t":"c"):d.CtrlAddr.toString()+(0==(c&k)?"t":"c"),k<<=1;j.innerHTML=l;break;case 1:d.LEDCmd[c].Val=c;var n=Array.isArray(d.CtrlAddr);j.innerHTML=n?d.CtrlAddr[c>>1].toString()+(0==(1&c)?"t":"c"):d.CtrlAddr.toString()+(0==(1&c)?"t":"c");break;case 3:d.LEDCmd[c].Val=c,j.innerHTML=buttonValDispType[c];break;case 5:d.LEDCmd[c].Val=c;var k=1,l="",m=1,n=Array.isArray(d.CtrlAddr);n&&(m=d.CtrlAddr.length);for(var o=0;o<m;o++)o>0&&(l+=", "),l+=n?d.CtrlAddr[o].toString()+(0==(c&k)?" fr":" oc"):d.CtrlAddr.toString()+(0==(c&k)?" fr":" oc"),k<<=1;j.innerHTML=l;break;case 6:d.LEDCmd[c].Val=c,j.innerHTML=transponderValDispType[c];break;case 7:d.LEDCmd[c].Val=c,j.innerHTML=powerValDispType[c];break;case 8:d.LEDCmd[c].Val=1,j.innerHTML="On"}f.append(j),d.MultiColor&&(g="ledseltext"+b.toString()+"_"+c.toString(),i=tfText(b,c,g,e),i.innerHTML="Select LED:",f.append(tfTab(b,c,"&nbsp;","")),f.append(i),f.append(tfTab(b,c,"&nbsp;","")),g="ledselector"+b.toString()+"_"+c.toString(),j=tfLEDAddrSel(j,b,g,e,d.LEDNums),j.setAttribute("cmdline",c),tfSetCoordinate(j,b,c,15,g),f.append(j));for(var p=[],o=0;o<configData[2].LEDCols.length;o++)p.push(configData[2].LEDCols[o].Name);g="oncoltxt_"+b.toString()+"_"+c.toString(),i=tfText(b,c,g,e),i.innerHTML="On Color:",i.setAttribute("cmdline",c),f.append(tfTab(b,c,"&nbsp;","")),f.append(i),f.append(tfTab(b,c,"&nbsp;","")),g="oncolsel_"+b.toString()+"_"+c.toString(),j=tfColorSelector(b,c,g,e,p),j.setAttribute("cmdline",c),j.selectedIndex=p.indexOf(d.MultiColor?d.LEDCmd[c].ColOn[0]:d.LEDCmd[c].ColOn),tfSetCoordinate(j,b,c,8,g),f.append(j),g="offcoltxt_"+b.toString()+"_"+c.toString(),i=tfText(b,c,g,e),i.innerHTML="Off Color:",i.setAttribute("cmdline",c),f.append(tfTab(b,c,"&nbsp;","")),f.append(i),f.append(tfTab(b,c,"&nbsp;","")),g="offcolsel_"+b.toString()+"_"+c.toString(),j=tfColorSelector(b,c,g,e,p),j.setAttribute("cmdline",c),j.selectedIndex=d.MultiColor?p.indexOf(d.LEDCmd[c].ColOff[0]):void 0==d.LEDCmd[c].ColOff?-1:p.indexOf(d.LEDCmd[c].ColOff),tfSetCoordinate(j,b,c,9,g),f.append(j),a.append(f);var q=document.createElement("div");if(q.setAttribute("class","editorpanel"),"signal"==d.CtrlSource||"analog"==d.CtrlSource){var r=document.createElement("div");r.setAttribute("class","manipulatorbox"),q.append(r)}if(i=tfText(b,c,"",e),i.innerHTML="Mode:&nbsp;",q.append(i),g="modesel_"+b.toString()+"_"+c.toString(),j=tfModeSelector(b,c,g,e),j.setAttribute("cmdline",c),!Array.isArray(d.LEDCmd[c].Mode)){var s=d.LEDCmd[c].Mode;d.LEDCmd[c].Mode=[],d.LEDCmd[c].Mode.push(s)}if(j.selectedIndex=ledModeType.indexOf(d.LEDCmd[c].Mode[0]),tfSetCoordinate(j,b,c,10,g),q.append(j),i=tfText(b,c,"",e),i.innerHTML="&nbsp;Rate:&nbsp;",q.append(i),g="ratesel_"+b.toString()+"_"+c.toString(),j=tfNumeric(b,5,g,e),j.setAttribute("cmdline",c),!Array.isArray(d.LEDCmd[c].Rate)){var t=d.LEDCmd[c].Rate;d.LEDCmd[c].Rate=[],d.LEDCmd[c].Rate.push(t)}if(j.value=d.LEDCmd[c].Rate[0],tfSetCoordinate(j,b,c,11,g),q.append(j),i=tfText(b,c,"",e),i.innerHTML="&nbsp;Transition:&nbsp;",q.append(i),g="transitionsel_"+b.toString()+"_"+c.toString(),j=tfTransitionSelector(b,c,g,e),j.setAttribute("cmdline",c),!Array.isArray(d.LEDCmd[c].Transition)){var u=d.LEDCmd[c].Transition;d.LEDCmd[c].Transition=[],d.LEDCmd[c].Transition.push(u)}j.selectedIndex=ledTransitionType.indexOf(d.LEDCmd[c].Transition[0]),tfSetCoordinate(j,b,c,12,g),q.append(j),a.append(q)}function buildCmdLines(a,b){for(var c=document.getElementById("ledconfig_inp_"+a.toString()+"_2");c.hasChildNodes();)c.removeChild(c.childNodes[0]);if(b.LEDCmd.length>0)for(var d=0;d<b.LEDCmd.length;d++){var e=document.createElement("div");e.setAttribute("class","mastertile"),e.style.backgroundColor=d%2==0?"#F5F5F5":"#D3D3D3";var f="master_"+a.toString()+"_"+d.toString();tfSetCoordinate(e,d,0,0,f),c.append(e),f="pos_"+a.toString()+"_"+d.toString(),e.append(tfPos(d,-1,f,"")),f="cmdbasedata_"+a.toString()+"_"+d.toString();var g=document.createElement("div");g.setAttribute("class","editortile"),tfSetCoordinate(g,d,0,0,f),e.append(g),createColorSelectField(g,a,d,b,"setLEDCmdData(this)")}else{var g=document.createElement("div");g.setAttribute("class","editortile"),tfSetCoordinate(g,d,0,0,f),c.append(g);var h="cmdbasedata_initadd"+a.toString(),i=tfTableStarterBox(a,-1,h,"setLEDCmdData(this)");g.append(i)}}function loadLEDTable(a,b){{var d=document.getElementById(a.id+"_head");document.getElementById(a.id+"_body"),d.childNodes[0].children.length}createDataTableLines(a,[tfPos,tfLEDSelector,tfCommandEditor],b.length,"setLEDData(this)");for(var g=0;g<b.length;g++){var h=document.getElementById("lednrbox_"+g.toString()+"_1");h.value=b[g].LEDNums;var h=document.getElementById("multicolor_"+g.toString()+"_1");h.parentElement.style.visibility=Array.isArray(b[g].LEDNums)&&b[g].LEDNums.length>1?"none":"hidden",h.checked=b[g].MultiColor;var h=document.getElementById("disptypebox_"+g.toString()+"_1");h.selectedIndex=dispType.indexOf(b[g].DisplayType),h.parentElement.style.visibility=[2,4].indexOf(ledCtrlType.indexOf(b[g].CtrlSource))>=0?"none":"hidden";var h=document.getElementById("transpselbox_"+g.toString()+"_1");[6].indexOf(ledCtrlType.indexOf(b[g].CtrlSource))>=0?(h.value=b[g].CondAddr,h.parentElement.style.visibility="none"):h.parentElement.style.visibility="hidden";var h=document.getElementById("addressbox_"+g.toString()+"_1");h.value=b[g].CtrlAddr;var h=document.getElementById("cmdlistbox_"+g.toString()+"_1");h.selectedIndex=ledCtrlType.indexOf(b[g].CtrlSource),buildCmdLines(g,b[g])}}function loadNodeDataFields(a){var b=a.InterfaceTypeList[a.InterfaceIndex].Type;setVisibility(3==b,mqttTitle),setVisibility(3==b,mqttBox),setVisibility(3!=b,generalBox1),setVisibility(3!=b,generalBox2),setVisibility(3!=b,colorTableDiv)}function constructPageContent(a){var b;mainScrollBox=createEmptyDiv(a,"div","pagetopicboxscroll-y","nodeconfigdiv"),createPageTitle(mainScrollBox,"div","tile-1","BasicCfg_Title","h1","LED Chain Configuration"),createPageTitle(mainScrollBox,"div","tile-1","","h2","General Settings"),b=createEmptyDiv(mainScrollBox,"div","tile-1",""),createDropdownselector(b,"tile-1_4","Color Sequence:",["RGB","GRB"],"colorseq","setLEDBasics(this)"),createTextInput(b,"tile-1_4","# of LEDs:","n/a","numleds","setLEDBasics(this)"),generalBox1=createEmptyDiv(mainScrollBox,"div","tile-1",""),createTextInput(generalBox1,"tile-1_4","System Blink Period:","n/a","blinkperiod","setLEDBasics(this)"),generalBox2=createEmptyDiv(mainScrollBox,"div","tile-1",""),createTextInput(generalBox2,"tile-1_4","Brightness Ctrl:","n/a","brightnessctrl","setLEDBasics(this)"),createTextInput(generalBox2,"tile-1_4","Address:","n/a","brightnessaddr","setLEDBasics(this)"),createTextInput(generalBox2,"tile-1_4","Initial Level:","n/a","brightnesslevel","setLEDBasics(this)"),mqttTitle=createPageTitle(mainScrollBox,"div","tile-1","","h2","MQTT Settings"),mqttBox=createEmptyDiv(mainScrollBox,"div","tile-1",""),b=createEmptyDiv(mqttBox,"div","tile-1",""),createTextInput(b,"tile-1_4","(S) LED Cmd. Topic:","n/a","mqtopledset","setLEDBasics(this)"),createCheckbox(b,"tile-1_4","Include LED #","incladdrset","setLEDBasics(this)"),b=createEmptyDiv(mqttBox,"div","tile-1",""),createTextInput(b,"tile-1_4","(S) LED Query Topic:","n/a","mqtopledask","setLEDBasics(this)"),createCheckbox(b,"tile-1_4","Include LED #","incladdrask","setLEDBasics(this)"),b=createEmptyDiv(mqttBox,"div","tile-1",""),createTextInput(b,"tile-1_4","(P) LED Reply Topic:","n/a","mqtopledreply","setLEDBasics(this)"),createCheckbox(b,"tile-1_4","Include LED #","incladdrreply","setLEDBasics(this)"),colorTableDiv=createEmptyDiv(mainScrollBox,"div","tile-1",""),createPageTitle(colorTableDiv,"div","tile-1","","h2","Color Definitions"),colorTable=createDataTable(colorTableDiv,"tile-1_2",["Pos","Color Name","Select Color","Add/Delete/Move Color"],"colorconfig",""),createPageTitle(colorTableDiv,"div","tile-1","","h2","LED Settings"),ledDefTable=createDataTable(colorTableDiv,"tile-1",["Pos","IF THIS: (LED/Input Selector)","THEN THAT: (LED Command Sequence Editor)"],"ledconfig",""),b=createEmptyDiv(mainScrollBox,"div","tile-1",""),createButton(b,"","Save & Restart","btnSave","saveSettings(this)"),createButton(b,"","Cancel","btnCancel","cancelSettings(this)"),b=createEmptyDiv(mainScrollBox,"div","tile-1",""),createButton(b,"","Save to File","btnDownload","downloadSettings(this)")}function loadDataFields(a){switch(configData[workCfg]=upgradeJSONVersion(a),configData[workCfg].ChainParams.ColorSeq){case"RGB":setDropdownValue("colorseq",0);break;case"GRB":setDropdownValue("colorseq",1)}writeInputField("numleds",configData[workCfg].ChainParams.NumLEDs),writeInputField("blinkperiod",configData[workCfg].ChainParams.BlinkPeriod),writeInputField("brightnessctrl",configData[workCfg].ChainParams.Brightness.CtrlSource),writeInputField("brightnesslevel",configData[workCfg].ChainParams.Brightness.InitLevel),writeInputField("brightnessaddr",configData[workCfg].ChainParams.Brightness.Addr),writeInputField("mqtopledset",configData[workCfg].MQTT.Subscribe[0].Topic),writeCBInputField("incladdrset",configData[workCfg].MQTT.Subscribe[0].InclAddr),writeInputField("mqtopledask",configData[workCfg].MQTT.Subscribe[1].Topic),writeCBInputField("incladdrask",configData[workCfg].MQTT.Subscribe[1].InclAddr),writeInputField("mqtopledreply",configData[workCfg].MQTT.Publish[0].Topic),writeCBInputField("incladdrreply",configData[workCfg].MQTT.Publish[0].InclAddr),loadColorTable(colorTable,configData[workCfg].LEDCols),loadLEDTable(ledDefTable,configData[workCfg].LEDDefs)}function processLocoNetInput(){}var mainScrollBox,colorTable,ledDefTable,mqttTitle,mqttBox,generalBox1,generalBox2,colorTableDiv,numColors=0,i2cMaxNum=525,ledCtrlType=["switch","signaldyn","signal","button","analog","block","transponder","power","constant","signalstat"],ledModeType=["static","localblinkpos","localblinkneg","globalblinkpos","globalblinkneg","localrampup","localrampdown","globalrampup","globalrampdown"],ledTransitionType=["soft","direct","merge"],trackPwrType=["off","on","idle"],btnType=["onbtndown","onbtnup","onbtnclick","onbtnhold","onbtndlclick"],dispType=["discrete","linear"],ledModeDispType=["Static","Pos Local Blink","Neg Local Blink","Pos Global Blink","Neg Global Blink","Local Rampup","Local Rampdown","Global Rampup","Global Rampdown"],ledDispType=["discrete","linear"],ledTransitionDispType=["Soft","Direct","Merge"],blockValDispType=["free","occupied"],switchValDispType=["Thrown, Coil On","Thrown, Coil Off","Closed, Coil On","Closed, Coil Off"],buttonValDispType=["Btn Down","Btn Up","Btn Click","Btn Hold","Btn Dbl Click"],powerValDispType=["Off","On","Idle"],transponderValDispType=["Enter","Leave"],newColTemplate={Name:"New Color",RGBVal:[255,255,255]},newLEDTemplate={CtrlSource:"block",CtrlAddr:[1],DisplayType:"discrete",MultiColor:!1,LEDCmd:[{Val:0,ColOn:"",Mode:"static",Rate:0,Transition:"soft"},{Val:0,ColOn:"",Mode:"static",Rate:0,Transition:"soft"}]},newCmdTemplate={Val:0,ColOn:"",Mode:"static",Rate:0,Transition:"soft"};
+var mainScrollBox;
+var colorTable;
+var ledDefTable;
+var mqttTitle;
+var mqttBox;
+var generalBox1;
+var generalBox2;
+var colorTableDiv;
+
+var numColors = 0;
+
+var i2cMaxNum = 525;
+
+var ledCtrlType = ["switch", "signaldyn", "signal", "button", "analog", "block", "transponder", "power", "constant", "signalstat"];
+var ledModeType = ["static", "localblinkpos", "localblinkneg", "globalblinkpos", "globalblinkneg", "localrampup", "localrampdown", "globalrampup", "globalrampdown"];
+var ledTransitionType = ["soft", "direct", "merge"];
+var trackPwrType = ["off", "on", "idle"];
+var btnType = ["onbtndown", "onbtnup", "onbtnclick", "onbtnhold", "onbtndlclick"];
+var dispType = ["discrete","linear"];
+
+var ledModeDispType = ["Static", "Pos Local Blink", "Neg Local Blink", "Pos Global Blink",  "Neg Global Blink", "Local Rampup", "Local Rampdown", "Global Rampup", "Global Rampdown"];
+var ledDispType = ["discrete", "linear"];
+var ledTransitionDispType = ["Soft", "Direct", "Merge"];
+var blockValDispType = ["free","occupied"];
+var switchValDispType = ["Thrown, Coil On", "Thrown, Coil Off", "Closed, Coil On", "Closed, Coil Off"];
+var buttonValDispType = ["Btn Down", "Btn Up", "Btn Click", "Btn Hold", "Btn Dbl Click"];
+var powerValDispType = ["Off", "On", "Idle"];
+var transponderValDispType = ["Enter", "Leave"];
+
+var newColTemplate = {"Name": "New Color","RGBVal": [255, 255, 255]};
+var newLEDTemplate = {"CtrlSource": "block","CtrlAddr": [1], "DisplayType":"discrete", "MultiColor":false, "LEDCmd": [{"Val": 0,"ColOn": "","Mode":"static","Rate":0,"Transition":"soft"},{"Val": 0,"ColOn": "","Mode":"static","Rate":0,"Transition":"soft"}]};
+var newCmdTemplate = {"Val": 0,	"ColOn": "", "Mode": "static","Rate":0,	"Transition":"soft"};
+
+function getMaximumLED()
+{
+	switch (configData[0].HatTypeList[configData[0].HatIndex].HatId)
+	{
+		case 3: return i2cMaxNum; break; //YellowHat
+		default: return 0xFFFF;
+	}
+}
+
+function saveConfigFileSettings()
+{
+	//step 1: save greenhat.cfg
+	saveJSONConfig(scriptList.Pages[currentPage].ID, scriptList.Pages[currentPage].FileName, configData[workCfg], prepareFileSeqLED);
+}
+
+function upgradeJSONVersion(jsonData)
+{
+	return upgradeJSONVersionLED(jsonData);
+}
+
+function addFileSeq(ofObj, loadData, workData) //object specific function to include partial files
+{
+//	console.log(ofObj);
+	addFileSeqLED(ofObj, loadData, workData)
+}
+
+function downloadSettings(sender)
+{
+	downloadConfig(0x0020); //send just this
+}
+
+//-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+function setLEDBasics(sender)
+{
+	if (sender.id == "colorseq")
+		switch (sender.selectedIndex)
+		{
+			case 0: configData[2].ChainParams.ColorSeq = "RGB"; break;
+			case 1: configData[2].ChainParams.ColorSeq = "GRB"; break;
+		}
+	if (sender.id == "numleds")
+	{
+		var newNum = verifyNumber(sender.value, configData[2].NumLEDs);
+		if (newNum > getMaximumLED())
+		{
+			sender.value = i2cMaxNum;
+			alert("Maximum number of LED's is limited to " + i2cMaxNum.toString() + " for this hat type!");
+		}
+		else
+			configData[2].ChainParams.NumLEDs = newNum;
+	}
+	if (sender.id == "blinkperiod")
+		configData[2].ChainParams.BlinkPeriod = verifyNumber(sender.value, configData[2].ChainParams.BlinkPeriod);
+	if (sender.id == "brightnessctrl")
+		configData[2].ChainParams.Brightness.CtrlSource = sender.value;
+	if (sender.id == "brightnessaddr")
+		configData[2].ChainParams.Brightness.Addr = verifyNumber(sender.value, configData[2].ChainParams.Brightness.Addr);
+	if (sender.id == "brightnesslevel")
+		configData[2].ChainParams.Brightness.InitLevel = verifyNumber(sender.value, configData[2].ChainParams.Brightness.InitLevel);
+	if (sender.id == "mqtopledset")
+		configData[2].MQTT.Subscribe[0].Topic = sender.value;
+	if (sender.id == "incladdrset")
+		configData[2].MQTT.Subscribe[0].InclAddr = sender.checked;
+	if (sender.id == "mqtopledask")
+		configData[2].MQTT.Subscribe[1].Topic = sender.value;
+	if (sender.id == "incladdrask")
+		configData[2].MQTT.Subscribe[1].InclAddr = sender.checked;
+	if (sender.id == "mqtopledreply")
+		configData[2].MQTT.Publish[0].Topic = sender.value;
+	if (sender.id == "incladdrreply")
+		configData[2].MQTT.Publish[0].InclAddr = sender.checked;
+//	console.log(configData[2]);
+}
+
+function HSVtoRGB(hue, sat, val) 
+{
+	var h = hue / 255; //scaling from [0,255] to [0,1] interval
+	var s = sat / 255;
+	var v = val / 255;
+
+    var r, g, b, i, f, p, q, t;
+    if (arguments.length === 1) {
+        s = h.s, v = h.v, h = h.h;
+    }
+    i = Math.floor(h * 6);
+    f = h * 6 - i;
+    p = v * (1 - s);
+    q = v * (1 - f * s);
+    t = v * (1 - (1 - f) * s);
+    switch (i % 6) {
+        case 0: r = v, g = t, b = p; break;
+        case 1: r = q, g = v, b = p; break;
+        case 2: r = p, g = v, b = t; break;
+        case 3: r = p, g = q, b = v; break;
+        case 4: r = t, g = p, b = v; break;
+        case 5: r = v, g = p, b = q; break;
+    }
+    return [Math.round(r * 255), Math.round(g * 255), Math.round(b * 255)];
+}
+
+function rgbToHsv(r, g, b) 
+{
+	r /= 255, g /= 255, b /= 255;
+
+	var max = Math.max(r, g, b), min = Math.min(r, g, b);
+	var h, s, v = max;
+
+	var d = max - min;
+	s = max == 0 ? 0 : d / max;
+
+	if (max == min) 
+	{
+		h = 0; // achromatic
+	} 
+	else 
+	{
+		switch (max) 
+		{
+			case r: h = (g - b) / d + (g < b ? 6 : 0); break;
+			case g: h = (b - r) / d + 2; break;
+			case b: h = (r - g) / d + 4; break;
+		}
+		h /= 6;
+	}
+	return [Math.round(h*255), Math.round(s*255), Math.round(v*255)];
+}
+
+function findColorByName(thisArray, colName)
+{
+	function getCol(thisElement)
+	{
+//		console.log(thisElement);
+		return (thisElement.Name == colName);
+	}
+	
+	var thisIndex = thisArray.LEDCols.findIndex(getCol);
+	return (thisIndex >= 0 ? thisArray.LEDCols[thisIndex] : null);
+}
+
+function setColorData(sender)
+{
+	var thisRow = parseInt(sender.getAttribute("row"));
+	var thisCol = parseInt(sender.getAttribute("col"));
+	var thisIndex = parseInt(sender.getAttribute("index"));
+//	console.log(thisRow, thisCol, thisIndex);
+	switch (thisCol)
+	{
+		case -1: //empty table, create first entry
+			configData[2].LEDCols.push(JSON.parse(JSON.stringify(newColTemplate)));
+			loadColorTable(colorTable, configData[2].LEDCols);
+			break;
+		case 1: //Color Name
+			configData[2].LEDCols[thisRow].Name = sender.value;
+			break;
+		case 2: //Color RGB Value
+			var thisColorStr = sender.value.replace("#", "0x");
+			var thisColor = parseInt(thisColorStr);
+			configData[2].LEDCols[thisRow].RGBVal[0] = (thisColor & 0xFF0000) >> 16;
+			configData[2].LEDCols[thisRow].RGBVal[1] = (thisColor & 0x00FF00) >> 8;
+			configData[2].LEDCols[thisRow].RGBVal[2] = (thisColor & 0x0000FF);
+			configData[2].LEDCols[thisRow].HSVVal = rgbToHsv(configData[2].LEDCols[thisRow].RGBVal[0],configData[2].LEDCols[thisRow].RGBVal[1],configData[2].LEDCols[thisRow].RGBVal[2]);
+//			console.log(configData[2].LEDCols[thisRow]);
+			break;
+		case 3: //Manipulator buttons
+			var idStr = sender.id;
+			var thisElement;
+			if (thisIndex == 1)
+				configData[2].LEDCols.splice(thisRow+1, 0, JSON.parse(JSON.stringify(newColTemplate)));
+			if (thisIndex == 2)
+			{
+				var noReference = true;
+				var colName = configData[2].LEDCols[thisRow].Name;
+//				console.log("Searching for: " + colName);
+				for (var i = 0; i < configData[2].LEDDefs.length; i++)
+				{
+					for (var j = 0; j < configData[2].LEDDefs[i].LEDCmd.length; j++)
+					{
+						if (Array.isArray(configData[2].LEDDefs[i].LEDCmd[j].ColOn))
+						{
+							if (configData[2].LEDDefs[i].LEDCmd[j].ColOn.indexOf(colName) >= 0)
+							{
+								noReference = false;
+								break;
+							}
+						}
+						else
+							if (configData[2].LEDDefs[i].LEDCmd[j].ColOn == colName)
+							{
+								noReference = false;
+								break;
+							}
+						if (configData[2].LEDDefs[i].LEDCmd[j].ColOff != undefined)
+							if (Array.isArray(configData[2].LEDDefs[i].LEDCmd[j].ColOn))
+							{
+								if (configData[2].LEDDefs[i].LEDCmd[j].ColOn.indexOf(colName) >= 0)
+								{
+									noReference = false;
+									break;
+								}
+							}
+							else
+								if (configData[2].LEDDefs[i].LEDCmd[j].ColOn == colName)
+								{
+									noReference = false;
+									break;
+								}
+					}
+				}
+				if (noReference)
+					configData[2].LEDCols.splice(thisRow, 1);
+				else
+					alert(colName + " is currently used in the table below. Remove any reference before deleting this color!");
+			}
+			if ((thisIndex == 3) && (thisRow > 0))
+			{
+				thisElement = configData[2].LEDCols.splice(thisRow, 1);
+				configData[2].LEDCols.splice(thisRow-1,0, thisElement[0]);
+			}
+			if ((thisIndex == 4) && (thisRow < configData[2].LEDCols.length))
+			{
+				thisElement = configData[2].LEDCols.splice(thisRow, 1);
+				configData[2].LEDCols.splice(thisRow+1,0, thisElement[0]);
+			}
+//			console.log(configData[2].LEDCols);
+			loadColorTable(colorTable, configData[2].LEDCols);
+			break;
+	}
+}
+
+function setLEDData(sender)
+{
+	function adjustCmdLines(currentRow)
+	{
+		var numCmds;
+		var numAddr = 1;
+		if (Array.isArray(configData[2].LEDDefs[currentRow].CtrlAddr))
+			numAddr = configData[2].LEDDefs[currentRow].CtrlAddr.length;
+		switch (ledCtrlType.indexOf(configData[2].LEDDefs[currentRow].CtrlSource))
+		{
+//			case 9 : ; //used to be static signal, now switch
+			case 0 : numCmds = Math.pow(2, numAddr); break; //switch
+			case 1 : numCmds = 2 * numAddr; break; //signaldyn
+			case 2 : numCmds = 1; break; //signal
+			case 3 : numCmds = 5; break; //button
+			case 4 : numCmds = 1; break; //analog
+			case 5 : numCmds = Math.pow(2, numAddr); break; //block
+			case 6 : numCmds = 2; break; //transponder
+			case 7 : numCmds = 3; break; //power
+			case 8 : numCmds = 1; break; //constant
+		}
+		while (configData[2].LEDDefs[currentRow].LEDCmd.length < numCmds)
+			configData[2].LEDDefs[currentRow].LEDCmd.push(JSON.parse(JSON.stringify(newCmdTemplate)));
+		while (configData[2].LEDDefs[currentRow].LEDCmd.length > numCmds)
+			configData[2].LEDDefs[currentRow].LEDCmd.splice(configData[2].LEDDefs[currentRow].LEDCmd.length-1, 1);
+	}
+	
+	function adjustColorEntries(currentRow)
+	{
+		function verifyArray(thisArray, newLen, initVal)
+		{
+			var resArray = [];
+			var oldLen = 0;
+			var setVal = initVal;
+			if (Array.isArray(thisArray))
+			{
+				oldLen = Math.min(thisArray.length, newLen);
+				setVal = thisArray[oldLen - 1];
+				for (var i = 0; i < oldLen; i++)
+					resArray.push(thisArray[i]);
+			}
+			else
+				if (thisArray != undefined)
+					setVal = thisArray;
+			while (resArray.length < newLen)
+				resArray.push(setVal);
+			return resArray;
+		}
+		
+		if (configData[2].LEDDefs[currentRow].MultiColor)
+		{
+			var numCols = configData[2].LEDDefs[currentRow].LEDNums.length;
+			for (var i = 0; i < configData[2].LEDDefs[currentRow].LEDCmd.length; i++)
+			{	//for each command
+				configData[2].LEDDefs[currentRow].LEDCmd[i].ColOn = verifyArray(configData[2].LEDDefs[currentRow].LEDCmd[i].ColOn, numCols, "");
+				configData[2].LEDDefs[currentRow].LEDCmd[i].ColOff = verifyArray(configData[2].LEDDefs[currentRow].LEDCmd[i].ColOff, numCols, "");
+				configData[2].LEDDefs[currentRow].LEDCmd[i].Mode = verifyArray(configData[2].LEDDefs[currentRow].LEDCmd[i].Mode, numCols, "static");
+				configData[2].LEDDefs[currentRow].LEDCmd[i].Rate = verifyArray(configData[2].LEDDefs[currentRow].LEDCmd[i].Rate, numCols, 0);
+				configData[2].LEDDefs[currentRow].LEDCmd[i].Transition = verifyArray(configData[2].LEDDefs[currentRow].LEDCmd[i].Transition, numCols, "soft");
+			}
+		}
+		else
+		{
+			for (var i = 0; i < configData[2].LEDDefs[currentRow].LEDCmd.length; i++)
+			{	//for each command
+				var oldColOn = configData[2].LEDDefs[currentRow].LEDCmd[i].ColOn;
+//				console.log(typeof oldColOn);
+				if (typeof oldColOn == "object")
+					oldColOn = configData[2].LEDDefs[currentRow].LEDCmd[i].ColOn[0];
+				var oldColOff;
+				try
+				{
+					oldColOff = configData[2].LEDDefs[currentRow].LEDCmd[i].ColOff;
+					if (typeof oldColOff == "object")
+						oldColOff = configData[2].LEDDefs[currentRow].LEDCmd[i].ColOff[0];
+				}
+				catch(err) 
+				{
+					oldColOff = "";
+				}
+				configData[2].LEDDefs[currentRow].LEDCmd[i].ColOn = oldColOn;
+				configData[2].LEDDefs[currentRow].LEDCmd[i].ColOff = oldColOff;
+				configData[2].LEDDefs[currentRow].LEDCmd[i].Mode.splice(1, configData[2].LEDDefs[currentRow].LEDCmd[i].Mode.length-1);
+				configData[2].LEDDefs[currentRow].LEDCmd[i].Rate.splice(1, configData[2].LEDDefs[currentRow].LEDCmd[i].Rate.length-1);
+				configData[2].LEDDefs[currentRow].LEDCmd[i].Transition.splice(1, configData[2].LEDDefs[currentRow].LEDCmd[i].Transition.length-1);
+			}
+		}
+	}
+	
+	var thisRow = parseInt(sender.getAttribute("row"));
+	var thisCol = parseInt(sender.getAttribute("col"));
+	var thisIndex = parseInt(sender.getAttribute("index"));
+//	console.log(thisRow, thisCol, thisIndex);
+	switch (thisCol)
+	{
+		case -1: //empty table, create first entry
+			configData[2].LEDDefs.push(JSON.parse(JSON.stringify(newLEDTemplate)));
+			loadLEDTable(ledDefTable, configData[2].LEDDefs);
+			break;
+		case 1: //CommandSelector
+			var idStr = sender.id;
+			var thisElement;
+			switch (thisIndex)
+			{
+				case 1:
+					if (event.ctrlKey) //duplicate entry
+						configData[2].LEDDefs.splice(thisRow+1, 0, JSON.parse(JSON.stringify(configData[2].LEDDefs[thisRow])));
+					else //create new entry
+						configData[2].LEDDefs.splice(thisRow+1, 0, JSON.parse(JSON.stringify(newLEDTemplate)));
+					break;
+				case 2:
+					configData[2].LEDDefs.splice(thisRow, 1);
+					break;
+				case 3:
+					if (thisRow > 0)
+					{
+						thisElement = configData[2].LEDDefs.splice(thisRow, 1);
+						configData[2].LEDDefs.splice(thisRow-1,0, thisElement[0]);
+					}
+					break;
+				case 4:
+					if (thisRow < configData[2].LEDDefs.length)
+					{
+						thisElement = configData[2].LEDDefs.splice(thisRow, 1);
+						configData[2].LEDDefs.splice(thisRow+1,0, thisElement[0]);
+					}
+					break;
+				case 5:
+					{
+						var newArray = verifyNumArray(sender.value, ",");
+						if (newArray.length > 0)
+						{
+							if (newArray.length > 1)
+							{
+								configData[2].LEDDefs[thisRow].LEDNums = []; //make sure this is an array
+								for (var i = 0; i < newArray.length; i++)
+									configData[2].LEDDefs[thisRow].LEDNums.push(newArray[i]);
+								adjustColorEntries(thisRow);
+							}
+							else //==1
+							{
+								configData[2].LEDDefs[thisRow].LEDNums = [newArray[0]];
+								configData[2].LEDDefs[thisRow].MultiColor = false;
+							}
+						}
+						else
+							alert(sender.value + " is not a valid number or array. Please verify");
+					}
+					break;
+				case 6:
+					{
+						configData[2].LEDDefs[thisRow].MultiColor = sender.checked; 
+						adjustColorEntries(thisRow);
+					}
+					break;
+				case 7:
+					{
+						var oldSource = configData[workCfg].LEDDefs[thisRow].CtrlSource;
+						configData[workCfg].LEDDefs[thisRow].CtrlSource = ledCtrlType[sender.selectedIndex];
+						if (configData[workCfg].LEDDefs[thisRow].CtrlSource != oldSource)
+							adjustCmdLines(thisRow);
+					}
+					break;
+				case 8:
+					{
+						var newArray = verifyNumArray(sender.value, ",");
+						if (newArray.length > 0)
+						{
+							var oldLen = Array.isArray(configData[2].LEDDefs[thisRow].CtrlAddr) ? configData[2].LEDDefs[thisRow].CtrlAddr.length : 1;
+							if (newArray.length > 1)
+								configData[2].LEDDefs[thisRow].CtrlAddr = newArray; //make sure this is an array
+							else
+								configData[2].LEDDefs[thisRow].CtrlAddr = newArray[0];
+							//shorten array length.switch and block detector max 3, others max 1
+							if ([0,1,5].indexOf(ledCtrlType.indexOf(configData[2].LEDDefs[thisRow].CtrlSource)) >= 0)
+								while (newArray.length > 3)
+									newArray.pop();
+							else
+								while (newArray.length > 1)
+									newArray.pop();
+							sender.value = newArray;
+//							console.log(newArray);
+							if (newArray.length != oldLen)
+								adjustCmdLines(thisRow);
+//							console.log(sender.value);
+						}
+						else
+							alert(sender.value + " is not a valid number or array. Please verify");
+					}
+					break;
+				case 9:
+					configData[2].LEDDefs[thisRow].DisplayType = dispType[sender.selectedIndex];
+					break;
+				case 10:
+					{
+						var newArray = verifyNumArray(sender.value, ",");
+						if (newArray.length > 0)
+							configData[2].LEDDefs[thisRow].CondAddr = newArray;
+						else
+							configData[2].LEDDefs[thisRow].CondAddr = [];
+					}
+					break;
+				case 21:
+					setLEDTestDisplay(configData[2].LEDDefs[thisRow].LEDNums);
+					break;
+			} //thisIndex
+			loadLEDTable(ledDefTable, configData[2].LEDDefs);
+	} //thisCol
+}
+
+function loadColorTable(thisTable, thisData)
+{
+	function toHex(numbers) 
+	{
+		var r = numbers[0].toString(16), /* 1 */
+			g = numbers[1].toString(16),
+			b = numbers[2].toString(16);
+		while (r.length < 2) {r = "0" + r};
+		while (g.length < 2) {g = "0" + g};
+		while (b.length < 2) {b = "0" + b};
+		return "#" + r + g + b;
+	}
+
+	var th = document.getElementById(thisTable.id + "_head");
+	var tb = document.getElementById(thisTable.id + "_body");
+	var numCols = th.childNodes[0].children.length;
+
+	createDataTableLines(thisTable, [tfPos,tfNumericLong,tfColorPicker, tfManipulatorBox], thisData.length, "setColorData(this)");	
+
+	for (var i=0; i<thisData.length;i++)
+	{
+		var e = document.getElementById(thisTable.id + "_" + i.toString() + "_" + "1");
+		e.childNodes[0].value = thisData[i].Name;
+		var e = document.getElementById(thisTable.id + "_" + i.toString() + "_" + "2");
+		if (thisData[i].RGBVal == undefined)
+		{
+			thisData[i].RGBVal = HSVtoRGB(thisData[i].HSVVal[0], thisData[i].HSVVal[1], thisData[i].HSVVal[2]);
+//			console.log(thisData[i]);
+		}
+		var colStr = toHex(thisData[i].RGBVal);
+		e.childNodes[0].value = colStr;
+	}
+}
+
+function setLEDCmdData(sender)
+{
+	var thisRow = parseInt(sender.getAttribute("row"));
+	var thisCol = parseInt(sender.getAttribute("col"));
+	var thisIndex = parseInt(sender.getAttribute("index"));
+	var thisCmdLine = parseInt(sender.getAttribute("cmdline"));
+	if (isNaN(thisCmdLine))
+		thisCmdLine = parseInt(sender.parentElement.getAttribute("cmdline"));
+	var thisElement;
+	var thisID;
+//	console.log("setLEDCmdData", thisRow, thisCol, thisIndex, thisCmdLine, sender.id, configData[2].LEDDefs[thisRow]);
+	switch (thisIndex)
+	{
+		case 1: //new Cmd Entry
+			configData[2].LEDDefs[thisRow].LEDCmd.splice(thisCmdLine+1, 0, JSON.parse(JSON.stringify(newCmdTemplate)));
+			loadLEDTable(ledDefTable, configData[2].LEDDefs);
+			break;
+		case 2: //delete Cmd Entry
+			configData[2].LEDDefs[thisRow].LEDCmd.splice(thisCmdLine, 1);
+			loadLEDTable(ledDefTable, configData[2].LEDDefs);
+			break;
+		case 3: //Up
+			if (thisCmdLine > 0)
+			{
+				thisElement = configData[2].LEDDefs[thisRow].LEDCmd.splice(thisCmdLine, 1);
+				configData[2].LEDDefs[thisRow].LEDCmd.splice(thisCmdLine-1,0, thisElement[0]);
+			}
+			loadLEDTable(ledDefTable, configData[2].LEDDefs);
+			break;
+		case 4: //Down
+			if (thisCmdLine < configData[2].LEDDefs[thisRow].LEDCmd.length)
+			{
+				thisElement = configData[2].LEDDefs[thisRow].LEDCmd.splice(thisCmdLine, 1);
+				configData[2].LEDDefs[thisRow].LEDCmd.splice(thisCmdLine+1,0, thisElement[0]);
+			}
+			loadLEDTable(ledDefTable, configData[2].LEDDefs);
+			break;
+		case 6: //value
+			configData[2].LEDDefs[thisRow].LEDCmd[thisCol].Val = verifyNumber(sender.value, configData[2].LEDDefs[thisRow].LEDCmd[thisCol].Val);
+			break;
+		case 8: //oncolor
+			if (configData[2].LEDDefs[thisRow].MultiColor)
+			{
+				thisID = "ledselector" + thisRow.toString() + "_" + thisCmdLine.toString();
+				var e = document.getElementById(thisID);
+				var currSel = e.selectedIndex;
+				configData[2].LEDDefs[thisRow].LEDCmd[thisCol].ColOn[currSel] = configData[2].LEDCols[sender.selectedIndex].Name;
+			}
+			else
+				configData[2].LEDDefs[thisRow].LEDCmd[thisCol].ColOn = configData[2].LEDCols[sender.selectedIndex].Name;
+			break;
+		case 9: //offcolor
+			if (configData[2].LEDDefs[thisRow].MultiColor)
+			{
+				thisID = "ledselector" + thisRow.toString() + "_" + thisCmdLine.toString();
+				var e = document.getElementById(thisID);
+				var currSel = e.selectedIndex;
+				configData[2].LEDDefs[thisRow].LEDCmd[thisCol].ColOff[currSel] = configData[2].LEDCols[sender.selectedIndex].Name;
+			}
+			else
+			{
+				configData[2].LEDDefs[thisRow].LEDCmd[thisCol].ColOff = configData[2].LEDCols[sender.selectedIndex].Name;
+			}
+			break;
+		case 10: //Mode
+			if (configData[2].LEDDefs[thisRow].MultiColor)
+			{
+				thisID = "ledselector" + thisRow.toString() + "_" + thisCmdLine.toString();
+				var e = document.getElementById(thisID);
+				var currSel = e.selectedIndex;
+				configData[2].LEDDefs[thisRow].LEDCmd[thisCol].Mode[currSel] = ledModeType[sender.selectedIndex];
+			}
+			else
+				configData[2].LEDDefs[thisRow].LEDCmd[thisCol].Mode[0] = ledModeType[sender.selectedIndex];
+			break;
+		case 11: //Rate
+			if (configData[2].LEDDefs[thisRow].MultiColor)
+			{
+				thisID = "ledselector" + thisRow.toString() + "_" + thisCmdLine.toString();
+				var e = document.getElementById(thisID);
+				var currSel = e.selectedIndex;
+				configData[2].LEDDefs[thisRow].LEDCmd[thisCol].Rate[currSel] = verifyNumber(sender.value, configData[2].LEDDefs[thisRow].LEDCmd[thisCol].Rate[currSel]);
+			}
+			else
+				configData[2].LEDDefs[thisRow].LEDCmd[thisCol].Rate[0] = verifyNumber(sender.value, configData[2].LEDDefs[thisRow].LEDCmd[thisCol].Rate[0]);
+			break;
+		case 12: //Transition
+			if (configData[2].LEDDefs[thisRow].MultiColor)
+			{
+				thisID = "ledselector" + thisRow.toString() + "_" + thisCmdLine.toString();
+				var e = document.getElementById(thisID);
+				var currSel = e.selectedIndex;
+				configData[2].LEDDefs[thisRow].LEDCmd[thisCol].Transition[currSel] = ledTransitionType[sender.selectedIndex];
+			}
+			else
+				configData[2].LEDDefs[thisRow].LEDCmd[thisCol].Transition[0] = ledTransitionType[sender.selectedIndex];
+			break;
+		case 15: //select individual LED
+			var colorArray = [];
+			for (var i = 0; i < configData[2].LEDCols.length; i++)
+				colorArray.push(configData[2].LEDCols[i].Name);
+			var thisIndex = sender.selectedIndex;
+			thisID = "oncolsel_" + thisRow.toString() + "_" + thisCmdLine.toString();
+			var onColSel = document.getElementById(thisID);
+			thisID = "offcolsel_" + thisRow.toString() + "_" + thisCmdLine.toString();
+			var offColSel = document.getElementById(thisID);
+			onColSel.selectedIndex = colorArray.indexOf(configData[2].LEDDefs[thisRow].LEDCmd[thisCol].ColOn[thisIndex]);
+			offColSel.selectedIndex = colorArray.indexOf(configData[2].LEDDefs[thisRow].LEDCmd[thisCol].ColOff[thisIndex]);
+			
+			thisID = "modesel_" + thisRow.toString() + "_" + thisCmdLine.toString();
+			var modeSel = document.getElementById(thisID);
+			modeSel.selectedIndex = ledModeType.indexOf(configData[2].LEDDefs[thisRow].LEDCmd[thisCol].Mode[thisIndex]);
+			
+			thisID = "ratesel_" + thisRow.toString() + "_" + thisCmdLine.toString();
+			var rateSel = document.getElementById(thisID);
+			rateSel.value = configData[2].LEDDefs[thisRow].LEDCmd[thisCol].Rate[thisIndex];
+
+			thisID = "transitionsel_" + thisRow.toString() + "_" + thisCmdLine.toString();
+			var transitionSel = document.getElementById(thisID);
+			transitionSel.selectedIndex = ledTransitionType.indexOf(configData[2].LEDDefs[thisRow].LEDCmd[thisCol].Transition[thisIndex]);
+			
+			break;
+	}
+}
+
+function createColorSelectField(parentObj, lineIndex, cmdIndex, cmdLineData, evtHandler)
+{
+	var upperDiv = document.createElement("div");
+	upperDiv.setAttribute("class", "editorpanel");
+	var thisID;
+	if ((cmdLineData.CtrlSource == "signal") || (cmdLineData.CtrlSource == "analog"))
+	{
+		thisID = "cmdmanipulator_" + lineIndex.toString() + "_" + cmdIndex.toString();
+		var thisBox = tfManipulatorBox(lineIndex, 1, thisID, evtHandler);
+		tfSetCoordinate(thisBox, lineIndex, cmdIndex, 1, thisID);
+		thisBox.setAttribute("cmdline", cmdIndex);
+		upperDiv.append(thisBox);
+	}
+			
+	var thisText = tfText(lineIndex, cmdIndex, "", evtHandler);
+	thisText.innerHTML = "Value:&nbsp;";
+	upperDiv.append(thisText);
+	
+	thisID = "ctrlvalue_" + lineIndex.toString() + "_" + cmdIndex.toString();
+	var thisElement;
+	if ((cmdLineData.CtrlSource == "signal") || (cmdLineData.CtrlSource == "analog"))
+	{
+		thisElement = tfNumeric(lineIndex, 5, thisID, evtHandler);
+		tfSetCoordinate(thisElement, lineIndex, cmdIndex, 5, thisID);
+		thisElement.setAttribute("cmdline", cmdIndex);
+		thisElement.value = cmdLineData.LEDCmd[cmdIndex].Val;
+		tfSetCoordinate(thisElement, lineIndex, cmdIndex, 6, thisID);
+		thisElement.setAttribute("index", 6);
+	}
+	else
+//add code for	if (cmdLineData.CtrlSource == "transponder")
+	{
+		thisElement = tfText(lineIndex, 6, thisID, evtHandler);
+		tfSetCoordinate(thisElement, lineIndex, cmdIndex, 6, thisID);
+		switch (ledCtrlType.indexOf(cmdLineData.CtrlSource))
+		{
+			case 0: //switch
+			case 9: //signalstat
+				cmdLineData.LEDCmd[cmdIndex].Val = cmdIndex;
+				var bitMask = 0x01;
+				var dispStr = "";
+				var numAddr = 1;
+				var isArray = Array.isArray(cmdLineData.CtrlAddr);
+				if (isArray)
+					numAddr = cmdLineData.CtrlAddr.length;
+				for (var i = 0; i < numAddr; i++)
+				{
+					if (i > 0) dispStr += ", ";
+					if (isArray)
+						dispStr += cmdLineData.CtrlAddr[i].toString() + ((cmdIndex & bitMask) == 0 ? "t" : "c");
+					else
+						dispStr += cmdLineData.CtrlAddr.toString() + ((cmdIndex & bitMask) == 0 ? "t" : "c");
+					bitMask = bitMask << 1;
+				}
+				thisElement.innerHTML = dispStr;
+				break;
+			case 1: //signaldyn
+				cmdLineData.LEDCmd[cmdIndex].Val = cmdIndex;
+				var isArray = Array.isArray(cmdLineData.CtrlAddr);
+				if (isArray)
+					thisElement.innerHTML = cmdLineData.CtrlAddr[cmdIndex>>1].toString() + ((cmdIndex & 0x01) == 0 ? "t" : "c");
+				else
+					thisElement.innerHTML = cmdLineData.CtrlAddr.toString() + ((cmdIndex & 0x01) == 0 ? "t" : "c");
+				break;
+			case 3: //button
+				cmdLineData.LEDCmd[cmdIndex].Val = cmdIndex; //btnType.indexOf(cmdIndex);
+				thisElement.innerHTML = buttonValDispType[cmdIndex];
+				break;
+			case 5: //block detector
+				cmdLineData.LEDCmd[cmdIndex].Val = cmdIndex;
+				var bitMask = 0x01;
+				var dispStr = "";
+				var numAddr = 1;
+				var isArray = Array.isArray(cmdLineData.CtrlAddr);
+				if (isArray)
+					numAddr = cmdLineData.CtrlAddr.length;
+				for (var i = 0; i < numAddr; i++)
+				{
+					if (i > 0) dispStr += ", ";
+					if (isArray)
+						dispStr += cmdLineData.CtrlAddr[i].toString() + ((cmdIndex & bitMask) == 0 ? " fr" : " oc");
+					else
+						dispStr += cmdLineData.CtrlAddr.toString() + ((cmdIndex & bitMask) == 0 ? " fr" : " oc");
+					bitMask = bitMask << 1;
+				}
+				thisElement.innerHTML = dispStr;
+				break;
+			case 6: //transponder
+				cmdLineData.LEDCmd[cmdIndex].Val = cmdIndex; //trackPwrType.indexOf(cmdIndex);
+				thisElement.innerHTML = transponderValDispType[cmdIndex];
+				break;
+			case 7: //power
+				cmdLineData.LEDCmd[cmdIndex].Val = cmdIndex; //trackPwrType.indexOf(cmdIndex);
+				thisElement.innerHTML = powerValDispType[cmdIndex];
+				break;
+			case 8: //constant
+				cmdLineData.LEDCmd[cmdIndex].Val = 1;
+				thisElement.innerHTML = "On";
+				break;
+		}
+	}
+	upperDiv.append(thisElement);
+
+	if (cmdLineData.MultiColor) 
+	{
+		thisID = "ledseltext" + lineIndex.toString() + "_" + cmdIndex.toString();
+		thisText = tfText(lineIndex, cmdIndex, thisID, evtHandler);
+		thisText.innerHTML = "Select LED:";
+		upperDiv.append(tfTab(lineIndex, cmdIndex, '&nbsp;',""));
+		upperDiv.append(thisText);
+		upperDiv.append(tfTab(lineIndex, cmdIndex, '&nbsp;',""));
+		thisID = "ledselector" + lineIndex.toString() + "_" + cmdIndex.toString();
+		thisElement = tfLEDAddrSel(thisElement, lineIndex, thisID, evtHandler, cmdLineData.LEDNums);
+		thisElement.setAttribute("cmdline", cmdIndex);
+		tfSetCoordinate(thisElement, lineIndex, cmdIndex, 15, thisID);
+		upperDiv.append(thisElement);
+	}
+
+	var colorArray = [];
+	for (var i = 0; i < configData[2].LEDCols.length; i++)
+		colorArray.push(configData[2].LEDCols[i].Name);
+
+	thisID = "oncoltxt_" + lineIndex.toString() + "_" + cmdIndex.toString();
+	thisText = tfText(lineIndex, cmdIndex, thisID, evtHandler);
+	thisText.innerHTML = "On Color:";
+	thisText.setAttribute("cmdline", cmdIndex);
+	upperDiv.append(tfTab(lineIndex, cmdIndex, '&nbsp;',""));
+	upperDiv.append(thisText);
+	upperDiv.append(tfTab(lineIndex, cmdIndex, '&nbsp;',""));
+	
+	thisID = "oncolsel_" + lineIndex.toString() + "_" + cmdIndex.toString();
+	thisElement = tfColorSelector(lineIndex, cmdIndex, thisID, evtHandler, colorArray);
+	thisElement.setAttribute("cmdline", cmdIndex);
+	if (cmdLineData.MultiColor)
+		thisElement.selectedIndex = colorArray.indexOf(cmdLineData.LEDCmd[cmdIndex].ColOn[0]);
+	else
+		thisElement.selectedIndex = colorArray.indexOf(cmdLineData.LEDCmd[cmdIndex].ColOn);
+	tfSetCoordinate(thisElement, lineIndex, cmdIndex, 8, thisID);
+	upperDiv.append(thisElement);
+
+	thisID = "offcoltxt_" + lineIndex.toString() + "_" + cmdIndex.toString();
+	thisText = tfText(lineIndex, cmdIndex, thisID, evtHandler);
+	thisText.innerHTML = "Off Color:";
+	thisText.setAttribute("cmdline", cmdIndex);
+	upperDiv.append(tfTab(lineIndex, cmdIndex, '&nbsp;',""));
+	upperDiv.append(thisText);
+	upperDiv.append(tfTab(lineIndex, cmdIndex, '&nbsp;',""));
+
+//	colorArray.splice(0,0, "none");
+	
+	thisID = "offcolsel_" + lineIndex.toString() + "_" + cmdIndex.toString();
+	thisElement = tfColorSelector(lineIndex, cmdIndex, thisID, evtHandler, colorArray);
+	thisElement.setAttribute("cmdline", cmdIndex);
+
+	if (cmdLineData.MultiColor)
+		thisElement.selectedIndex = colorArray.indexOf(cmdLineData.LEDCmd[cmdIndex].ColOff[0]);
+	else
+		if (cmdLineData.LEDCmd[cmdIndex].ColOff == undefined)
+			thisElement.selectedIndex = -1;
+		else
+			thisElement.selectedIndex = colorArray.indexOf(cmdLineData.LEDCmd[cmdIndex].ColOff);
+	tfSetCoordinate(thisElement, lineIndex, cmdIndex, 9, thisID);
+	upperDiv.append(thisElement);
+
+	parentObj.append(upperDiv);
+	
+	var lowerDiv = document.createElement("div");
+	lowerDiv.setAttribute("class", "editorpanel");
+	if ((cmdLineData.CtrlSource == "signal") || (cmdLineData.CtrlSource == "analog"))
+	{
+		var thisSpacer = document.createElement("div");
+		thisSpacer.setAttribute("class", "manipulatorbox");
+		lowerDiv.append(thisSpacer);
+	}
+	thisText = tfText(lineIndex, cmdIndex, "", evtHandler);
+	thisText.innerHTML = "Mode:&nbsp;";
+	lowerDiv.append(thisText);
+
+	thisID = "modesel_" + lineIndex.toString() + "_" + cmdIndex.toString();
+	thisElement = tfModeSelector(lineIndex, cmdIndex, thisID, evtHandler);
+	thisElement.setAttribute("cmdline", cmdIndex);
+	if (!Array.isArray(cmdLineData.LEDCmd[cmdIndex].Mode))
+	{
+		var oldMode = cmdLineData.LEDCmd[cmdIndex].Mode;
+		cmdLineData.LEDCmd[cmdIndex].Mode = [];
+		cmdLineData.LEDCmd[cmdIndex].Mode.push(oldMode);
+	}
+	thisElement.selectedIndex = ledModeType.indexOf(cmdLineData.LEDCmd[cmdIndex].Mode[0]);
+	tfSetCoordinate(thisElement, lineIndex, cmdIndex, 10, thisID);
+	lowerDiv.append(thisElement);
+
+	thisText = tfText(lineIndex, cmdIndex, "", evtHandler);
+	thisText.innerHTML = "&nbsp;Rate:&nbsp;";
+	lowerDiv.append(thisText);
+
+	thisID = "ratesel_" + lineIndex.toString() + "_" + cmdIndex.toString();
+	thisElement = tfNumeric(lineIndex, 5, thisID, evtHandler);
+	thisElement.setAttribute("cmdline", cmdIndex);
+	if (!Array.isArray(cmdLineData.LEDCmd[cmdIndex].Rate))
+	{
+		var oldRate = cmdLineData.LEDCmd[cmdIndex].Rate;
+		cmdLineData.LEDCmd[cmdIndex].Rate = [];
+		cmdLineData.LEDCmd[cmdIndex].Rate.push(oldRate);
+	}
+	thisElement.value = cmdLineData.LEDCmd[cmdIndex].Rate[0];
+	tfSetCoordinate(thisElement, lineIndex, cmdIndex, 11, thisID);
+	lowerDiv.append(thisElement);
+
+	thisText = tfText(lineIndex, cmdIndex, "", evtHandler);
+	thisText.innerHTML = "&nbsp;Transition:&nbsp;";
+	lowerDiv.append(thisText);
+
+	thisID = "transitionsel_" + lineIndex.toString() + "_" + cmdIndex.toString();
+	thisElement = tfTransitionSelector(lineIndex, cmdIndex, thisID, evtHandler);
+	thisElement.setAttribute("cmdline", cmdIndex);
+	if (!Array.isArray(cmdLineData.LEDCmd[cmdIndex].Transition))
+	{
+		var oldTransition = cmdLineData.LEDCmd[cmdIndex].Transition;
+		cmdLineData.LEDCmd[cmdIndex].Transition = [];
+		cmdLineData.LEDCmd[cmdIndex].Transition.push(oldTransition);
+	}
+	thisElement.selectedIndex = ledTransitionType.indexOf(cmdLineData.LEDCmd[cmdIndex].Transition[0]);
+	tfSetCoordinate(thisElement, lineIndex, cmdIndex, 12, thisID);
+	lowerDiv.append(thisElement);
+
+	parentObj.append(lowerDiv);
+}
+
+function buildCmdLines(lineIndex, lineData)
+{
+	var thisLineBase = document.getElementById("ledconfig_inp_" + lineIndex.toString() + "_2");
+	while (thisLineBase.hasChildNodes())
+		thisLineBase.removeChild(thisLineBase.childNodes[0]); //delete rows
+	if (lineData.LEDCmd.length > 0)
+		for (var i=0; i<lineData.LEDCmd.length; i++)
+		{
+			var masterDiv = document.createElement("div");
+			masterDiv.setAttribute("class", "mastertile");
+			if ((i % 2) == 0) //even
+				masterDiv.style.backgroundColor = "#F5F5F5";
+			else
+				masterDiv.style.backgroundColor = "#D3D3D3";
+			var thisID = "master_" + lineIndex.toString() + "_" + i.toString();
+			tfSetCoordinate(masterDiv, i, 0, 0, thisID);
+			thisLineBase.append(masterDiv);
+
+			thisID = "pos_" + lineIndex.toString() + "_" + i.toString();
+			masterDiv.append(tfPos(i, -1, thisID, ""));
+			thisID = "cmdbasedata_" + lineIndex.toString() + "_" + i.toString();
+			var mainDiv = document.createElement("div");
+			mainDiv.setAttribute("class", "editortile");
+			tfSetCoordinate(mainDiv, i, 0, 0, thisID);
+			masterDiv.append(mainDiv);
+			
+			createColorSelectField(mainDiv, lineIndex, i, lineData, "setLEDCmdData(this)");
+		}
+	else
+	{
+		var mainDiv = document.createElement("div");
+		mainDiv.setAttribute("class", "editortile");
+		tfSetCoordinate(mainDiv, i, 0, 0, thisID);
+		thisLineBase.append(mainDiv);
+		var thisId = "cmdbasedata_initadd" + lineIndex.toString();
+		var newRB = tfTableStarterBox(lineIndex, -1, thisId, "setLEDCmdData(this)");
+		mainDiv.append(newRB);
+	}
+
+}
+//------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+function loadLEDTable(thisTable, thisData)
+{
+		function selByName(prmVal)
+		{
+			return (prmVal == thisData[i].CtrlSource);
+		}
+
+//	console.log(thisData);
+	var th = document.getElementById(thisTable.id + "_head");
+	var tb = document.getElementById(thisTable.id + "_body");
+	var numCols = th.childNodes[0].children.length;
+	createDataTableLines(thisTable, [tfPos, tfLEDSelector, tfCommandEditor], thisData.length, "setLEDData(this)");
+	for (var i=0; i<thisData.length;i++)
+	{
+		var e = document.getElementById("lednrbox_" + i.toString() + "_" + "1");
+		e.value = thisData[i].LEDNums;
+
+		var e = document.getElementById("multicolor_" + i.toString() + "_" + "1");
+		if (Array.isArray(thisData[i].LEDNums) && (thisData[i].LEDNums.length > 1))
+			e.parentElement.style.visibility = "none";
+		else
+			e.parentElement.style.visibility = "hidden";
+		e.checked = thisData[i].MultiColor;
+//		console.log("Check Multi Color");
+		
+		var e = document.getElementById("disptypebox_" + i.toString() + "_" + "1");
+		e.selectedIndex = dispType.indexOf(thisData[i].DisplayType);
+		if ([2,4].indexOf(ledCtrlType.indexOf(thisData[i].CtrlSource)) >= 0)
+//		if ((thisData[i].CtrlSource == "analog") || (thisData[i].CtrlSource == "signal"))
+			e.parentElement.style.visibility = "none";
+		else
+			e.parentElement.style.visibility = "hidden";
+
+		var e = document.getElementById("transpselbox_" + i.toString() + "_" + "1");
+		if ([6].indexOf(ledCtrlType.indexOf(thisData[i].CtrlSource)) >= 0)
+		{
+			e.value = thisData[i].CondAddr;
+			e.parentElement.style.visibility = "none";
+		}
+		else
+			e.parentElement.style.visibility = "hidden";
+
+		var e = document.getElementById("addressbox_" + i.toString() + "_" + "1");
+		e.value = thisData[i].CtrlAddr;
+		
+		var e = document.getElementById("cmdlistbox_" + i.toString() + "_" + "1");
+		e.selectedIndex = ledCtrlType.indexOf(thisData[i].CtrlSource);
+		buildCmdLines(i, thisData[i]);
+
+	}
+//	console.log();
+}
+
+function loadNodeDataFields(jsonData)
+{
+	//get a copy of node.cfg in case it is needed
+	var interfaceType = jsonData.InterfaceTypeList[jsonData.InterfaceIndex].Type;
+
+	setVisibility(interfaceType == 3, mqttTitle);
+	setVisibility(interfaceType == 3, mqttBox);
+	setVisibility(interfaceType != 3, generalBox1);
+	setVisibility(interfaceType != 3, generalBox2);
+	setVisibility(interfaceType != 3, colorTableDiv);
+}
+
+function constructPageContent(contentTab)
+{
+	var tempObj;
+	mainScrollBox = createEmptyDiv(contentTab, "div", "pagetopicboxscroll-y", "nodeconfigdiv");
+		createPageTitle(mainScrollBox, "div", "tile-1", "BasicCfg_Title", "h1", "LED Chain Configuration");
+		createPageTitle(mainScrollBox, "div", "tile-1", "", "h2", "General Settings");
+		tempObj = createEmptyDiv(mainScrollBox, "div", "tile-1", "");
+			createDropdownselector(tempObj, "tile-1_4", "Color Sequence:", ["RGB", "GRB"], "colorseq", "setLEDBasics(this)");
+			createTextInput(tempObj, "tile-1_4", "# of LEDs:", "n/a", "numleds", "setLEDBasics(this)");
+		generalBox1 = createEmptyDiv(mainScrollBox, "div", "tile-1", "");
+			createTextInput(generalBox1, "tile-1_4", "System Blink Period:", "n/a", "blinkperiod", "setLEDBasics(this)");
+		generalBox2 = createEmptyDiv(mainScrollBox, "div", "tile-1", "");
+			createTextInput(generalBox2, "tile-1_4", "Brightness Ctrl:", "n/a", "brightnessctrl", "setLEDBasics(this)");
+			createTextInput(generalBox2, "tile-1_4", "Address:", "n/a", "brightnessaddr", "setLEDBasics(this)");
+			createTextInput(generalBox2, "tile-1_4", "Initial Level:", "n/a", "brightnesslevel", "setLEDBasics(this)");
+
+		mqttTitle = createPageTitle(mainScrollBox, "div", "tile-1", "", "h2", "MQTT Settings");
+		mqttBox = createEmptyDiv(mainScrollBox, "div", "tile-1", "");
+			tempObj = createEmptyDiv(mqttBox, "div", "tile-1", "");
+			createTextInput(tempObj, "tile-1_4", "(S) LED Cmd. Topic:", "n/a", "mqtopledset", "setLEDBasics(this)");
+			createCheckbox(tempObj, "tile-1_4", "Include LED #", "incladdrset", "setLEDBasics(this)");
+			tempObj = createEmptyDiv(mqttBox, "div", "tile-1", "");
+			createTextInput(tempObj, "tile-1_4", "(S) LED Query Topic:", "n/a", "mqtopledask", "setLEDBasics(this)");
+			createCheckbox(tempObj, "tile-1_4", "Include LED #", "incladdrask", "setLEDBasics(this)");
+			tempObj = createEmptyDiv(mqttBox, "div", "tile-1", "");
+			createTextInput(tempObj, "tile-1_4", "(P) LED Reply Topic:", "n/a", "mqtopledreply", "setLEDBasics(this)");
+			createCheckbox(tempObj, "tile-1_4", "Include LED #", "incladdrreply", "setLEDBasics(this)");
+
+		colorTableDiv = createEmptyDiv(mainScrollBox, "div", "tile-1", "");
+		createPageTitle(colorTableDiv, "div", "tile-1", "", "h2", "Color Definitions");
+		colorTable = createDataTable(colorTableDiv, "tile-1_2", ["Pos","Color Name", "Select Color", "Add/Delete/Move Color"], "colorconfig", "");
+
+		createPageTitle(colorTableDiv, "div", "tile-1", "", "h2", "LED Settings");
+
+		ledDefTable = createDataTable(colorTableDiv, "tile-1", ["Pos","IF THIS: (LED/Input Selector)", "THEN THAT: (LED Command Sequence Editor)"], "ledconfig", "");
+
+		tempObj = createEmptyDiv(mainScrollBox, "div", "tile-1", "");
+			createButton(tempObj, "", "Save & Restart", "btnSave", "saveSettings(this)");
+			createButton(tempObj, "", "Cancel", "btnCancel", "cancelSettings(this)");
+		tempObj = createEmptyDiv(mainScrollBox, "div", "tile-1", "");
+			createButton(tempObj, "", "Save to File", "btnDownload", "downloadSettings(this)");
+}
+
+function loadDataFields(jsonData)
+{
+	
+	configData[workCfg] = upgradeJSONVersion(jsonData);
+//	console.log(configData[workCfg]);
+	switch (configData[workCfg].ChainParams.ColorSeq)
+	{
+		case "RGB": setDropdownValue("colorseq", 0); break;
+		case "GRB": setDropdownValue("colorseq", 1); break;
+	}
+	
+	writeInputField("numleds", configData[workCfg].ChainParams.NumLEDs);
+	writeInputField("blinkperiod", configData[workCfg].ChainParams.BlinkPeriod);
+	writeInputField("brightnessctrl", configData[workCfg].ChainParams.Brightness.CtrlSource);
+	writeInputField("brightnesslevel", configData[workCfg].ChainParams.Brightness.InitLevel);
+	writeInputField("brightnessaddr", configData[workCfg].ChainParams.Brightness.Addr);
+	writeInputField("mqtopledset", configData[workCfg].MQTT.Subscribe[0].Topic);
+	writeCBInputField("incladdrset", configData[workCfg].MQTT.Subscribe[0].InclAddr);
+	writeInputField("mqtopledask", configData[workCfg].MQTT.Subscribe[1].Topic);
+	writeCBInputField("incladdrask", configData[workCfg].MQTT.Subscribe[1].InclAddr);
+	writeInputField("mqtopledreply", configData[workCfg].MQTT.Publish[0].Topic);
+	writeCBInputField("incladdrreply", configData[workCfg].MQTT.Publish[0].InclAddr);
+	loadColorTable(colorTable, configData[workCfg].LEDCols);
+	loadLEDTable(ledDefTable, configData[workCfg].LEDDefs);
+}
+
+function processLocoNetInput(jsonData)
+{
+}

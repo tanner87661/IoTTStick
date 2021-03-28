@@ -36,13 +36,17 @@ uint32_t pwrDispTimer = millis();
 uint32_t dccDispTimer = millis();
 
 bool darkScreen = false;
+bool hatPresent = false;
+bool pwrUSB = false;
+bool pwrDC = false;
+
+float axpBusVoltage = 0;
+float axpInVoltage = 0;
 
 uint8_t wifiResetCtr = 0;
 uint32_t wifiResetLastClick = 0;
 #define wifiResetMaxDelay 2000
 #define wifiResetReqCount 3
-
-OneDimKalman batCurrent;
 
 char dispBuffer[oneShotBufferSize][dccStrLen];
 
@@ -71,10 +75,15 @@ void getRTCTime()
 
 void processDisplay()
 {
-  if (!(batCurrent.getEstimate(M5.Axp.GetBatCurrent()) < (-5))) //check for Power Status, but not for BlackHat
+  axpBusVoltage = M5.Axp.GetVBusVoltage();
+  axpInVoltage = M5.Axp.GetVinVoltage();
+  hatPresent = axpInVoltage > 0.5;
+  pwrUSB = axpBusVoltage > 4.5;
+  pwrDC = axpInVoltage > 4.7;
+  M5.Axp.setEXTEN(pwrUSB || pwrDC);
+  
+  if (pwrUSB || pwrDC) //check for Power Status, but not for BlackHat
   {
-//  if !((M5.Axp.GetVinCurrent() > 0) || (M5.Axp.GetVBusCurrent() > 0)) //check for Power Status
-//  if ((M5.Axp.GetVinVoltage() > 4.8) || (M5.Axp.GetVBusVoltage() > 4.6)) //check for Power Status
     pwrOffTimer = millis();
     if (darkScreen)
     {
@@ -95,7 +104,7 @@ void processDisplay()
       }
       else
       {
-        saveToFile(bufferFileName);
+        prepareShutDown();
         M5.Axp.PowerOff();
       }
     }
@@ -183,14 +192,24 @@ void processDisplay()
 //        Serial.println(useInterface.devId);
         switch (useInterface.devId)
         {
-          case 1: dccViewerPage(); break;
+          case 1:;
+          case 9:;
+          case 10: dccViewerPage(); break;
+          
           case 2:;
           case 3:;
-          case 4: lnViewerPage(); break;
+          case 4:;
+          case 11:;
+          case 12:;
+          case 13:;
+          case 14:;
+          case 15:;
+          case 16: lnViewerPage(); break;
+          
           case 5:;
-          case 6:
+          case 6:;
+          case 7: olcbViewerPage(); break;
           case 8: mqttViewerPage(); break;
-          case 9: dccViewerPage(); break;
         }
         clearDisplay();
         m5DispLine = 0;
@@ -227,12 +246,17 @@ void processDisplay()
         break;
     }
   }
-  uint8_t pwrBtn = M5.BtnC.getPwrPin();
+  #ifdef useM5Lite
+    uint8_t pwrBtn = M5.BtnC.getPwrPin();
+  #else
+    uint8_t pwrBtn = M5.Axp.GetBtnPress(); //the power button, 1 for long, 2 for short
+  #endif
+  
   if(pwrBtn) 
   {
     pwrOffTimer = millis();
     if (pwrBtn == 1) //long press
-      saveToFile(bufferFileName); //could be on the way to power off, so we save the data to SPIFFS
+      prepareShutDown(); //could be on the way to power off, so we save the data to SPIFFS
     switch (m5CurrentPage)
     {
       case 3: //Wifi Status page active
@@ -459,6 +483,13 @@ void setStatusPage()
     case 7: drawText("using OpenLCB", 5, 18, 2); break; //OpenLCB 
     case 8: drawText("using MQTT", 5, 18, 2); break; //native MQTT 
     case 9: drawText("using DCC to MQTT", 5, 18, 2); break;
+    case 10: drawText("using DCC from MQTT", 5, 18, 2); break;
+    case 11: drawText("using LN/TCP(Server)", 5, 18, 2); break;
+    case 12: drawText("using LN/TCP(Client)", 5, 18, 2); break;
+    case 13: drawText("using LN/MQTT/TCP(Server)", 5, 18, 2); break;
+    case 14: drawText("using LN Loopback/TCP(Server)", 5, 18, 2); break;
+    case 15: drawText("using LN-LB/MQTT/TCP(Server)", 5, 18, 2); break;
+    case 16: drawText("using LN Loopback", 5, 18, 2); break;
     default: drawText("unknown", 5, 18, 2); break;
   }
   if ((useInterface.devId == 4) || (useInterface.devId == 7))
@@ -469,6 +500,20 @@ void setStatusPage()
   String modList = "[";
   if (eventHandler)
     modList += "Evnt Hdlr";
+/*
+  if (secElHandlerList)
+  {
+    if (modList.length() > 1)
+      modList += ", ";
+    modList += "Sec El";
+  }
+*/  
+//  if (sensorIntegrHandlerList)
+//  {
+//    if (modList.length > 1)
+//      modList += ", ";
+//    modList += "Sensor Chain";
+//  }
   modList += "]";
   drawText(&modList[0], 5, 63, 2); 
 }
@@ -489,18 +534,19 @@ void setPwrStatusPage()
   }
   sprintf(outText, "IoTT Stick V. %c.%c.%c", BBVersion[0], BBVersion[1], BBVersion[2]);
   drawText(outText, 5, 3, 2);
-
   sprintf(outText, "Stick Temp: %.1f C \n", M5.Axp.GetTempInAXP192());
   drawText(outText, 5, 20, 1);
   sprintf(outText, "Bat:  V: %.1fV I: %.1fmA\n", M5.Axp.GetBatVoltage(), M5.Axp.GetBatCurrent());
   drawText(outText, 5, 30, 1);
-  sprintf(outText, "USB:  V: %.1fV I: %.1fmA\n", M5.Axp.GetVBusVoltage(), M5.Axp.GetVBusCurrent());
+  M5.Lcd.setTextColor(pwrUSB ? TFT_BLACK : TFT_RED, TFT_LIGHTGREY);
+  sprintf(outText, "USB:  V: %.1fV I: %.1fmA\n", axpBusVoltage, M5.Axp.GetVBusCurrent());
   drawText(outText, 5, 40, 1);
-  sprintf(outText, "5VIn: V: %.1fV I: %.1fmA\n", M5.Axp.GetVinVoltage(), M5.Axp.GetVinCurrent());
+  M5.Lcd.setTextColor(pwrDC ? TFT_BLACK : hatPresent ? TFT_BLUE : TFT_RED, TFT_LIGHTGREY);
+  sprintf(outText, "5VIn: V: %.1fV I: %.1fmA\n", axpInVoltage, M5.Axp.GetVinCurrent());                                                                                                                                                               
   drawText(outText, 5, 50, 1);
+  M5.Lcd.setTextColor(TFT_BLACK, TFT_LIGHTGREY);
   sprintf(outText, "Bat Pwr: %.1fmW", M5.Axp.GetBatPower());
   drawText(outText, 5, 60, 1);
-
   unsigned long allSeconds=millis()/1000;
   int runHours= allSeconds/3600;
   int secsRemaining=allSeconds%3600;
@@ -526,6 +572,24 @@ void lnViewerPage()
   drawText("LocoNet Viewer", 5, 3, 2);
   m5DispLine = 0;
   useM5Viewer = 1;
+}
+
+void olcbViewerPage()
+{
+  M5.Lcd.fillScreen(TFT_LIGHTGREY);
+  M5.Lcd.setTextColor(TFT_BLACK, TFT_LIGHTGREY);
+  switch (screenDef)
+  {
+    case 0: 
+      drawLogo(140, 0, 0);
+      break;
+    case 1: 
+      drawLogo(210, 0, 0);
+      break;
+  }
+  drawText("OpenLCB Viewer", 5, 3, 2);
+  m5DispLine = 0;
+  useM5Viewer = 3;
 }
 
 void dccViewerPage()
@@ -575,17 +639,40 @@ void mqttViewerPage()
 String getLNString(lnReceiveBuffer * newData)
 {
   String outText;
+  char hexbuf[4];
   for (byte i=0; i < newData->lnMsgSize; i++)
   { 
-    if (i > 0)
-      outText += ",0x";
+    sprintf(hexbuf, "0x%02X", newData->lnData[i]);
+    if (i==0)
+      outText += String(hexbuf);
     else
-      outText += "0x";
-    if (newData->lnData[i] < 16)
-      outText += "0";
-    String thisData = String(newData->lnData[i],16);
-    thisData.toUpperCase();
-    outText += thisData;
+      outText += ',' + String(hexbuf);
+  }
+  return outText;  
+}
+
+String getOLCBString(lnReceiveBuffer * newData)
+{
+  String outText = "";
+  olcbMsg thisMsg;
+  if (gc_format_parse_olcb(&thisMsg, newData) >= 0)
+  {
+    String mtiData = String(thisMsg.MTI,16) + " ";
+    mtiData.toUpperCase();
+    outText += String(thisMsg.canFrameType) + " ";
+    outText += "M:0x" + mtiData;
+    for (byte i=0; i < thisMsg.dlc; i++)
+    { 
+      if (i > 0)
+        outText += ",0x";
+      else
+        outText += "0x";
+      if (thisMsg.olcbData.u8[i] < 16)
+        outText += "0";
+      String thisData = String(thisMsg.olcbData.u8[i],16);
+      thisData.toUpperCase();
+      outText += thisData;
+    }
   }
   return outText;  
 }
@@ -593,7 +680,6 @@ String getLNString(lnReceiveBuffer * newData)
 String getMQTTString(char * topic, byte * payload)
 {
   String outText = "sample message";
-
   return outText;  
 }
 
@@ -613,6 +699,21 @@ void processLNtoM5(lnReceiveBuffer * newData)
 {
   String emptyLine = "                                                                      ";
   String outText = getLNString(newData);
+  strncpy(dispBuffer[m5DispLine], outText.c_str(), dccStrLen);
+  uint8_t dispY = 0;
+  for (int i = 0; i < oneShotBufferSize; i++)
+  {
+    dispY = (15 * (i+1)) + 5;
+    drawText(&emptyLine[0], 5, dispY, 1);
+    drawText(&dispBuffer[(m5DispLine+oneShotBufferSize-i) % oneShotBufferSize][0], 5, dispY, 1);
+  }
+  m5DispLine = (m5DispLine + 1) % oneShotBufferSize; //line
+}
+
+void processOLCBtoM5(lnReceiveBuffer * newData)
+{
+  String emptyLine = "                                                                      ";
+  String outText = getOLCBString(newData);
   strncpy(dispBuffer[m5DispLine], outText.c_str(), dccStrLen);
   uint8_t dispY = 0;
   for (int i = 0; i < oneShotBufferSize; i++)
@@ -666,3 +767,12 @@ void processDCCtoM5(bool oneTime, String dispText)
     Serial.println(dispText);
   }
 }
+
+/*
+void hard_restart() 
+{
+  esp_task_wdt_init(1,true);
+  esp_task_wdt_add(NULL);
+  while(true);
+}
+*/

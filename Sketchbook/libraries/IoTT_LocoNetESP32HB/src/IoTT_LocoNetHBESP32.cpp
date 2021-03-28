@@ -54,6 +54,7 @@ void LocoNetESPSerial::begin(int receivePin, int transmitPin, bool inverse_logic
 	m_StartCD = micros();
 	que_rdPos = que_wrPos = 0;
 	receiveMode = true;
+	loopbackMode = false;
 	transmitStatus = 0;
 	HardwareSerial::begin(16667, SERIAL_8N1, m_rxPin, -1, m_invertRx);
 	m_highSpeed = true;
@@ -61,6 +62,12 @@ void LocoNetESPSerial::begin(int receivePin, int transmitPin, bool inverse_logic
 	pinMode(m_rxPin, INPUT_PULLUP); //needed to set this when using Software Serial. Seems to work here
 	hybrid_begin(m_rxPin, m_txPin, m_invertRx, m_invertTx);
 	HardwareSerial::flush();
+}
+
+void LocoNetESPSerial::begin()
+{
+	receiveMode = true;
+	loopbackMode = true;
 }
 
 void LocoNetESPSerial::loadLNCfgJSON(DynamicJsonDocument doc)
@@ -78,6 +85,7 @@ void LocoNetESPSerial::loadLNCfgJSON(DynamicJsonDocument doc)
 
 uint16_t LocoNetESPSerial::lnWriteMsg(lnTransmitMsg txData)
 {
+//	Serial.println("Serial lnWriteMsg");
     uint8_t hlpQuePtr = (que_wrPos + 1) % queBufferSize;
     if (hlpQuePtr != que_rdPos) //override protection
     {
@@ -129,29 +137,12 @@ void LocoNetESPSerial::setLNCallback(cbFct newCB)
 	lnCallback = newCB;
 }
 
-/*
-void LocoNetESPSerial::sendBreakSequence()
-{
-//	Serial.println(!m_invertTx ? LOW : HIGH);
-    digitalWrite(m_txPin, !m_invertTx ? LOW : HIGH); //not sure this is working. The Serial port may not let me set the Tx pin from outside. Alternatives?
-	uint32_t startSeq = micros();
-	while (micros() < (startSeq + (15 * m_bitTime))) 
-	{
-		digitalWrite(m_txPin, !m_invertTx ? LOW : HIGH);
-//		Serial.print('.');
-	}
-    digitalWrite(m_txPin, m_invertTx ? LOW : HIGH);
-}
-*/
 void LocoNetESPSerial::processLNMsg(lnReceiveBuffer * recData)
 {
 //	Serial.println();
 //	Serial.printf("LN Rx %2X\n", recData->lnData[0]);
 	if (lnCallback != NULL)
 		lnCallback(recData);
-//	else
-//		if (onLocoNetMessage) 
-//			onLocoNetMessage(recData);
 }
 
 void LocoNetESPSerial::handleLNIn(uint8_t inData, uint8_t inFlags) //called for stuff that comes in through the HW uart
@@ -261,12 +252,33 @@ void LocoNetESPSerial::handleLNIn(uint8_t inData, uint8_t inFlags) //called for 
   }    
 }
 
+void LocoNetESPSerial::processLoopBack()
+{
+	lnReceiveBuffer recData;
+	if (que_wrPos != que_rdPos)
+	{
+		digitalWrite(busyLED, 0);
+		que_rdPos = (que_rdPos + 1) % queBufferSize;
+		recData.msgType = LocoNet;
+		recData.lnMsgSize = transmitQueue[que_rdPos].lnMsgSize;
+		recData.reqID = transmitQueue[que_rdPos].reqID;
+		recData.reqRecTime = micros();
+		recData.errorFlags = msgEcho;
+		memcpy(recData.lnData, transmitQueue[que_rdPos].lnData, transmitQueue[que_rdPos].lnMsgSize);
+		processLNMsg(&recData);
+		digitalWrite(busyLED, 1);
+	}
+}
+
 void LocoNetESPSerial::processLoop()
 {
-	if (receiveMode)
-		processLNReceive();
+	if (loopbackMode)
+		processLoopBack();
 	else
-		processLNTransmit();
+		if (receiveMode)
+			processLNReceive();
+		else
+			processLNTransmit();
 }
 
 void LocoNetESPSerial::processLNReceive()
@@ -363,7 +375,10 @@ bool LocoNetESPSerial::carrierOK()
 void LocoNetESPSerial::setBusyLED(int8_t ledNr, bool logLevel)
 {
 	if (ledNr >= 0)
+	{
 		hybrid_setBusyLED(ledNr, logLevel);
+		busyLED = ledNr;
+	}
 }
 
 /*

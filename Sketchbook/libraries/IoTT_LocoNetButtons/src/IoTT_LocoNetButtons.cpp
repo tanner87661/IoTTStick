@@ -84,7 +84,7 @@ void IoTT_BtnHandlerCmd::loadButtonCfgJSON(JsonObject thisObj)
 			break;
 		case powerstat:
 			cmdType = getPowerEventByName(thisObj["CtrlType"]);
-			Serial.println(cmdType);			
+//			Serial.println(cmdType);			
 			break;
 		default:
 			cmdType = getCtrlTypeByName(thisObj["CtrlType"]);
@@ -99,7 +99,7 @@ void IoTT_BtnHandlerCmd::loadButtonCfgJSON(JsonObject thisObj)
 
 void IoTT_BtnHandlerCmd::executeBtnEvent()
 {
-	Serial.printf("Handling Button Command to Addr %i Type %i Value %i\n", targetAddr, cmdType, cmdValue);
+//	Serial.printf("Handling Button Command to Addr %i Type %i Value %i\n", targetAddr, cmdType, cmdValue);
     switch (targetType)
     {
       case dccswitch: if (sendSwitchCommand) sendSwitchCommand(targetAddr, cmdType, cmdValue); break; //switch
@@ -414,7 +414,7 @@ void IoTT_LocoNetButtons::processBlockDetEvent(uint8_t inputValue)
 		IoTT_BtnHandler * thisEvent = &eventTypeList[bdStatus];
 		thisEvent->processBtnEvent();
 		lastEvent = bdStatus;
-		Serial.printf("Updating Block Detector %i Addr  for Status %i  \n", btnAddrList[0], bdStatus);
+//		Serial.printf("Updating Block Detector %i Addr  for Status %i  \n", btnAddrList[0], bdStatus);
 	}
 }
 
@@ -442,7 +442,7 @@ void IoTT_LocoNetButtons::processDynEvent(uint8_t inputValue)
 			IoTT_BtnHandler * thisEvent = &eventTypeList[aspectNr];
 			thisEvent->processBtnEvent();
 			lastEvent = aspectNr;
-			Serial.printf("Updating Aspect %i  for Switch %i\n", aspectNr, btnAddrList[0]);
+//			Serial.printf("Updating Aspect %i  for Switch %i\n", aspectNr, btnAddrList[0]);
 		}
 	}
 }
@@ -470,7 +470,7 @@ void IoTT_LocoNetButtons::processTransponderEvent(uint16_t inputValue)
 void IoTT_LocoNetButtons::processPowerEvent(uint16_t inputValue)
 {
 	//0: Off 1: On; 2: Idle
-	Serial.printf("Power Event %i\n", inputValue);
+//	Serial.printf("Power Event %i\n", inputValue);
 	IoTT_BtnHandler * thisEvent = &eventTypeList[inputValue];
 	thisEvent->processBtnEvent();
 }

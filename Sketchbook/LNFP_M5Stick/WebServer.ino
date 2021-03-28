@@ -221,11 +221,12 @@ bool addFileToTx(String fileName, int fileIndex, String cmdType, uint8_t multiMo
       {
         thisFileName.toCharArray(outFileList[tmpWrPtr].fileName, strBufLen);
         outFileList[tmpWrPtr].fileIndex = fileIndex;
-        Serial.printf("Adding File %s Type %s as Index %i\n", &outFileList[tmpWrPtr].fileName[0], &outFileList[tmpWrPtr].cmdType[0], outFileList[tmpWrPtr].fileIndex);
+//        Serial.printf("Adding File %s Type %s as Index %i\n", &outFileList[tmpWrPtr].fileName[0], &outFileList[tmpWrPtr].cmdType[0], outFileList[tmpWrPtr].fileIndex);
         fileListWrPtr = tmpWrPtr;
         return true;
       }
   }
+//  Serial.println("failed");
   return false;
 }
 
@@ -287,6 +288,8 @@ String createCfgEntry(String cmdType)
     fileNameStr = configDir + "/usb" + configDotExt;
   if (cmdType == "pgUSBCfg")
     fileNameStr = configDir + "/usb" + configDotExt;
+  if (cmdType == "pgLBSCfg")
+    fileNameStr = configDir + "/lbserver" + configDotExt;
   if (cmdType == "pgThrottleCfg")
     fileNameStr = configDir + "/throttle" + configDotExt;
   fileStr += readFile(fileNameStr);
@@ -295,8 +298,8 @@ String createCfgEntry(String cmdType)
 
 void processWsMessage(char * newMsg, int msgLen, AsyncWebSocketClient * client)
 {
-  Serial.println(newMsg);
-  Serial.println(msgLen);
+//  Serial.println(newMsg);
+//  Serial.println(msgLen);
   int docSize = 3 * msgLen;
   DynamicJsonDocument doc(docSize);
   DeserializationError error = deserializeJson(doc, newMsg, msgLen);
@@ -315,7 +318,6 @@ void processWsMessage(char * newMsg, int msgLen, AsyncWebSocketClient * client)
           if (myChain) myChain->identifyLED(ledList[i]);
         }
       }
-/*
       if (thisCmd == "SetServo") //Request to move Servo for position verification purposes
       {
         JsonArray servoList = doc["ServoNr"];
@@ -325,7 +327,6 @@ void processWsMessage(char * newMsg, int msgLen, AsyncWebSocketClient * client)
           if (mySwitchList) mySwitchList->moveServo(servoList[i], doc["ServoPos"]);
         }
       }
-*/
       if (thisCmd == "CfgFiles") //Config Request Format: {"Cmd":"CfgFiles", "Type":"pgxxxxCfg"}
       {
         uint16_t fileSelector = 0xFFFF;
@@ -342,9 +343,22 @@ void processWsMessage(char * newMsg, int msgLen, AsyncWebSocketClient * client)
           addFileToTx("btn", 0, "pgHWBtnCfg", 1);
         if (fileSelector & 0x0100)  
           addFileToTx("btn", 0, "pgThrottleCfg", 1);
-//        if (fileSelector & 0x0200)  
-//          addFileToTx("greenhat", 0, "pgGreenHatCfg", 1);
-        
+        if (fileSelector & 0x0200)  
+        {
+          if (addFileToTx("greenhat", 0, "pgGreenHatCfg", 1))
+          {
+            uint8_t modNr = 0;
+            if (doc.containsKey("ModuleNr"))
+              modNr = doc["ModuleNr"];
+            String fileNameStr = "gh/" + String(modNr);
+            addFileToTx(fileNameStr + "/switches", 0, "pgSwitchCfg", 1);
+            addFileToTx(fileNameStr + "/btn", 0, "pgHWBtnCfg", 1);
+            addFileToTx(fileNameStr + "/btnevt", 0, "pgBtnHdlrCfg", 1);
+            addFileToTx(fileNameStr + "/led", 0, "pgLEDCfg", 1);
+          }
+        }
+        if (fileSelector & 0x0400)  
+          addFileToTx("lbserver", 0, "pgLBSCfg", 1);
         int fileCtr = 0;
         if (fileSelector & 0x0020)  
           while (addFileToTx("led", fileCtr, "pgLEDCfg", 1))
@@ -353,9 +367,9 @@ void processWsMessage(char * newMsg, int msgLen, AsyncWebSocketClient * client)
         if (fileSelector & 0x0040)  
           while (addFileToTx("btnevt", fileCtr, "pgBtnHdlrCfg", 1))
             fileCtr++;
-//        if (fileSelector & 0x0080)  
-//          while (addFileToTx("secel", fileCtr, "pgSecElCfg", 1))
-//            fileCtr++;
+        if (fileSelector & 0x0080)  
+          while (addFileToTx("secel", fileCtr, "pgSecElCfg", 1))
+            fileCtr++;
         addFileToTx("", 0, "pgWriteFile", 3); //Write file to disk
       }
 
@@ -387,9 +401,9 @@ void processWsMessage(char * newMsg, int msgLen, AsyncWebSocketClient * client)
           sendCTS();
           return;
         }
-        Serial.printf("Writing file %s\n", &fileName[0]);
+//        Serial.printf("Writing file %s\n", &fileName[0]);
 //        Serial.printf("Writing file %s\n", &fileStr[0]);
-        Serial.println(fileStr);
+//        Serial.println(fileStr);
         writeJSONFile(configDir + "/" + fileName, &fileStr);
         if (!doc.containsKey("Restart")) //if old format, then restart
         {
@@ -412,6 +426,7 @@ void processWsMessage(char * newMsg, int msgLen, AsyncWebSocketClient * client)
   } 
   else
     Serial.printf("deserializeJson() wsProcessing failed: %s", error.c_str());
+  yield();
 }
 
 void onWsEvent(AsyncWebSocket * server, AsyncWebSocketClient * client, AwsEventType type, void * arg, uint8_t *data, size_t len)
@@ -471,11 +486,11 @@ void onWsEvent(AsyncWebSocket * server, AsyncWebSocketClient * client, AwsEventT
             //          Serial.printf("multi ws[%s][%u] frame[%u] start[%llu]\n", server->url(), client->id(), info->num, info->len);
           }
 
-          Serial.printf("ws[%s][%u] frame[%u] %s[%llu - %llu]: \n", server->url(), client->id(), info->num, (info->message_opcode == WS_TEXT) ? "text" : "binary", info->index, info->index + len);
+//          Serial.printf("ws[%s][%u] frame[%u] %s[%llu - %llu]: \n", server->url(), client->id(), info->num, (info->message_opcode == WS_TEXT) ? "text" : "binary", info->index, info->index + len);
 
           if (info->opcode == WS_TEXT)
           {
-            Serial.println("adding...");
+//            Serial.println("adding...");
             for (size_t i = 0; i < len; i++)
             {
               wsBuffer[wsReadPtr] = (char) data[i];
@@ -495,18 +510,18 @@ void onWsEvent(AsyncWebSocket * server, AsyncWebSocketClient * client, AwsEventT
             {
               if (info->message_opcode == WS_TEXT)
               {
-                Serial.println("Processing");
-                Serial.println(&wsBuffer[0]);                
+//                Serial.println("Processing");
+//                Serial.println(&wsBuffer[0]);                
                 processWsMessage(wsBuffer, wsReadPtr, client);
               }
-              else
-                Serial.println("Type mismatch");
+//              else
+//                Serial.println("Type mismatch");
             }
-            else
-              Serial.println(&wsBuffer[0]);                
+//            else
+//              Serial.println(&wsBuffer[0]);                
           }
-          else
-            Serial.println("Length mismatch");
+//          else
+//            Serial.println("Length mismatch");
         }
         break;
       }

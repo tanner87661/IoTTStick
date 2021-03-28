@@ -1,0 +1,15 @@
+{
+    "name": "ESPLocoNetHybridESP32",
+    "version": "1.1.2",
+    "keywords": [
+      "serial", "io", "hardwareserial", "softwareserial", "loconet"
+    ],
+    "description": "Implementation of the Arduino LocoNet Access Library for the ESP32",
+    "repository":
+    {
+        "type": "git",
+        "url": "https://github.com/tanner87661/LocoNetESP32HB"
+    },
+    "frameworks": "arduino",
+    "platforms": "espressif32"
+}

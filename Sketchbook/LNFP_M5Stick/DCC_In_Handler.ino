@@ -16,6 +16,68 @@ uint8_t oneShotRdPtr = 0;
 String lastWSRefreshStr = "";
 String lastNextionRefreshStr = "";
 
+void callbackDCCMQTTMessage(char* topic, byte *  payload, unsigned int length) //this is the landing point for incoming DCC messages from MQTT
+{
+  DynamicJsonDocument doc(4 * length);
+  DeserializationError error = deserializeJson(doc, payload);
+  uint16_t dccAddr = 0;
+  uint16_t param1 = 0;
+  uint16_t param2 = 0;
+  uint16_t param3 = 0;
+  String tempStr;
+  if (!error)
+  {
+    if (doc.containsKey("type"))
+    {
+      dccAddr = doc["addr"];
+      String thisType = doc["type"];
+      if (thisType == "switch")
+      {
+        String tempStr1 = doc["dir"];
+        param1 = (tempStr1 == "closed")? 1:0;
+        String tempStr2 = doc["power"];
+        param2 = (tempStr2 == "on")? 1:0;
+        notifyDccAccTurnoutOutput(dccAddr, param1, param2);
+      }
+      if (thisType == "signal")
+      {
+        param1 = doc["aspect"];
+        notifyDccSigOutputState(dccAddr, param1);
+      }
+      if (thisType == "loco_speed")
+      {
+        param1 = doc["speed"];
+        param2 = doc["speedsteps"];
+        String tempStr1 = doc["dir"];
+        DCC_DIRECTION param3 = (tempStr1 == "reverse")? DCC_DIR_REV:DCC_DIR_FWD;
+        String tempStr2 = doc["addr_type"];
+        DCC_ADDR_TYPE param4 = (tempStr2 == "long")? DCC_ADDR_LONG:DCC_ADDR_SHORT;
+        notifyDccSpeed(dccAddr, param4, param1, param3, (DCC_SPEED_STEPS)param2);
+      }
+      if (thisType == "loco_function")
+      {
+        String tempStr2 = doc["addr_type"];
+        DCC_ADDR_TYPE param4 = (tempStr2 == "long")? DCC_ADDR_LONG:DCC_ADDR_SHORT;
+        param1 = doc["func_group"];
+        FN_GROUP param3= FN_0;
+        switch (param1)
+        {
+          case 0: param3 = FN_0; break;
+          case 1: param3 = FN_0_4; break;
+          case 2: param3 = FN_5_8; break;
+          case 3: param3 = FN_9_12; break;
+          case 4: param3 = FN_13_20; break;
+          case 5: param3 = FN_21_28; break;
+        }
+        param2 = doc["func_value"];
+        notifyDccFunc(dccAddr, param4, param3, param2);
+      }
+    }
+  }
+  else
+    Serial.println("dccBC deserialization error");
+}
+
 void sendRefreshBuffer()
 {
   verifyRefreshAge();

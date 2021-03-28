@@ -1,1 +1,393 @@
-function tfBtnCommandEditor(a,b,c,d){var e=document.createElement("div");tfSetCoordinate(e,a,b,0,c),e.setAttribute("class","cmdedit"),e.append(tfPos(a,b,c,d));var f=document.createElement("div");f.setAttribute("class","editortile");var g=document.createElement("div");g.setAttribute("class","editorpanel"),g.append(tfManipulatorBox(a,b,c,d)),g.append(tfCmdLineHeader(a,b,c,d)),f.append(g);var h=document.createElement("div");h.setAttribute("class","editorpanel");var i=tfEmptyTile(a,b,c,d);return i.setAttribute("class","manipulatorbox"),h.append(i),f.append(h),e.append(f),e}function tfCheckBox(a,b,c,d){var e=document.createElement("div"),f=document.createElement("input");f.setAttribute("type","checkbox"),f.setAttribute("id",c),f.setAttribute("class","checkbox"),f.setAttribute("onclick",d),tfSetCoordinate(f,a,b,0,c),e.append(f);var g=document.createElement("span");return g.setAttribute("id",c+"_cbtxt"),g.setAttribute("class","checkboxtext"),g.append(document.createTextNode("")),e.append(g),e}function tfServoEditor(a,b,c,d){var e=document.createElement("div");e.setAttribute("class","servosel");var f=document.createElement("div");f.setAttribute("class","servotile"),e.append(f),f.append(tfTab(a,b,"Speed Up: &nbsp;","")),thisId="movespeedup_"+a.toString()+"_"+b.toString();var g=tfNumeric(a,b,thisId,d);g.setAttribute("index",1),f.append(g),f.append(tfTab(a,b,"&nbsp; Speed Down: &nbsp;","")),thisId="movespeeddown_"+a.toString()+"_"+b.toString();var h=tfNumeric(a,b,thisId,d);h.setAttribute("index",2),f.append(h);var i=document.createElement("div");i.setAttribute("class","servotile"),e.append(i),i.append(tfTab(a,b,"Accel: &nbsp;","")),thisId="accel_"+a.toString()+"_"+b.toString();var j=tfNumeric(a,b,thisId,d);j.setAttribute("index",3),i.append(j),i.append(tfTab(a,b,"&nbsp; Decel: &nbsp;","")),thisId="decel_"+a.toString()+"_"+b.toString();var j=tfNumeric(a,b,thisId,d);j.setAttribute("index",4),i.append(j);var k=document.createElement("div");k.setAttribute("class","servotile"),e.append(k),k.append(tfTab(a,b,"Frequency: &nbsp;","")),thisId="oscfrequ_"+a.toString()+"_"+b.toString();var j=tfNumeric(a,b,thisId,d);j.setAttribute("index",5),k.append(j),k.append(tfTab(a,b,"&nbsp; Lambda: &nbsp;","")),thisId="lambda_"+a.toString()+"_"+b.toString();var j=tfNumeric(a,b,thisId,d);j.setAttribute("index",6),k.append(j);var l=document.createElement("div");l.setAttribute("class","servotile"),e.append(l),thisId="hesitate_"+a.toString()+"_"+b.toString();var m=tfCheckBox(a,b,thisId,d);m.childNodes[0].setAttribute("index",7),m.childNodes[1].innerHTML="Hesitation",l.append(m),l.append(tfTab(a,b,"&nbsp; at &nbsp;","")),thisId="hesipoint_"+a.toString()+"_"+b.toString();var n=tfNumeric(a,b,thisId,d);n.setAttribute("index",8),l.append(n),l.append(tfTab(a,b,"&nbsp; Min. Speed: &nbsp;","")),thisId="hesispeed_"+a.toString()+"_"+b.toString();var n=tfNumeric(a,b,thisId,d);n.setAttribute("index",9),l.append(n);var o=document.createElement("div");o.setAttribute("class","servotile"),o.style.backgroundColor="#F5F5F5",e.append(o),thisId="enableevent_"+a.toString()+"_"+b.toString();var m=tfCheckBox(a,b,thisId,d);m.childNodes[0].setAttribute("index",10),m.childNodes[1].innerHTML="Enable &nbsp;",o.append(m),o.append(tfTab(a,b,"&nbsp;",""));var p=document.createElement("div");p.setAttribute("class","slidecontainer"),o.append(p),thisId="posslider_"+a.toString()+"_"+b.toString();var q=document.createElement("input");q.setAttribute("type","range"),q.setAttribute("id",thisId),q.setAttribute("min",200),q.setAttribute("max",950),q.setAttribute("value",250),q.setAttribute("oninput",d),tfSetCoordinate(q,a,b,12,thisId),o.append(q),o.append(tfTab(a,b,"&nbsp;","")),thisId="aspectpos_"+a.toString()+"_"+b.toString();var r=tfNumeric(a,b,thisId,d);r.setAttribute("index",13),o.append(r);var s=document.createElement("div");s.setAttribute("class","servotile"),s.style.backgroundColor="#F5F5F5",e.append(s),thisId="softaccel_"+a.toString()+"_"+b.toString();var m=tfCheckBox(a,b,thisId,d);m.childNodes[0].setAttribute("index",14),m.childNodes[1].innerHTML="Soft Start",s.append(m),thisId="stopmode_"+a.toString()+"_"+b.toString();for(var t=createRadiobox(s,"","Stop:",["Hard","Soft","Osc.","Bounce"],thisId,d),u=15,v=0;v<t.children.length;v++)if("radiobutton"==t.children[v].getAttribute("class")){{thisId+"_"+v.toString()}t.children[v].setAttribute("row",a.toString()),t.children[v].setAttribute("col",b.toString()),t.children[v].setAttribute("index",u.toString()),u++}return tfSetCoordinate(e,a,b,0,c),e}function tfButtonEditor(a,b,c,d){function e(e){var f=document.createElement("div");f.setAttribute("class","servosel"),e>0&&(f.style.backgroundColor="#F5F5F5");var g=document.createElement("div");g.setAttribute("class","servotile"),g.append(tfTab(a,b,"Btn. "+(e+1).toString()+": Addr.:&nbsp;","")),f.append(g),thisId="btnaddressbox"+e.toString()+"_"+a.toString()+"_"+b.toString();var h=tfNumeric(a,b,thisId,d);h.setAttribute("index",5),g.append(h);var i=tfText(a,b,c,d);i.innerHTML="&nbsp;on:&nbsp;",g.append(i),thisId="cmdlistbox"+e.toString()+"_"+a.toString()+"_"+b.toString();var j=tfInpTypeSel(a,b,thisId,d);j.setAttribute("index",6),g.append(j);var k=document.createElement("div");k.setAttribute("class","servotile"),k.append(tfTab(a,b,"Send:&nbsp;","")),f.append(k),thisId="evttypebox"+e.toString()+"_"+a.toString()+"_"+b.toString();var l=tfTemplateTypeSel(a,b,thisId,d);createOptions(l,["Switch","Signal","Block Detector","Local Only","none"]),l.setAttribute("index",8),k.append(l);var i=tfText(a,b,c,d);i.innerHTML="&nbsp;Addr:&nbsp;",k.append(i),thisId="targetaddressbox"+e.toString()+"_"+a.toString()+"_"+b.toString();var h=tfNumeric(a,b,thisId,d);h.setAttribute("index",5),k.append(h);var i=tfText(a,b,c,d);i.innerHTML="&nbsp;Event:&nbsp;",k.append(i),thisId="evtvalbox"+e.toString()+"_"+a.toString()+"_"+b.toString();var l=tfTemplateTypeSel(a,b,thisId,d);return l.setAttribute("index",8),k.append(l),f}var f=document.createElement("div");return f.setAttribute("class","servosel"),f.append(e(0)),f.append(e(1)),f}function tfLEDEditor(a,b,c,d){function e(c){var e=document.createElement("div");e.setAttribute("class","servoledsel"),c>0&&(e.style.backgroundColor="#F5F5F5");var f=document.createElement("div");f.setAttribute("class","servotile"),e.append(f),f.append(tfTab(a,b,"LED "+(c+1).toString()+" shows:&nbsp;",""));var g="srclistbox"+c.toString()+"_"+a.toString()+"_"+b.toString(),h=tfTemplateTypeSel(a,b,g,d);createOptions(h,["Position","Input 1","Input 2"]),h.setAttribute("index",6),f.append(h),f.append(tfTab(a,b,"&nbsp;when:&nbsp;","")),g="evttypebox"+c.toString()+"_"+a.toString()+"_"+b.toString();var i=tfTemplateTypeSel(a,b,g,d);i.setAttribute("index",8),f.append(i);var j=document.createElement("div");j.setAttribute("class","servotile"),e.append(j),j.append(tfTab(a,b,"On-Color:&nbsp;","")),g="oncolselbox"+c.toString()+"_"+a.toString()+"_"+b.toString();var k=tfTemplateTypeSel(a,b,g,d);k.setAttribute("index",8),j.append(k),j.append(tfTab(a,b,"&nbsp;Off-Color:&nbsp;","")),g="offcolselbox"+c.toString()+"_"+a.toString()+"_"+b.toString();var l=tfTemplateTypeSel(a,b,g,d);l.setAttribute("index",8),j.append(l);var m=document.createElement("div");m.setAttribute("class","servotile"),e.append(m),m.append(tfTab(a,b,"Mode:&nbsp;","")),g="blinkselectbox"+c.toString()+"_"+a.toString()+"_"+b.toString();var i=tfTemplateTypeSel(a,b,g,d);createOptions(i,["Static","Pos Local Blink","Neg Local Blink","Pos Global Blink","Neg Global Blink","Local Rampup","Local Rampdown","Global Rampup","Global Rampdown"]),i.setAttribute("index",8),m.append(i),m.append(tfTab(a,b,"&nbsp;Rate:&nbsp;","")),g="blinkratebox"+c.toString()+"_"+a.toString()+"_"+b.toString();var n=tfNumeric(a,b,g,d);n.setAttribute("index",5),m.append(n),m.append(tfTab(a,b,"&nbsp;Trans.:&nbsp;","")),g="transselectbox"+c.toString()+"_"+a.toString()+"_"+b.toString();var i=tfTemplateTypeSel(a,b,g,d);return createOptions(i,["Static","Direct","Merge"]),i.setAttribute("index",8),m.append(i),e}var f=document.createElement("div");return f.setAttribute("class","servosel"),f.append(e(0)),f.append(e(1)),f}function tfCommandEditor(a,b,c){var e=document.createElement("div");return e.setAttribute("class","cmdedit"),tfSetCoordinate(e,a,b,0,c),e}function tfEmptyTile(a,b,c){var e=document.createElement("div");return e.setAttribute("id",c),e.append(document.createTextNode("xx")),e}function createDataTableLines(a,b,c,d){for(var e=document.getElementById(a.id+"_head"),f=document.getElementById(a.id+"_body"),g=e.childNodes[0].children.length;f.hasChildNodes();)f.removeChild(f.childNodes[0]);if(c>0)for(var h=0;h<c;h++){var i=document.createElement("tr");i.setAttribute("class","th"),f.append(i);for(var j=0;j<g;j++){var k=a.id+"_inp_"+h.toString()+"_"+j.toString(),l=document.createElement("td");l.setAttribute("id",a.id+"_"+h.toString()+"_"+j.toString()),i.append(l);var m=b[j](h,j,k,d);l.append(m)}}else{var i=document.createElement("tr");i.setAttribute("class","th"),f.append(i);var k=a.id+"_initadd",l=document.createElement("td");i.append(l);var m=tfTableStarterBox(-1,-1,k,d);l.append(m)}}
+function tfBtnCommandEditor(y, x, id, evtHandler)
+{
+	var divElement = document.createElement("div");
+	tfSetCoordinate(divElement, y, x, 0, id);
+	divElement.setAttribute("class", "cmdedit");
+	divElement.append(tfPos(y, x, id, evtHandler));
+	var mainDiv = document.createElement("div");
+	mainDiv.setAttribute("class", "editortile");
+	
+	var upperDiv = document.createElement("div");
+	upperDiv.setAttribute("class", "editorpanel");
+	upperDiv.append(tfManipulatorBox(y, x, id, evtHandler));
+	upperDiv.append(tfCmdLineHeader(y, x, id, evtHandler));
+	mainDiv.append(upperDiv);
+	var lowerDiv = document.createElement("div");
+	lowerDiv.setAttribute("class", "editorpanel");
+	var hlpDiv = tfEmptyTile(y, x, id, evtHandler);
+	hlpDiv.setAttribute("class", "manipulatorbox");
+	lowerDiv.append(hlpDiv);
+//	lowerDiv.append(tfCmdLineEditor(x, y, id, evtHandler));
+	mainDiv.append(lowerDiv);
+
+	divElement.append(mainDiv);
+
+	return divElement;
+}
+
+function tfCheckBox(y, x, id, evtHandler)
+{
+	var textDiv = document.createElement("div");
+
+	var cbElement = document.createElement("input");
+	cbElement.setAttribute("type", "checkbox");
+	cbElement.setAttribute("id", id);
+	cbElement.setAttribute('class', "checkbox");
+	cbElement.setAttribute("onclick", evtHandler);
+	tfSetCoordinate(cbElement, y, x, 0, id);
+	textDiv.append(cbElement);
+	
+	var textElement = document.createElement("span");
+	textElement.setAttribute('id', id + "_cbtxt");
+	textElement.setAttribute('class', "checkboxtext");
+	textElement.append(document.createTextNode(""));
+	textDiv.append(textElement);
+	return textDiv;
+}
+
+function tfServoEditor(y, x, id, evtHandler)
+{
+	var divElement = document.createElement("div");
+	divElement.setAttribute("class", "servosel");
+
+	var topDiv = document.createElement("div");
+	topDiv.setAttribute("class", "servotile");
+	divElement.append(topDiv);
+
+	topDiv.append(tfTab(y, x, 'Speed Up: &nbsp;',""));
+	thisId = "movespeedup_" + y.toString() + "_" + x.toString();
+	var speedUpBox = tfNumeric(y, x, thisId, evtHandler);
+	speedUpBox.setAttribute("index", 1);
+	topDiv.append(speedUpBox);
+
+	topDiv.append(tfTab(y, x, '&nbsp; Speed Down: &nbsp;',""));
+	thisId = "movespeeddown_" + y.toString() + "_" + x.toString();
+	var speedDnBox = tfNumeric(y, x, thisId, evtHandler);
+	speedDnBox.setAttribute("index", 2);
+	topDiv.append(speedDnBox);
+
+	var top2Div = document.createElement("div");
+	top2Div.setAttribute("class", "servotile");
+	divElement.append(top2Div);
+
+	top2Div.append(tfTab(y, x, 'Accel: &nbsp;',""));
+	thisId = "accel_" + y.toString() + "_" + x.toString();
+	var speedBox = tfNumeric(y, x, thisId, evtHandler);
+	speedBox.setAttribute("index", 3);
+	top2Div.append(speedBox);
+
+	top2Div.append(tfTab(y, x, '&nbsp; Decel: &nbsp;',""));
+	thisId = "decel_" + y.toString() + "_" + x.toString();
+	var speedBox = tfNumeric(y, x, thisId, evtHandler);
+	speedBox.setAttribute("index", 4);
+	top2Div.append(speedBox);
+
+	thisId = "pwroff_" + y.toString() + "_" + x.toString();
+	var cchBox = tfCheckBox(y, x, thisId, evtHandler);
+	cchBox.childNodes[0].setAttribute("index", 20);
+	cchBox.childNodes[1].innerHTML = "Power off";
+	top2Div.append(cchBox);
+
+	var top3Div = document.createElement("div");
+	top3Div.setAttribute("class", "servotile");
+	divElement.append(top3Div);
+
+	top3Div.append(tfTab(y, x, 'Frequency: &nbsp;',""));
+	thisId = "oscfrequ_" + y.toString() + "_" + x.toString();
+	var speedBox = tfNumeric(y, x, thisId, evtHandler);
+	speedBox.setAttribute("index", 5);
+	top3Div.append(speedBox);
+
+	top3Div.append(tfTab(y, x, '&nbsp; Lambda: &nbsp;',""));
+	thisId = "lambda_" + y.toString() + "_" + x.toString();
+	var speedBox = tfNumeric(y, x, thisId, evtHandler);
+	speedBox.setAttribute("index", 6);
+	top3Div.append(speedBox);
+
+	var top4Div = document.createElement("div");
+	top4Div.setAttribute("class", "servotile");
+	divElement.append(top4Div);
+
+	thisId = "hesitate_" + y.toString() + "_" + x.toString();
+	var cchBox = tfCheckBox(y, x, thisId, evtHandler);
+	cchBox.childNodes[0].setAttribute("index", 7);
+	cchBox.childNodes[1].innerHTML = "Hesitation";
+	top4Div.append(cchBox);
+
+	top4Div.append(tfTab(y, x, '&nbsp; at &nbsp;',""));
+	thisId = "hesipoint_" + y.toString() + "_" + x.toString();
+	var hesiBox = tfNumeric(y, x, thisId, evtHandler);
+	hesiBox.setAttribute("index", 8);
+	top4Div.append(hesiBox);
+
+	top4Div.append(tfTab(y, x, '&nbsp; Min. Speed: &nbsp;',""));
+	thisId = "hesispeed_" + y.toString() + "_" + x.toString();
+	var hesiBox = tfNumeric(y, x, thisId, evtHandler);
+	hesiBox.setAttribute("index", 9);
+	top4Div.append(hesiBox);
+
+	var upperDiv = document.createElement("div");
+	upperDiv.setAttribute("class", "servotile");
+	upperDiv.style.backgroundColor = "#F5F5F5";
+	divElement.append(upperDiv);
+
+	thisId = "enableevent_" + y.toString() + "_" + x.toString();
+	var cchBox = tfCheckBox(y, x, thisId, evtHandler);
+	cchBox.childNodes[0].setAttribute("index", 10);
+	cchBox.childNodes[1].innerHTML = "Enable &nbsp;";
+	upperDiv.append(cchBox);
+
+/*
+	thisId = "positiontext_" + y.toString() + "_" + x.toString();
+	var thisText = tfLink(y, x, 0, id, "Position:", evtHandler);
+	thisText.setAttribute("index", 11); //high index not causing LED table reload
+	upperDiv.append(thisText);
+*/
+	upperDiv.append(tfTab(y, x, '&nbsp;',""));
+
+	var sliderDiv = document.createElement("div");
+	sliderDiv.setAttribute("class", "slidecontainer");
+	upperDiv.append(sliderDiv);
+	
+	thisId = "posslider_" + y.toString() + "_" + x.toString();
+	var sliderElement = document.createElement("input");
+	sliderElement.setAttribute("type", "range");
+	sliderElement.setAttribute("id", thisId);
+	sliderElement.setAttribute("min", 200);
+	sliderElement.setAttribute("max", 950);
+	sliderElement.setAttribute("value", 250);
+//	sliderElement.setAttribute('class', "slider");
+	sliderElement.setAttribute("oninput", evtHandler);
+	tfSetCoordinate(sliderElement, y, x, 12, thisId);
+	upperDiv.append(sliderElement);
+	upperDiv.append(tfTab(y, x, '&nbsp;',""));
+
+	thisId = "aspectpos_" + y.toString() + "_" + x.toString();
+	var posBox = tfNumeric(y, x, thisId, evtHandler);
+	posBox.setAttribute("index", 13);
+	upperDiv.append(posBox);
+
+	var lowerDiv = document.createElement("div");
+	lowerDiv.setAttribute("class", "servotile");
+	lowerDiv.style.backgroundColor = "#F5F5F5";
+	divElement.append(lowerDiv);
+	
+	thisId = "softaccel_" + y.toString() + "_" + x.toString();
+	var cchBox = tfCheckBox(y, x, thisId, evtHandler);
+	cchBox.childNodes[0].setAttribute("index", 14);
+	cchBox.childNodes[1].innerHTML = "Soft Start";
+	lowerDiv.append(cchBox);
+
+	thisId = "stopmode_" + y.toString() + "_" + x.toString();
+	var thisRadio = createRadiobox(lowerDiv, "", "Stop:", ["Hard","Soft","Osc.","Bounce"], thisId, evtHandler);
+	var indexCtr = 15;
+	for(var i = 0; i < thisRadio.children.length; i++)
+	{
+		if (thisRadio.children[i].getAttribute("class") == "radiobutton")
+		{
+			var myId = thisId + "_" + i.toString();
+			thisRadio.children[i].setAttribute("row", y.toString());
+			thisRadio.children[i].setAttribute("col", x.toString());
+			thisRadio.children[i].setAttribute("index", indexCtr.toString());
+			indexCtr++;
+		}
+	}
+
+	tfSetCoordinate(divElement, y, x, 0, id);
+	return divElement;
+}
+
+function tfButtonEditor(y, x, id, evtHandler)
+{
+	function createBtnPanel(pIx)
+	{
+		var panelDiv = document.createElement("div");
+		panelDiv.setAttribute("class", "servosel");
+		if (pIx > 0)
+			panelDiv.style.backgroundColor = "#F5F5F5";
+		var upperDiv = document.createElement("div");
+		upperDiv.setAttribute("class", "servotile");
+		upperDiv.append(tfTab(y, x, "Btn. " + (pIx+1).toString() + ": Addr.:&nbsp;",""));
+		panelDiv.append(upperDiv);
+		thisId = "btnaddressbox" + pIx.toString() + "_" + y.toString() + "_" + x.toString();
+		var addrBox = tfNumeric(y, x, thisId, evtHandler);
+		addrBox.setAttribute("index", (pIx<<8) + 10);
+		upperDiv.append(addrBox);
+		var thisText = tfText(y, x, id, evtHandler);
+		thisText.innerHTML = "&nbsp;on:&nbsp;";
+		upperDiv.append(thisText);
+		thisId = "cmdlistbox" + pIx.toString() + "_" + y.toString() + "_" + x.toString();
+		var selBox = tfInpTypeSel(y, x, thisId, evtHandler);
+		selBox.setAttribute("index", (pIx<<8) + 11);
+		upperDiv.append(selBox);
+
+		thisId = "evtselbox" + pIx.toString() + "_" + y.toString() + "_" + x.toString();
+		var cchBox = tfCheckBox(y, x, thisId, evtHandler);
+		cchBox.childNodes[0].setAttribute("index", (pIx<<8) + 16);
+		cchBox.childNodes[1].innerHTML = "show all";
+		upperDiv.append(cchBox);
+
+		var lowerDiv = document.createElement("div");
+		lowerDiv.setAttribute("class", "servotile");
+		lowerDiv.append(tfTab(y, x, "Send:&nbsp;",""));
+		panelDiv.append(lowerDiv);
+		thisId = "evttypebox" + pIx.toString() + "_" + y.toString() + "_" + x.toString();
+		var typeBox = tfTemplateTypeSel(y, x, thisId, evtHandler);
+//		createOptions(typeBox, ["Switch","Signal","Block Detector", "Local Only", "none"]);
+		createOptions(typeBox, ["Switch","Signal","Block Detector", "none"]);
+		typeBox.setAttribute("index", (pIx<<8) + 12);
+		lowerDiv.append(typeBox);
+		thisId = "targetaddrtext" + pIx.toString() + "_" + y.toString() + "_" + x.toString();
+		var thisText = tfText(y, x, thisId, evtHandler);
+		thisText.innerHTML = "&nbsp;Addr:&nbsp;";
+		lowerDiv.append(thisText);
+		thisId = "targetaddressbox" + pIx.toString() + "_" + y.toString() + "_" + x.toString();
+		var addrBox = tfNumeric(y, x, thisId, evtHandler);
+		addrBox.setAttribute("index", (pIx<<8) + 13);
+		lowerDiv.append(addrBox);
+		thisId = "evtvaltext" + pIx.toString() + "_" + y.toString() + "_" + x.toString();
+		var thisText = tfText(y, x, thisId, evtHandler);
+		thisText.innerHTML = "&nbsp;Event:&nbsp;";
+		lowerDiv.append(thisText);
+		thisId = "evtvalbox" + pIx.toString() + "_" + y.toString() + "_" + x.toString();
+		var typeBox = tfTemplateTypeSel(y, x, thisId, evtHandler);
+		typeBox.setAttribute("index", (pIx<<8) + 14);
+		lowerDiv.append(typeBox);
+		thisId = "evtvalfield" + pIx.toString() + "_" + y.toString() + "_" + x.toString();
+		var valueField = tfNumeric(y, x, thisId, evtHandler);
+		valueField.setAttribute("index", (pIx<<8) + 15);
+		lowerDiv.append(valueField);
+
+		return panelDiv;
+	}
+
+	var divElement = document.createElement("div");
+	divElement.setAttribute("class", "servosel");
+	divElement.append(createBtnPanel(0));
+	divElement.append(createBtnPanel(1));
+	return divElement;
+}
+
+function tfLEDEditor(y, x, id, evtHandler)
+{
+	function createLEDPanel(pIx)
+	{
+		var panelDiv = document.createElement("div");
+		panelDiv.setAttribute("class", "servoledsel");
+		if (pIx > 0)
+			panelDiv.style.backgroundColor = "#F5F5F5";
+		var upperDiv = document.createElement("div");
+		upperDiv.setAttribute("class", "servotile");
+		panelDiv.append(upperDiv);
+
+
+		var thisId = "ledlabel" + pIx.toString() + "_" + y.toString() + "_" + x.toString();
+		var ledLabel = tfTab(y, x, "LED " + (pIx+1).toString() + " shows:&nbsp;","");
+		ledLabel.setAttribute("id", thisId);
+		upperDiv.append(ledLabel);
+		var thisId = "srclistbox" + pIx.toString() + "_" + y.toString() + "_" + x.toString();
+		var selBox = tfTemplateTypeSel(y, x, thisId, evtHandler);
+		createOptions(selBox, ["Position","Input 1","Input 2"]);
+		selBox.setAttribute("index", (pIx<<8) + 10);
+		upperDiv.append(selBox);
+		upperDiv.append(tfTab(y, x, "&nbsp;when:&nbsp;",""));
+		thisId = "evttypebox" + pIx.toString() + "_" + y.toString() + "_" + x.toString();
+		var typeBox = tfTemplateTypeSel(y, x, thisId, evtHandler);
+		typeBox.setAttribute("index", (pIx<<8) + 11);
+		upperDiv.append(typeBox);
+
+		var centerDiv = document.createElement("div");
+		centerDiv.setAttribute("class", "servotile");
+		panelDiv.append(centerDiv);
+		centerDiv.append(tfTab(y, x, "On-Color:&nbsp;",""));
+		thisId = "oncolselbox" + pIx.toString() + "_" + y.toString() + "_" + x.toString();
+		var oncolselBox = tfTemplateTypeSel(y, x, thisId, evtHandler);
+		oncolselBox.setAttribute("index", (pIx<<8) + 12);
+		centerDiv.append(oncolselBox);
+		centerDiv.append(tfTab(y, x, "&nbsp;Off-Color:&nbsp;",""));
+		thisId = "offcolselbox" + pIx.toString() + "_" + y.toString() + "_" + x.toString();
+		var offcolselBox = tfTemplateTypeSel(y, x, thisId, evtHandler);
+		offcolselBox.setAttribute("index", (pIx<<8) + 13);
+		centerDiv.append(offcolselBox);
+		
+		var lowerDiv = document.createElement("div");
+		lowerDiv.setAttribute("class", "servotile");
+		panelDiv.append(lowerDiv);
+		lowerDiv.append(tfTab(y, x, "Mode:&nbsp;",""));
+		thisId = "blinkselectbox" + pIx.toString() + "_" + y.toString() + "_" + x.toString();
+		var typeBox = tfTemplateTypeSel(y, x, thisId, evtHandler);
+		createOptions(typeBox, ["Static", "Pos Local Blink", "Neg Local Blink", "Pos Global Blink", "Neg Global Blink","Local Rampup", "Local Rampdown","Global Rampup", "Global Rampdown"]);
+		typeBox.setAttribute("index", (pIx<<8) + 14);
+		lowerDiv.append(typeBox);
+		lowerDiv.append(tfTab(y, x, "&nbsp;Rate:&nbsp;",""));
+		thisId = "blinkratebox" + pIx.toString() + "_" + y.toString() + "_" + x.toString();
+		var timeBox = tfNumeric(y, x, thisId, evtHandler);
+		timeBox.setAttribute("index", (pIx<<8) + 15);
+		lowerDiv.append(timeBox);
+		lowerDiv.append(tfTab(y, x, "&nbsp;Trans.:&nbsp;",""));
+		thisId = "transselectbox" + pIx.toString() + "_" + y.toString() + "_" + x.toString();
+		var typeBox = tfTemplateTypeSel(y, x, thisId, evtHandler);
+		createOptions(typeBox, ["Soft", "Direct","Merge"]);
+		typeBox.setAttribute("index", (pIx<<8) + 16);
+		lowerDiv.append(typeBox);
+		return panelDiv;
+	}
+	
+	var divElement = document.createElement("div");
+	divElement.setAttribute("class", "servosel");
+	divElement.append(createLEDPanel(0));
+	divElement.append(createLEDPanel(1));
+	return divElement;
+}
+
+function tfCommandEditor(y, x, id, evtHandler)
+{
+	var divElement = document.createElement("div");
+	divElement.setAttribute("class", "cmdedit");
+	tfSetCoordinate(divElement, y, x, 0, id);
+	return divElement;
+}
+
+function tfEmptyTile(y, x, id, evtHandler)
+{
+	var divElement = document.createElement("div");
+	divElement.setAttribute("id", id);
+	divElement.append(document.createTextNode("xx"));
+	return divElement;
+}
+
+function createDataTableLines(tableObj, colLoaders, numLines, onchange)
+{
+	var th = document.getElementById(tableObj.id + "_head");
+	var tb = document.getElementById(tableObj.id + "_body");
+	var numCols = th.childNodes[0].children.length;
+	while (tb.hasChildNodes())
+		tb.removeChild(tb.childNodes[0]); //delete rows
+	if (numLines > 0)
+		for (var i=0; i < numLines; i++)
+		{
+			var newRow = document.createElement("tr");
+			newRow.setAttribute("class", "th");
+			tb.append(newRow);
+			for (var j=0; j < numCols; j++)
+			{
+				var thisId = tableObj.id + "_inp_" + i.toString() + "_" + j.toString();
+				var newCol = document.createElement("td");
+				newCol.setAttribute("id", tableObj.id + "_" + i.toString() + "_" + j.toString());
+				newRow.append(newCol);
+				var newRB = colLoaders[j](i, j, thisId, onchange);
+				newCol.append(newRB);
+			}
+		}
+	else
+	{
+		var newRow = document.createElement("tr");
+		newRow.setAttribute("class", "th");
+		tb.append(newRow);
+		var thisId = tableObj.id + "_initadd";
+		var newCol = document.createElement("td");
+		newRow.append(newCol);
+		var newRB = tfTableStarterBox(-1, -1, thisId, onchange);
+		newCol.append(newRB);
+	}
+}

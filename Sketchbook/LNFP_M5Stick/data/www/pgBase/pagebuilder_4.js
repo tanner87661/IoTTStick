@@ -1,1 +1,439 @@
-function enableInput(a,b){document.getElementById(b).disabled=!a}function setVisibility(a,b,c){b.style.display=a^c?"block":"none"}function readNumInputField(a){var b=document.getElementById(a);return verifyNumber(b.value,0)}function verifyNumber(a,b){return isNaN(a)?(alert(a+" is not a valid number. Please verify"),b):parseFloat(a)}function verifyNumArray(a,b){for(var c=a.split(b),d=[],e=0;e<c.length;e++){var f=parseInt(c[e]);isNaN(f)||d.push(f)}return d}function writeInputField(a,b){var c=document.getElementById(a);c.value="number"==typeof b?b.toString():b}function readTextInputToArray(a,b,c){for(var d=readTextInputField(a),e=d.split(","),f=[],g=0;g<e.length;g++)""==e[g]||isNaN(e[g])||f.push(parseInt(e[g]));return f.length>=b&&f.length<=c&&f.length==e.length?f:(alert(d+" is not a correct comma separated array. Please verify"),-1)}function readTextInputField(a){var b=document.getElementById(a);return b.value}function readCBInputField(a){var b=document.getElementById(a);return b.checked}function writeCBInputField(a,b){var c=document.getElementById(a);c.checked=b}function writeRBInputField(a,b){var c=document.getElementById(a+"_"+b.toString());null!=c&&(c.checked=!0)}function writeTextField(a,b){var c=document.getElementById(a);null!=c&&(c.innerHTML=b)}function formatTime(a){return[parseInt(a/60/60),parseInt(a/60%60),parseInt(a%60)].join(":").replace(/\b(\d)\b/g,"0$1")}function createListViewer(a,b,c){var d=document.createElement("ul");return d.setAttribute("class",b),d.setAttribute("id",c),a.append(d),d}function tfCmdTypeSel(a,b,c,d){var e=document.createElement("select");return createOptions(e,["Switch","DCC Signal","Button","Analog Value","Block Detector","Power Status"]),tfSetCoordinate(e,a,b,5,c),e.setAttribute("class","selectorbox"),e.setAttribute("onchange",d),e}function tfCmdEvtLineHeader(a,b,c,d,e){var f=document.createElement("div"),g=tfText(a,b,c,d);g.innerHTML="Type:",f.append(g);var h="cmdtypesel_"+a.toString()+"_"+b.toString(),i=tfCmdTypeSel(a,2,h,d);i.setAttribute("index",5),i.setAttribute("cmdline",b),i.selectedIndex=cmdOptions.indexOf(e.CtrlTarget),f.append(i);var g=tfText(a,b,c,d);return g.innerHTML="Addr.:",f.append(g),h="ctrladdr_"+a.toString()+"_"+b.toString(),i=tfNumeric(a,3,h,d),i.setAttribute("cmdline",b),i.value=e.CtrlAddr,i.setAttribute("index",6),f.append(i),g=tfText(a,b,c,d),g.innerHTML="Delay [ms]:",f.append(g),h="cmddelay_"+a.toString()+"_"+b.toString(),i=tfNumeric(a,4,h,d),i.setAttribute("cmdline",b),i.value=e.ExecDelay,i.setAttribute("index",7),f.append(i),f}function tfCmdLineEditor(a,b,c,d){var e=document.createElement("div"),f=tfText(i,d);return e.append(f),e.append(tfNumeric(i,d)),f=tfText(i,d),e.append(f),e.append(tfNumeric(i,d)),e}function tfCmdSwiPosSel(a,b,c,d){var e=document.createElement("select");return createOptions(e,["Thrown","Closed","Toggle"]),tfSetCoordinate(e,a,5,8,c),e.setAttribute("class","selectorbox"),e.setAttribute("cmdline",b),e.setAttribute("onchange",d),e}function tfCmdBtnPosSel(a,b,c,d){var e=document.createElement("select");return createOptions(e,["Btn Down","Btn Up","Btn Click","Btn Hold","Btn Dbl Click"]),tfSetCoordinate(e,a,5,8,c),e.setAttribute("class","selectorbox"),e.setAttribute("cmdline",b),e.setAttribute("onchange",d),e}function tfCmdPowerSel(a,b,c,d){var e=document.createElement("select");return createOptions(e,["On","Off","Idle","Toggle"]),tfSetCoordinate(e,a,5,8,c),e.setAttribute("cmdline",b),e.setAttribute("class","selectorbox"),e.setAttribute("onchange",d),e}function tfCmdSwiPowerSel(a,b,c,d){var e=document.createElement("select");return createOptions(e,["ON","OFF"]),tfSetCoordinate(e,a,6,9,c),e.setAttribute("cmdline",b),e.setAttribute("class","selectorbox"),e.setAttribute("onchange",d),e}function setSwitchEditor(a,b,c,d,e){var f=document.createElement("div"),g=document.createElement("div");g.setAttribute("class","manipulatorbox"),f.append(g);var h=tfText(a,b,c,d);h.innerHTML="Command:",f.append(h);var i=tfCmdSwiPosSel(a,b,c,d);return i.selectedIndex=swiCmdOptions.indexOf(e.CtrlType),f.append(i),h=tfText(a,b,c,d),h.innerHTML="Coil Status:",f.append(h),i=tfCmdSwiPowerSel(a,b,c,d),i.selectedIndex=swiPwrOptions.indexOf(e.CtrlValue),f.append(i),f}function setSignalEditor(a,b,c,d,e){var f=document.createElement("div"),g=document.createElement("div");g.setAttribute("class","manipulatorbox"),f.append(g);var h=tfText(a,b,c,d);return h.innerHTML="Aspect Value:",f.append(h),thisElement=tfNumeric(a,6,c,d),thisElement.setAttribute("cmdline",b),thisElement.value=e.CtrlValue,f.append(thisElement),f}function setButtonEditor(a,b,c,d,e){var f=document.createElement("div"),g=document.createElement("div");g.setAttribute("class","manipulatorbox"),f.append(g);var h=tfText(a,b,c,d);h.innerHTML="Button Command:",f.append(h);var i=tfCmdBtnPosSel(a,b,c,d);return i.selectedIndex=buttonOptions.indexOf(e.CtrlType),f.append(i),f}function setAnalogEditor(a,b,c,d,e){var f=document.createElement("div"),g=document.createElement("div");g.setAttribute("class","manipulatorbox"),f.append(g);var h=tfText(a,b,c,d);return h.innerHTML="Analog Value:",f.append(h),thisElement=tfNumeric(a,6,c,d),thisElement.setAttribute("cmdline",b),thisElement.value=(parseInt(e.CtrlType)<<8)+parseInt(e.CtrlValue),f.append(thisElement),f}function setPowerEditor(a,b,c,d,e){var f=document.createElement("div"),g=document.createElement("div");g.setAttribute("class","manipulatorbox"),f.append(g);var h=tfText(a,b,c,d);h.innerHTML="Power Status:",f.append(h);var i=tfCmdPowerSel(a,b,c,d);return i.selectedIndex=trackPwrOptions.indexOf(e.CtrlType),f.append(i),f}function setBlockDetEditor(a,b,c,d,e){var f=document.createElement("div"),g=document.createElement("div");g.setAttribute("class","manipulatorbox"),f.append(g);var h=tfText(a,b,c,d);return h.innerHTML="Detector Value:",f.append(h),thisSel=tfCmdSwiPowerSel(a,b,c,d),thisSel.selectedIndex=swiPwrOptions.indexOf(e.CtrlValue),f.append(thisSel),f}function tfColorTypeSel(a,b,c,d){var e=document.createElement("select");return createOptions(e,["RGB","HSV"]),tfSetCoordinate(e,a,b,0,c),e.setAttribute("class","selectorbox"),e.setAttribute("onchange",d),e}function tfLEDCtrlTypeSel(a,b,c,d){var e=document.createElement("select");return createOptions(e,["Switch","Dyn. Signal","DCC Signal","Button","Analog Value","Block Detector","Transponder","Power Status","Steady ON"]),tfSetCoordinate(e,a,b,0,c),e.setAttribute("class","selectorbox"),e.setAttribute("onchange",d),e}function tfLEDDispTypeSel(a,b,c,d){var e=document.createElement("select");return createOptions(e,["discrete","linear"]),tfSetCoordinate(e,a,b,0,c),e.setAttribute("class","selectorbox"),e.setAttribute("onchange",d),e}function tfLEDDispSel(a,b,c,d){var e=document.createElement("select");return createOptions(e,["discrete","linear"]),tfSetCoordinate(e,a,b,0,c),e.setAttribute("class","selectorbox"),e.setAttribute("onchange",d),e}function tfLEDAddrSel(a,b,c,d,e){for(var f=document.createElement("select"),g=[],h=0;h<e.length;h++)g.push(e[h].toString());return createOptions(f,g),tfSetCoordinate(f,a,b,0,c),f.setAttribute("class","selectorbox"),f.setAttribute("onchange",d),f}function tfCmdLineHeader(a,b){var c=document.createElement("div");return c.append(tfNumericLong(a,b)),c}function tfCmdLineEditor(a,b){var c=document.createElement("div");return c.append(tfNumericLong(a,b)),c.append(tfBtnAdd(a,b)),c.append(tfBtnCancel(a,b)),c}function tfColorSelector(a,b,c,d,e){var f=document.createElement("select");return createOptions(f,e),tfSetCoordinate(f,a,b,0,c),f.setAttribute("class","selectorbox"),f.setAttribute("onchange",d),f}function tfModeSelector(a,b,c,d){var e=document.createElement("select");return createOptions(e,ledModeDispType),tfSetCoordinate(e,a,b,0,c),e.setAttribute("class","selectorbox"),e.setAttribute("onchange",d),e}function tfTransitionSelector(a,b,c,d){var e=document.createElement("select");return createOptions(e,ledTransitionDispType),tfSetCoordinate(e,a,b,0,c),e.setAttribute("class","selectorbox"),e.setAttribute("onchange",d),e}
+function enableInput(senderstatus, target)
+{
+	document.getElementById(target).disabled = !senderstatus;
+}
+
+function setVisibility(senderstatus, target, reverse)
+{
+	if (senderstatus ^ reverse)
+		target.style.display = "block";
+	else
+		target.style.display = "none";
+}
+
+function readNumInputField(thisObjID)
+{
+	var thisField = document.getElementById(thisObjID);
+	return verifyNumber(thisField.value, 0);
+}
+
+function verifyNumber(inpValue, defValue)
+{
+	var numVal;
+	if (isNaN(inpValue))
+	{
+		alert(inpValue + " is not a valid number. Please verify");
+		return defValue;	
+	}
+	else
+		return parseFloat(inpValue);
+}
+
+function verifyNumArray(inpValue, sepChar)
+{
+	var newInp = inpValue.split(sepChar);
+	var newRes = [];
+	for (var i=0; i < newInp.length; i++)
+	{
+		var hlpRes = parseInt(newInp[i]);
+		if (!isNaN(hlpRes))
+			newRes.push(hlpRes);
+	}
+	return newRes;
+}
+
+function writeInputField(thisObjID, newValue)
+{
+//	console.log(typeof(newValue), newValue);
+	var thisField = document.getElementById(thisObjID);
+	if (typeof(newValue) == "number")
+		thisField.value = newValue.toString();
+	else
+		thisField.value = newValue;
+}
+
+function readTextInputToArray(thisObjID, minLen, maxLen)
+{
+	var readVal = readTextInputField(thisObjID);
+	var newVal = readVal.split(',');
+	var intVal = [];
+	for (var i=0; i<newVal.length; i++)
+	  if ((newVal[i] != "") && !isNaN(newVal[i]))
+		intVal.push(parseInt(newVal[i]));
+	if (((intVal.length >= minLen) && (intVal.length <= maxLen)) && (intVal.length == newVal.length))
+		return intVal;
+	else
+	{
+		alert(readVal + " is not a correct comma separated array. Please verify");
+		return -1;
+	}
+}
+
+function readTextInputField(thisObjID)
+{
+	var thisField = document.getElementById(thisObjID);
+	return thisField.value;
+}
+
+function readCBInputField(thisObjID)
+{
+	var thisField = document.getElementById(thisObjID);
+	return thisField.checked;
+}
+
+function writeCBInputField(thisObjID, newValue)
+{
+	var thisField = document.getElementById(thisObjID);
+	thisField.checked = newValue;
+}
+
+function writeRBInputField(thisObjID, newValue)
+{
+	var thisField = document.getElementById(thisObjID + "_" + newValue.toString());
+	if (thisField != null)
+		thisField.checked = true;
+}
+
+function writeTextField(thisObjID, newValue)
+{
+	var thisField = document.getElementById(thisObjID);
+	if (thisField != null)
+		thisField.innerHTML = newValue;
+}
+
+function formatTime(seconds) {
+    return [
+        parseInt(seconds / 60 / 60),
+        parseInt(seconds / 60 % 60),
+        parseInt(seconds % 60)
+    ]
+        .join(":")
+        .replace(/\b(\d)\b/g, "0$1")
+}
+
+function createListViewer(parentObj, className, dispListID)
+{
+	var docElement = document.createElement("ul");
+	docElement.setAttribute('class', className);	
+	docElement.setAttribute("id", dispListID);
+	parentObj.append(docElement);
+	return docElement;
+}
+
+function tfCmdTypeSel(y, x, id, evtHandler)
+{
+	var selectList = document.createElement("select");
+	createOptions(selectList, ["Switch", "DCC Signal", "Button", "Analog Value", "Block Detector", "Power Status"]);
+	tfSetCoordinate(selectList, y, x, 5, id);
+	selectList.setAttribute("class", "selectorbox");
+	selectList.setAttribute("onchange", evtHandler);
+	return selectList;
+}
+
+function tfCmdEvtLineHeader(y, x, id, evtHandler, lineData)
+{
+	var thisEditor = document.createElement("div");
+	var thisText = tfText(y, x, id, evtHandler);
+	thisText.innerHTML = "Type:";
+	thisEditor.append(thisText);
+	var thisID = "cmdtypesel_" + y.toString() + "_" + x.toString();
+	var thisElement = tfCmdTypeSel(y, 2, thisID, evtHandler);
+	thisElement.setAttribute("index", 5);
+	thisElement.setAttribute("cmdline", x);
+	
+	thisElement.selectedIndex = cmdOptions.indexOf(lineData.CtrlTarget);
+	thisEditor.append(thisElement);
+	var thisText = tfText(y, x, id, evtHandler);
+	thisText.innerHTML = "Addr.:";
+	thisEditor.append(thisText);
+	thisID = "ctrladdr_" + y.toString() + "_" + x.toString();
+	thisElement = tfNumeric(y, 3, thisID, evtHandler);
+	thisElement.setAttribute("cmdline", x);
+	thisElement.value = lineData.CtrlAddr;
+	thisElement.setAttribute("index", 6);
+	thisEditor.append(thisElement);
+	thisText = tfText(y, x, id, evtHandler);
+	thisText.innerHTML = "Delay [ms]:";
+	thisEditor.append(thisText);
+	thisID = "cmddelay_" + y.toString() + "_" + x.toString();
+	thisElement = tfNumeric(y, 4, thisID, evtHandler);
+	thisElement.setAttribute("cmdline", x);
+	thisElement.value = lineData.ExecDelay;
+	thisElement.setAttribute("index", 7);
+	thisEditor.append(thisElement);
+	return thisEditor;
+}
+
+function tfCmdLineEditor(y, x, index, evtHandler)
+{
+	var thisEditor = document.createElement("div");
+	var thisText = tfText(i, evtHandler);
+	thisEditor.append(thisText);
+	thisEditor.append(tfNumeric(i, evtHandler));
+	thisText = tfText(i, evtHandler);
+	thisEditor.append(thisText);
+	thisEditor.append(tfNumeric(i, evtHandler));
+	return thisEditor;
+}
+
+function tfCmdSwiPosSel(y, x, id, evtHandler)
+{
+	var selectList = document.createElement("select");
+	createOptions(selectList, ["Thrown", "Closed", "Toggle"]);
+	tfSetCoordinate(selectList, y, 5, 8, id);
+	selectList.setAttribute("class", "selectorbox");
+	selectList.setAttribute("cmdline", x);
+	selectList.setAttribute("onchange", evtHandler);
+	return selectList;
+}
+
+function tfCmdBtnPosSel(y, x, id, evtHandler)
+{
+	var selectList = document.createElement("select");
+	createOptions(selectList, ["Btn Down", "Btn Up", "Btn Click", "Btn Hold", "Btn Dbl Click"]);
+	tfSetCoordinate(selectList, y, 5, 8, id);
+	selectList.setAttribute("class", "selectorbox");
+	selectList.setAttribute("cmdline", x);
+	selectList.setAttribute("onchange", evtHandler);
+	return selectList;
+}
+
+function tfCmdPowerSel(y, x, id, evtHandler)
+{
+	var selectList = document.createElement("select");
+	createOptions(selectList, ["On", "Off", "Idle", "Toggle"]);
+	tfSetCoordinate(selectList, y, 5, 8, id);
+	selectList.setAttribute("cmdline", x);
+	selectList.setAttribute("class", "selectorbox");
+	selectList.setAttribute("onchange", evtHandler);
+	return selectList;
+}
+
+function tfCmdSwiPowerSel(y, x, id, evtHandler)
+{
+	var selectList = document.createElement("select");
+	createOptions(selectList, ["ON", "OFF"]);
+	tfSetCoordinate(selectList, y, 6, 9, id);
+	selectList.setAttribute("cmdline", x);
+	selectList.setAttribute("class", "selectorbox");
+	selectList.setAttribute("onchange", evtHandler);
+	return selectList;
+}
+
+function setSwitchEditor(lineIndex, i, thisID, evtHandler, lineData)
+{
+	var thisEditor = document.createElement("div");
+	
+	var thisSpacer = document.createElement("div");
+	thisSpacer.setAttribute("class", "manipulatorbox");
+	thisEditor.append(thisSpacer);
+	
+	var thisText = tfText(lineIndex, i, thisID, evtHandler);
+	thisText.innerHTML = "Command:";
+	thisEditor.append(thisText);
+	var thisSel = tfCmdSwiPosSel(lineIndex, i, thisID, evtHandler);
+	thisSel.selectedIndex = swiCmdOptions.indexOf(lineData.CtrlType);
+	thisEditor.append(thisSel);
+	thisText = tfText(lineIndex, i, thisID, evtHandler);
+	thisText.innerHTML = "Coil Status:";
+	thisEditor.append(thisText);
+	thisSel = tfCmdSwiPowerSel(lineIndex, i, thisID, evtHandler);
+	thisSel.selectedIndex = swiPwrOptions.indexOf(lineData.CtrlValue);
+	thisEditor.append(thisSel);
+	return thisEditor;
+}
+
+function setSignalEditor(lineIndex, i, thisID, evtHandler, lineData)
+{
+	var thisEditor = document.createElement("div");
+	
+	var thisSpacer = document.createElement("div");
+	thisSpacer.setAttribute("class", "manipulatorbox");
+	thisEditor.append(thisSpacer);
+	
+	var thisText = tfText(lineIndex, i, thisID, evtHandler);
+	thisText.innerHTML = "Aspect Value:";
+	thisEditor.append(thisText);
+
+	thisElement = tfNumeric(lineIndex, 6, thisID, evtHandler);
+	thisElement.setAttribute("cmdline", i);
+	thisElement.value = lineData.CtrlValue;
+	thisEditor.append(thisElement);
+	return thisEditor;
+}
+
+function setButtonEditor(lineIndex, i, thisID, evtHandler, lineData)
+{
+	var thisEditor = document.createElement("div");
+	
+	var thisSpacer = document.createElement("div");
+	thisSpacer.setAttribute("class", "manipulatorbox");
+	thisEditor.append(thisSpacer);
+	
+	var thisText = tfText(lineIndex, i, thisID, evtHandler);
+	thisText.innerHTML = "Button Command:";
+	thisEditor.append(thisText);
+	var thisSel = tfCmdBtnPosSel(lineIndex, i, thisID, evtHandler);
+	thisSel.selectedIndex = buttonOptions.indexOf(lineData.CtrlType);
+	thisEditor.append(thisSel);
+	return thisEditor;
+}
+
+function setAnalogEditor(lineIndex, i, thisID, evtHandler, lineData)
+{
+	var thisEditor = document.createElement("div");
+	
+	var thisSpacer = document.createElement("div");
+	thisSpacer.setAttribute("class", "manipulatorbox");
+	thisEditor.append(thisSpacer);
+	
+	var thisText = tfText(lineIndex, i, thisID, evtHandler);
+	thisText.innerHTML = "Analog Value:";
+	thisEditor.append(thisText);
+
+	thisElement = tfNumeric(lineIndex, 6, thisID, evtHandler);
+	thisElement.setAttribute("cmdline", i);
+	thisElement.value = (parseInt(lineData.CtrlType) << 8) + parseInt(lineData.CtrlValue);
+	thisEditor.append(thisElement);
+	return thisEditor;
+}
+
+function setPowerEditor(lineIndex, i, thisID, evtHandler, lineData)
+{
+	var thisEditor = document.createElement("div");
+	
+	var thisSpacer = document.createElement("div");
+	thisSpacer.setAttribute("class", "manipulatorbox");
+	thisEditor.append(thisSpacer);
+	
+	var thisText = tfText(lineIndex, i, thisID, evtHandler);
+	thisText.innerHTML = "Power Status:";
+	thisEditor.append(thisText);
+	var thisSel = tfCmdPowerSel(lineIndex, i, thisID, evtHandler);
+	thisSel.selectedIndex = trackPwrOptions.indexOf(lineData.CtrlType);
+	thisEditor.append(thisSel);
+	return thisEditor;
+}
+
+function setBlockDetEditor(lineIndex, i, thisID, evtHandler, lineData)
+{
+	var thisEditor = document.createElement("div");
+	
+	var thisSpacer = document.createElement("div");
+	thisSpacer.setAttribute("class", "manipulatorbox");
+	thisEditor.append(thisSpacer);
+	
+	var thisText = tfText(lineIndex, i, thisID, evtHandler);
+	thisText.innerHTML = "Detector Value:";
+	thisEditor.append(thisText);
+
+	thisSel = tfCmdSwiPowerSel(lineIndex, i, thisID, evtHandler);
+	thisSel.selectedIndex = swiPwrOptions.indexOf(lineData.CtrlValue);
+	thisEditor.append(thisSel);
+	return thisEditor;
+}
+
+//-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+function tfColorTypeSel(y, x, id, evtHandler)
+{
+	var selectList = document.createElement("select");
+	createOptions(selectList, ["RGB", "HSV"]);
+	tfSetCoordinate(selectList, y, x, 0, id);
+	selectList.setAttribute("class", "selectorbox");
+	selectList.setAttribute("onchange", evtHandler);
+	return selectList;
+}
+
+function tfLEDCtrlTypeSel(y, x, id, evtHandler)
+{
+	var selectList = document.createElement("select");
+	createOptions(selectList, ["Switch", "Dyn. Signal", "DCC Signal", "Button", "Analog Value", "Block Detector", "Transponder", "Power Status", "Steady ON"]);
+	tfSetCoordinate(selectList, y, x, 0, id);
+	selectList.setAttribute("class", "selectorbox");
+	selectList.setAttribute("onchange", evtHandler);
+	return selectList;
+}
+
+function tfLEDDispTypeSel(y, x, id, evtHandler)
+{
+	var selectList = document.createElement("select");
+	createOptions(selectList, ["discrete", "linear"]);
+	tfSetCoordinate(selectList, y, x, 0, id);
+	selectList.setAttribute("class", "selectorbox");
+	selectList.setAttribute("onchange", evtHandler);
+	return selectList;
+}
+
+function tfLEDDispSel(y, x, id, evtHandler)
+{
+	var selectList = document.createElement("select");
+	createOptions(selectList, ["discrete", "linear"]);
+	tfSetCoordinate(selectList, y, x, 0, id);
+	selectList.setAttribute("class", "selectorbox");
+	selectList.setAttribute("onchange", evtHandler);
+	return selectList;
+}
+
+function tfLEDAddrSel(y, x, id, evtHandler, addrList)
+{
+	var selectList = document.createElement("select");
+	var addrArray = [];
+	for (var i = 0; i < addrList.length; i++)
+		addrArray.push(addrList[i].toString());
+	createOptions(selectList, addrArray);
+	tfSetCoordinate(selectList, y, x, 0, id);
+	selectList.setAttribute("class", "selectorbox");
+	selectList.setAttribute("onchange", evtHandler);
+	return selectList;
+}
+
+function tfCmdLineHeader(i, evtHandler)
+{
+	var thisEditor = document.createElement("div");
+	thisEditor.append(tfNumericLong(i, evtHandler));
+	return thisEditor;
+}
+
+function tfCmdLineEditor(i, evtHandler)
+{
+	var thisEditor = document.createElement("div");
+	thisEditor.append(tfNumericLong(i, evtHandler));
+	thisEditor.append(tfBtnAdd(i, evtHandler));
+	thisEditor.append(tfBtnCancel(i, evtHandler));
+
+	return thisEditor;
+}
+
+function tfColorSelector(y, x, id, evtHandler, colorArray)
+{
+	
+	var selectList = document.createElement("select");
+	createOptions(selectList, colorArray);
+	tfSetCoordinate(selectList, y, x, 0, id);
+	selectList.setAttribute("class", "selectorbox");
+	selectList.setAttribute("onchange", evtHandler);
+	return selectList;
+}
+
+function tfModeSelector(y, x, id, evtHandler)
+{
+	
+	var selectList = document.createElement("select");
+	createOptions(selectList, ledModeDispType);
+	tfSetCoordinate(selectList, y, x, 0, id);
+	selectList.setAttribute("class", "selectorbox");
+	selectList.setAttribute("onchange", evtHandler);
+	return selectList;
+}
+
+function tfTransitionSelector(y, x, id, evtHandler)
+{
+	
+	var selectList = document.createElement("select");
+	createOptions(selectList, ledTransitionDispType);
+	tfSetCoordinate(selectList, y, x, 0, id);
+	selectList.setAttribute("class", "selectorbox");
+	selectList.setAttribute("onchange", evtHandler);
+	return selectList;
+}
+

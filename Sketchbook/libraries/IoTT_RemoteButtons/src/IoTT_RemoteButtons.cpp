@@ -156,7 +156,7 @@ void IoTT_Mux64Buttons::loadButtonCfgI2CJSON(DynamicJsonDocument doc) //used for
 
 void IoTT_Mux64Buttons::loadButtonCfgI2CJSONObj(JsonObject doc) //used GreenHat (called from Switches.cpp)
 {
-	Serial.println("loadButtonCfgI2CJSON");
+//	Serial.println("loadButtonCfgI2CJSON");
 	if (doc.containsKey("DblClickThreshold"))
 		setDblClickRate((int)doc["DblClickThreshold"]);
     if (doc.containsKey("HoldThreshold"))
@@ -228,7 +228,7 @@ void IoTT_Mux64Buttons::subscribeTopics()
 {
 	for (int i = 0; i < 1; i++)
 	{
-		Serial.printf("Subscribe Button Topic %i \n", i);
+//		Serial.printf("Subscribe Button Topic %i \n", i);
 		String thisTopic = String(subTopicList[i].topicName);
 		if (subTopicList[i].inclAddr)
 			thisTopic += "/#";
@@ -595,13 +595,13 @@ bool IoTT_Mux64Buttons::processMQTTCmd(char * topic, DynamicJsonDocument doc)
 				for (int i = 0; i < btnList.size(); i++)
 					btnAddr[i] = btnList[i];
 				numBtn = btnList.size();
-				Serial.printf("Btn Array %i\n", numBtn);
+//				Serial.printf("Btn Array %i\n", numBtn);
 			}
 			else
 			{
 				btnAddr[0] = doc["BtnNr"];
 				numBtn = 1;
-				Serial.printf("Single Button %i\n", btnAddr[0]);
+//				Serial.printf("Single Button %i\n", btnAddr[0]);
 			}
 		}
 		if (doc.containsKey("PortNr"))
@@ -615,13 +615,13 @@ bool IoTT_Mux64Buttons::processMQTTCmd(char * topic, DynamicJsonDocument doc)
 						portAddr[numPort] = btnList[i];
 						numPort++;
 					}
-				Serial.printf("Btn Port Array %i\n", numPort);
+//				Serial.printf("Btn Port Array %i\n", numPort);
 			}
 			else
 			{
 				portAddr[0] = doc["PortNr"];
 				numPort = 1;
-				Serial.printf("Single Button Port %i\n", portAddr[0]);
+//				Serial.printf("Single Button Port %i\n", portAddr[0]);
 			}
 		}
 	}
