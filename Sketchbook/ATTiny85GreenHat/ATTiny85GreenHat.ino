@@ -1,3 +1,7 @@
+// Compiler settings
+// ATTiny85
+// Internal 16MHz
+  
   #include <Arduino.h>
   #include <TinyWire.h>
 

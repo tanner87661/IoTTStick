@@ -735,7 +735,7 @@ void IoTT_LEDHandler::updateConstantLED()
 
 void IoTT_LEDHandler::updateLEDs()
 {
-//	Serial.print("2");
+//	Serial.printf("update %i\n", ctrlSource);
     switch (ctrlSource)
     {
 		case evt_blockdetector: updateBlockDet(); break;
@@ -747,19 +747,20 @@ void IoTT_LEDHandler::updateLEDs()
 		case evt_transponder: updateTransponder(); break;
 		case evt_powerstat: updatePowerStatus(); break;
 		case evt_alwayson: updateConstantLED(); break;
+//		default: Serial.print("No Def"); break;
     }
 }
 
 void IoTT_LEDHandler::processTranspEvent(uint16_t btnAddr, uint16_t eventValue)
 {
-	Serial.printf("Transponder event Zone %i Move %i Addr %i\n", btnAddr, (eventValue & 0x8000) >> 15, eventValue & 0x7FFF);
+//	Serial.printf("Transponder event Zone %i Move %i Addr %i\n", btnAddr, (eventValue & 0x8000) >> 15, eventValue & 0x7FFF);
 	if (ctrlAddrListLen > 0)
 		if (ctrlAddrList[0] == btnAddr)
 			if (condAddrListLen > 0)
 				for (uint16_t i = 0; i < condAddrListLen; i++)
 					if (condAddrList[i] == (eventValue & 0x7FFF))
 					{
-						Serial.printf("Execute Transponder event Zone %i Move %i Addr %i\n", btnAddr, (eventValue & 0x8000) >> 15, eventValue & 0x7FFF);
+//						Serial.printf("Execute Transponder event Zone %i Move %i Addr %i\n", btnAddr, (eventValue & 0x8000) >> 15, eventValue & 0x7FFF);
 						lastExtStatus = ((eventValue & 0x8000)>>15) ^ 0x01;
 						break;
 					}
@@ -948,7 +949,7 @@ void IoTT_ledChain::loadLEDChainJSONObj(JsonObject doc, bool resetList)
     }
     else
 		Serial.println("No Chain Params");
-	Serial.println("Load Colors");
+//	Serial.println("Load Colors");
     if (doc.containsKey("LEDCols"))
     {
         JsonArray LEDCols = doc["LEDCols"];
@@ -974,6 +975,7 @@ void IoTT_ledChain::loadLEDChainJSONObj(JsonObject doc, bool resetList)
         {
 			IoTT_LEDHandler * thisLEDHandlerEntry = new(IoTT_LEDHandler);
 			thisLEDHandlerEntry->parentObj = this;
+//			Serial.print(i);
 			thisLEDHandlerEntry->loadLEDHandlerJSON(LEDDefs[i]);
 			LEDHandlerList[LEDHandlerListLen + i] = thisLEDHandlerEntry;
 		}
@@ -982,7 +984,7 @@ void IoTT_ledChain::loadLEDChainJSONObj(JsonObject doc, bool resetList)
 	}
 	else
 		Serial.println("No LED Chain defined");
-//	Serial.println("Load LED Defs Complete");
+	Serial.println("Load LED Defs Complete");
 }
 
 IoTT_ColorDefinitions * IoTT_ledChain::getColorByName(String colName)
@@ -1034,6 +1036,7 @@ CRGB * IoTT_ledChain::initChain(word numLEDs)
 		setCurrColHSV(i, CHSV(1,255,0)); //initialize dark
 	needUpdate = true;
 	refreshAnyway = true;
+//	Serial.println("Set Refesh");
 	blinkTimer = millis() + blinkInterval;
 	ledUpdateTimer = millis() + ledUpdateInterval + 5; //5ms ofset to Buttons
 	globFaderValue = 0;
@@ -1152,10 +1155,17 @@ void IoTT_ledChain::updateLEDs()
 		case evt_analogvalue: setBrightness((float)getAnalogValue(getBrightnessControlAddr())/4095); break;
 		default: setBrightness(1.0); break;
 	}
-//	Serial.print("1");
+//	Serial.printf("update %i\n", LEDHandlerListLen);
 	if (LEDHandlerListLen > 0)
+	{
+		intrCtr++;
 		for (uint16_t i = 0; i < LEDHandlerListLen; i++)
-			LEDHandlerList[i]->updateLEDs();
+		{
+			if ((i & 0x01) == (intrCtr & 0x01))
+				LEDHandlerList[i]->updateLEDs();
+//			yield();
+		}
+	}
 		
 }
 
@@ -1183,50 +1193,6 @@ void IoTT_ledChain::setI2CLED(uint16_t ledNr, CHSV newCol)
 	thisWire->endTransmission(false);
 	ledChain[ledNr] = newCol;
 }
-/*
-void IoTT_ledChain::initI2CLED()
-{
-	int devID = -1;
-	int successCtr = 0;
-	for (int i = 0; i < 25; i++)
-	{
-		devID = pingI2CDevice();
-		Serial.println(devID);
-		if (devID >= 0)
-		{
-			successCtr++;
-			if (successCtr > 5)
-				break;
-		}
-		else
-			delay(100);
-	}
-	if (devID < 0)
-		ESP.restart();
-	Serial.printf("Set LED params L %i T %i\n", chainLength, colTypeNum);
-	setI2CChainLen(chainLength);
-	setI2CLEDType(colTypeNum);
-	resetI2CDevice(false);
-	successCtr = 0;
-	for (int i = 0; i < 25; i++)
-	{
-		devID = pingI2CDevice();
-		Serial.println(devID);
-		if (devID >= 0)
-		{
-			successCtr++;
-			if (successCtr > 5)
-			break;
-		}
-		else
-			delay(100);
-	}
-	if (devID < 0)
-		ESP.restart();
-	setI2CLED(0xFF, CHSV(0,0,0)); //set all dark
-	Serial.printf("Init I2C Chain Addr %2X with %i LED Type %i\n", I2CAddr, chainLength, colTypeNum);
-}
-*/
 
 void IoTT_ledChain::resetI2CWDT()
 {
@@ -1288,6 +1254,7 @@ int8_t IoTT_ledChain::pingI2CDevice(uint8_t numBytes)
 			i2cDevID = devData[0]; //0x55 YellowHat 0x56 GreenHat
 			i2cChainLength = (devData[1]<<8) + devData[2];
 			i2cChainType = (devData[3]<<8) + devData[4];
+//			Serial.printf("I2C LED Chain Dev %i Type %i Length %i\n", i2cDevID, i2cChainType, i2cChainLength);
 		}
 		return devData[0];
 	}
@@ -1305,6 +1272,7 @@ void IoTT_ledChain::resetI2CDevice(bool forceReset)
 	thisWire->endTransmission();
 	Serial.println(forceReset ? 1:0);
 	delay(50);
+//	refreshAnyway = true;
 }
 void IoTT_ledChain::setI2CChainLen(uint16_t chainLen)
 {
@@ -1315,9 +1283,10 @@ void IoTT_ledChain::setI2CChainLen(uint16_t chainLen)
 	thisWire->write((chainLen & 0xFF00) >> 8);
 	thisWire->write(chainLen & 0x00FF);
 	thisWire->endTransmission();
-	Serial.println((chainLen & 0xFF00) >> 8);
-	Serial.println(chainLen & 0x00FF);
+//	Serial.println((chainLen & 0xFF00) >> 8);
+//	Serial.println(chainLen & 0x00FF);
 	delay(50);
+//	refreshAnyway = true;
 }
 
 void IoTT_ledChain::setI2CLEDType(uint16_t ledType)
@@ -1326,12 +1295,13 @@ void IoTT_ledChain::setI2CLEDType(uint16_t ledType)
 	thisWire->beginTransmission(I2CAddr);
 	thisWire->write(0xFE);
 	thisWire->write(0x01);
-	Serial.println((ledType & 0xFF00) >> 8);
-	Serial.println(ledType & 0x00FF);
+//	Serial.println((ledType & 0xFF00) >> 8);
+//	Serial.println(ledType & 0x00FF);
 	thisWire->write((ledType & 0xFF00) >> 8);
 	thisWire->write(ledType & 0x00FF);
 	thisWire->endTransmission();
 	delay(50);
+//	refreshAnyway = true;
 }
 
 void IoTT_ledChain::processBtnEvent(sourceType inputEvent, uint16_t btnAddr, uint16_t eventValue)
@@ -1437,6 +1407,7 @@ void IoTT_ledChain::processChain()
 		}
 		needUpdate = false;
 		refreshAnyway = false;
+//	Serial.println("Clear Refesh");
 #ifdef useRTOS
 		xSemaphoreGive(ledBaton);
 #endif

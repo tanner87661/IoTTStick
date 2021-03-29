@@ -135,7 +135,7 @@ class IoTT_ledChain
 		chainModeType chainMode = hatDirect;
 		topicStruct subTopicList[2] = {{"LEDSET", false}, {"LEDASK", false}};
 		topicStruct pubTopicList[1] = {{"LEDREPLY", false}};
-
+		uint8_t intrCtr = 0; //LED interlacing
 		uint16_t chainLength = 0;
 		CRGB * ledChain = NULL;
 		CHSV lastCol = CHSV(0,0,0);

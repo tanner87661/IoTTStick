@@ -303,6 +303,7 @@ void processWsMessage(char * newMsg, int msgLen, AsyncWebSocketClient * client)
   int docSize = 3 * msgLen;
   DynamicJsonDocument doc(docSize);
   DeserializationError error = deserializeJson(doc, newMsg, msgLen);
+  Serial.println(String(ESP.getFreeHeap()));
   if (!error)
   {
     if (doc.containsKey("Cmd"))
