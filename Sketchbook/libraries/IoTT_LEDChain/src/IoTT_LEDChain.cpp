@@ -120,7 +120,16 @@ void IoTT_LEDCmdList::updateLEDs()
 void IoTT_LEDCmdList::loadCmdListJSON(JsonObject thisObj)
 {
 //	Serial.println("Loading Cmd Seq");
-	upToVal = thisObj["Val"];
+	JsonArray upTo = thisObj["Val"];
+	if (upTo)
+		upToValLen = upTo.size();
+	else
+		upToValLen = 1;
+	if (upTo)
+		for (int j=0; j < upToValLen; j++)
+			upToVal[j] = upTo[j];
+	else
+		upToVal[0] = thisObj["Val"];
 	if (parentObj->multiColor)
 	{
 		colOn = (IoTT_ColorDefinitions**) realloc (colOn, parentObj->ledAddrListLen * sizeof(IoTT_ColorDefinitions*));
@@ -350,7 +359,7 @@ void IoTT_LEDHandler::updateChainDataForColor(uint8_t colorNr, IoTT_LEDCmdList *
 	
 	targetCol.v = round(targetCol.v * parentObj->getBrightness()); //this is the final target color, now we calculate the next step on the way there, if needed
 
-	if ((targetCol.h != currentColor[colorNr].h) || (targetCol.s != currentColor[colorNr].s) || (targetCol.v != currentColor[colorNr].v) || parentObj->refreshAnyway)
+	if ((targetCol.h != currentColor[colorNr].h) || (targetCol.s != currentColor[colorNr].s) || (targetCol.v != currentColor[colorNr].v) || (parentObj->refreshAnyway > 0))
 	{
 		uint16_t blinkPeriod;
 		if (useGlobal)
@@ -553,11 +562,11 @@ void IoTT_LEDHandler::updateSwSignalPos(bool isDynamic)
 //	Serial.printf("Checking Swi %i Stat %i\n", ctrlAddrList[0], swiStatus);
 	for (int i = 0; i < cmdListLen; i++)
 	{
-//		Serial.printf("Testing Value %i Status %i in Loop %i\n", cmdList[i]->upToVal, swiStatus, i);
-		if ((swiStatus <= cmdList[i]->upToVal) && (swiStatus > nextVal))
+//		Serial.printf("Testing Value %i Status %i in Loop %i\n", cmdList[i]->upToVal[0], swiStatus, i);
+		if ((swiStatus <= cmdList[i]->upToVal[0]) && (swiStatus > nextVal))
 		{
 			nextInd = i;
-			nextVal = cmdList[i]->upToVal;
+			nextVal = cmdList[i]->upToVal[0];
 		}
 	}
 	if (nextInd >= 0)
@@ -586,11 +595,11 @@ void IoTT_LEDHandler::updateSignalPos()
 	for (int i = 0; i < cmdListLen; i++)
 	{
 //		if (sigAddress == 799)
-//			Serial.printf("%i %i %i %i \n", i, sigAspect, cmdList[i]->upToVal, nextInd);
-		if ((sigAspect <= cmdList[i]->upToVal) && (sigAspect > nextVal))
+//			Serial.printf("%i %i %i %i \n", i, sigAspect, cmdList[i]->upToVal[0], nextInd);
+		if ((sigAspect <= cmdList[i]->upToVal[0]) && (sigAspect > nextVal))
 		{
 			nextInd = i;
-			nextVal = cmdList[i]->upToVal;
+			nextVal = cmdList[i]->upToVal[0];
 		}
 	}
 	if (nextInd >= 0)
@@ -601,8 +610,8 @@ void IoTT_LEDHandler::updateSignalPos()
 		if ((nextInd > 0) && (displType == linear))
 		{
  			cmdDefLin = cmdList[nextInd-1];
-			distance = round(((float_t)(sigAspect - cmdDefLin->upToVal) / (float_t)(cmdDef->upToVal - cmdDefLin->upToVal)) * 100);
-//			Serial.printf("Linear Signal %i to Aspect %i Curr %i Prev %i Dist %i \n", sigAddress, sigAspect, cmdDef->upToVal, cmdDefLin->upToVal, distance);
+			distance = round(((float_t)(sigAspect - cmdDefLin->upToVal[0]) / (float_t)(cmdDef->upToVal[0] - cmdDefLin->upToVal[0])) * 100);
+//			Serial.printf("Linear Signal %i to Aspect %i Curr %i Prev %i Dist %i \n", sigAddress, sigAspect, cmdDef->upToVal[0], cmdDefLin->upToVal[0], distance);
 			if (distance < 100)
 				updateChainData(cmdDef, cmdDefLin, distance);
 			else
@@ -627,10 +636,10 @@ void IoTT_LEDHandler::updateButtonPos()
 	}
 	for (int i = 0; i < cmdListLen; i++)
 	{
-		if ((btnState <= cmdList[i]->upToVal) && (btnState > nextVal))
+		if ((btnState <= cmdList[i]->upToVal[0]) && (btnState > nextVal))
 		{
 			nextInd = i;
-			nextVal = cmdList[i]->upToVal;
+			nextVal = cmdList[i]->upToVal[0];
 		}
 	}
 	if (nextInd >= 0)
@@ -659,20 +668,20 @@ void IoTT_LEDHandler::updateAnalogValue()
 //    Serial.printf("Analog Input %i to Value %i %i levels\n", analogNr, analogVal, cmdListLen);
 	for (int i = 0; i < cmdListLen; i++)
 	{
-//		Serial.printf("Checking %i < %i \n", analogVal, cmdList[i]->upToVal);
-		if ((analogVal <= cmdList[i]->upToVal) && (analogVal > nextVal))
+//		Serial.printf("Checking %i < %i \n", analogVal, cmdList[i]->upToVal[0]);
+		if ((analogVal <= cmdList[i]->upToVal[0]) && (analogVal > nextVal))
 		{
 			prevInd = nextInd;
 			nextInd = i;
-			nextVal = cmdList[i]->upToVal;
+			nextVal = cmdList[i]->upToVal[0];
 		}
 	}
 	cmdDef = cmdList[nextInd];
 	if ((nextInd > 0) && (displType == linear))
 	{
 		cmdDefLin = cmdList[nextInd-1];
-		distance = round(((float_t)(analogVal - cmdDefLin->upToVal) / (float_t)(cmdDef->upToVal - cmdDefLin->upToVal)) * 100);
-//			Serial.printf("Linear Signal %i to Aspect %i Curr %i Prev %i Dist %i \n", sigAddress, analogVal, cmdDef->upToVal, cmdDefLin->upToVal, distance);
+		distance = round(((float_t)(analogVal - cmdDefLin->upToVal[0]) / (float_t)(cmdDef->upToVal[0] - cmdDefLin->upToVal[0])) * 100);
+//			Serial.printf("Linear Signal %i to Aspect %i Curr %i Prev %i Dist %i \n", sigAddress, analogVal, cmdDef->upToVal[0], cmdDefLin->upToVal[0], distance);
 		if (distance < 100)
 			updateChainData(cmdDef, cmdDefLin, distance);
 		else
@@ -710,10 +719,10 @@ void IoTT_LEDHandler::updatePowerStatus()
 	}
 	for (int i = 0; i < cmdListLen; i++)
 	{
-		if ((getPowerStatus() <= cmdList[i]->upToVal) && (getPowerStatus() > nextVal))
+		if ((getPowerStatus() <= cmdList[i]->upToVal[0]) && (getPowerStatus() > nextVal))
 		{
 			nextInd = i;
-			nextVal = cmdList[i]->upToVal;
+			nextVal = cmdList[i]->upToVal[0];
 		}
 	}
 	if (nextInd >= 0)
@@ -831,7 +840,7 @@ void IoTT_LEDHandler::loadLEDHandlerJSON(JsonObject thisObj)
           if (useOldFormat)
           {
 			thisCmdEntry->loadCmdListJSON(LEDCmd[2*i]);
-			thisCmdEntry->upToVal = i;
+			thisCmdEntry->upToVal[0] = i;
 		  }
           else
 			thisCmdEntry->loadCmdListJSON(LEDCmd[i]);
@@ -1035,8 +1044,8 @@ CRGB * IoTT_ledChain::initChain(word numLEDs)
     for (int i = 0; i < numLEDs; i++)
 		setCurrColHSV(i, CHSV(1,255,0)); //initialize dark
 	needUpdate = true;
-	refreshAnyway = true;
-//	Serial.println("Set Refesh");
+	refreshAnyway = 2;
+//	Serial.println("Set NeedUpdate/refreshAnyway");
 	blinkTimer = millis() + blinkInterval;
 	ledUpdateTimer = millis() + ledUpdateInterval + 5; //5ms ofset to Buttons
 	globFaderValue = 0;
@@ -1081,6 +1090,7 @@ void IoTT_ledChain::setCurrColHSV(uint16_t ledNr, CHSV newCol)
 				break;
 		}
 		needUpdate = true;
+//	Serial.println("Set NeedUpdate");
 	#ifdef useRTOS
 		xSemaphoreGive(ledBaton);
 	#endif
@@ -1270,7 +1280,7 @@ void IoTT_ledChain::resetI2CDevice(bool forceReset)
 	thisWire->write(0);
 	thisWire->write(forceReset ? 1:0);
 	thisWire->endTransmission();
-	Serial.println(forceReset ? 1:0);
+//	Serial.println(forceReset ? 1:0);
 	delay(50);
 //	refreshAnyway = true;
 }
@@ -1390,9 +1400,9 @@ void IoTT_ledChain::processChain()
 		}
 	}
 	
-	if ((needUpdate) || refreshAnyway)
+	if ((needUpdate) || (refreshAnyway) > 0)
 	{
-//		Serial.println("update LEDs");
+//		Serial.printf("refresh LEDs %i %i\n", needUpdate,refreshAnyway);
 #ifdef useRTOS
 		xSemaphoreTake(ledBaton, portMAX_DELAY);
 #endif
@@ -1406,8 +1416,9 @@ void IoTT_ledChain::processChain()
 				break;
 		}
 		needUpdate = false;
-		refreshAnyway = false;
-//	Serial.println("Clear Refesh");
+		if (refreshAnyway > 0)
+			refreshAnyway--;
+//	Serial.println("Clear Refresh/ NeedUpdate");
 #ifdef useRTOS
 		xSemaphoreGive(ledBaton);
 #endif

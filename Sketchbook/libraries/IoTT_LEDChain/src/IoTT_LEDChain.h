@@ -46,7 +46,8 @@ class IoTT_LEDCmdList
 	private:
 	public:
 		IoTT_LEDHandler* parentObj = NULL;
-		uint16_t upToVal = 0;
+		uint8_t upToValLen =0;
+		uint16_t upToVal[5];
 		IoTT_ColorDefinitions** colOn = NULL;
 		IoTT_ColorDefinitions** colOff = NULL;
 		uint8_t * dispMode = NULL;
@@ -179,7 +180,7 @@ class IoTT_ledChain
 		uint16_t colTypeNum = 0;
 		bool needUpdate;
 		SemaphoreHandle_t ledBaton;
-		bool refreshAnyway = true; //refresh LEDs despite color test shows same
+		uint8_t refreshAnyway = 2; //refresh LEDs despite color test shows same, we do 2 passes for odd/even
 
 	public: 
 		CRGB *  initChain(word numLEDs);

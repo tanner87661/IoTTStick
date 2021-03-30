@@ -159,7 +159,16 @@ void IoTT_SwitchBase::loadSwitchCfgJSON(JsonObject thisObj)
         for (int i=0; i < aspectListLen; i++)
         {
 			aspectList[i].isUsed = thisParams[i]["Used"];
-			aspectList[i].aspectID = thisParams[i]["AspVal"];
+			JsonArray aspID = thisParams[i]["AspVal"];
+			if (aspID)
+				aspectList[i].aspectIDLen = aspID.size();
+			else
+				aspectList[i].aspectIDLen = 1;
+			if (aspID)
+				for (int j=0; j < aspectList[i].aspectIDLen; j++)
+					aspectList[i].aspectID[j] = aspID[j];
+			else
+				aspectList[i].aspectID[0] = thisParams[i]["AspVal"];
 			aspectList[i].aspectPos = thisParams[i]["PosPt"];
 			aspectList[i].moveCfg = thisParams[i]["MoveCfg"];
 		}
@@ -526,13 +535,13 @@ void IoTT_ServoDrive::processSwitch()
 				for (int i = 0; i < aspectListLen; i++)
 				{
 //					Serial.println(aspectList[i].aspectID);
-					if ((newSwiPos <= aspectList[i].aspectID) && (newSwiPos > nextVal))
+					if ((newSwiPos <= aspectList[i].aspectID[0]) && (newSwiPos > nextVal))
 					{
 						nextInd = i;
-						nextVal = aspectList[i].aspectID;
+						nextVal = aspectList[i].aspectID[0];
 					}
 				}
-				if (aspectList[nextInd].aspectID != extSwiPos)
+				if (aspectList[nextInd].aspectID[0] != extSwiPos)
 				{
 					if (aspectList[nextInd].isUsed)
 						targetMove = &aspectList[nextInd];
@@ -791,8 +800,8 @@ void IoTT_GreenHat::processSwitch()
 {
 	if (millis() > startupTimer)
 	{
-		if (startUpCtr == 0)
-			myChain->refreshAnyway = true;
+//		if (startUpCtr == 0)
+//			myChain->refreshAnyway = true;
 		startupTimer += startupInterval;
 		startUpCtr = max(startUpCtr-1,0);
 	}
