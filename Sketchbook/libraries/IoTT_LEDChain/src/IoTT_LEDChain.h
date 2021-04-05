@@ -47,7 +47,7 @@ class IoTT_LEDCmdList
 	public:
 		IoTT_LEDHandler* parentObj = NULL;
 		uint8_t upToValLen =0;
-		uint16_t upToVal[5];
+		uint16_t * upToVal = NULL;
 		IoTT_ColorDefinitions** colOn = NULL;
 		IoTT_ColorDefinitions** colOff = NULL;
 		uint8_t * dispMode = NULL;

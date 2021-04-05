@@ -698,6 +698,7 @@ function setSwitchData(sender)
 							var swiPosList = swiCfgData[workCfg].Drivers[thisRow].Positions;
 							ledData[workCfg].LEDDefs[dataRow].CtrlSource = ledOptionArray[swiSource];
 							ledData[workCfg].LEDDefs[dataRow].CtrlAddr = swiAddr;
+							ledData[workCfg].LEDDefs[dataRow].CondAddr = swiCfgData[workCfg].Drivers[thisRow].CondData;
 							//adjust length of aspects
 							adjustLEDAspectList(dataRow, getOptionList("cmdlistbox_" + thisRow.toString() + "_1").length, swiPosList);
 							//display LED

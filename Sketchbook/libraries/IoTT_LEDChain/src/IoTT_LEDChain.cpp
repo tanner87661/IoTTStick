@@ -116,7 +116,6 @@ void IoTT_LEDCmdList::updateLEDs()
 {
 }
 
-
 void IoTT_LEDCmdList::loadCmdListJSON(JsonObject thisObj)
 {
 //	Serial.println("Loading Cmd Seq");
@@ -125,11 +124,12 @@ void IoTT_LEDCmdList::loadCmdListJSON(JsonObject thisObj)
 		upToValLen = upTo.size();
 	else
 		upToValLen = 1;
+	upToVal = (uint16_t*) realloc(upToVal, upToValLen * sizeof(uint16_t));
 	if (upTo)
 		for (int j=0; j < upToValLen; j++)
 			upToVal[j] = upTo[j];
 	else
-		upToVal[0] = thisObj["Val"];
+		upToVal[0] = (uint16_t)thisObj["Val"];
 	if (parentObj->multiColor)
 	{
 		colOn = (IoTT_ColorDefinitions**) realloc (colOn, parentObj->ledAddrListLen * sizeof(IoTT_ColorDefinitions*));
@@ -874,6 +874,8 @@ IoTT_ledChain::IoTT_ledChain(TwoWire * newWire, uint16_t useI2CAddr, bool multiR
 IoTT_ledChain::~IoTT_ledChain()
 {
 	freeObjects();
+	if (ledChain)
+		free(ledChain);
 }
 
 void IoTT_ledChain::freeObjects()

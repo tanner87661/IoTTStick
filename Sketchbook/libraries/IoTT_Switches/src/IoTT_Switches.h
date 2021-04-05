@@ -53,11 +53,10 @@ typedef struct
 {
 	bool    isUsed;
 	uint8_t aspectIDLen = 0;
-//	std::vector<uint16_t> aspectValues; // a list to hold all clients
-	uint16_t aspectID[5];
+	uint16_t * aspectID = NULL;
 	int16_t aspectPos;
 	uint8_t moveCfg;
-}aspectEntry;
+} aspectEntry;
 
 class IoTT_SwitchList;
 class IoTT_GreenHat;
