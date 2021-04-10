@@ -87,6 +87,11 @@ function setServoPos(servoNr, servoPos)
 	ws.send("{\"Cmd\":\"SetServo\", \"ServoNr\":[" + servoNr + "], \"ServoPos\":" + servoPos + "}");
 }
 
+function reqPageStats()
+{
+	ws.send("{\"Cmd\":\"ReqStats\"}");
+}
+
 function downloadConfig(fileSelect) //get files from Stick and store to file
 {
 	var moduleID = 0;
@@ -354,6 +359,7 @@ function loadInitData()
 		{
 			ws.send("{\"Cmd\":\"CfgData\", \"Type\":\"" + scriptList.Pages[currentPage].ID + "\", \"FileName\":\"" + scriptList.Pages[currentPage].FileName+ "\"}");
 //			console.log("{\"Cmd\":\"CfgData\", \"Type\":\"" + scriptList.Pages[currentPage].ID + "\", \"FileName\":\"" + scriptList.Pages[currentPage].FileName+ "\"}");
+			setTimeout(reqPageStats, 1000);
 		}
 }
 

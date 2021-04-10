@@ -59,7 +59,7 @@ void deleteAllFiles(String ofNameType, String startDir, String fileExt, bool las
 uint32_t readFileToBuffer(String fileName, char * thisBuffer, uint32_t maxSize)
 {
   uint32_t bytesRead = 0;
-  Serial.printf("Trying to read File %s\n", &fileName[0]);
+//  Serial.printf("Trying to read File %s\n", &fileName[0]);
   if (SPIFFS.exists(fileName))
   {
     File dataFile = SPIFFS.open(fileName, "r");
@@ -125,7 +125,8 @@ DynamicJsonDocument * getDocPtr(String cmdFile, bool duplData)
 //  Serial.println(wsTxBuffer);
   if (jsonData > 0)
   {
-    uint16_t docSize = 3 * jsonData;//.length();
+    uint16_t docSize = 4096 * (trunc((3 * jsonData) / 4096) + 1);  //.length();
+//    Serial.printf("Size: %i Doc Size: %i\n", jsonData, docSize);
     DynamicJsonDocument * thisDoc = new DynamicJsonDocument(docSize);
     DeserializationError error;
     if (duplData)

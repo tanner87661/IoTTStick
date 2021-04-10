@@ -8,13 +8,17 @@ void initLEDChain()
   switch (chainType)
   {
     case 12: strip = new Adafruit_NeoPixel(chainLength, LED_PIN, NEO_RGB + NEO_KHZ800); break;
-    default: strip = new Adafruit_NeoPixel(chainLength, LED_PIN, NEO_GRB + NEO_KHZ800); break;
+    case 21: strip = new Adafruit_NeoPixel(chainLength, LED_PIN, NEO_RBG + NEO_KHZ800); break;
+    case 102: strip = new Adafruit_NeoPixel(chainLength, LED_PIN, NEO_GRB + NEO_KHZ800); break;
+    case 120: strip = new Adafruit_NeoPixel(chainLength, LED_PIN, NEO_GBR + NEO_KHZ800); break;
+    case 201: strip = new Adafruit_NeoPixel(chainLength, LED_PIN, NEO_BRG + NEO_KHZ800); break;
+    case 210: strip = new Adafruit_NeoPixel(chainLength, LED_PIN, NEO_BGR + NEO_KHZ800); break;
   }
   strip->begin();
-  strip->setBrightness(100); // set full brightness
-  strip->show(); // Initialize all pixels to 'off'
+  strip->setBrightness(10); // set full brightness
+//  strip->show(); // Initialize all pixels to 'off'
   fillStrip(0x000010); //initialize dark
-  strip->show(); // Initialize all pixels to 'off'
+//  strip->show(); // Initialize all pixels to 'off'
 }
 
 /*

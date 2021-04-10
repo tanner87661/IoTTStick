@@ -137,8 +137,8 @@ void handleUpload(AsyncWebServerRequest *request, String filename, size_t index,
 void processStatustoWebClient()
 {
   //  Serial.println("Keep alive");
-  DynamicJsonDocument doc(1200);
-  char myStatusMsg[400];
+  DynamicJsonDocument doc(512);
+  char myStatusMsg[350];
   doc["Cmd"] = "STATS";
   JsonObject Data = doc.createNestedObject("Data");
   float float1 = (millisRollOver * 4294967296) + millis(); //calculate millis including rollovers
@@ -147,18 +147,18 @@ void processStatustoWebClient()
   if (useNTP)// && ntpOK) no longer needed in stick as we have RTC
   {
     now = time(0);
-    char buff[40]; //39 digits plus the null char
-    strftime(buff, 40, "%m-%d-%Y %H:%M:%S", localtime(&now));
-    Data["systime"] = buff;
+//    char buff[40]; //39 digits plus the null char
+    strftime(myStatusMsg, 40, "%m-%d-%Y %H:%M:%S", localtime(&now));
+    Data["systime"] = myStatusMsg;
   }
   Data["freemem"] = String(ESP.getFreeHeap());
   Data["totaldisk"] = String(SPIFFS.totalBytes());
   Data["useddisk"] = String(SPIFFS.usedBytes());
   Data["freedisk"] = String(SPIFFS.totalBytes() - SPIFFS.usedBytes());
-  char buff[10];
-  sprintf(buff, "%c.%c.%c", BBVersion[0], BBVersion[1], BBVersion[2]);
+//  char buff[10];
+  sprintf(myStatusMsg, "%c.%c.%c", BBVersion[0], BBVersion[1], BBVersion[2]);
 //  sprintf(buff, "%u.%u.%u", BBVersion[0], BBVersion[1], BBVersion[2]);
-  Data["version"] = buff;
+  Data["version"] = myStatusMsg;
   Data["ipaddress"] = WiFi.localIP().toString();
   Data["sigstrength"] = WiFi.RSSI();
 
@@ -174,7 +174,7 @@ void processStatustoWebClient()
   Data["ubat"] = M5.Axp.GetBatVoltage();
 
   serializeJson(doc, myStatusMsg);
-  Serial.println(myStatusMsg);
+//  Serial.println(myStatusMsg);
   globalClient->text(myStatusMsg);
   lastWifiUse = millis();
   //  Serial.println("Keep alive done");
@@ -274,9 +274,9 @@ void sendJSONFile(int thisFileIndex)
       break;
   }
   strcat(wsTxBuffer, "}");
-  Serial.println(wsTxBuffer);
+//  Serial.println(wsTxBuffer);
   if (globalClient != NULL)
-    globalClient->text(wsTxBuffer);// + "}");
+    globalClient->text(wsTxBuffer);
 }
 
 uint32_t createCfgEntryByName(String fileName, String cmdType, char * toBuffer)
@@ -333,19 +333,17 @@ void freeObjects() //free up RAM as ESP will restart at end of updating anyway
 
 void processWsMessage(char * newMsg, int msgLen, AsyncWebSocketClient * client)
 {
-  keepAlive = millis() + keepAliveInterval;
-  Serial.println(newMsg);
-  Serial.println(String(ESP.getFreeHeap()));
-  int docSize = 4 * msgLen;
-  docSize = 128;
-  Serial.println(String(ESP.getMaxAllocHeap()));
+//  Serial.println(newMsg);
+//  Serial.println(String(ESP.getFreeHeap()));
+  int docSize = 4096;
+//  Serial.println(String(ESP.getMaxAllocHeap()));
   DynamicJsonDocument doc(docSize);
-  Serial.println(String(ESP.getFreeHeap()));
+//  Serial.println(String(ESP.getFreeHeap()));
   char duplMsg[strlen(newMsg) + 1];
   strcpy(duplMsg, newMsg);
-  Serial.println(String(ESP.getFreeHeap()));
+//  Serial.println(String(ESP.getFreeHeap()));
   DeserializationError error = deserializeJson(doc, duplMsg);//, msgLen);
-  Serial.println(String(ESP.getFreeHeap()));
+//  Serial.println(String(ESP.getFreeHeap()));
   if (!error)
   {
     if (doc.containsKey("Cmd"))
@@ -372,6 +370,7 @@ void processWsMessage(char * newMsg, int msgLen, AsyncWebSocketClient * client)
       }
       if (thisCmd == "CfgFiles") //Config Request Format: {"Cmd":"CfgFiles", "Type":"pgxxxxCfg"}
       {
+        keepAlive = millis() + keepAliveInterval;
         uint16_t fileSelector = 0xFFFF;
         if (doc.containsKey("Type"))
           fileSelector = doc["Type"];
@@ -415,6 +414,9 @@ void processWsMessage(char * newMsg, int msgLen, AsyncWebSocketClient * client)
             fileCtr++;
         addFileToTx("", 0, "pgWriteFile", 3); //Write file to disk
       }
+
+      if (thisCmd == "ReqStats") //Request Technical data
+        keepAlive = millis();      
 
       if (thisCmd == "CfgData") //Config Request Format: {"Cmd":"CfgData", "Type":"pgxxxxCfg", "FileName":"name"}
       {
@@ -463,8 +465,8 @@ void processWsMessage(char * newMsg, int msgLen, AsyncWebSocketClient * client)
             delay(500);
             ESP.restart(); //configuration update requires restart to be sure dynamic allocation of objects is not messed up
           }
-          else
-            Serial.println("No Reboot needed");
+//          else
+//            Serial.println("No Reboot needed");
         sendCTS();
       }
     }

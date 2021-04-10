@@ -586,7 +586,7 @@ void setup() {
     if (useHat.devId == 3) //YellowHat
     {
         Serial.println("Init YellowHat");  
-        Wire.begin(hatSDA, hatSCL, 400000); //initialize the I2C interface
+        Wire.begin(hatSDA, hatSCL, 400000); //initialize the I2C interface 400kHz
         jsonDataObj = getDocPtr("/configdata/led.cfg", false);
         if (jsonDataObj != NULL)
         {

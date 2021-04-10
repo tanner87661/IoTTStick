@@ -9,7 +9,7 @@
   #define writeProc send
   #define i2cConnection TinyWire
   
-//  #define clockFreq 400000
+  #define clockFreq 400000
 
   #define devType 0x56 //GreenHat, used to request data
 
@@ -77,16 +77,19 @@ void setup() {
   pinMode(4, INPUT);
   initI2C();
   wdtTimer = 0;
+//  OSCCAL = 46;
 }
 
 //uint16_t oldHue = 0;
 void loop()
 {
-//  uint32_t rgbcolor = strip->ColorHSV(oldHue, 255, 50);
-//  oldHue = oldHue + 1;
-//  strip->setPixelColor(0, rgbcolor);
-//  strip->show();
-//  fillStrip(rgbcolor);
+/*
+  uint32_t rgbcolor = strip->ColorHSV(oldHue, 255, 50);
+  oldHue = oldHue + 10;
+  strip->setPixelColor(0, rgbcolor);
+  strip->show();
+  fillStrip(rgbcolor);
+*/
   if (startMode)
   {
     wdtTimer++;
@@ -100,5 +103,4 @@ void loop()
   }
   if (i2cAddr != getI2CAddr())
     resetFunc(); //if communication with Hat breaks down, we reset the Arduino to rearbitrate the I2C bus
-//  TinyWireS_stop_check();
 }
