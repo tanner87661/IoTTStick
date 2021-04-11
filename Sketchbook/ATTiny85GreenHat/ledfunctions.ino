@@ -5,20 +5,20 @@ void initLEDChain()
   if (chainLength > LED_COUNT)
     chainLength = LED_COUNT;
   uint16_t chainType = eeprom_read_word ((uint16_t *) 2);
-
-  strip = new Adafruit_NeoPixel(LED_COUNT, LED_PIN, NEO_GRB + NEO_KHZ800);
+  switch (chainType)
+  {
+    case 12: strip = new Adafruit_NeoPixel(chainLength, LED_PIN, NEO_RGB + NEO_KHZ800); break;
+    case 21: strip = new Adafruit_NeoPixel(chainLength, LED_PIN, NEO_RBG + NEO_KHZ800); break;
+    case 102: strip = new Adafruit_NeoPixel(chainLength, LED_PIN, NEO_GRB + NEO_KHZ800); break;
+    case 120: strip = new Adafruit_NeoPixel(chainLength, LED_PIN, NEO_GBR + NEO_KHZ800); break;
+    case 201: strip = new Adafruit_NeoPixel(chainLength, LED_PIN, NEO_BRG + NEO_KHZ800); break;
+    case 210: strip = new Adafruit_NeoPixel(chainLength, LED_PIN, NEO_BGR + NEO_KHZ800); break;
+  }
   strip->begin();
-  strip->setBrightness(100); // set full brightness
-  strip->show(); // Initialize all pixels to 'off'
-
-  
-//  switch (chainType)
-//  {
-//    case 102: FastLED.addLeds<WS2811, LED_PIN, GRB>(ledChain, chainLength); break;
-//    default: FastLED.addLeds<WS2811, LED_PIN, RGB>(ledChain, chainLength); break;
-//  }
-  fillStrip(0x000000); //initialize dark
-  strip->show(); // Initialize all pixels to 'off'
+  strip->setBrightness(10); // set full brightness
+//  strip->show(); // Initialize all pixels to 'off'
+  fillStrip(0x000010); //initialize dark
+//  strip->show(); // Initialize all pixels to 'off'
 }
 
 /*

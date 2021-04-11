@@ -23,7 +23,8 @@ var dlgTextDispArea;
 var fileGroupIndex = 0;
 var fileSendIndex = 0;
 
-var targetSize = 10240; //10kb target length of file strings, should always fit into 16kB wsBuffer of asyncServer
+var targetSize = 3072; //3kB target length of file strings, should always fit into 16kB wsBuffer of asyncServer
+//var targetSize = 10240; //10kb target length of file strings, should always fit into 16kB wsBuffer of asyncServer
 //var configFileTransfer;
 
 function loadPageList(pageName, menueTab, contentTab, footerTab)
@@ -86,6 +87,11 @@ function setServoPos(servoNr, servoPos)
 	ws.send("{\"Cmd\":\"SetServo\", \"ServoNr\":[" + servoNr + "], \"ServoPos\":" + servoPos + "}");
 }
 
+function reqPageStats()
+{
+	ws.send("{\"Cmd\":\"ReqStats\"}");
+}
+
 function downloadConfig(fileSelect) //get files from Stick and store to file
 {
 	var moduleID = 0;
@@ -134,7 +140,7 @@ function loadPage(pageURL)
 
 function sendFileData(itemType, filenametype, filename, itemData, restart)
 {
-	var configStr = "{\"Cmd\":\"CfgUpdate\", \"FileNameType\": \"" + filenametype + "\", \"FileName\": \"" + filename + "\", \"Restart\": " + restart + ", \"Type\":\"" + itemType + "\", \"Data\":" + itemData  + "}";
+	var configStr = "{\"Cmd\":\"CfgUpdate\", \"FileNameType\": \"" + filenametype + "\", \"FileName\": \"" + filename + "\", \"Restart\": " + restart + ", \"Type\":\"" + itemType + "\", \"Data\":" + JSON.stringify(itemData)  + "}";
 	ws.send(configStr);
 	console.log(JSON.parse(configStr));
 }
@@ -243,7 +249,7 @@ function sendSingleFile()
 {
 //	if (flagCTS == true)
 	{
-		console.log("Create Single File Dlg ", fileGroupIndex, fileSendIndex );
+//		console.log("Create Single File Dlg ", fileGroupIndex, fileSendIndex );
 		if (progressDlg ==  null)
 			progressDlg = startProgressDialog(document.getElementById("TabHolder"));
 		progressDlg.style.display = "block";
@@ -324,7 +330,7 @@ function saveSettings(sender)
 		dlgTextDispArea.innerHTML = "";
 	fileSendIndex = 0;
 	fileGroupIndex = 0;
-	console.log(transferData);
+//	console.log(transferData);
 	sendSingleFile();
 }
 
@@ -336,13 +342,13 @@ function cancelSettings(sender)
 
 function loadInitData()
 {
-	console.log("loadInitData");
+//	console.log("loadInitData");
 	if (wsInitNode)
 	{
 		if (scriptList.Pages[currentPage].ID != "pgNodeCfg")
 		{
 			ws.send("{\"Cmd\":\"CfgData\", \"Type\":\"pgNodeCfg\", \"FileName\": \"node\"}");
-			console.log("{\"Cmd\":\"CfgData\", \"Type\":\"pgNodeCfg\", \"FileName\": \"node\"}");
+//			console.log("{\"Cmd\":\"CfgData\", \"Type\":\"pgNodeCfg\", \"FileName\": \"node\"}");
 		}
 		else
 			wsInitNode = false;
@@ -352,7 +358,8 @@ function loadInitData()
 		if (wsInitData)
 		{
 			ws.send("{\"Cmd\":\"CfgData\", \"Type\":\"" + scriptList.Pages[currentPage].ID + "\", \"FileName\":\"" + scriptList.Pages[currentPage].FileName+ "\"}");
-			console.log("{\"Cmd\":\"CfgData\", \"Type\":\"" + scriptList.Pages[currentPage].ID + "\", \"FileName\":\"" + scriptList.Pages[currentPage].FileName+ "\"}");
+//			console.log("{\"Cmd\":\"CfgData\", \"Type\":\"" + scriptList.Pages[currentPage].ID + "\", \"FileName\":\"" + scriptList.Pages[currentPage].FileName+ "\"}");
+			setTimeout(reqPageStats, 1000);
 		}
 }
 
@@ -377,7 +384,7 @@ function startWebsockets()
 
 	ws.onerror = function (evt) 
 	{
-		console.log(evt);
+//		console.log(evt);
 //		  conStatusError();
 	};
 

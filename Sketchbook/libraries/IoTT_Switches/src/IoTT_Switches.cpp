@@ -158,10 +158,36 @@ void IoTT_SwitchBase::loadSwitchCfgJSON(JsonObject thisObj)
 //		currentPos = 0;
         for (int i=0; i < aspectListLen; i++)
         {
-			aspectList[i].isUsed = thisParams[i]["Used"];
-			aspectList[i].aspectID = thisParams[i]["AspVal"];
-			aspectList[i].aspectPos = thisParams[i]["PosPt"];
-			aspectList[i].moveCfg = thisParams[i]["MoveCfg"];
+			aspectEntry aspectListEntry;
+//			aspectListEntry.aspectID.push_back(0);
+
+
+			aspectListEntry.isUsed = thisParams[i]["Used"];
+			JsonArray aspID = thisParams[i]["AspVal"];
+/*			
+			if (aspID)
+				for (int j=0; j < aspID.size(); j++)
+					aspectListEntry.aspectID.push_back((uint16_t)aspID[j]);
+			else
+			{
+				uint16_t newVal = thisParams[i]["AspVal"];
+				aspectListEntry.aspectID.push_back(newVal);
+			}		
+*/			
+			if (aspID)
+				aspectListEntry.aspectIDLen = aspID.size();
+			else
+				aspectListEntry.aspectIDLen = 1;
+			aspectListEntry.aspectID = (uint16_t*) realloc(aspectListEntry.aspectID, aspectListEntry.aspectIDLen * sizeof(uint16_t));
+			if (aspID)
+				for (int j=0; j < aspectListEntry.aspectIDLen; j++)
+					aspectListEntry.aspectID[j] = aspID[j];
+			else
+				aspectListEntry.aspectID[0] = thisParams[i]["AspVal"];
+
+			aspectListEntry.aspectPos = thisParams[i]["PosPt"];
+			aspectListEntry.moveCfg = thisParams[i]["MoveCfg"];
+			aspectList[i] = aspectListEntry;
 		}
 //		Serial.printf("Init %i with %i\n", switchAddrList[0], currentPos);
 	}
@@ -526,13 +552,13 @@ void IoTT_ServoDrive::processSwitch()
 				for (int i = 0; i < aspectListLen; i++)
 				{
 //					Serial.println(aspectList[i].aspectID);
-					if ((newSwiPos <= aspectList[i].aspectID) && (newSwiPos > nextVal))
+					if ((newSwiPos <= aspectList[i].aspectID[0]) && (newSwiPos > nextVal))
 					{
 						nextInd = i;
-						nextVal = aspectList[i].aspectID;
+						nextVal = aspectList[i].aspectID[0];
 					}
 				}
-				if (aspectList[nextInd].aspectID != extSwiPos)
+				if (aspectList[nextInd].aspectID[0] != extSwiPos)
 				{
 					if (aspectList[nextInd].isUsed)
 						targetMove = &aspectList[nextInd];
@@ -772,11 +798,15 @@ void IoTT_GreenHat::processBtnEvent(sourceType inputEvent, uint16_t btnAddr, uin
 	if (buttonHandler) 
 		buttonHandler->processBtnEvent(inputEvent, btnAddr, eventValue); //drives the outgoing buffer and time delayed commands
 	if (inputEvent == evt_transponder)
+	{
 		for (int i=0; i < switchModListLen; i++)
 		{
 			IoTT_SwitchBase * thisSwiMod = switchModList[i];
 			thisSwiMod->processExtEvent(inputEvent, btnAddr, eventValue); //transponder info is not buffered, so we process the event
 		}
+		if (myChain)
+			myChain->processBtnEvent(inputEvent, btnAddr, eventValue);
+	}
 }
 
 bool IoTT_GreenHat::isVerified()
@@ -791,8 +821,8 @@ void IoTT_GreenHat::processSwitch()
 {
 	if (millis() > startupTimer)
 	{
-		if (startUpCtr == 0)
-			myChain->refreshAnyway = true;
+//		if (startUpCtr == 0)
+//			myChain->refreshAnyway = true;
 		startupTimer += startupInterval;
 		startUpCtr = max(startUpCtr-1,0);
 	}

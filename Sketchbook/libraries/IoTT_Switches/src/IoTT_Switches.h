@@ -52,10 +52,11 @@ const uint16_t endMoveDelay = 2500; //ms until servo shutoff after target is rea
 typedef struct
 {
 	bool    isUsed;
-	uint8_t aspectID;
+	uint8_t aspectIDLen = 0;
+	uint16_t * aspectID = NULL;
 	int16_t aspectPos;
 	uint8_t moveCfg;
-}aspectEntry;
+} aspectEntry;
 
 class IoTT_SwitchList;
 class IoTT_GreenHat;

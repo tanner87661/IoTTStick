@@ -119,10 +119,10 @@ function addDataFile(ofObj)
 //			console.log(btnCfgData[workCfg]);
 			break;
 		case "pgBtnHdlrCfg":
-//			if (evtHdlrCfgData[loadCfg].ButtonHandler == undefined)
+			if (evtHdlrCfgData[loadCfg].ButtonHandler == undefined)
 				evtHdlrCfgData[loadCfg] = JSON.parse(JSON.stringify(ofObj.Data));
-//			else
-//				addFileSeqBtnHdlr(ofObj, evtHdlrCfgData);
+			else
+				addFileSeqBtnHdlr(ofObj, evtHdlrCfgData);
 			evtHdlrCfgData[workCfg] = upgradeJSONVersionBtnHdlr(JSON.parse(JSON.stringify(evtHdlrCfgData[loadCfg])));
 			while (evtHdlrCfgData[workCfg].ButtonHandler.length > 32)
 				evtHdlrCfgData[workCfg].ButtonHandler.pop();
@@ -148,8 +148,6 @@ function addDataFile(ofObj)
 //			console.log(ledData[workCfg]);
 			break;
 	}
-
-
 	if (ledData[workCfg].LEDCols != undefined) //LEDCols
 		loadColorTable(colorTable, ledData[workCfg].LEDCols);
 	updateServoPos = false;
@@ -469,6 +467,8 @@ function setSwitchData(sender)
 				case 11: //Event Type
 					swiCfgData[workCfg].Drivers[thisRow].CmdSource = sourceOptionArray[sender.selectedIndex];
 					adjustSourceSelector(swiCfgData[workCfg].Drivers, thisRow, thisCol);
+					setSwitchData(document.getElementById("srclistbox0_" + thisRow.toString() + "_4"));
+					setSwitchData(document.getElementById("srclistbox1_" + thisRow.toString() + "_4"));
 					break;
 				case 12: //Address
 					var newRes = verifyNumArray(sender.value, ",");
@@ -516,10 +516,16 @@ function setSwitchData(sender)
 							sourceList.options[sourceList.selectedIndex].text = "Aspect #" + swiCfgData[workCfg].Drivers[thisRow].CurrDisp.toString();
 					}
 					dispSwitchData(swiCfgData[workCfg].Drivers, thisRow);
+					adjustSourceSelector(swiCfgData[workCfg].Drivers, thisRow, thisCol);
+					setSwitchData(document.getElementById("srclistbox0_" + thisRow.toString() + "_4"));
+					setSwitchData(document.getElementById("srclistbox1_" + thisRow.toString() + "_4"));
 					break;
 				case 15: //New event
 					swiCfgData[workCfg].Drivers[thisRow].Positions.splice(swiCfgData[workCfg].Drivers[thisRow].CurrDisp, 0, JSON.parse(JSON.stringify(newEventTemplate)));
 					dispSwitchData(swiCfgData[workCfg].Drivers, thisRow);
+					adjustSourceSelector(swiCfgData[workCfg].Drivers, thisRow, thisCol);
+					setSwitchData(document.getElementById("srclistbox0_" + thisRow.toString() + "_4"));
+					setSwitchData(document.getElementById("srclistbox1_" + thisRow.toString() + "_4"));
 					break;
 				case 16: //delete event
 					if (swiCfgData[workCfg].Drivers[thisRow].Positions.length > 0) //can't delete the last event
@@ -533,6 +539,9 @@ function setSwitchData(sender)
 						}
 						dispSwitchData(swiCfgData[workCfg].Drivers, thisRow);
 //						console.log(swiCfgData[workCfg].Drivers[thisRow]);
+						adjustSourceSelector(swiCfgData[workCfg].Drivers, thisRow, thisCol);
+						setSwitchData(document.getElementById("srclistbox0_" + thisRow.toString() + "_4"));
+						setSwitchData(document.getElementById("srclistbox1_" + thisRow.toString() + "_4"));
 					}
 					break;
 				case 25: //run template
@@ -624,6 +633,11 @@ function setSwitchData(sender)
 				case 10:
 					btnCfgData[workCfg].Buttons[dataRow].ButtonAddr = verifyNumber(sender.value, btnCfgData[workCfg].Buttons[dataRow].ButtonAddr);
 					evtHdlrCfgData[workCfg].ButtonHandler[dataRow].ButtonNr = btnCfgData[workCfg].Buttons[dataRow].ButtonAddr;
+//					adjustSourceSelector(swiCfgData[workCfg].Drivers, thisRow, thisCol);
+					setSwitchData(document.getElementById("srclistbox0_" + thisRow.toString() + "_4"));
+					setSwitchData(document.getElementById("evttypebox0_" + thisRow.toString() + "_4"));
+					setSwitchData(document.getElementById("srclistbox1_" + thisRow.toString() + "_4"));
+					setSwitchData(document.getElementById("evttypebox1_" + thisRow.toString() + "_4"));
 					break;
 				case 11:
 					btnCfgData[workCfg].Buttons[dataRow].currDisp = sender.selectedIndex;
@@ -657,11 +671,15 @@ function setSwitchData(sender)
 					}
 					evtHdlrCfgData[workCfg].ButtonHandler[dataRow] = adjustHdlrEventList(evtHdlrCfgData[workCfg].ButtonHandler[dataRow], btnCfgData[workCfg].Buttons[dataRow].EventMask == 0x03 ? 2 : 5);
 					setButtonDisplay(btnCfgData[workCfg].Buttons[dataRow], evtHdlrCfgData[workCfg].ButtonHandler, thisRow, ((thisIndex & 0x100) >> 8));
+					setSwitchData(document.getElementById("srclistbox0_" + thisRow.toString() + "_4"));
+					setSwitchData(document.getElementById("evttypebox0_" + thisRow.toString() + "_4"));
+					setSwitchData(document.getElementById("srclistbox1_" + thisRow.toString() + "_4"));
+					setSwitchData(document.getElementById("evttypebox1_" + thisRow.toString() + "_4"));
 					break;
 			}
 			break;
 		case 4: 
-			console.log("Set LED data", thisRow, thisCol, thisIndex);
+//			console.log("Set LED data", thisRow, thisCol, thisIndex);
 			var dataRow;
 			if (configData[workCfg].Modules[0].LEDPattern == 0) //continuous
 				dataRow = (2 * thisRow) + ((thisIndex & 0x100) >> 8) +1; //LED 0 not used for switches
@@ -680,6 +698,7 @@ function setSwitchData(sender)
 							var swiPosList = swiCfgData[workCfg].Drivers[thisRow].Positions;
 							ledData[workCfg].LEDDefs[dataRow].CtrlSource = ledOptionArray[swiSource];
 							ledData[workCfg].LEDDefs[dataRow].CtrlAddr = swiAddr;
+							ledData[workCfg].LEDDefs[dataRow].CondAddr = swiCfgData[workCfg].Drivers[thisRow].CondData;
 							//adjust length of aspects
 							adjustLEDAspectList(dataRow, getOptionList("cmdlistbox_" + thisRow.toString() + "_1").length, swiPosList);
 							//display LED

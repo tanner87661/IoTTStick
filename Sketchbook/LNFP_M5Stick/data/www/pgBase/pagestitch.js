@@ -11,7 +11,7 @@ function upgradeJSONVersionNode(jsonData)
 	{
 		//upgrade from noversion to 1.0.0
 		console.log("upgrade Node Config from noversion to 1.0.0");
-		jsonData.Version = "1.0.0";
+		jsonData.Version = jsonFileVersion;
 		jsonData.InterfaceTypeList = JSON.parse(JSON.stringify(InterfaceList));
 		jsonData.InterfaceIndex = 1;
 		jsonData.HatTypeList = JSON.parse(JSON.stringify(HatList));

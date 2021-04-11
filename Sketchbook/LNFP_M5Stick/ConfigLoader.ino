@@ -28,10 +28,11 @@ bool deleteFile(String fileName)
   return false;
 }
 
-void deleteAllFiles(String ofNameType, String startDir, String fileExt)
+void deleteAllFiles(String ofNameType, String startDir, String fileExt, bool lastOnly)
 {
   File root = SPIFFS.open(startDir);
   File thisFile = root.openNextFile();
+  String lastFileName;
   while (thisFile)
   {
     String hlpStr = thisFile.name();
@@ -40,27 +41,36 @@ void deleteAllFiles(String ofNameType, String startDir, String fileExt)
     hlpStr.replace("???", "?");
     hlpStr.replace("??", "?");
     if (hlpStr == startDir + "/" + ofNameType + "." + fileExt)
-      deleteFile(thisFile.name());
+      if (lastOnly)
+        lastFileName = thisFile.name();
+      else
+        deleteFile(thisFile.name());
     if (hlpStr == startDir + "/" + ofNameType + "?." + fileExt)
-      deleteFile(thisFile.name());
+      if (lastOnly)
+        lastFileName = thisFile.name();
+      else
+        deleteFile(thisFile.name());
     thisFile = root.openNextFile();
   }
+  if (lastOnly)
+    deleteFile(lastFileName);
 }
 
-String readFile(String fileName)
+uint32_t readFileToBuffer(String fileName, char * thisBuffer, uint32_t maxSize)
 {
-  String jsonData = "";
+  uint32_t bytesRead = 0;
 //  Serial.printf("Trying to read File %s\n", &fileName[0]);
   if (SPIFFS.exists(fileName))
   {
     File dataFile = SPIFFS.open(fileName, "r");
     if (dataFile)
     {
-      while (dataFile.position() < dataFile.size())
+      if (dataFile.size() < maxSize)
       {
-        jsonData = jsonData + dataFile.readStringUntil('\n');
-        jsonData.trim();
-      } 
+        bytesRead = dataFile.size();
+        dataFile.read((uint8_t*)thisBuffer, bytesRead);
+        thisBuffer[bytesRead] = '\0'; 
+      }
       dataFile.close();
     }
     else 
@@ -68,8 +78,7 @@ String readFile(String fileName)
   } 
   else 
     Serial.printf("File %s not found\n", &fileName[0]);
-//  Serial.println(jsonData);
-  return jsonData;
+  return bytesRead;
 }
 
 bool writeJSONFile(String fileName, DynamicJsonDocument * writeThis)
@@ -91,7 +100,7 @@ bool writeJSONFile(String fileName, DynamicJsonDocument * writeThis)
     return false;
 }
 
-bool writeJSONFile(String fileName, String * fileStr)
+bool writeJSONFile(String fileName, const char * fileStr)
 {
 //  Serial.println(fileName);
   
@@ -101,23 +110,29 @@ bool writeJSONFile(String fileName, String * fileStr)
   File dataFile = SPIFFS.open(fileName, "w");
   if (dataFile)
   {
-    dataFile.println(*fileStr);
+    dataFile.println(fileStr);
     dataFile.close();
-    Serial.printf("Writing Config File from FileStr complete %i bytes in %i ms\n", fileStr->length(), millis() - startTime);
+    Serial.printf("Writing Config File from FileStr complete %i bytes in %i ms\n", strlen(fileStr), millis() - startTime);
     return true;
   }
   else
     return false;
 }
 
-DynamicJsonDocument * getDocPtr(String cmdFile)
+DynamicJsonDocument * getDocPtr(String cmdFile, bool duplData)
 {
-  String jsonData = readFile(cmdFile);
-  if (jsonData != "")
+  uint32_t jsonData = readFileToBuffer(cmdFile, wsTxBuffer, wsBufferSize);
+//  Serial.println(wsTxBuffer);
+  if (jsonData > 0)
   {
-    uint16_t docSize = 3 * jsonData.length();
+    uint16_t docSize = 4096 * (trunc((3 * jsonData) / 4096) + 1);  //.length();
+//    Serial.printf("Size: %i Doc Size: %i\n", jsonData, docSize);
     DynamicJsonDocument * thisDoc = new DynamicJsonDocument(docSize);
-    DeserializationError error = deserializeJson(*thisDoc, jsonData);
+    DeserializationError error;
+    if (duplData)
+      error = deserializeJson(*thisDoc, (const char*) wsTxBuffer); //use const to force deserialize to keep copy of buffer data
+    else
+      error = deserializeJson(*thisDoc, wsTxBuffer); //use const to force deserialize to keep copy of buffer data
     if (!error)
       return thisDoc;
     else

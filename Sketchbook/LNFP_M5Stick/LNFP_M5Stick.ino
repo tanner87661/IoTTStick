@@ -1,4 +1,4 @@
-char BBVersion[] = {'1','5','0'};
+char BBVersion[] = {'1','5','1'};
 
 //#define measurePerformance //uncomment this to display the number of loop cycles per second
 #define useM5Lite
@@ -51,8 +51,13 @@ DNSServer * dnsServer = NULL;
 WiFiClient * wifiClient = NULL;
 AsyncWebSocket * ws = NULL; //("/ws");
 AsyncWebSocketClient * globalClient = NULL;
-uint16_t wsReadPtr = 0;
-char * wsBuffer; //[32768]; //should this by dynamic?
+uint32_t wsBufferSize = 16384;
+uint32_t wsRxReadPtr = 0;
+uint32_t wsRxWritePtr = 0;
+char * wsRxBuffer; //[32768]; //should this by dynamic?
+uint32_t wsTxReadPtr = 0;
+uint32_t wsTxWritePtr = 0;
+char * wsTxBuffer; //[32768]; //should this by dynamic?
 
 //global variables
 bool useStaticIP = false;
@@ -227,7 +232,8 @@ void setup() {
 //  resetPin(33);
 //  resetPin(36);
 
-  wsBuffer = (char*) malloc(16384); 
+  wsRxBuffer = (char*) malloc(wsBufferSize); 
+  wsTxBuffer = (char*) malloc(wsBufferSize); 
   M5.begin();
 //  M5.Axp.EnableCoulombcounter();
   
@@ -256,7 +262,7 @@ void setup() {
   }
   DynamicJsonDocument * jsonConfigObj = NULL;
   DynamicJsonDocument * jsonDataObj = NULL;
-  jsonConfigObj = getDocPtr("/configdata/node.cfg"); //read and decode the master config file. See ConfigLoader tab
+  jsonConfigObj = getDocPtr("/configdata/node.cfg", true); //read and decode the master config file. See ConfigLoader tab. Make data copy
   if (jsonConfigObj != NULL)
   {
     //first, read all Wifi Paramters
@@ -414,7 +420,7 @@ void setup() {
         //LN/OLCB via MQTT or LN Gateway/ALM or OpenLCB with Gateway, or native MQTT, or DCC /w Gateway, or DCC from Gateway, or LocoNet with MQTT/TCP
     {
       Serial.println("Init MQTT");  
-      jsonDataObj = getDocPtr("/configdata/mqtt.cfg");
+      jsonDataObj = getDocPtr("/configdata/mqtt.cfg", false);
       if (jsonDataObj != NULL)
       {
         lnMQTT = new MQTTESP32(*wifiClient); 
@@ -440,7 +446,7 @@ void setup() {
     if ((useInterface.devId == 11) || (useInterface.devId == 12) || (useInterface.devId == 13) || (useInterface.devId == 14 || (useInterface.devId == 15)))  // LocoNet with lbServer or lbServer Client or lbServer with MQTT
     {
       Serial.println("Load LocoNet over TCP / lbServer");  
-      jsonDataObj = getDocPtr("/configdata/lbserver.cfg");
+      jsonDataObj = getDocPtr("/configdata/lbserver.cfg", false);
       if (jsonDataObj != NULL)
       {
         lbServer = new IoTT_LBServer();
@@ -492,25 +498,43 @@ void setup() {
     {
       {
         Serial.println("Load BlueHat Data"); 
-        jsonDataObj = getDocPtr("/configdata/led.cfg");
+
+        Serial.println(String(ESP.getFreeHeap()));
+        Serial.println("Create JSON Doc"); 
+
+        jsonDataObj = getDocPtr("/configdata/led.cfg", false);
         if (jsonDataObj != NULL)
         {
+        Serial.println(String(ESP.getFreeHeap()));
+        Serial.println("Create LED Chain"); 
           myChain = new IoTT_ledChain(); // ... construct now, and call setup later
+        Serial.println(String(ESP.getFreeHeap()));
+        Serial.println("Load LED Chain Data"); 
           myChain->loadLEDChainJSON(*jsonDataObj);
+        Serial.println(String(ESP.getFreeHeap()));
+        Serial.println("Delete JSON Object"); 
           delete(jsonDataObj);
           uint16_t subFileCtr = 1;
           while (SPIFFS.exists("/configdata/led" + String(subFileCtr) + ".cfg"))
           {
 //            Serial.printf("trying File %i\n", subFileCtr);
-            jsonDataObj = getDocPtr("/configdata/led" + String(subFileCtr) + ".cfg");
+        Serial.println(String(ESP.getFreeHeap()));
+        Serial.println("Create next JSON Doc"); 
+            jsonDataObj = getDocPtr("/configdata/led" + String(subFileCtr) + ".cfg", false);
             if (jsonDataObj)
             {
 //              Serial.println("Load Chain File");
+        Serial.println(String(ESP.getFreeHeap()));
+        Serial.println("Load LED Chain Data"); 
               myChain->loadLEDChainJSON(*jsonDataObj, false);
+        Serial.println(String(ESP.getFreeHeap()));
+        Serial.println("Delete JSON Object"); 
               delete(jsonDataObj);
             }
             subFileCtr++;
           }
+        Serial.println(String(ESP.getFreeHeap()));
+        Serial.println("Init LED Chain"); 
           if (useInterface.devCommMode == 3)
             myChain->setMQTTMode(mqttTransmit);
           Serial.printf("Init LED Chain on Pin %i, %i LEDs long\n", hatDataPin, myChain->getChainLength());
@@ -523,6 +547,11 @@ void setup() {
             {
               FastLED.addLeds<WS2811, hatDataPin, RGB>(myChain->getChain(), myChain->getChainLength()); 
             }
+        Serial.println(String(ESP.getFreeHeap()));
+        Serial.println("Delete LED Chain"); 
+        delete(myChain);
+        myChain = NULL;
+        Serial.println(String(ESP.getFreeHeap()));
         }
       }
     }
@@ -531,7 +560,7 @@ void setup() {
 
     if (useHat.devId == 2) //USB Serial Injector
     {
-      jsonDataObj = getDocPtr("/configdata/usb.cfg");
+      jsonDataObj = getDocPtr("/configdata/usb.cfg", false);
       if (jsonDataObj != NULL)
       {
         Serial.println("Load Serial communication interface"); 
@@ -557,8 +586,8 @@ void setup() {
     if (useHat.devId == 3) //YellowHat
     {
         Serial.println("Init YellowHat");  
-        Wire.begin(hatSDA, hatSCL, 400000); //initialize the I2C interface
-        jsonDataObj = getDocPtr("/configdata/led.cfg");
+        Wire.begin(hatSDA, hatSCL, 400000); //initialize the I2C interface 400kHz
+        jsonDataObj = getDocPtr("/configdata/led.cfg", false);
         if (jsonDataObj != NULL)
         {
           Serial.println("Load Yellow Hat LED Chain Data");  
@@ -569,7 +598,7 @@ void setup() {
           while (SPIFFS.exists("/configdata/led" + String(subFileCtr) + ".cfg"))
           {
 //            Serial.printf("trying File %i\n", subFileCtr);
-            jsonDataObj = getDocPtr("/configdata/led" + String(subFileCtr) + ".cfg");
+            jsonDataObj = getDocPtr("/configdata/led" + String(subFileCtr) + ".cfg", false);
             if (jsonDataObj)
             {
 //              Serial.println("Load Chain File");
@@ -584,7 +613,7 @@ void setup() {
         else
           Serial.println("Yellow Hat no led chain defined");
 
-        jsonDataObj = getDocPtr("/configdata/btn.cfg");
+        jsonDataObj = getDocPtr("/configdata/btn.cfg", false);
         if (jsonDataObj != NULL)
         {
           Serial.println("Load Yellow Hat Button Data");  
@@ -614,7 +643,7 @@ void setup() {
           lnSerial->setLNCallback(callbackLocoNetMessage);
         } 
         Wire.begin(hatSDA, hatSCL, 400000); //initialize the I2C interface
-        jsonDataObj = getDocPtr("/configdata/greenhat.cfg");
+        jsonDataObj = getDocPtr("/configdata/greenhat.cfg", true);
         if (jsonDataObj != NULL)
           if (jsonDataObj->containsKey("Modules"))
           {
@@ -635,7 +664,7 @@ void setup() {
               for (uint8_t cfgLoop = 0; cfgLoop < cfgArray.size(); cfgLoop++) //4 config files: switches, buttons, button handler, LEDs
               {
                 String fileNameStr = cfgArray[cfgLoop]["FileName"];
-                DynamicJsonDocument * jsonCfgObj = getDocPtr(configDir + "/" + fileNameStr + configDotExt);
+                DynamicJsonDocument * jsonCfgObj = getDocPtr(configDir + "/" + fileNameStr + configDotExt, false);
                 if (jsonCfgObj)
                 {
                   mySwitchList->loadSwCfgJSON(modLoop, cfgLoop, *jsonCfgObj);
@@ -643,7 +672,7 @@ void setup() {
                   uint16_t subFileCtr = 1;
                   while (SPIFFS.exists(configDir + "/"  + fileNameStr + String(subFileCtr) + configDotExt))
                   {
-                    jsonCfgObj = getDocPtr(configDir + "/"  + fileNameStr + String(subFileCtr) + configDotExt);
+                    jsonCfgObj = getDocPtr(configDir + "/"  + fileNameStr + String(subFileCtr) + configDotExt, false);
                     if (jsonCfgObj)
                     {
                       mySwitchList->loadSwCfgJSON(modLoop, cfgLoop, *jsonDataObj, false);
@@ -667,7 +696,7 @@ void setup() {
 
     if (useHat.devId == 5) //BlackHat
     {
-        jsonDataObj = getDocPtr("/configdata/throttle.cfg");
+        jsonDataObj = getDocPtr("/configdata/throttle.cfg", false);
         if (jsonDataObj != NULL)
         {
           Serial.println("Load BlackHat Button Data");  
@@ -700,7 +729,7 @@ void setup() {
     if (useALM & 0x01) //Button Handler
     {
       Serial.println("Load Button Handler Data");  
-      jsonDataObj = getDocPtr("/configdata/btnevt.cfg");
+      jsonDataObj = getDocPtr("/configdata/btnevt.cfg", false);
       if (jsonDataObj != NULL)
       {
         eventHandler = new(IoTT_LocoNetButtonList);
@@ -709,7 +738,7 @@ void setup() {
         uint16_t subFileCtr = 1;
         while (SPIFFS.exists("/configdata/btnevt" + String(subFileCtr) + ".cfg"))
         {
-          jsonDataObj = getDocPtr("/configdata/btnevt" + String(subFileCtr) + ".cfg");
+          jsonDataObj = getDocPtr("/configdata/btnevt" + String(subFileCtr) + ".cfg", false);
           if (jsonDataObj)
           {
             eventHandler->loadButtonCfgJSON(*jsonDataObj, false);
@@ -778,7 +807,8 @@ void setup() {
       else 
         Serial.println("NTP Module not activated");
     }
-
+    else
+      Serial.println("NTP Module not defined");
     delete(jsonConfigObj);
     if (useNTP) getInternetTime();
     startWebServer();
@@ -797,7 +827,7 @@ void loop() {
   loopCtr++;
   if (millis() > myTimer)
   {
-    Serial.printf("Timer Loop: %i\n", loopCtr);
+    Serial.printf("Timer Loop: %i Heap: %i\n", loopCtr, ESP.getFreeHeap());
     loopCtr = 0;
     myTimer += 1000;
   }

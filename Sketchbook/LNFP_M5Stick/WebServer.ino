@@ -29,10 +29,20 @@ void notFound(AsyncWebServerRequest *request) {
 void startWebServer()
 {
   if (!myWebServer) return;
-//  myWebServer->on("/heap", HTTP_GET, [](AsyncWebServerRequest * request)
-//  {
-//    request->send(200, "text/plain", String(ESP.getFreeHeap()));
-//  });
+  myWebServer->on("/delete_led", HTTP_GET, [](AsyncWebServerRequest * request)
+  {
+    deleteAllFiles("led", configDir, configExt, true); //delete the last one only to save as much as possible
+    request->send(200, "text/plain", "Last set of LED Definitions deleted. Please reload after reboot");
+    delay(1000);
+    ESP.restart();
+  });
+  myWebServer->on("/delete_event", HTTP_GET, [](AsyncWebServerRequest * request)
+  {
+    deleteAllFiles("btnevt", configDir, configExt, true); //delete the last one only to save as much as possible
+    request->send(200, "text/plain", "Last set of event definitions deleted. Please reload after reboot");
+    delay(1000);
+    ESP.restart();
+  });
 
 //  myWebServer->on("/update", HTTP_POST, [](AsyncWebServerRequest * request) {
 //  }, handleUpload);
@@ -127,8 +137,8 @@ void handleUpload(AsyncWebServerRequest *request, String filename, size_t index,
 void processStatustoWebClient()
 {
   //  Serial.println("Keep alive");
-  DynamicJsonDocument doc(1200);
-  char myStatusMsg[400];
+  DynamicJsonDocument doc(512);
+  char myStatusMsg[350];
   doc["Cmd"] = "STATS";
   JsonObject Data = doc.createNestedObject("Data");
   float float1 = (millisRollOver * 4294967296) + millis(); //calculate millis including rollovers
@@ -137,18 +147,18 @@ void processStatustoWebClient()
   if (useNTP)// && ntpOK) no longer needed in stick as we have RTC
   {
     now = time(0);
-    char buff[40]; //39 digits plus the null char
-    strftime(buff, 40, "%m-%d-%Y %H:%M:%S", localtime(&now));
-    Data["systime"] = buff;
+//    char buff[40]; //39 digits plus the null char
+    strftime(myStatusMsg, 40, "%m-%d-%Y %H:%M:%S", localtime(&now));
+    Data["systime"] = myStatusMsg;
   }
   Data["freemem"] = String(ESP.getFreeHeap());
   Data["totaldisk"] = String(SPIFFS.totalBytes());
   Data["useddisk"] = String(SPIFFS.usedBytes());
   Data["freedisk"] = String(SPIFFS.totalBytes() - SPIFFS.usedBytes());
-  char buff[10];
-  sprintf(buff, "%c.%c.%c", BBVersion[0], BBVersion[1], BBVersion[2]);
+//  char buff[10];
+  sprintf(myStatusMsg, "%c.%c.%c", BBVersion[0], BBVersion[1], BBVersion[2]);
 //  sprintf(buff, "%u.%u.%u", BBVersion[0], BBVersion[1], BBVersion[2]);
-  Data["version"] = buff;
+  Data["version"] = myStatusMsg;
   Data["ipaddress"] = WiFi.localIP().toString();
   Data["sigstrength"] = WiFi.RSSI();
 
@@ -164,7 +174,7 @@ void processStatustoWebClient()
   Data["ubat"] = M5.Axp.GetBatVoltage();
 
   serializeJson(doc, myStatusMsg);
-  //    Serial.println(myStatusMsg);
+//  Serial.println(myStatusMsg);
   globalClient->text(myStatusMsg);
   lastWifiUse = millis();
   //  Serial.println("Keep alive done");
@@ -234,44 +244,50 @@ void sendJSONFile(int thisFileIndex)
 {
 //  Serial.printf("Try to send File %s Type %s as Index %i\n", &outFileList[thisFileIndex].fileName[0], &outFileList[thisFileIndex].cmdType[0], outFileList[thisFileIndex].fileIndex);
   String fileStr;
-  String retStr = "";
+  uint32_t retStr = 0;//"";
+  wsTxWritePtr = 0;
+  wsTxReadPtr = 0;
   switch (outFileList[thisFileIndex].multiFileMode)
   {
     case 0: //single file
       if (outFileList[thisFileIndex].fileIndex == 0)
-        fileStr = "{\"Cmd\":\"CfgData\", \"ResetData\":true, ";
+        strcpy(wsTxBuffer, "{\"Cmd\":\"CfgData\", \"ResetData\":true, ");
       else
-        fileStr = "{\"Cmd\":\"CfgData\", \"ResetData\":false, ";
-      retStr = createCfgEntryByName(&outFileList[thisFileIndex].fileName[0], &outFileList[thisFileIndex].cmdType[0]);
-//      Serial.println(retStr);
+        strcpy(wsTxBuffer, "{\"Cmd\":\"CfgData\", \"ResetData\":false, ");
+      retStr = strlen(wsTxBuffer);
+      retStr = createCfgEntryByName(&outFileList[thisFileIndex].fileName[0], &outFileList[thisFileIndex].cmdType[0], &wsTxBuffer[strlen(wsTxBuffer)]);
       break;
     case 1: //multi file adding
-      fileStr = "{\"Cmd\":\"CfgFiles\", \"FileMode\":1, \"FileNameType\":\"" + String(outFileList[thisFileIndex].fileNameType) + "\", \"FileName\":\"" + String(outFileList[thisFileIndex].fileName) + "\",";
-      retStr = createCfgEntryByName(&outFileList[thisFileIndex].fileName[0], &outFileList[thisFileIndex].cmdType[0]);
+      strcpy(wsTxBuffer, "{\"Cmd\":\"CfgFiles\", \"FileMode\":1, \"FileNameType\":\"");
+      strcat(wsTxBuffer, outFileList[thisFileIndex].fileNameType);
+      strcat(wsTxBuffer, "\", \"FileName\":\"");
+      strcat(wsTxBuffer, outFileList[thisFileIndex].fileName);
+      strcat(wsTxBuffer, "\",");
+      retStr = strlen(wsTxBuffer);
+      retStr = createCfgEntryByName(&outFileList[thisFileIndex].fileName[0], &outFileList[thisFileIndex].cmdType[0], &wsTxBuffer[strlen(wsTxBuffer)]);
       break;
     case 2: //start new multifile
-      fileStr = "{\"Cmd\":\"CfgFiles\", \"FileMode\":2";
+      strcpy(wsTxBuffer, "{\"Cmd\":\"CfgFiles\", \"FileMode\":2");
       break;
     case 3: //write multifile to disk
-      fileStr = "{\"Cmd\":\"CfgFiles\", \"FileMode\":3";
+      strcpy(wsTxBuffer, "{\"Cmd\":\"CfgFiles\", \"FileMode\":3");
       break;
   }
+  strcat(wsTxBuffer, "}");
+//  Serial.println(wsTxBuffer);
   if (globalClient != NULL)
-    globalClient->text(fileStr + retStr + "}");
+    globalClient->text(wsTxBuffer);
 }
 
-String createCfgEntryByName(String fileName, String cmdType)
+uint32_t createCfgEntryByName(String fileName, String cmdType, char * toBuffer)
 {
-  String fileStr = "\"Type\":\"" + cmdType + "\",\"Data\":";
-  String retStr = readFile(configDir + "/" + fileName);
-//  Serial.println(fileStr);
-//  Serial.println(retStr);
-  if (retStr == "")
-    return "";
-  else
-    return fileStr + retStr;
+  strcat(toBuffer, "\"Type\":\"");
+  strcat(toBuffer, cmdType.c_str());
+  strcat(toBuffer, "\",\"Data\":");
+  uint32_t retStr = readFileToBuffer(configDir + "/" + fileName, &wsTxBuffer[strlen(wsTxBuffer)], wsBufferSize - strlen(wsTxBuffer));
 }
 
+/*
 String createCfgEntry(String cmdType)
 {
   String fileStr = "\"Type\":\"" + cmdType + "\",\"Data\":";
@@ -295,14 +311,39 @@ String createCfgEntry(String cmdType)
   fileStr += readFile(fileNameStr);
   return fileStr;
 }
+*/
+
+void freeObjects() //free up RAM as ESP will restart at end of updating anyway
+{
+  if (myChain)
+  {
+    delete(myChain);
+    myChain = NULL;
+    yield();
+    delay(2000);
+  }
+  if (eventHandler) 
+  {
+    delete(eventHandler);
+    eventHandler = NULL;
+    yield();
+    delay(2000);
+  }
+}
 
 void processWsMessage(char * newMsg, int msgLen, AsyncWebSocketClient * client)
 {
 //  Serial.println(newMsg);
-//  Serial.println(msgLen);
-  int docSize = 3 * msgLen;
+//  Serial.println(String(ESP.getFreeHeap()));
+  int docSize = 4096;
+//  Serial.println(String(ESP.getMaxAllocHeap()));
   DynamicJsonDocument doc(docSize);
-  DeserializationError error = deserializeJson(doc, newMsg, msgLen);
+//  Serial.println(String(ESP.getFreeHeap()));
+  char duplMsg[strlen(newMsg) + 1];
+  strcpy(duplMsg, newMsg);
+//  Serial.println(String(ESP.getFreeHeap()));
+  DeserializationError error = deserializeJson(doc, duplMsg);//, msgLen);
+//  Serial.println(String(ESP.getFreeHeap()));
   if (!error)
   {
     if (doc.containsKey("Cmd"))
@@ -329,6 +370,7 @@ void processWsMessage(char * newMsg, int msgLen, AsyncWebSocketClient * client)
       }
       if (thisCmd == "CfgFiles") //Config Request Format: {"Cmd":"CfgFiles", "Type":"pgxxxxCfg"}
       {
+        keepAlive = millis() + keepAliveInterval;
         uint16_t fileSelector = 0xFFFF;
         if (doc.containsKey("Type"))
           fileSelector = doc["Type"];
@@ -373,6 +415,9 @@ void processWsMessage(char * newMsg, int msgLen, AsyncWebSocketClient * client)
         addFileToTx("", 0, "pgWriteFile", 3); //Write file to disk
       }
 
+      if (thisCmd == "ReqStats") //Request Technical data
+        keepAlive = millis();      
+
       if (thisCmd == "CfgData") //Config Request Format: {"Cmd":"CfgData", "Type":"pgxxxxCfg", "FileName":"name"}
       {
         String cmdType = doc["Type"];
@@ -390,23 +435,22 @@ void processWsMessage(char * newMsg, int msgLen, AsyncWebSocketClient * client)
       }
       if (thisCmd == "CfgUpdate") //Config Request Format: {"Cmd":"CfgData", "Type":"pgxxxxCfg", "FileType":"xxxx", "FileName":"nnnnx.cfg", "Data":{}}
       {
-        String cmdType = doc["Type"];
-        String fileStr = doc["Data"];
-        String fileName = doc["FileName"];
-        String fileNameType = doc["FileNameType"];
-        int    fileIndex = doc["Index"];
-        if (cmdType == "pgDelete")
+        const char *  cmdType = doc["Type"];
+        const char * fileStr = doc["Data"];
+        const char *  fileName = doc["FileName"];
+        const char *  fileNameType = doc["FileNameType"];
+        int fileIndex = doc["Index"];
+        if (strcmp(cmdType, "pgDelete") == 0)
         {
-          deleteAllFiles(fileNameType, configDir, configExt);
+          deleteAllFiles(fileNameType, configDir, configExt, false);
+          freeObjects();
           sendCTS();
           return;
         }
-//        Serial.printf("Writing file %s\n", &fileName[0]);
-//        Serial.printf("Writing file %s\n", &fileStr[0]);
-//        Serial.println(fileStr);
-        writeJSONFile(configDir + "/" + fileName, &fileStr);
-        if (!doc.containsKey("Restart")) //if old format, then restart
+        writeJSONFile(configDir + "/" + fileName, fileStr);
+        if (!doc.containsKey("Restart")) //if old format (before multi file), then restart
         {
+          Serial.println("Restart ESP");
           saveToFile(bufferFileName);
           sendCTS();
           delay(500);
@@ -415,18 +459,21 @@ void processWsMessage(char * newMsg, int msgLen, AsyncWebSocketClient * client)
         else
           if (doc["Restart"])
           {
+            Serial.println("Reboot ESP");
             saveToFile(bufferFileName);
             sendCTS();
             delay(500);
             ESP.restart(); //configuration update requires restart to be sure dynamic allocation of objects is not messed up
           }
+//          else
+//            Serial.println("No Reboot needed");
         sendCTS();
       }
     }
   } 
   else
-    Serial.printf("deserializeJson() wsProcessing failed: %s", error.c_str());
-  yield();
+    Serial.printf("processWsMessage deserializeJson() wsProcessing failed: %s\n", error.c_str());
+//  yield();
 }
 
 void onWsEvent(AsyncWebSocket * server, AsyncWebSocketClient * client, AwsEventType type, void * arg, uint8_t *data, size_t len)
@@ -455,16 +502,16 @@ void onWsEvent(AsyncWebSocket * server, AsyncWebSocketClient * client, AwsEventT
         if (info->final && info->index == 0 && info->len == len)
         {
           //the whole message is in a single frame and we got all of it's data
-          wsReadPtr = 0;
+          wsRxReadPtr = 0;
           if (info->opcode == WS_TEXT)
           {
             for (size_t i = 0; i < info->len; i++)
             {
-              wsBuffer[wsReadPtr] = (char) data[i];
-              wsReadPtr++;
+              wsRxBuffer[wsRxReadPtr] = (char) data[i];
+              wsRxReadPtr++;
             }
-            wsBuffer[wsReadPtr] = char(0);
-            processWsMessage(wsBuffer, wsReadPtr, client);
+            wsRxBuffer[wsRxReadPtr] = char(0);
+            processWsMessage(wsRxBuffer, wsRxReadPtr, client);
           }
           else
           {
@@ -479,7 +526,7 @@ void onWsEvent(AsyncWebSocket * server, AsyncWebSocketClient * client, AwsEventT
           //message is comprised of multiple frames or the frame is split into multiple packets
           if (info->index == 0)
           {
-            wsReadPtr = 0;
+            wsRxReadPtr = 0;
 //            Serial.println("Reset Read Ptr");
             //          if(info->num == 0)
             //            Serial.printf("ws[%s][%u] %s-message start\n", server->url(), client->id(), (info->message_opcode == WS_TEXT)?"text":"binary");
@@ -493,17 +540,17 @@ void onWsEvent(AsyncWebSocket * server, AsyncWebSocketClient * client, AwsEventT
 //            Serial.println("adding...");
             for (size_t i = 0; i < len; i++)
             {
-              wsBuffer[wsReadPtr] = (char) data[i];
-              wsReadPtr++;
+              wsRxBuffer[wsRxReadPtr] = (char) data[i];
+              wsRxReadPtr++;
             }
-            wsBuffer[wsReadPtr] = char(0);
+            wsRxBuffer[wsRxReadPtr] = char(0);
           }
           else
           {
             //no processing of non-text data at this time
           }
-          wsBuffer[wsReadPtr] = char(0);
-//          Serial.println(wsReadPtr);
+          wsRxBuffer[wsRxReadPtr] = char(0);
+//          Serial.println(wsRxReadPtr);
           if ((info->index + len) == info->len)
           {
             if (info->final)
@@ -511,14 +558,14 @@ void onWsEvent(AsyncWebSocket * server, AsyncWebSocketClient * client, AwsEventT
               if (info->message_opcode == WS_TEXT)
               {
 //                Serial.println("Processing");
-//                Serial.println(&wsBuffer[0]);                
-                processWsMessage(wsBuffer, wsReadPtr, client);
+//                Serial.println(&wsRxBuffer[0]);                
+                processWsMessage(wsRxBuffer, wsRxReadPtr, client);
               }
 //              else
 //                Serial.println("Type mismatch");
             }
 //            else
-//              Serial.println(&wsBuffer[0]);                
+//              Serial.println(&wsRxBuffer[0]);                
           }
 //          else
 //            Serial.println("Length mismatch");
