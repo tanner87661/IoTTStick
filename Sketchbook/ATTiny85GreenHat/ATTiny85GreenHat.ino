@@ -1,7 +1,9 @@
 // Compiler settings
 // ATTiny85
 // Internal 16MHz
-  
+
+//#define useFastLED  //does noit work currently on ATTiny :-(
+
   #include <Arduino.h>
   #include <TinyWire.h>
 
@@ -31,9 +33,12 @@ extern char *__brkval;
  * See http://myiott.org for more information
  * 
  */
+#if defined(useFastLED)
+  #include <FastLED.h>
+#else
+  #include <Adafruit_NeoPixel.h>    //needed for the WS2812
+#endif
 
-
-#include <Adafruit_NeoPixel.h>    //needed for the WS2812
 //#include <avr/pgmspace.h>         //needed for PROGMEM
 //#include <avr/eeprom.h>
 #include <EEPROM.h>
@@ -53,14 +58,25 @@ extern char *__brkval;
 // How many NeoPixels are attached to the Arduino?
 const uint16_t LED_COUNT = 33;
 
-Adafruit_NeoPixel * strip; // = Adafruit_NeoPixel(LED_COUNT, LED_PIN, NEO_GRB + NEO_KHZ800);
+#ifdef useFastLED
+  #include <FastLED.h>
+#else
+  Adafruit_NeoPixel * strip; // = Adafruit_NeoPixel(LED_COUNT, LED_PIN, NEO_GRB + NEO_KHZ800);
+#endif
+
 //CRGB ledChain[LED_COUNT]; // = NULL;
 uint16_t chainLength = LED_COUNT;
 uint32_t wdtTimer = 0;
-uint32_t lastCol;
 uint8_t i2cAddr = 0;
 uint8_t memPtr = 0; //memory location for next byte request
 bool startMode = true;
+
+#ifdef useFastLED
+  CRGB ledChain[LED_COUNT];
+  CRGB lastCol;
+#else
+  uint32_t lastCol;
+#endif
 
 #define wdtInterval 500
 
@@ -77,7 +93,6 @@ void setup() {
   pinMode(4, INPUT);
   initI2C();
   wdtTimer = 0;
-//  OSCCAL = 46;
 }
 
 //uint16_t oldHue = 0;
@@ -85,10 +100,11 @@ void loop()
 {
 /*
   uint32_t rgbcolor = strip->ColorHSV(oldHue, 255, 50);
-  oldHue = oldHue + 10;
+  oldHue = oldHue + 1;
   strip->setPixelColor(0, rgbcolor);
+//  fillStrip(rgbcolor);
   strip->show();
-  fillStrip(rgbcolor);
+delay(10);
 */
   if (startMode)
   {

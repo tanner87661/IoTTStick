@@ -284,14 +284,14 @@ function createEvtElements(divElement, y, x, id, evtHandler)
 	thisText.innerHTML = "Addr:&nbsp;";
 	lowerDiv.append(thisText);
 
-	thisId = "addressbox_" + y.toString() + "_" + x.toString();
+	thisId = "evtaddressbox_" + y.toString() + "_" + x.toString();
 	var addrBox = tfNumeric(y, x, thisId, evtHandler);
 	addrBox.setAttribute("index", 12);
 	lowerDiv.append(addrBox);
 	var thisText = tfText(y, x, id, evtHandler);
 	thisText.innerHTML = "&nbsp;Event:&nbsp;";
 	lowerDiv.append(thisText);
-	thisId = "cmdlistbox_" + y.toString() + "_" + x.toString();
+	thisId = "evtcmdlistbox_" + y.toString() + "_" + x.toString();
 	var selBox = tfInpTypeSel(y, x, thisId, evtHandler);
 	selBox.setAttribute("index", 13);
 	lowerDiv.append(selBox);

@@ -176,7 +176,7 @@ uint16_t sendMsg(lnTransmitMsg txData)
     case 0: break; //none
     case 10:; //DCC from MQTT
     case 1: //DCC 
-      Serial.println("DCC. Not going anywhere");
+//      Serial.println("DCC. Not going anywhere");
       if (lnSerial) return lnSerial->lnWriteMsg(txData);
       break; 
     case 16:; //LocoNet Loopback
@@ -547,11 +547,6 @@ void setup() {
             {
               FastLED.addLeds<WS2811, hatDataPin, RGB>(myChain->getChain(), myChain->getChainLength()); 
             }
-        Serial.println(String(ESP.getFreeHeap()));
-        Serial.println("Delete LED Chain"); 
-        delete(myChain);
-        myChain = NULL;
-        Serial.println(String(ESP.getFreeHeap()));
         }
       }
     }
