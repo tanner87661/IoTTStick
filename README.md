@@ -1,6 +1,13 @@
 # IoTTStick
 This is the development repository for the IoTT Stick, port modules and hat devices with the source code for the latest release. 
 
+2021/4/12
+
+released new version 1.5.1 with finalized GreenHat support and improved (more stable) storage for large configuration files
+2021/4/10
+
+merged in Prerelease in preparation of new version 1.5.1
+
 2021/3/27
 - Releases as 1.5.0 with support for GreenHat, BrownHat and new interfaces (lbServer, lbClient, loopback)
 
