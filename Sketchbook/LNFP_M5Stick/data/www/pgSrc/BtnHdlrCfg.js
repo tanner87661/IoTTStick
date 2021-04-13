@@ -119,7 +119,7 @@ function adjustEventList(ofButton, newLength)
 function adjustSourceSelector(thisHandlerData, thisRow, thisCol)
 {
 	var evtSrcBox = document.getElementById("evttypebox_" + thisRow.toString() + "_" + thisCol.toString());
-	var evtListBox = document.getElementById("cmdlistbox_" + thisRow.toString() + "_" + thisCol.toString());
+	var evtListBox = document.getElementById("evtcmdlistbox_" + thisRow.toString() + "_" + thisCol.toString());
 	evtSrcBox.selectedIndex = sourceOptionArray.indexOf(thisHandlerData[thisRow].EventSource);
 	var numAddr = thisHandlerData[thisRow].ButtonNr.length;
 	var optArray = [];
@@ -276,7 +276,7 @@ function setButtonData(sender)
 								configData[workCfg].ButtonHandler[thisRow].CtrlCmd[configData[workCfg].ButtonHandler[thisRow].CurrDisp].BtnCondAddr = [];
 							else
 								configData[workCfg].ButtonHandler[thisRow].CtrlCmd[configData[workCfg].ButtonHandler[thisRow].CurrDisp].BtnCondAddr = newRes;
-							var sourceList= document.getElementById("cmdlistbox_" + thisRow.toString() + "_" + thisCol.toString());
+							var sourceList= document.getElementById("evtcmdlistbox_" + thisRow.toString() + "_" + thisCol.toString());
 							sourceList.options[sourceList.selectedIndex].text = "Aspect " + configData[workCfg].ButtonHandler[thisRow].CtrlCmd[configData[workCfg].ButtonHandler[thisRow].CurrDisp].BtnCondAddr.toString();
 							break;
 						case 3: ;//button
@@ -299,7 +299,7 @@ function setButtonData(sender)
 						if (configData[workCfg].ButtonHandler[thisRow].CurrDisp > configData[workCfg].ButtonHandler[thisRow].CtrlCmd.length - 1)
 						{
 							configData[workCfg].ButtonHandler[thisRow].CurrDisp = (configData[workCfg].ButtonHandler[thisRow].CtrlCmd.length - 1);
-							var evtListBox = document.getElementById("cmdlistbox_" + thisRow.toString() + "_" + thisCol.toString());
+							var evtListBox = document.getElementById("evtcmdlistbox_" + thisRow.toString() + "_" + thisCol.toString());
 							evtListBox.selectedIndex -= 1;
 						}
 						loadTableData(buttonTable, configData[workCfg].ButtonHandler);
@@ -528,7 +528,7 @@ function loadTableData(thisTable, thisData)
 	createDataTableLines(thisTable, [tfPos, tfCommandEvtSelector, tfCommandEditor], thisData.length, "setButtonData(this)");
 	for (var i=0; i<thisData.length;i++)
 	{
-		var e = document.getElementById("addressbox_" + i.toString() + "_" + "1");
+		var e = document.getElementById("evtaddressbox_" + i.toString() + "_" + "1");
 		e.value = thisData[i].ButtonNr;
 		if (isNaN(thisData[i].CurrDisp))
 			thisData[i].CurrDisp = 0;
@@ -542,7 +542,7 @@ function loadTableData(thisTable, thisData)
 				break; 
 			} 
 		}
-		var evtOptBox = document.getElementById("cmdlistbox_" + i.toString() + "_" + "1");
+		var evtOptBox = document.getElementById("evtcmdlistbox_" + i.toString() + "_" + "1");
 		adjustSourceSelector(configData[workCfg].ButtonHandler, i, 1);
 		evtOptBox.selectedIndex = thisData[i].CurrDisp;
 		buildCmdLines(i, thisData[i]);

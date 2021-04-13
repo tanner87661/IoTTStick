@@ -26,7 +26,7 @@ var sourceOptionArray = ["switch","dynsignal","dccsignal", "button","analogvalue
 var newButtonTemplate = {"PortNr": 0, "ButtonType": "digital", "EventMask": 3, "ButtonAddr": 0};
 var newEventTemplate = {"Used": 1, "AspVal": 65535, "PosPt": 270, "MoveCfg": 0};
 var newEventHdlrTemplate = {"ButtonNr":[0],"CondData":[],"CtrlCmd": []};
-var newCmdTemplate = {"BtnCondAddr": [], "CmdList": [{"CtrlTarget": "switch", "CtrlAddr": 0, "CtrlType":"toggle", "CtrlValue":"on", "ExecDelay":250}]};
+var newEventCmdTemplate = {"BtnCondAddr": [], "CmdList": [{"CtrlTarget": "switch", "CtrlAddr": 0, "CtrlType":"toggle", "CtrlValue":"on", "ExecDelay":250}]};
 var newColTemplate = {"Name": "New Color","RGBVal": [255, 255, 255]};
 var newLEDTemplate = {"LEDNums":[],"CtrlSource": "","CtrlAddr": [],"DisplayType":"discrete","LEDCmd": []};
 var newLEDCmdTemplate = {"Val": 0,"ColOn": "", "ColOff": "", "Mode": "static", "Rate":0, "Transition":"soft"};
@@ -35,8 +35,24 @@ var swiCmdOptions = ["thrown","closed","toggle"];
 var blockCmdOptions = ["occupied","free"];
 //var blockCmdOptions = ["occupied","free"];
 
+var ledCtrlType = ["switch", "signaldyn", "signal", "button", "analog", "block", "transponder", "power", "constant", "signalstat"];
+var ledModeType = ["static", "localblinkpos", "localblinkneg", "globalblinkpos", "globalblinkneg", "localrampup", "localrampdown", "globalrampup", "globalrampdown"];
+var ledTransitionType = ["soft", "direct", "merge"];
+var trackPwrType = ["off", "on", "idle"];
+var btnType = ["onbtndown", "onbtnup", "onbtnclick", "onbtnhold", "onbtndlclick"];
+var dispType = ["discrete","linear"];
+var newCmdTemplate = {"Val": 0,	"ColOn": "", "Mode": "static","Rate":0,	"Transition":"soft"};
+
 var dispOptions = ["static", "localblinkpos", "localblinkneg", "globalblinkpos", "globalblinkneg","localrampup", "localrampdown","globalrampup", "globalrampdown"]
 var transOptions = ["soft", "direct","merge"];
+var ledModeDispType = ["Static", "Pos Local Blink", "Neg Local Blink", "Pos Global Blink",  "Neg Global Blink", "Local Rampup", "Local Rampdown", "Global Rampup", "Global Rampdown"];
+var ledDispType = ["discrete", "linear"];
+var ledTransitionDispType = ["Soft", "Direct", "Merge"];
+var blockValDispType = ["free","occupied"];
+var switchValDispType = ["Thrown, Coil On", "Thrown, Coil Off", "Closed, Coil On", "Closed, Coil Off"];
+var buttonValDispType = ["Btn Down", "Btn Up", "Btn Click", "Btn Hold", "Btn Dbl Click"];
+var powerValDispType = ["Off", "On", "Idle"];
+var transponderValDispType = ["Enter", "Leave"];
 
 var templateDlg = null;
 var level0Div;
@@ -145,6 +161,7 @@ function addDataFile(ofObj)
 				ledData[workCfg].LEDDefs.pop();
 			while (ledData[workCfg].LEDDefs.length < 33)
 				ledData[workCfg].LEDDefs.push(JSON.parse(JSON.stringify(newLEDTemplate)));
+			loadLEDTable(ledDefTable, ledData[workCfg].LEDDefs);
 //			console.log(ledData[workCfg]);
 			break;
 	}
@@ -153,6 +170,59 @@ function addDataFile(ofObj)
 	updateServoPos = false;
 	loadTableData(switchTable, swiCfgData[workCfg].Drivers, btnCfgData[workCfg].Buttons, evtHdlrCfgData[workCfg].ButtonHandler, ledData[workCfg].LEDDefs);
 	updateServoPos = true;
+}
+
+function HSVtoRGB(hue, sat, val) 
+{
+	var h = hue / 255; //scaling from [0,255] to [0,1] interval
+	var s = sat / 255;
+	var v = val / 255;
+
+    var r, g, b, i, f, p, q, t;
+    if (arguments.length === 1) {
+        s = h.s, v = h.v, h = h.h;
+    }
+    i = Math.floor(h * 6);
+    f = h * 6 - i;
+    p = v * (1 - s);
+    q = v * (1 - f * s);
+    t = v * (1 - (1 - f) * s);
+    switch (i % 6) {
+        case 0: r = v, g = t, b = p; break;
+        case 1: r = q, g = v, b = p; break;
+        case 2: r = p, g = v, b = t; break;
+        case 3: r = p, g = q, b = v; break;
+        case 4: r = t, g = p, b = v; break;
+        case 5: r = v, g = p, b = q; break;
+    }
+    return [Math.round(r * 255), Math.round(g * 255), Math.round(b * 255)];
+}
+
+function rgbToHsv(r, g, b) 
+{
+	r /= 255, g /= 255, b /= 255;
+
+	var max = Math.max(r, g, b), min = Math.min(r, g, b);
+	var h, s, v = max;
+
+	var d = max - min;
+	s = max == 0 ? 0 : d / max;
+
+	if (max == min) 
+	{
+		h = 0; // achromatic
+	} 
+	else 
+	{
+		switch (max) 
+		{
+			case r: h = (g - b) / d + (g < b ? 6 : 0); break;
+			case g: h = (b - r) / d + 2; break;
+			case b: h = (r - g) / d + 4; break;
+		}
+		h /= 6;
+	}
+	return [Math.round(h*255), Math.round(s*255), Math.round(v*255)];
 }
 
 function setColorData(sender)
@@ -245,6 +315,665 @@ function setColorData(sender)
 	}
 }
 
+function loadLEDTable(thisTable, thisData)
+{
+		function selByName(prmVal)
+		{
+			return (prmVal == thisData[i].CtrlSource);
+		}
+
+//	console.log(thisData);
+	var th = document.getElementById(thisTable.id + "_head");
+	var tb = document.getElementById(thisTable.id + "_body");
+	var numCols = th.childNodes[0].children.length;
+	createDataTableLines(thisTable, [tfPos, tfLEDSelector, tfCommandEditor], 1, "setLEDData(this)");
+	var i=0;
+//	for (var i=0; i<thisData.length;i++)
+	{
+		var e = document.getElementById("lednrbox_" + i.toString() + "_" + "1");
+		e.value = thisData[i].LEDNums;
+
+		var e = document.getElementById("multicolor_" + i.toString() + "_" + "1");
+		if (Array.isArray(thisData[i].LEDNums) && (thisData[i].LEDNums.length > 1))
+			e.parentElement.style.visibility = "none";
+		else
+			e.parentElement.style.visibility = "hidden";
+		e.checked = thisData[i].MultiColor;
+//		console.log("Check Multi Color");
+		
+		var e = document.getElementById("disptypebox_" + i.toString() + "_" + "1");
+		e.selectedIndex = dispType.indexOf(thisData[i].DisplayType);
+		
+		if ([2,4].indexOf(ledCtrlType.indexOf(thisData[i].CtrlSource)) >= 0)
+//		if ((thisData[i].CtrlSource == "analog") || (thisData[i].CtrlSource == "signal"))
+			e.parentElement.style.visibility = "none";
+		else
+			e.parentElement.style.visibility = "hidden";
+
+		var e = document.getElementById("transpselbox_" + i.toString() + "_" + "1");
+		if ([6].indexOf(ledCtrlType.indexOf(thisData[i].CtrlSource)) >= 0)
+		{
+			e.value = thisData[i].CondAddr;
+			e.parentElement.style.visibility = "none";
+		}
+		else
+			e.parentElement.style.visibility = "hidden";
+
+		var e = document.getElementById("addressbox_" + i.toString() + "_" + "1");
+		e.value = thisData[i].CtrlAddr;
+		
+		var e = document.getElementById("cmdlistbox_" + i.toString() + "_" + "1");
+		e.selectedIndex = ledCtrlType.indexOf(thisData[i].CtrlSource);
+		buildCmdLines(i, thisData[i]);
+
+	}
+//	console.log();
+}
+
+function setLEDData(sender)
+{
+	function adjustCmdLines(currentRow)
+	{
+		var numCmds;
+		var numAddr = 1;
+		if (Array.isArray(ledData[workCfg].LEDDefs[currentRow].CtrlAddr))
+			numAddr = ledData[workCfg].LEDDefs[currentRow].CtrlAddr.length;
+		switch (ledCtrlType.indexOf(ledData[workCfg].LEDDefs[currentRow].CtrlSource))
+		{
+//			case 9 : ; //used to be static signal, now switch
+			case 0 : numCmds = Math.pow(2, numAddr); break; //switch
+			case 1 : numCmds = 2 * numAddr; break; //signaldyn
+			case 2 : numCmds = 1; break; //signal
+			case 3 : numCmds = 5; break; //button
+			case 4 : numCmds = 1; break; //analog
+			case 5 : numCmds = Math.pow(2, numAddr); break; //block
+			case 6 : numCmds = 2; break; //transponder
+			case 7 : numCmds = 3; break; //power
+			case 8 : numCmds = 1; break; //constant
+		}
+		while (ledData[workCfg].LEDDefs[currentRow].LEDCmd.length < numCmds)
+			ledData[workCfg].LEDDefs[currentRow].LEDCmd.push(JSON.parse(JSON.stringify(newCmdTemplate)));
+		while (ledData[workCfg].LEDDefs[currentRow].LEDCmd.length > numCmds)
+			ledData[workCfg].LEDDefs[currentRow].LEDCmd.splice(ledData[workCfg].LEDDefs[currentRow].LEDCmd.length-1, 1);
+	}
+	
+	function adjustColorEntries(currentRow)
+	{
+		function verifyArray(thisArray, newLen, initVal)
+		{
+			var resArray = [];
+			var oldLen = 0;
+			var setVal = initVal;
+			if (Array.isArray(thisArray))
+			{
+				oldLen = Math.min(thisArray.length, newLen);
+				setVal = thisArray[oldLen - 1];
+				for (var i = 0; i < oldLen; i++)
+					resArray.push(thisArray[i]);
+			}
+			else
+				if (thisArray != undefined)
+					setVal = thisArray;
+			while (resArray.length < newLen)
+				resArray.push(setVal);
+			return resArray;
+		}
+		
+		if (ledData[workCfg].LEDDefs[currentRow].MultiColor)
+		{
+			var numCols = ledData[workCfg].LEDDefs[currentRow].LEDNums.length;
+			for (var i = 0; i < ledData[workCfg].LEDDefs[currentRow].LEDCmd.length; i++)
+			{	//for each command
+				ledData[workCfg].LEDDefs[currentRow].LEDCmd[i].ColOn = verifyArray(ledData[workCfg].LEDDefs[currentRow].LEDCmd[i].ColOn, numCols, "");
+				ledData[workCfg].LEDDefs[currentRow].LEDCmd[i].ColOff = verifyArray(ledData[workCfg].LEDDefs[currentRow].LEDCmd[i].ColOff, numCols, "");
+				ledData[workCfg].LEDDefs[currentRow].LEDCmd[i].Mode = verifyArray(ledData[workCfg].LEDDefs[currentRow].LEDCmd[i].Mode, numCols, "static");
+				ledData[workCfg].LEDDefs[currentRow].LEDCmd[i].Rate = verifyArray(ledData[workCfg].LEDDefs[currentRow].LEDCmd[i].Rate, numCols, 0);
+				ledData[workCfg].LEDDefs[currentRow].LEDCmd[i].Transition = verifyArray(ledData[workCfg].LEDDefs[currentRow].LEDCmd[i].Transition, numCols, "soft");
+			}
+		}
+		else
+		{
+			for (var i = 0; i < ledData[workCfg].LEDDefs[currentRow].LEDCmd.length; i++)
+			{	//for each command
+				var oldColOn = ledData[workCfg].LEDDefs[currentRow].LEDCmd[i].ColOn;
+//				console.log(typeof oldColOn);
+				if (typeof oldColOn == "object")
+					oldColOn = ledData[workCfg].LEDDefs[currentRow].LEDCmd[i].ColOn[0];
+				var oldColOff;
+				try
+				{
+					oldColOff = ledData[workCfg].LEDDefs[currentRow].LEDCmd[i].ColOff;
+					if (typeof oldColOff == "object")
+						oldColOff = ledData[workCfg].LEDDefs[currentRow].LEDCmd[i].ColOff[0];
+				}
+				catch(err) 
+				{
+					oldColOff = "";
+				}
+				ledData[workCfg].LEDDefs[currentRow].LEDCmd[i].ColOn = oldColOn;
+				ledData[workCfg].LEDDefs[currentRow].LEDCmd[i].ColOff = oldColOff;
+				ledData[workCfg].LEDDefs[currentRow].LEDCmd[i].Mode.splice(1, ledData[workCfg].LEDDefs[currentRow].LEDCmd[i].Mode.length-1);
+				ledData[workCfg].LEDDefs[currentRow].LEDCmd[i].Rate.splice(1, ledData[workCfg].LEDDefs[currentRow].LEDCmd[i].Rate.length-1);
+				ledData[workCfg].LEDDefs[currentRow].LEDCmd[i].Transition.splice(1, ledData[workCfg].LEDDefs[currentRow].LEDCmd[i].Transition.length-1);
+			}
+		}
+	}
+	
+	var thisRow = parseInt(sender.getAttribute("row"));
+	var thisCol = parseInt(sender.getAttribute("col"));
+	var thisIndex = parseInt(sender.getAttribute("index"));
+//	console.log(thisRow, thisCol, thisIndex);
+	switch (thisCol)
+	{
+		case -1: //empty table, create first entry
+			ledData[workCfg].LEDDefs.push(JSON.parse(JSON.stringify(newLEDTemplate)));
+			loadLEDTable(ledDefTable, ledData[workCfg].LEDDefs);
+			break;
+		case 1: //CommandSelector
+			var idStr = sender.id;
+			var thisElement;
+			switch (thisIndex)
+			{
+				case 1:
+					if (event.ctrlKey) //duplicate entry
+						ledData[workCfg].LEDDefs.splice(thisRow+1, 0, JSON.parse(JSON.stringify(configData[2].LEDDefs[thisRow])));
+					else //create new entry
+						ledData[workCfg].LEDDefs.splice(thisRow+1, 0, JSON.parse(JSON.stringify(newLEDTemplate)));
+					break;
+				case 2:
+					ledData[workCfg].LEDDefs.splice(thisRow, 1);
+					break;
+				case 3:
+					if (thisRow > 0)
+					{
+						thisElement = configData[2].LEDDefs.splice(thisRow, 1);
+						ledData[workCfg].LEDDefs.splice(thisRow-1,0, thisElement[0]);
+					}
+					break;
+				case 4:
+					if (thisRow < ledData[workCfg].LEDDefs.length)
+					{
+						thisElement = ledData[workCfg].LEDDefs.splice(thisRow, 1);
+						ledData[workCfg].LEDDefs.splice(thisRow+1,0, thisElement[0]);
+					}
+					break;
+				case 5:
+					{
+						var newArray = verifyNumArray(sender.value, ",");
+						if (newArray.length > 0)
+						{
+							if (newArray.length > 1)
+							{
+								ledData[workCfg].LEDDefs[thisRow].LEDNums = []; //make sure this is an array
+								for (var i = 0; i < newArray.length; i++)
+									ledData[workCfg].LEDDefs[thisRow].LEDNums.push(newArray[i]);
+								adjustColorEntries(thisRow);
+							}
+							else //==1
+							{
+								ledData[workCfg].LEDDefs[thisRow].LEDNums = [newArray[0]];
+								ledData[workCfg].LEDDefs[thisRow].MultiColor = false;
+							}
+						}
+						else
+							alert(sender.value + " is not a valid number or array. Please verify");
+					}
+					break;
+				case 6:
+					{
+						ledData[workCfg].LEDDefs[thisRow].MultiColor = sender.checked; 
+						adjustColorEntries(thisRow);
+					}
+					break;
+				case 7:
+					{
+						var oldSource = ledData[workCfg].LEDDefs[thisRow].CtrlSource;
+						ledData[workCfg].LEDDefs[thisRow].CtrlSource = ledCtrlType[sender.selectedIndex];
+						if (ledData[workCfg].LEDDefs[thisRow].CtrlSource != oldSource)
+							adjustCmdLines(thisRow);
+					}
+					break;
+				case 8:
+					{
+						var newArray = verifyNumArray(sender.value, ",");
+						if (newArray.length > 0)
+						{
+							var oldLen = Array.isArray(ledData[workCfg].LEDDefs[thisRow].CtrlAddr) ? ledData[workCfg].LEDDefs[thisRow].CtrlAddr.length : 1;
+							if (newArray.length > 1)
+								ledData[workCfg].LEDDefs[thisRow].CtrlAddr = newArray; //make sure this is an array
+							else
+								ledData[workCfg].LEDDefs[thisRow].CtrlAddr = newArray[0];
+							//shorten array length.switch and block detector max 3, others max 1
+							if ([0,1,5].indexOf(ledCtrlType.indexOf(ledData[workCfg].LEDDefs[thisRow].CtrlSource)) >= 0)
+								while (newArray.length > 3)
+									newArray.pop();
+							else
+								while (newArray.length > 1)
+									newArray.pop();
+							sender.value = newArray;
+//							console.log(newArray);
+							if (newArray.length != oldLen)
+								adjustCmdLines(thisRow);
+//							console.log(sender.value);
+						}
+						else
+							alert(sender.value + " is not a valid number or array. Please verify");
+					}
+					break;
+				case 9:
+					ledData[workCfg].LEDDefs[thisRow].DisplayType = dispType[sender.selectedIndex];
+					break;
+				case 10:
+					{
+						var newArray = verifyNumArray(sender.value, ",");
+						if (newArray.length > 0)
+							ledData[workCfg].LEDDefs[thisRow].CondAddr = newArray;
+						else
+							ledData[workCfg].LEDDefs[thisRow].CondAddr = [];
+					}
+					break;
+				case 21:
+					setLEDTestDisplay(ledData[workCfg].LEDDefs[thisRow].LEDNums);
+					break;
+			} //thisIndex
+			loadLEDTable(ledDefTable, ledData[workCfg].LEDDefs);
+	} //thisCol
+}
+
+function setLEDCmdData(sender)
+{
+	var thisRow = parseInt(sender.getAttribute("row"));
+	var thisCol = parseInt(sender.getAttribute("col"));
+	var thisIndex = parseInt(sender.getAttribute("index"));
+	var thisCmdLine = parseInt(sender.getAttribute("cmdline"));
+	if (isNaN(thisCmdLine))
+		thisCmdLine = parseInt(sender.parentElement.getAttribute("cmdline"));
+	var thisElement;
+	var thisID;
+	console.log("setLEDCmdData", thisRow, thisCol, thisIndex, thisCmdLine, sender.id, ledData[workCfg].LEDDefs[thisRow]);
+	switch (thisIndex)
+	{
+		case 1: //new Cmd Entry
+			ledData[workCfg].LEDDefs[thisRow].LEDCmd.splice(thisCmdLine+1, 0, JSON.parse(JSON.stringify(newCmdTemplate)));
+			loadLEDTable(ledDefTable, ledData[workCfg].LEDDefs);
+			break;
+		case 2: //delete Cmd Entry
+			ledData[workCfg].LEDDefs[thisRow].LEDCmd.splice(thisCmdLine, 1);
+			loadLEDTable(ledDefTable, ledData[workCfg].LEDDefs);
+			break;
+		case 3: //Up
+			if (thisCmdLine > 0)
+			{
+				thisElement = ledData[workCfg].LEDDefs[thisRow].LEDCmd.splice(thisCmdLine, 1);
+				ledData[workCfg].LEDDefs[thisRow].LEDCmd.splice(thisCmdLine-1,0, thisElement[0]);
+			}
+			loadLEDTable(ledDefTable, ledData[workCfg].LEDDefs);
+			break;
+		case 4: //Down
+			if (thisCmdLine < ledData[workCfg].LEDDefs[thisRow].LEDCmd.length)
+			{
+				thisElement = ledData[workCfg].LEDDefs[thisRow].LEDCmd.splice(thisCmdLine, 1);
+				ledData[workCfg].LEDDefs[thisRow].LEDCmd.splice(thisCmdLine+1,0, thisElement[0]);
+			}
+			loadLEDTable(ledDefTable, ledData[workCfg].LEDDefs);
+			break;
+		case 6: //value
+			ledData[workCfg].LEDDefs[thisRow].LEDCmd[thisCol].Val = verifyNumber(sender.value, ledData[workCfg].LEDDefs[thisRow].LEDCmd[thisCol].Val);
+			break;
+		case 8: //oncolor
+			if (ledData[workCfg].LEDDefs[thisRow].MultiColor)
+			{
+				thisID = "ledselector" + thisRow.toString() + "_" + thisCmdLine.toString();
+				var e = document.getElementById(thisID);
+				var currSel = e.selectedIndex;
+				ledData[workCfg].LEDDefs[thisRow].LEDCmd[thisCol].ColOn[currSel] = ledData[workCfg].LEDCols[sender.selectedIndex].Name;
+			}
+			else
+				ledData[workCfg].LEDDefs[thisRow].LEDCmd[thisCol].ColOn = ledData[workCfg].LEDCols[sender.selectedIndex].Name;
+			break;
+		case 9: //offcolor
+			if (ledData[workCfg].LEDDefs[thisRow].MultiColor)
+			{
+				thisID = "ledselector" + thisRow.toString() + "_" + thisCmdLine.toString();
+				var e = document.getElementById(thisID);
+				var currSel = e.selectedIndex;
+				ledData[workCfg].LEDDefs[thisRow].LEDCmd[thisCol].ColOff[currSel] = ledData[workCfg].LEDCols[sender.selectedIndex].Name;
+			}
+			else
+			{
+				ledData[workCfg].LEDDefs[thisRow].LEDCmd[thisCol].ColOff = ledData[workCfg].LEDCols[sender.selectedIndex].Name;
+			}
+			break;
+		case 10: //Mode
+			if (ledData[workCfg].LEDDefs[thisRow].MultiColor)
+			{
+				thisID = "ledselector" + thisRow.toString() + "_" + thisCmdLine.toString();
+				var e = document.getElementById(thisID);
+				var currSel = e.selectedIndex;
+				ledData[workCfg].LEDDefs[thisRow].LEDCmd[thisCol].Mode[currSel] = ledModeType[sender.selectedIndex];
+			}
+			else
+				ledData[workCfg].LEDDefs[thisRow].LEDCmd[thisCol].Mode[0] = ledModeType[sender.selectedIndex];
+			break;
+		case 11: //Rate
+			if (ledData[workCfg].LEDDefs[thisRow].MultiColor)
+			{
+				thisID = "ledselector" + thisRow.toString() + "_" + thisCmdLine.toString();
+				var e = document.getElementById(thisID);
+				var currSel = e.selectedIndex;
+				ledData[workCfg].LEDDefs[thisRow].LEDCmd[thisCol].Rate[currSel] = verifyNumber(sender.value, ledData[workCfg].LEDDefs[thisRow].LEDCmd[thisCol].Rate[currSel]);
+			}
+			else
+				ledData[workCfg].LEDDefs[thisRow].LEDCmd[thisCol].Rate[0] = verifyNumber(sender.value, ledData[workCfg].LEDDefs[thisRow].LEDCmd[thisCol].Rate[0]);
+			break;
+		case 12: //Transition
+			if (ledData[workCfg].LEDDefs[thisRow].MultiColor)
+			{
+				thisID = "ledselector" + thisRow.toString() + "_" + thisCmdLine.toString();
+				var e = document.getElementById(thisID);
+				var currSel = e.selectedIndex;
+				ledData[workCfg].LEDDefs[thisRow].LEDCmd[thisCol].Transition[currSel] = ledTransitionType[sender.selectedIndex];
+			}
+			else
+				ledData[workCfg].LEDDefs[thisRow].LEDCmd[thisCol].Transition[0] = ledTransitionType[sender.selectedIndex];
+			break;
+		case 15: //select individual LED
+			var colorArray = [];
+			for (var i = 0; i < ledData[workCfg].LEDCols.length; i++)
+				colorArray.push(ledData[workCfg].LEDCols[i].Name);
+			var thisIndex = sender.selectedIndex;
+			thisID = "oncolsel_" + thisRow.toString() + "_" + thisCmdLine.toString();
+			var onColSel = document.getElementById(thisID);
+			thisID = "offcolsel_" + thisRow.toString() + "_" + thisCmdLine.toString();
+			var offColSel = document.getElementById(thisID);
+			onColSel.selectedIndex = colorArray.indexOf(ledData[workCfg].LEDDefs[thisRow].LEDCmd[thisCol].ColOn[thisIndex]);
+			offColSel.selectedIndex = colorArray.indexOf(ledData[workCfg].LEDDefs[thisRow].LEDCmd[thisCol].ColOff[thisIndex]);
+			
+			thisID = "modesel_" + thisRow.toString() + "_" + thisCmdLine.toString();
+			var modeSel = document.getElementById(thisID);
+			modeSel.selectedIndex = ledModeType.indexOf(ledData[workCfg].LEDDefs[thisRow].LEDCmd[thisCol].Mode[thisIndex]);
+			
+			thisID = "ratesel_" + thisRow.toString() + "_" + thisCmdLine.toString();
+			var rateSel = document.getElementById(thisID);
+			rateSel.value = ledData[workCfg].LEDDefs[thisRow].LEDCmd[thisCol].Rate[thisIndex];
+
+			thisID = "transitionsel_" + thisRow.toString() + "_" + thisCmdLine.toString();
+			var transitionSel = document.getElementById(thisID);
+			transitionSel.selectedIndex = ledTransitionType.indexOf(ledData[workCfg].LEDDefs[thisRow].LEDCmd[thisCol].Transition[thisIndex]);
+			
+			break;
+	}
+}
+
+function createColorSelectField(parentObj, lineIndex, cmdIndex, cmdLineData, evtHandler)
+{
+	var upperDiv = document.createElement("div");
+	upperDiv.setAttribute("class", "editorpanel");
+	var thisID;
+	if ((cmdLineData.CtrlSource == "signal") || (cmdLineData.CtrlSource == "analog"))
+	{
+		thisID = "cmdmanipulator_" + lineIndex.toString() + "_" + cmdIndex.toString();
+		var thisBox = tfManipulatorBox(lineIndex, 1, thisID, evtHandler);
+		tfSetCoordinate(thisBox, lineIndex, cmdIndex, 1, thisID);
+		thisBox.setAttribute("cmdline", cmdIndex);
+		upperDiv.append(thisBox);
+	}
+			
+	var thisText = tfText(lineIndex, cmdIndex, "", evtHandler);
+	thisText.innerHTML = "Value:&nbsp;";
+	upperDiv.append(thisText);
+	
+	thisID = "ctrlvalue_" + lineIndex.toString() + "_" + cmdIndex.toString();
+	var thisElement;
+	if ((cmdLineData.CtrlSource == "signal") || (cmdLineData.CtrlSource == "analog"))
+	{
+		thisElement = tfNumeric(lineIndex, 5, thisID, evtHandler);
+		tfSetCoordinate(thisElement, lineIndex, cmdIndex, 5, thisID);
+		thisElement.setAttribute("cmdline", cmdIndex);
+		thisElement.value = cmdLineData.LEDCmd[cmdIndex].Val;
+		tfSetCoordinate(thisElement, lineIndex, cmdIndex, 6, thisID);
+		thisElement.setAttribute("index", 6);
+	}
+	else
+//add code for	if (cmdLineData.CtrlSource == "transponder")
+	{
+		thisElement = tfText(lineIndex, 6, thisID, evtHandler);
+		tfSetCoordinate(thisElement, lineIndex, cmdIndex, 6, thisID);
+		switch (ledCtrlType.indexOf(cmdLineData.CtrlSource))
+		{
+			case 0: //switch
+			case 9: //signalstat
+				cmdLineData.LEDCmd[cmdIndex].Val = cmdIndex;
+				var bitMask = 0x01;
+				var dispStr = "";
+				var numAddr = 1;
+				var isArray = Array.isArray(cmdLineData.CtrlAddr);
+				if (isArray)
+					numAddr = cmdLineData.CtrlAddr.length;
+				for (var i = 0; i < numAddr; i++)
+				{
+					if (i > 0) dispStr += ", ";
+					if (isArray)
+						dispStr += cmdLineData.CtrlAddr[i].toString() + ((cmdIndex & bitMask) == 0 ? "t" : "c");
+					else
+						dispStr += cmdLineData.CtrlAddr.toString() + ((cmdIndex & bitMask) == 0 ? "t" : "c");
+					bitMask = bitMask << 1;
+				}
+				thisElement.innerHTML = dispStr;
+				break;
+			case 1: //signaldyn
+				cmdLineData.LEDCmd[cmdIndex].Val = cmdIndex;
+				var isArray = Array.isArray(cmdLineData.CtrlAddr);
+				if (isArray)
+					thisElement.innerHTML = cmdLineData.CtrlAddr[cmdIndex>>1].toString() + ((cmdIndex & 0x01) == 0 ? "t" : "c");
+				else
+					thisElement.innerHTML = cmdLineData.CtrlAddr.toString() + ((cmdIndex & 0x01) == 0 ? "t" : "c");
+				break;
+			case 3: //button
+				cmdLineData.LEDCmd[cmdIndex].Val = cmdIndex; //btnType.indexOf(cmdIndex);
+				thisElement.innerHTML = buttonValDispType[cmdIndex];
+				break;
+			case 5: //block detector
+				cmdLineData.LEDCmd[cmdIndex].Val = cmdIndex;
+				var bitMask = 0x01;
+				var dispStr = "";
+				var numAddr = 1;
+				var isArray = Array.isArray(cmdLineData.CtrlAddr);
+				if (isArray)
+					numAddr = cmdLineData.CtrlAddr.length;
+				for (var i = 0; i < numAddr; i++)
+				{
+					if (i > 0) dispStr += ", ";
+					if (isArray)
+						dispStr += cmdLineData.CtrlAddr[i].toString() + ((cmdIndex & bitMask) == 0 ? " fr" : " oc");
+					else
+						dispStr += cmdLineData.CtrlAddr.toString() + ((cmdIndex & bitMask) == 0 ? " fr" : " oc");
+					bitMask = bitMask << 1;
+				}
+				thisElement.innerHTML = dispStr;
+				break;
+			case 6: //transponder
+				cmdLineData.LEDCmd[cmdIndex].Val = cmdIndex; //trackPwrType.indexOf(cmdIndex);
+				thisElement.innerHTML = transponderValDispType[cmdIndex];
+				break;
+			case 7: //power
+				cmdLineData.LEDCmd[cmdIndex].Val = cmdIndex; //trackPwrType.indexOf(cmdIndex);
+				thisElement.innerHTML = powerValDispType[cmdIndex];
+				break;
+			case 8: //constant
+				cmdLineData.LEDCmd[cmdIndex].Val = 1;
+				thisElement.innerHTML = "On";
+				break;
+		}
+	}
+	upperDiv.append(thisElement);
+
+	if (cmdLineData.MultiColor) 
+	{
+		thisID = "ledseltext" + lineIndex.toString() + "_" + cmdIndex.toString();
+		thisText = tfText(lineIndex, cmdIndex, thisID, evtHandler);
+		thisText.innerHTML = "Select LED:";
+		upperDiv.append(tfTab(lineIndex, cmdIndex, '&nbsp;',""));
+		upperDiv.append(thisText);
+		upperDiv.append(tfTab(lineIndex, cmdIndex, '&nbsp;',""));
+		thisID = "ledselector" + lineIndex.toString() + "_" + cmdIndex.toString();
+		thisElement = tfLEDAddrSel(thisElement, lineIndex, thisID, evtHandler, cmdLineData.LEDNums);
+		thisElement.setAttribute("cmdline", cmdIndex);
+		tfSetCoordinate(thisElement, lineIndex, cmdIndex, 15, thisID);
+		upperDiv.append(thisElement);
+	}
+
+	var colorArray = [];
+	for (var i = 0; i < ledData[workCfg].LEDCols.length; i++)
+		colorArray.push(ledData[workCfg].LEDCols[i].Name);
+
+	thisID = "oncoltxt_" + lineIndex.toString() + "_" + cmdIndex.toString();
+	thisText = tfText(lineIndex, cmdIndex, thisID, evtHandler);
+	thisText.innerHTML = "On Color:";
+	thisText.setAttribute("cmdline", cmdIndex);
+	upperDiv.append(tfTab(lineIndex, cmdIndex, '&nbsp;',""));
+	upperDiv.append(thisText);
+	upperDiv.append(tfTab(lineIndex, cmdIndex, '&nbsp;',""));
+	
+	thisID = "oncolsel_" + lineIndex.toString() + "_" + cmdIndex.toString();
+	thisElement = tfColorSelector(lineIndex, cmdIndex, thisID, evtHandler, colorArray);
+	thisElement.setAttribute("cmdline", cmdIndex);
+	if (cmdLineData.MultiColor)
+		thisElement.selectedIndex = colorArray.indexOf(cmdLineData.LEDCmd[cmdIndex].ColOn[0]);
+	else
+		thisElement.selectedIndex = colorArray.indexOf(cmdLineData.LEDCmd[cmdIndex].ColOn);
+	tfSetCoordinate(thisElement, lineIndex, cmdIndex, 8, thisID);
+	upperDiv.append(thisElement);
+
+	thisID = "offcoltxt_" + lineIndex.toString() + "_" + cmdIndex.toString();
+	thisText = tfText(lineIndex, cmdIndex, thisID, evtHandler);
+	thisText.innerHTML = "Off Color:";
+	thisText.setAttribute("cmdline", cmdIndex);
+	upperDiv.append(tfTab(lineIndex, cmdIndex, '&nbsp;',""));
+	upperDiv.append(thisText);
+	upperDiv.append(tfTab(lineIndex, cmdIndex, '&nbsp;',""));
+
+//	colorArray.splice(0,0, "none");
+	
+	thisID = "offcolsel_" + lineIndex.toString() + "_" + cmdIndex.toString();
+	thisElement = tfColorSelector(lineIndex, cmdIndex, thisID, evtHandler, colorArray);
+	thisElement.setAttribute("cmdline", cmdIndex);
+
+	if (cmdLineData.MultiColor)
+		thisElement.selectedIndex = colorArray.indexOf(cmdLineData.LEDCmd[cmdIndex].ColOff[0]);
+	else
+		if (cmdLineData.LEDCmd[cmdIndex].ColOff == undefined)
+			thisElement.selectedIndex = -1;
+		else
+			thisElement.selectedIndex = colorArray.indexOf(cmdLineData.LEDCmd[cmdIndex].ColOff);
+	tfSetCoordinate(thisElement, lineIndex, cmdIndex, 9, thisID);
+	upperDiv.append(thisElement);
+
+	parentObj.append(upperDiv);
+	
+	var lowerDiv = document.createElement("div");
+	lowerDiv.setAttribute("class", "editorpanel");
+	if ((cmdLineData.CtrlSource == "signal") || (cmdLineData.CtrlSource == "analog"))
+	{
+		var thisSpacer = document.createElement("div");
+		thisSpacer.setAttribute("class", "manipulatorbox");
+		lowerDiv.append(thisSpacer);
+	}
+	thisText = tfText(lineIndex, cmdIndex, "", evtHandler);
+	thisText.innerHTML = "Mode:&nbsp;";
+	lowerDiv.append(thisText);
+
+	thisID = "modesel_" + lineIndex.toString() + "_" + cmdIndex.toString();
+	thisElement = tfModeSelector(lineIndex, cmdIndex, thisID, evtHandler);
+	thisElement.setAttribute("cmdline", cmdIndex);
+	if (!Array.isArray(cmdLineData.LEDCmd[cmdIndex].Mode))
+	{
+		var oldMode = cmdLineData.LEDCmd[cmdIndex].Mode;
+		cmdLineData.LEDCmd[cmdIndex].Mode = [];
+		cmdLineData.LEDCmd[cmdIndex].Mode.push(oldMode);
+	}
+	thisElement.selectedIndex = ledModeType.indexOf(cmdLineData.LEDCmd[cmdIndex].Mode[0]);
+	tfSetCoordinate(thisElement, lineIndex, cmdIndex, 10, thisID);
+	lowerDiv.append(thisElement);
+
+	thisText = tfText(lineIndex, cmdIndex, "", evtHandler);
+	thisText.innerHTML = "&nbsp;Rate:&nbsp;";
+	lowerDiv.append(thisText);
+
+	thisID = "ratesel_" + lineIndex.toString() + "_" + cmdIndex.toString();
+	thisElement = tfNumeric(lineIndex, 5, thisID, evtHandler);
+	thisElement.setAttribute("cmdline", cmdIndex);
+	if (!Array.isArray(cmdLineData.LEDCmd[cmdIndex].Rate))
+	{
+		var oldRate = cmdLineData.LEDCmd[cmdIndex].Rate;
+		cmdLineData.LEDCmd[cmdIndex].Rate = [];
+		cmdLineData.LEDCmd[cmdIndex].Rate.push(oldRate);
+	}
+	thisElement.value = cmdLineData.LEDCmd[cmdIndex].Rate[0];
+	tfSetCoordinate(thisElement, lineIndex, cmdIndex, 11, thisID);
+	lowerDiv.append(thisElement);
+
+	thisText = tfText(lineIndex, cmdIndex, "", evtHandler);
+	thisText.innerHTML = "&nbsp;Transition:&nbsp;";
+	lowerDiv.append(thisText);
+
+	thisID = "transitionsel_" + lineIndex.toString() + "_" + cmdIndex.toString();
+	thisElement = tfTransitionSelector(lineIndex, cmdIndex, thisID, evtHandler);
+	thisElement.setAttribute("cmdline", cmdIndex);
+	if (!Array.isArray(cmdLineData.LEDCmd[cmdIndex].Transition))
+	{
+		var oldTransition = cmdLineData.LEDCmd[cmdIndex].Transition;
+		cmdLineData.LEDCmd[cmdIndex].Transition = [];
+		cmdLineData.LEDCmd[cmdIndex].Transition.push(oldTransition);
+	}
+	thisElement.selectedIndex = ledTransitionType.indexOf(cmdLineData.LEDCmd[cmdIndex].Transition[0]);
+	tfSetCoordinate(thisElement, lineIndex, cmdIndex, 12, thisID);
+	lowerDiv.append(thisElement);
+
+	parentObj.append(lowerDiv);
+}
+
+function buildCmdLines(lineIndex, lineData)
+{
+	var thisLineBase = document.getElementById("ledconfig_inp_" + lineIndex.toString() + "_2");
+	while (thisLineBase.hasChildNodes())
+		thisLineBase.removeChild(thisLineBase.childNodes[0]); //delete rows
+	if (lineData.LEDCmd.length > 0)
+		for (var i=0; i<lineData.LEDCmd.length; i++)
+		{
+			var masterDiv = document.createElement("div");
+			masterDiv.setAttribute("class", "mastertile");
+			if ((i % 2) == 0) //even
+				masterDiv.style.backgroundColor = "#F5F5F5";
+			else
+				masterDiv.style.backgroundColor = "#D3D3D3";
+			var thisID = "master_" + lineIndex.toString() + "_" + i.toString();
+			tfSetCoordinate(masterDiv, i, 0, 0, thisID);
+			thisLineBase.append(masterDiv);
+
+			thisID = "pos_" + lineIndex.toString() + "_" + i.toString();
+			masterDiv.append(tfPos(i, -1, thisID, ""));
+			thisID = "cmdbasedata_" + lineIndex.toString() + "_" + i.toString();
+			var mainDiv = document.createElement("div");
+			mainDiv.setAttribute("class", "editortile");
+			tfSetCoordinate(mainDiv, i, 0, 0, thisID);
+			masterDiv.append(mainDiv);
+			
+			createColorSelectField(mainDiv, lineIndex, i, lineData, "setLEDCmdData(this)");
+		}
+	else
+	{
+		var mainDiv = document.createElement("div");
+		mainDiv.setAttribute("class", "editortile");
+		tfSetCoordinate(mainDiv, i, 0, 0, thisID);
+		thisLineBase.append(mainDiv);
+		var thisId = "cmdbasedata_initadd" + lineIndex.toString();
+		var newRB = tfTableStarterBox(lineIndex, -1, thisId, "setLEDCmdData(this)");
+		mainDiv.append(newRB);
+	}
+
+}
+
 function setLEDBasics(sender)
 {
 	if (sender.id == "colorseq")
@@ -259,6 +988,12 @@ function setLEDBasics(sender)
 		ledData[workCfg].ChainParams.Brightness.Addr = verifyNumber(sender.value, ledData[workCfg].ChainParams.Brightness.Addr);
 	if (sender.id == "brightnesslevel")
 		ledData[workCfg].ChainParams.Brightness.InitLevel = verifyNumber(sender.value/100, ledData[workCfg].ChainParams.Brightness.InitLevel);
+	if (sender.id == "cmd0source") ;
+	if (sender.id == "cmd0address") ;
+	if (sender.id == "cmd0option") ;
+	if (sender.id == "cmd0color");
+
+
 	if (sender.id == "ledblock")
 	{
 		if (configData[workCfg].Modules[0].LEDPattern != sender.selectedIndex)
@@ -506,7 +1241,7 @@ function setSwitchData(sender)
 					}
 					if (srcMode == 2) //signal
 					{
-						var sourceList= document.getElementById("cmdlistbox_" + thisRow.toString() + "_" + thisCol.toString());
+						var sourceList= document.getElementById("evtcmdlistbox_" + thisRow.toString() + "_" + thisCol.toString());
 						if (swiCfgData[workCfg].Drivers[thisRow].Positions[swiCfgData[workCfg].Drivers[thisRow].CurrDisp].AspVal != undefined)
 							if (swiCfgData[workCfg].Drivers[thisRow].Positions[swiCfgData[workCfg].Drivers[thisRow].CurrDisp].AspVal != 0xFFFF)
 								sourceList.options[sourceList.selectedIndex].text = "Aspect " + swiCfgData[workCfg].Drivers[thisRow].Positions[swiCfgData[workCfg].Drivers[thisRow].CurrDisp].AspVal.toString();
@@ -534,7 +1269,7 @@ function setSwitchData(sender)
 						if (swiCfgData[workCfg].Drivers[thisRow].CurrDisp > swiCfgData[workCfg].Drivers[thisRow].Positions.length - 1)
 						{
 							swiCfgData[workCfg].Drivers[thisRow].CurrDisp = (swiCfgData[workCfg].Drivers[thisRow].Positions.length - 1);
-							var evtListBox = document.getElementById("cmdlistbox_" + thisRow.toString() + "_" + thisCol.toString());
+							var evtListBox = document.getElementById("evtcmdlistbox_" + thisRow.toString() + "_" + thisCol.toString());
 							evtListBox.selectedIndex -= 1;
 						}
 						dispSwitchData(swiCfgData[workCfg].Drivers, thisRow);
@@ -700,7 +1435,7 @@ function setSwitchData(sender)
 							ledData[workCfg].LEDDefs[dataRow].CtrlAddr = swiAddr;
 							ledData[workCfg].LEDDefs[dataRow].CondAddr = swiCfgData[workCfg].Drivers[thisRow].CondData;
 							//adjust length of aspects
-							adjustLEDAspectList(dataRow, getOptionList("cmdlistbox_" + thisRow.toString() + "_1").length, swiPosList);
+							adjustLEDAspectList(dataRow, getOptionList("evtcmdlistbox_" + thisRow.toString() + "_1").length, swiPosList);
 							//display LED
 							break;
 						case 1: //Button 1
@@ -747,7 +1482,7 @@ function dispSwitchData(swiData, thisRow)
 {
 	var evtSrcBox = document.getElementById("evttypebox_" + thisRow.toString() + "_" + "1");
 	evtSrcBox.selectedIndex = sourceOptionArray.indexOf(swiData[thisRow].CmdSource);
-	var addrBox = document.getElementById("addressbox_" + thisRow.toString() + "_1");
+	var addrBox = document.getElementById("evtaddressbox_" + thisRow.toString() + "_1");
 	addrBox.value = swiData[thisRow].Addr;
 //	console.log(swiData[thisRow].CurrDisp);
 	adjustSourceSelector(swiData, thisRow, 1);
@@ -850,7 +1585,7 @@ function setButtonDisplay(btnData, btnEvtArray, thisRow, thisIndex)
 				case 1: break; //Signal, display aspect field
 				case 2: currCmdOptions = blockCmdOptions; break;
 //				case 3: //local, display options selector
-//					currCmdOptions = getOptionList("cmdlistbox_" + thisRow.toString() + "_1");
+//					currCmdOptions = getOptionList("evtcmdlistbox_" + thisRow.toString() + "_1");
 //					break;
 				default: break; //none. Hide everything
 			}
@@ -932,7 +1667,7 @@ function setLEDDisplay(ledArray, thisRow, thisIndex)
 			if ((ledSource == swiSource) && (ledAddr == swiAddr))
 			{
 				evtSrcBox.selectedIndex = 0;
-				createOptions(evtDispBox, getOptionList("cmdlistbox_" + thisRow.toString() + "_1"));
+				createOptions(evtDispBox, getOptionList("evtcmdlistbox_" + thisRow.toString() + "_1"));
 			}
 			else
 				if ((ledSource == 3) && (ledAddr == btn1Addr))
@@ -951,7 +1686,7 @@ function setLEDDisplay(ledArray, thisRow, thisIndex)
 						evtSrcBox.selectedIndex = 0;
 						ledData[workCfg].LEDDefs[ledNr].CtrlSource = ledOptionArray[swiSource];
 						ledData[workCfg].LEDDefs[ledNr].CtrlAddr = swiAddr;
-						createOptions(evtDispBox, getOptionList("cmdlistbox_" + thisRow.toString() + "_1"));
+						createOptions(evtDispBox, getOptionList("evtcmdlistbox_" + thisRow.toString() + "_1"));
 					}
 		
 			if (thisLED.currDisp == undefined)
@@ -1116,7 +1851,7 @@ function adjustHdlrEventList(ofHandler, newLength)
 	while (ofHandler.CtrlCmd.length > newLength) 
 		ofHandler.CtrlCmd.splice(ofHandler.CtrlCmd.length-1, 1); //remove last element
 	while (ofHandler.CtrlCmd.length < newLength) 
-		ofHandler.CtrlCmd.push(JSON.parse(JSON.stringify(newCmdTemplate)));
+		ofHandler.CtrlCmd.push(JSON.parse(JSON.stringify(newEventCmdTemplate)));
 //	console.log("Adj Array " + ofHandler.CtrlCmd.length.toString());
 	for (var i = 0; i < ofHandler.CtrlCmd.length; i++)
 	{
@@ -1140,7 +1875,7 @@ function adjustEventList(ofSwitch, newLength)
 function adjustSourceSelector(thisSwiData, thisRow, thisCol)
 {
 	var evtSrcBox = document.getElementById("evttypebox_" + thisRow.toString() + "_" + thisCol.toString());
-	var evtListBox = document.getElementById("cmdlistbox_" + thisRow.toString() + "_" + thisCol.toString());
+	var evtListBox = document.getElementById("evtcmdlistbox_" + thisRow.toString() + "_" + thisCol.toString());
 	evtSrcBox.selectedIndex = sourceOptionArray.indexOf(thisSwiData[thisRow].CmdSource);
 	var numAddr = swiCfgData[workCfg].Drivers[thisRow].Addr.length;
 	var optArray = [];
@@ -1232,23 +1967,43 @@ function constructPageContent(contentTab)
 	var tempObj;
 	mainScrollBox = createEmptyDiv(contentTab, "div", "pagetopicboxscroll-y", "btnconfigdiv");
 		createPageTitle(mainScrollBox, "div", "tile-1", "", "h1", "GreenHat Setup");
+
+		//Page settings
 		createPageTitle(mainScrollBox, "div", "tile-1", "", "h2", "Module Settings");
-		//LED Assignment pair vs group
-		tempObj = createEmptyDiv(mainScrollBox, "div", "tile-1", "");
-			createPageTitle(tempObj, "div", "tile-1", "", "h3", "Board Settings");
-			createDropdownselector(tempObj, "tile-1_4", "Color Sequence:", ["RGB", "GRB"], "colorseq", "setLEDBasics(this)");
-		generalBox1 = createEmptyDiv(mainScrollBox, "div", "tile-1", "");
-			createTextInput(generalBox1, "tile-1_4", "System Blink Period:", "n/a", "blinkperiod", "setLEDBasics(this)");
-			createDropdownselector(tempObj, "tile-1_4", "LED Assignment:", ["Continuous", "Blocks"], "ledblock", "setLEDBasics(this)");
-		generalBox2 = createEmptyDiv(mainScrollBox, "div", "tile-1", "");
-			createTextInput(generalBox2, "tile-1_4", "Brightness Ctrl. Addr.:", "n/a", "brightnessaddr", "setLEDBasics(this)");
-			createTextInput(generalBox2, "tile-1_4", "Initial Level [0-100%]:", "n/a", "brightnesslevel", "setLEDBasics(this)");
+
 		//LED Colors
 		colorTableDiv = createEmptyDiv(mainScrollBox, "div", "tile-1", "");
 		createPageTitle(colorTableDiv, "div", "tile-1", "", "h3", "LED Color Definitions");
 		colorTable = createDataTable(colorTableDiv, "tile-1_2", ["Pos","Color Name", "Select Color", "Add/Delete/Move Color"], "colorconfig", "");
-		createPageTitle(mainScrollBox, "div", "tile-1", "", "h2", "Channel Settings");
 
+		//LED Assignment pair vs group
+//		generalSettingsDiv = createEmptyDiv(mainScrollBox, "div", "tile-1", "");
+		createPageTitle(mainScrollBox, "div", "tile-1", "", "h3", "Board Settings");
+		generalBox1 = createEmptyDiv(mainScrollBox, "div", "tile-1", "");
+			createDropdownselector(generalBox1, "tile-1_4", "Color Sequence:", ["RGB", "GRB"], "colorseq", "setLEDBasics(this)");
+			createDropdownselector(generalBox1, "tile-1_4", "LED Assignment:", ["Continuous", "Blocks"], "ledblock", "setLEDBasics(this)");
+		generalBox2 = createEmptyDiv(mainScrollBox, "div", "tile-1", "");
+			createTextInput(generalBox2, "tile-1_4", "System Blink Period:", "n/a", "blinkperiod", "setLEDBasics(this)");
+		generalBox3 = createEmptyDiv(mainScrollBox, "div", "tile-1", "");
+			createTextInput(generalBox3, "tile-1_4", "Brightness Ctrl. Addr.:", "n/a", "brightnessaddr", "setLEDBasics(this)");
+			createTextInput(generalBox3, "tile-1_4", "Initial Level [0-100%]:", "n/a", "brightnesslevel", "setLEDBasics(this)");
+
+		generalBox4 = createEmptyDiv(mainScrollBox, "div", "tile-1", "");
+		createPageTitle(generalBox4, "div", "tile-1", "", "h3", "LED 0 Settings");
+		ledDefTable = createDataTable(generalBox4, "tile-1", ["Pos","IF THIS: (LED/Input Selector)", "THEN THAT: (LED Command Sequence Editor)"], "ledconfig", "");
+
+/*
+
+
+		generalBox4 = createEmptyDiv(generalSettingsDiv, "div", "tile-1", "");
+			createDropdownselector(generalBox4, "tile-1_4", "LED 0 Cmd. Source:", ["Switch", "Dyn. Signal", "DCC Signal", "Button", "Block Detector", "Power Status"], "evttypebox_0_4", "setLEDBasics(this)");
+			createTextInput(generalBox4, "tile-1_4", "Address:", "n/a", "cmd0address", "setLEDBasics(this)");
+		generalBox5 = createEmptyDiv(generalSettingsDiv, "div", "tile-1", "");
+			createDropdownselector(generalBox5, "tile-1_4", "Option:", ["thrown", "closed"], "evtcmdlistbox_", "setLEDBasics(this)");
+			createDropdownselector(generalBox5, "tile-1_4", "Color:", ["Color"], "cmd0color", "setLEDBasics(this)");
+*/
+		//Main Table
+		createPageTitle(mainScrollBox, "div", "tile-1", "", "h2", "Channel Settings");
 		switchTable = createDataTable(mainScrollBox, "tile-1", ["Pos","Input Event Selector", "Servo Movement", "Input Setup", "LED Setup"], "swiconfig", "");
 
 		tempObj = createEmptyDiv(mainScrollBox, "div", "tile-1", "");

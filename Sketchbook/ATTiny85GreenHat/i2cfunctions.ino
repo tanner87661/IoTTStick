@@ -94,7 +94,7 @@ void receiveEvent(uint8_t howMany)
       if (thisData > 0x30)
         switch (thisData)
         {
-          case 0xFF: strip->show(); break;
+          case 0xFF: showChain(); break;
           default: return; break;
         }
       else
@@ -104,7 +104,7 @@ void receiveEvent(uint8_t howMany)
       break;
     case 2: //this is just the pixel number, we fill it with the color from the last 5bit command
       thisData = (i2cConnection.readProc() << 8) + i2cConnection.readProc();
-      strip->setPixelColor(thisData, lastCol);
+      setSinglePixel(thisData, lastCol);
       break;
     case 4:
       thisData = i2cConnection.readProc();
@@ -142,20 +142,20 @@ void receiveEvent(uint8_t howMany)
       {
         case 0xFFFF: //broadcast
         {
-          hue = i2cConnection.readProc();
+          hue = i2cConnection.readProc()<<8;
           sat = i2cConnection.readProc();
           lval = i2cConnection.readProc();
-          uint32_t rgbcolor = strip->ColorHSV((hue<<8), sat, lval);
-          fillStrip(rgbcolor);
+          lastCol = getColorHSV(hue, sat, lval);
+          fillStrip(lastCol);
         }
         break;
         default: //update pixel
         {
-          hue = i2cConnection.readProc();
+          hue = i2cConnection.readProc()<<8;
           sat = i2cConnection.readProc();
           lval = i2cConnection.readProc();
-          lastCol = strip->ColorHSV((hue<<8), sat, lval);
-          strip->setPixelColor(thisData, lastCol);
+          lastCol = getColorHSV(hue, sat, lval);
+          setSinglePixel(thisData, lastCol);
         }
         break;
       }
