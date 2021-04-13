@@ -1,6 +1,9 @@
 # IoTTStick
 This is the master repository for the IoTT Stick, port modules and hat devices with the source code for the latest release. 
 
+2021/4/12
+- released new version 1.5.1 with finalized GreenHat support and improved (more stable) storage for large configuration files
+
 2021/4/10
 - merged in Prerelease in preparation of new version 1.5.1
 
