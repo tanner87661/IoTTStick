@@ -48,7 +48,7 @@ class IoTT_BtnHandler
 		uint16_t btnCondAddrLen = 0;
 		uint8_t numCmds = 0;
 //		uint8_t currEvent = 0;
-		IoTT_BtnHandlerCmd * cmdList = NULL;
+		IoTT_BtnHandlerCmd ** cmdList = NULL;
 };
 
 class IoTT_LocoNetButtons
@@ -83,7 +83,7 @@ class IoTT_LocoNetButtons
 		uint16_t * condDataList = NULL;
 		uint8_t condDataListLen = 0;
 		uint8_t eventTypeListLen = 0;
-		IoTT_BtnHandler * eventTypeList = NULL;
+		IoTT_BtnHandler ** eventTypeList = NULL;
 		uint8_t lastEvent = 0xFF;
 };
 
@@ -117,7 +117,7 @@ class IoTT_LocoNetButtonList
 		uint16_t getButtonIndexByAddress(sourceType inputEvent, uint16_t btnAddr, uint16_t startIndex = 0);
 	private:
 		void freeObjects();
-		IoTT_LocoNetButtons * btnList = NULL;
+		IoTT_LocoNetButtons ** btnList = NULL;
 		uint16_t numBtnHandler = 0;
 		
 	public:

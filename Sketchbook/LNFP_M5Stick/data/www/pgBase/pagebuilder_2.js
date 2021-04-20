@@ -369,7 +369,8 @@ function tfLEDSelector(y, x, id, evtHandler)
 	selBox.setAttribute("index", 7);
 	lowerDiv.append(selBox);
 
-	var thisText = tfText(y, x, id, evtHandler);
+	thisId = "addrtext_" + y.toString() + "_" + x.toString();
+	var thisText = tfText(y, x, thisId, evtHandler);
 	thisText.innerHTML = "Addr.:";
 	lowerDiv.append(tfTab(y, x, '&nbsp;',""));
 	lowerDiv.append(thisText);

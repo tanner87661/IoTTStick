@@ -1,4 +1,4 @@
-char BBVersion[] = {'1','5','1'};
+char BBVersion[] = {'1','5','2'};
 
 //#define measurePerformance //uncomment this to display the number of loop cycles per second
 #define useM5Lite
@@ -163,6 +163,11 @@ uint8_t m5CurrentPage = 0;
 uint16_t oldWifiStatus = 0;
 uint8_t useM5Viewer = 0;
 uint8_t m5DispLine = 0;
+
+bool darkScreen = false;
+bool hatPresent = false;
+bool pwrUSB = false;
+bool pwrDC = false;
 
 File uploadFile; //used for web server to upload files
 
@@ -846,7 +851,7 @@ void loop() {
     hatVerified = true;
   if (hatVerified)
     if (myButtons) myButtons->processButtons(); //checks if a button was pressed and sends button messages
-  if (mySwitchList) mySwitchList->processLoop();
+  if (mySwitchList) mySwitchList->processLoop(pwrDC);
   if (myChain) 
     myChain->processChain(); //updates all LED's based on received status information for switches, inputs, buttons, etc.
 

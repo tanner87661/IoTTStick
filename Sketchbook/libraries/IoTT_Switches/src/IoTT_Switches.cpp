@@ -197,7 +197,7 @@ void IoTT_SwitchBase::processExtEvent(sourceType inputEvent, uint16_t btnAddr, u
 {
 }
 
-void IoTT_SwitchBase::processSwitch()
+void IoTT_SwitchBase::processSwitch(bool extPwrOK)
 {
 /*
 	switch (thisDrive)
@@ -487,7 +487,7 @@ void IoTT_ServoDrive::processExtEvent(sourceType inputEvent, uint16_t btnAddr, u
 	}
 }
 
-void IoTT_ServoDrive::processSwitch()
+void IoTT_ServoDrive::processSwitch(bool extPwrOK)
 {
 	switch (srcType)
 	{
@@ -671,7 +671,7 @@ IoTT_ComboDrive::~IoTT_ComboDrive()
 {
 }
 
-void IoTT_ComboDrive::processSwitch()
+void IoTT_ComboDrive::processSwitch(bool extPwrOK)
 {
 }
 
@@ -787,7 +787,7 @@ void IoTT_GreenHat::loadGreenHatCfgJSON(uint8_t fileNr, JsonObject thisObj, bool
 void IoTT_GreenHat::setPWMValue(uint8_t lineNr, uint16_t pwmVal)
 {
 //	Serial.println(pwmVal);
-	ghPWM->setPWM(lineNr, 0, pwmVal);
+	ghPWM->setPWM(lineNr, 0, pwrOK ? pwmVal : 0); //if external DC power missing, we shut down servo electrically
 	IoTT_SwitchBase * thisSwiMod = switchModList[lineNr];
 	if (pwmVal > 0)
 		thisSwiMod->endMoveTimeout = millis() + endMoveDelay;
@@ -817,8 +817,9 @@ bool IoTT_GreenHat::isVerified()
 		return false;
 }
 
-void IoTT_GreenHat::processSwitch()
+void IoTT_GreenHat::processSwitch(bool extPwrOK)
 {
+	pwrOK = extPwrOK;
 	if (millis() > startupTimer)
 	{
 //		if (startUpCtr == 0)
@@ -831,7 +832,7 @@ void IoTT_GreenHat::processSwitch()
 		if (i >= startUpCtr)
 		{
 			IoTT_SwitchBase * thisSwiMod = switchModList[i];
-			thisSwiMod->processSwitch();
+			thisSwiMod->processSwitch(extPwrOK);
 		}
 	}
 	if (startUpCtr == 0)
@@ -893,6 +894,12 @@ void IoTT_GreenHat::loadRunTimeData(File * dataFile)
 		}
 //		setPWMValue(i, 0); //set power to 0 at this time
 	}
+}
+
+void IoTT_GreenHat::identifyLED(uint16_t LEDNr)
+{
+	if (myChain)
+		myChain->identifyLED(LEDNr);
 }
 
 void IoTT_GreenHat::moveServo(uint8_t servoNr, uint16_t servoPos)
@@ -971,10 +978,10 @@ void IoTT_SwitchList::loadRunTimeData(uint8_t ghNr)
 	}
 }
 
-void IoTT_SwitchList::processLoop()
+void IoTT_SwitchList::processLoop(bool extPwrOK)
 {
 	for (int i=0; i < greenHatListLen; i++)
-		greenHatList[i]->processSwitch();
+		greenHatList[i]->processSwitch(extPwrOK);
 }
 
 bool IoTT_SwitchList::isVerified()
@@ -1016,6 +1023,12 @@ void IoTT_SwitchList::loadSwCfgJSON(uint8_t ghNr, uint8_t fileNr, DynamicJsonDoc
 	greenHatList[ghNr]->loadGreenHatCfgJSON(fileNr, thisObj, resetList);
 	if (fileNr == 0)
 		loadRunTimeData(ghNr);
+}
+
+void IoTT_SwitchList::identifyLED(uint16_t LEDNr)
+{
+	uint8_t ghNr = trunc(LEDNr / 33);
+	greenHatList[ghNr]->identifyLED(LEDNr % 33);
 }
 
 void IoTT_SwitchList::moveServo(uint8_t servoNr, uint16_t servoPos)
