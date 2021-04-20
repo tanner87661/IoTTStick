@@ -1337,11 +1337,11 @@ function setSwitchData(sender)
 					swiCfgData[workCfg].Drivers[thisRow].Positions[swiCfgData[workCfg].Drivers[thisRow].CurrDisp].Used = sender.checked;
 					dispSwitchData(swiCfgData[workCfg].Drivers, thisRow);
 					break;
-				case 12: //Speed slider
+				case 12: //Position slider
 					swiCfgData[workCfg].Drivers[thisRow].Positions[swiCfgData[workCfg].Drivers[thisRow].CurrDisp].PosPt = sender.value;
 					dispSwitchData(swiCfgData[workCfg].Drivers, thisRow);
 					break;
-				case 13: //Speed input
+				case 13: //Position input
 					swiCfgData[workCfg].Drivers[thisRow].Positions[swiCfgData[workCfg].Drivers[thisRow].CurrDisp].PosPt = verifyNumber(sender.value, swiCfgData[workCfg].Drivers[thisRow].Positions[swiCfgData[workCfg].Drivers[thisRow].CurrDisp].PosPt);
 					dispSwitchData(swiCfgData[workCfg].Drivers, thisRow);
 					break;

@@ -153,7 +153,7 @@ function tfServoEditor(y, x, id, evtHandler)
 	var sliderElement = document.createElement("input");
 	sliderElement.setAttribute("type", "range");
 	sliderElement.setAttribute("id", thisId);
-	sliderElement.setAttribute("min", 200);
+	sliderElement.setAttribute("min", 150);
 	sliderElement.setAttribute("max", 950);
 	sliderElement.setAttribute("value", 250);
 //	sliderElement.setAttribute('class', "slider");
