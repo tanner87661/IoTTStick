@@ -330,7 +330,9 @@ function loadLEDTable(thisTable, thisData)
 	var i=0;
 //	for (var i=0; i<thisData.length;i++)
 	{
+		document.getElementById("manipulatorbox_" + i.toString() + "_" + "1").style.visibility = "hidden";
 		var e = document.getElementById("lednrbox_" + i.toString() + "_" + "1");
+		e.readOnly = true;
 		e.value = thisData[i].LEDNums;
 
 		var e = document.getElementById("multicolor_" + i.toString() + "_" + "1");
@@ -353,17 +355,26 @@ function loadLEDTable(thisTable, thisData)
 		var e = document.getElementById("transpselbox_" + i.toString() + "_" + "1");
 		if ([6].indexOf(ledCtrlType.indexOf(thisData[i].CtrlSource)) >= 0)
 		{
-			e.value = thisData[i].CondAddr;
+			if (thisData[i].CondAddr == undefined)
+				e.value = "";
+			else
+				e.value = thisData[i].CondAddr;
 			e.parentElement.style.visibility = "none";
 		}
 		else
 			e.parentElement.style.visibility = "hidden";
 
-		var e = document.getElementById("addressbox_" + i.toString() + "_" + "1");
-		e.value = thisData[i].CtrlAddr;
-		
 		var e = document.getElementById("cmdlistbox_" + i.toString() + "_" + "1");
 		e.selectedIndex = ledCtrlType.indexOf(thisData[i].CtrlSource);
+
+		var e = document.getElementById("addressbox_" + i.toString() + "_" + "1");
+		e.value = thisData[i].CtrlAddr;
+		if ([7,8].indexOf(document.getElementById("cmdlistbox_" + i.toString() + "_" + "1").selectedIndex) >= 0)
+		{
+			e.style.visibility = "hidden";
+			document.getElementById("addrtext_" + i.toString() + "_" + "1").style.visibility = "hidden";
+		}
+		
 		buildCmdLines(i, thisData[i]);
 
 	}
@@ -462,7 +473,7 @@ function setLEDData(sender)
 	var thisRow = parseInt(sender.getAttribute("row"));
 	var thisCol = parseInt(sender.getAttribute("col"));
 	var thisIndex = parseInt(sender.getAttribute("index"));
-//	console.log(thisRow, thisCol, thisIndex);
+	console.log(thisRow, thisCol, thisIndex);
 	switch (thisCol)
 	{
 		case -1: //empty table, create first entry
@@ -2004,7 +2015,7 @@ function constructPageContent(contentTab)
 */
 		//Main Table
 		createPageTitle(mainScrollBox, "div", "tile-1", "", "h2", "Channel Settings");
-		switchTable = createDataTable(mainScrollBox, "tile-1", ["Pos","Input Event Selector", "Servo Movement", "Input Setup", "LED Setup"], "swiconfig", "");
+		switchTable = createDataTable(mainScrollBox, "tile-1", ["Pos","IF THIS: (Input Event Selector)", "THEN THAT: Servo Movement", "Input Setup", "LED Setup"], "swiconfig", "");
 
 		tempObj = createEmptyDiv(mainScrollBox, "div", "tile-1", "");
 			createButton(tempObj, "", "Save & Restart", "btnSave", "saveSettings(this)");

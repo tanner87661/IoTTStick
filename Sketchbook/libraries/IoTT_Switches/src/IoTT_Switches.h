@@ -69,7 +69,7 @@ public:
 	void freeObjects();
 	void begin(IoTT_GreenHat * ownerObj, uint8_t listIndex);
 	virtual void processExtEvent(sourceType inputEvent, uint16_t btnAddr, uint16_t eventValue);
-	virtual void processSwitch();
+	virtual void processSwitch(bool extPwrOK);
 	void processServo(uint8_t servoNr);
 	void processServoSimple();
 	void processServoComplex();
@@ -121,7 +121,7 @@ public:
 	IoTT_ServoDrive();
 	~IoTT_ServoDrive();
 	virtual void processExtEvent(sourceType inputEvent, uint16_t btnAddr, uint16_t eventValue);
-	virtual void processSwitch();
+	virtual void processSwitch(bool extPwrOK);
 	virtual void loadSwitchCfgJSON(JsonObject thisObj);
 private:
 };
@@ -131,7 +131,7 @@ class IoTT_ComboDrive: public IoTT_SwitchBase
 public:
 	IoTT_ComboDrive();
 	~IoTT_ComboDrive();
-	virtual void processSwitch();
+	virtual void processSwitch(bool extPwrOK);
 	virtual void loadSwitchCfgJSON(JsonObject thisObj);
 private:
 };
@@ -145,13 +145,14 @@ public:
 	void begin(IoTT_SwitchList * ownerObj, uint8_t listIndex);
 	void setGreenHatType(greenHatType newType);
 	void loadGreenHatCfgJSON(uint8_t fileNr, JsonObject thisObj, bool resetList);
-	void processSwitch();
+	void processSwitch(bool extPwrOK);
 	void processBtnEvent(sourceType inputEvent, uint16_t btnAddr, uint16_t eventValue);
 	void setPWMValue(uint8_t lineNr, uint16_t pwmVal);
 	bool isVerified();
 	void moveServo(uint8_t servoNr, uint16_t servoPos);
 	void saveRunTimeData(File * dataFile);
 	void loadRunTimeData(File * dataFile);
+	void identifyLED(uint16_t LEDNr);
 private:
 	Adafruit_PWMServoDriver * ghPWM = NULL;
 	IoTT_SwitchBase ** switchModList = NULL;
@@ -162,6 +163,7 @@ private:
 	greenHatType modType = servoModule;
 	uint8_t hatIndex = 0;
 	uint8_t oddCtr = 0;
+	bool pwrOK = false;
 	uint32_t ghUpdateTimer = millis() + ghInterval;
 	uint32_t wdtResetTime = millis() + wdtInterval;
 	uint32_t startupTimer = millis() + startupInterval;
@@ -179,7 +181,7 @@ public:
 	void begin(TwoWire * newWire);
 	void setMQTTMode(mqttTxFct txFct);
 	void setLocalMode();
-	void processLoop();
+	void processLoop(bool extPwrOK);
 	void processBtnEvent(sourceType inputEvent, uint16_t btnAddr, uint16_t eventValue);
 	void configModMem(uint8_t numModules);
 	void setGreenHatType(uint8_t modNr, greenHatType modType);
@@ -188,6 +190,7 @@ public:
 	void loadRunTimeData(uint8_t ghNr);
 	bool isVerified();
 	void moveServo(uint8_t servoNr, uint16_t servoPos);
+	void identifyLED(uint16_t LEDNr);
 private:
 	IoTT_GreenHat ** greenHatList = NULL;
 	uint16_t greenHatListLen = 0;

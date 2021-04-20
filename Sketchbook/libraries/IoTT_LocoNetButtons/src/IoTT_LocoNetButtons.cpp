@@ -128,21 +128,18 @@ IoTT_BtnHandler::~IoTT_BtnHandler()
 {
 	for (uint16_t i = 0; i < numCmds; i++)
 	{
-		IoTT_BtnHandlerCmd * thisPointer = &cmdList[i];
+		IoTT_BtnHandlerCmd * thisPointer = cmdList[i];
 		delete thisPointer;
 		thisPointer = NULL;
 	}
 	numCmds = 0;
 	free(cmdList);
+	btnCondAddrLen = 0;
+	free(btnCondAddr);
 }
 
 void IoTT_BtnHandler::loadButtonCfgJSON(JsonObject thisObj)
 {
-//	if (thisObj.containsKey("EventType"))
-//	{
-//		eventType = getEventTypeFromName(thisObj["EventType"]);
-//		Serial.println(eventType);
-//	}
 	if (thisObj.containsKey("BtnCondAddr"))
 	{
 		btnCondAddrLen = 1;
@@ -165,23 +162,17 @@ void IoTT_BtnHandler::loadButtonCfgJSON(JsonObject thisObj)
 		JsonArray btnCmdList = thisObj["CmdList"];
 		numCmds = btnCmdList.size();
 //		Serial.printf("Load %i commands btnCon %i\n", numCmds, btnCondAddr);
-		cmdList = (IoTT_BtnHandlerCmd*) realloc (cmdList, numCmds * sizeof(IoTT_BtnHandlerCmd));
+		cmdList = (IoTT_BtnHandlerCmd**) realloc (cmdList, numCmds * sizeof(IoTT_BtnHandlerCmd*));
 		for (uint16_t i = 0; i < numCmds; i++)
 		{
 			IoTT_BtnHandlerCmd * thisCmd = new(IoTT_BtnHandlerCmd);
 			thisCmd->loadButtonCfgJSON(btnCmdList[i]);
 			thisCmd->parentObj = this;
-			cmdList[i] = *thisCmd;
+			cmdList[i] = thisCmd;
 		}
 	}
 }
 
-/*
-uint8_t IoTT_BtnHandler::getEventType()
-{
-	return eventType;
-}
-*/
 int16_t IoTT_BtnHandler::getCondAddrIndex(uint16_t ofAddr)
 {
 	for (uint16_t i = 0; i < btnCondAddrLen; i++)
@@ -221,7 +212,7 @@ void IoTT_BtnHandler::processBtnEvent()
 		if (nextEmptySlot >= 0) //overwrite protection. If no slot, ignore command
 		{
 			//place in the buffer
-			IoTT_BtnHandlerCmd * thisPointer = &cmdList[i];
+			IoTT_BtnHandlerCmd * thisPointer = cmdList[i];
 			thisOutBuffer->cmdOutBuffer[nextEmptySlot].nextCommand = thisPointer;
 			//set the exectime and the tbd flag
 			lastExecTime = lastExecTime + thisPointer->execDelay;
@@ -243,7 +234,7 @@ IoTT_LocoNetButtons::~IoTT_LocoNetButtons()
 {
 	for (uint16_t i = 0; i < eventTypeListLen; i++)
 	{
-		IoTT_BtnHandler * thisPointer = &eventTypeList[i];
+		IoTT_BtnHandler * thisPointer = eventTypeList[i];
 		delete thisPointer;
 		thisPointer = NULL;
 	}
@@ -291,15 +282,14 @@ void IoTT_LocoNetButtons::loadButtonCfgJSON(JsonObject thisObj)
 	{
 		JsonArray btnCmd = thisObj["CtrlCmd"];
 		eventTypeListLen = btnCmd.size();
+		eventTypeList = (IoTT_BtnHandler**) realloc (eventTypeList, eventTypeListLen * sizeof(IoTT_BtnHandler*));
 //		Serial.printf("Load Button Addr %i\n", btnAddr);
 		for (uint16_t i = 0; i < eventTypeListLen; i++)
 		{
-			JsonArray btnCmdList;
-			eventTypeList = (IoTT_BtnHandler*) realloc (eventTypeList, eventTypeListLen * sizeof(IoTT_BtnHandler));
 			IoTT_BtnHandler * thisEvent = new(IoTT_BtnHandler);
 			thisEvent->loadButtonCfgJSON(btnCmd[i]);
 			thisEvent->parentObj = this;
-			eventTypeList[i] = *thisEvent;
+			eventTypeList[i] = thisEvent;
 		}
 	}
 }
@@ -369,7 +359,7 @@ void IoTT_LocoNetButtons::processAnalogEvent(uint16_t inputValue)
 	}
 	if (eventNr < eventTypeListLen)
 	{
-		IoTT_BtnHandler * thisEvent = &eventTypeList[eventNr];
+		IoTT_BtnHandler * thisEvent = eventTypeList[eventNr];
 		thisEvent->processBtnEvent();
 	}
 }
@@ -380,7 +370,7 @@ void IoTT_LocoNetButtons::processSignalEvent(uint8_t inputValue)
 	IoTT_LocoNetButtons * secBtn = NULL;
 	for (uint16_t i = 0; i < eventTypeListLen; i++)
 	{
-		thisEvent = &eventTypeList[i];
+		thisEvent = eventTypeList[i];
 		if (thisEvent->getCondAddr() == inputValue)
 		{
 			thisEvent->processBtnEvent();
@@ -397,7 +387,7 @@ void IoTT_LocoNetButtons::processSimpleEvent(uint8_t inputValue)
 		swiStatus = (2 * swiStatus) + ((getSwiPosition(btnAddrList[i]) >> 5) & 0x01);
 	if ((swiStatus != lastEvent) && (swiStatus < eventTypeListLen))
 	{
-		IoTT_BtnHandler * thisEvent = &eventTypeList[swiStatus];
+		IoTT_BtnHandler * thisEvent = eventTypeList[swiStatus];
 		thisEvent->processBtnEvent();
 		lastEvent = swiStatus;
 //		Serial.printf("Updating Static Switch %i Addr  for Status %i  \n", btnAddrList[0], swiStatus);
@@ -411,7 +401,7 @@ void IoTT_LocoNetButtons::processBlockDetEvent(uint8_t inputValue)
 		bdStatus = (2 * bdStatus) + (getBDStatus(btnAddrList[i]) & 0x01);
 	if ((bdStatus != lastEvent) && (bdStatus < eventTypeListLen))
 	{
-		IoTT_BtnHandler * thisEvent = &eventTypeList[bdStatus];
+		IoTT_BtnHandler * thisEvent = eventTypeList[bdStatus];
 		thisEvent->processBtnEvent();
 		lastEvent = bdStatus;
 //		Serial.printf("Updating Block Detector %i Addr  for Status %i  \n", btnAddrList[0], bdStatus);
@@ -439,7 +429,7 @@ void IoTT_LocoNetButtons::processDynEvent(uint8_t inputValue)
 			aspectNr++; //this is the final aspect #
 		if ((aspectNr != lastEvent) && (aspectNr < eventTypeListLen))
 		{
-			IoTT_BtnHandler * thisEvent = &eventTypeList[aspectNr];
+			IoTT_BtnHandler * thisEvent = eventTypeList[aspectNr];
 			thisEvent->processBtnEvent();
 			lastEvent = aspectNr;
 //			Serial.printf("Updating Aspect %i  for Switch %i\n", aspectNr, btnAddrList[0]);
@@ -462,7 +452,7 @@ void IoTT_LocoNetButtons::processTransponderEvent(uint16_t inputValue)
 	uint16_t locoAddr = inputValue & 0x7FFF;
 	if (getCondDataIndex(locoAddr) >= 0)
 	{
-		IoTT_BtnHandler * thisEvent = &eventTypeList[eventVal];
+		IoTT_BtnHandler * thisEvent = eventTypeList[eventVal];
 		thisEvent->processBtnEvent();
 	}
 }
@@ -471,7 +461,7 @@ void IoTT_LocoNetButtons::processPowerEvent(uint16_t inputValue)
 {
 	//0: Off 1: On; 2: Idle
 //	Serial.printf("Power Event %i\n", inputValue);
-	IoTT_BtnHandler * thisEvent = &eventTypeList[inputValue];
+	IoTT_BtnHandler * thisEvent = eventTypeList[inputValue];
 	thisEvent->processBtnEvent();
 }
 
@@ -484,7 +474,7 @@ void IoTT_LocoNetButtons::processBtnEvent(uint8_t inputValue)
 //	Serial.println("processBtn");
 //	for (uint16_t i = 0; i < eventTypeListLen; i++)
 	{
-		thisEvent = &eventTypeList[inputValue];
+		thisEvent = eventTypeList[inputValue];
 //		if (thisEvent->getEventType() == inputValue)
 		{
 //			Serial.printf("process Event %i\n", inputValue);
@@ -535,7 +525,7 @@ void IoTT_LocoNetButtonList::freeObjects()
 {
 	for (uint16_t i = 0; i < numBtnHandler; i++)
 	{
-		IoTT_LocoNetButtons * thisPointer = &btnList[i];
+		IoTT_LocoNetButtons * thisPointer = btnList[i];
 		delete thisPointer;
 		thisPointer = NULL;
 	}
@@ -548,7 +538,7 @@ IoTT_LocoNetButtons * IoTT_LocoNetButtonList::getButtonByAddress(uint16_t btnAdd
 	IoTT_LocoNetButtons * thisButton = NULL;
 	for (uint16_t i = 0; i < numBtnHandler; i++)
 	{
-		thisButton = &btnList[i];
+		thisButton = btnList[i];
 //		Serial.printf("Checking Index %i Addr %i\n", i, thisButton->getBtnAddr());
 		if ((thisButton->getBtnAddr(0) == btnAddr) && (thisButton->getEventSource() == evt_button))
 		{
@@ -566,7 +556,7 @@ uint16_t IoTT_LocoNetButtonList::getButtonIndexByAddress(sourceType inputEvent, 
 	if (startIndex < numBtnHandler)
 		for (uint16_t i = startIndex; i < numBtnHandler; i++)
 		{
-			IoTT_LocoNetButtons * thisButton = &btnList[i];
+			IoTT_LocoNetButtons * thisButton = btnList[i];
 			if ((thisButton->hasBtnAddr(btnAddr) >= 0) && (thisButton->hasEventSource(inputEvent) != evt_nosource))
 			{
 				return i;
@@ -582,7 +572,7 @@ void IoTT_LocoNetButtonList::processBtnEvent(sourceType inputEvent, uint16_t btn
 	uint16_t lastButton = getButtonIndexByAddress(inputEvent, btnAddr);
 	while (lastButton != 0xFFFF) //allow for multiple  button lines with same button Addr
 	{
-		IoTT_LocoNetButtons * thisButton = &btnList[lastButton];
+		IoTT_LocoNetButtons * thisButton = btnList[lastButton];
 //		Serial.printf("Process Index %i\n", lastButton);
 		if (thisButton)
 			switch (thisButton->getEventSource())
@@ -615,14 +605,14 @@ void IoTT_LocoNetButtonList::loadButtonCfgJSONObj(JsonObject doc, bool resetList
     {
         JsonArray ButtonHandlers = doc["ButtonHandler"];
         uint16_t newBtnHandler = ButtonHandlers.size();
-        btnList = (IoTT_LocoNetButtons*) realloc (btnList, (numBtnHandler + newBtnHandler) * sizeof(IoTT_LocoNetButtons));
+        btnList = (IoTT_LocoNetButtons**) realloc (btnList, (numBtnHandler + newBtnHandler) * sizeof(IoTT_LocoNetButtons*));
 		for (uint16_t i = 0; i < newBtnHandler; i++)
 		{
 //			Serial.printf("Add Button %i\n", i);
 			IoTT_LocoNetButtons * thisButton = new(IoTT_LocoNetButtons);
 			thisButton->loadButtonCfgJSON(ButtonHandlers[i]);
 			thisButton->parentObj = this;
-			btnList[numBtnHandler + i] = *thisButton;
+			btnList[numBtnHandler + i] = thisButton;
 		}
 		numBtnHandler += newBtnHandler;
 		Serial.printf("Loading %i button handlers. Total is %i\n", ButtonHandlers.size(), numBtnHandler);

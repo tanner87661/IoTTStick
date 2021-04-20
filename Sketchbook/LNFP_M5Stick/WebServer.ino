@@ -357,6 +357,7 @@ void processWsMessage(char * newMsg, int msgLen, AsyncWebSocketClient * client)
         {
 //          Serial.printf("Setting Test LED %i\n", (uint16_t)ledList[i]);
           if (myChain) myChain->identifyLED(ledList[i]);
+          if (mySwitchList) mySwitchList->identifyLED(ledList[i]);
         }
       }
       if (thisCmd == "SetServo") //Request to move Servo for position verification purposes

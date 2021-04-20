@@ -35,11 +35,6 @@ uint32_t pwrOffTimer = millis();
 uint32_t pwrDispTimer = millis();
 uint32_t dccDispTimer = millis();
 
-bool darkScreen = false;
-bool hatPresent = false;
-bool pwrUSB = false;
-bool pwrDC = false;
-
 float axpBusVoltage = 0;
 float axpInVoltage = 0;
 
