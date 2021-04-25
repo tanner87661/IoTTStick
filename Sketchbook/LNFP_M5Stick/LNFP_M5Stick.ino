@@ -1,4 +1,4 @@
-char BBVersion[] = {'1','5','2'};
+char BBVersion[] = {'1','5','D'};
 
 //#define measurePerformance //uncomment this to display the number of loop cycles per second
 #define useM5Lite
@@ -39,7 +39,7 @@ char BBVersion[] = {'1','5','2'};
 #include <IoTT_SerInjector.h> //Serial USB Port to make it an interface for LocoNet and OpenLCB
 //#include <IoTT_OpenLCB.h> //CAN port for OpenLCB
 #include <IoTT_Switches.h>
-//#include <IoTT_SecurityElements.h> //not ready yet. This is the support for ABS/APB as described in Videos #20, 21, 23, 24
+#include <IoTT_SecurityElements.h> //not ready yet. This is the support for ABS/APB as described in Videos #20, 21, 23, 24
 #include <NmraDcc.h> //install via Arduino IDE
 #include <OneDimKalman.h>
 #include <IoTT_lbServer.h>

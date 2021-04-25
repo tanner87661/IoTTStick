@@ -639,21 +639,24 @@ void IoTT_ServoDrive::processSwitch(bool extPwrOK)
 //			Serial.printf("Call switchtype %i \n", srcType);
 			break;
 	}
-	if (targetMove)
-	{
-		if (targetMove->moveCfg == 0)
-			processServoSimple();
-		else
-			processServoComplex();
-	}
-	else
-	{
-		if ((endMovePwrOff) && (endMoveTimeout < millis()) && (endMoveTimeout > 0))
+	if (extPwrOK)
+		if (targetMove)
 		{
-			endMoveTimeout = 0;
-			parentObj->setPWMValue(modIndex, 0);
+			if (targetMove->moveCfg == 0)
+				processServoSimple();
+			else
+				processServoComplex();
 		}
-	}
+		else
+		{
+			if ((endMovePwrOff) && (endMoveTimeout < millis()) && (endMoveTimeout > 0))
+			{
+				endMoveTimeout = 0;
+				parentObj->setPWMValue(modIndex, 0);
+			}
+		}
+	else
+		parentObj->setPWMValue(modIndex, 0);	
 }
 
 void IoTT_ServoDrive::loadSwitchCfgJSON(JsonObject thisObj)
@@ -786,7 +789,7 @@ void IoTT_GreenHat::loadGreenHatCfgJSON(uint8_t fileNr, JsonObject thisObj, bool
 
 void IoTT_GreenHat::setPWMValue(uint8_t lineNr, uint16_t pwmVal)
 {
-//	Serial.println(pwmVal);
+//	Serial.printf("%i\n", pwmVal);
 	ghPWM->setPWM(lineNr, 0, pwrOK ? pwmVal : 0); //if external DC power missing, we shut down servo electrically
 	IoTT_SwitchBase * thisSwiMod = switchModList[lineNr];
 	if (pwmVal > 0)

@@ -223,6 +223,7 @@ void processLocoNetMsg(lnReceiveBuffer * newData)
 				if (getBushbyStatus() > 0) 
 					break; //OPC_SW_REQ
         case 0xB1:; //OPC_SW_REP
+//        case 0xBC:; //OPC_SW_STATE
         case 0xBD:  //OPC_SW_ACK
         {
           uint16_t swiAddr = ((newData->lnData[1] & 0x7F)) + ((newData->lnData[2] & 0x0F)<<7);

@@ -4,6 +4,8 @@ LED Chain offset by one after switching from Yellow to Blue
 LEDChain on Blue not working after starting up JMRI (TCP Client)
 
 
+4/24 fixed problem with SPIFFS partitioning when loading binary to Stick with different partition model 
+4/20 lots of details for the servo drive GreenHat. Implementation of web app and servo routines
 3/6  fixed problem with duplicating multiple LEDs in LEDChain
 2/13 added DCC from MQTT command source
 2/12 release V. 1.4.0
