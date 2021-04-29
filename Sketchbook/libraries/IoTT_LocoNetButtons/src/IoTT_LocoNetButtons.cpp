@@ -14,9 +14,11 @@ sourceType getSourceTypeByName(String transName)
 };
 
 outputType getActionTypeByName(String actionName)
-{ //blockdet, dccswitch, dccsignal, svbutton, analoginp, powerstat
+{ //blockdet, dccswitch, dccswitchack, dccswitchreport, dccsignal, svbutton, analoginp, powerstat
   if (actionName == "block") return blockdet; 
-  if (actionName == "switch") return dccswitch;
+  if (actionName == "switch") return dccswitchreq;
+  if (actionName == "switchack") return dccswitchack;
+  if (actionName == "switchrep") return dccswitchrep;
   if (actionName == "signal") return dccsignalnmra;
   if (actionName == "button") return svbutton;
   if (actionName == "analog") return analoginp;
@@ -102,7 +104,9 @@ void IoTT_BtnHandlerCmd::executeBtnEvent()
 //	Serial.printf("Handling Button Command to Addr %i Type %i Value %i\n", targetAddr, cmdType, cmdValue);
     switch (targetType)
     {
-      case dccswitch: if (sendSwitchCommand) sendSwitchCommand(targetAddr, cmdType, cmdValue); break; //switch
+      case dccswitchreq: if (sendSwitchCommand) sendSwitchCommand(0xB0, targetAddr, cmdType, cmdValue); break; //switch
+      case dccswitchack: if (sendSwitchCommand) sendSwitchCommand(0xBD, targetAddr, cmdType, cmdValue); break; //switch
+      case dccswitchrep: if (sendSwitchCommand) sendSwitchCommand(0xB1, targetAddr, cmdType, cmdValue); break; //switch
       case dccsignalnmra: if (sendSignalCommand) sendSignalCommand(targetAddr, cmdValue); break; //signal
       case powerstat: 
 			if (sendPowerCommand) 

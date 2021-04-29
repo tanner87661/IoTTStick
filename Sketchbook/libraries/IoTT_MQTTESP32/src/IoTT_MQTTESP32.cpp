@@ -248,8 +248,8 @@ bool MQTTESP32::connectToBroker()
 	}
 	else
 	{
-      Serial.print("Connection failed, rc= ");
-      Serial.println(state());
+      Serial.printf("Connection failed, rc = %i\n", state());
+//      Serial.println(state());
     }
 	return connected();
 }

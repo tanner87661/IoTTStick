@@ -218,12 +218,41 @@ void processLocoNetMsg(lnReceiveBuffer * newData)
   {
       switch (newData->lnData[0])
       {
-        case 0xB0: 
+        case 0xBC: break; //OPC_SW_STATE request, this is answered by the central unit for all switches with LACK msg
+        case 0xB1:; //OPC_SW_REP
+        {
+			uint16_t swiAddr = ((newData->lnData[1] & 0x7F)) + ((newData->lnData[2] & 0x0F)<<7);
+			uint8_t inpPosStat = 0;
+			if (newData->lnData[2] & 0x40) //AUX/SWI fromat
+			{
+				if (newData->lnData[2] & 0x20) //SWI input
+					inpPosStat = (newData->lnData[2] & 0x10) >> 3; //Coil always 0 
+				else
+					return; //ignore AUX input report
+				
+			}
+			else //COIL format
+			{
+				switch (newData->lnData[2] & 0x30)
+				{
+					case 0x30:; //invalid both ON, ignore
+					case 0x00: return;  break;//all off
+					case 0x10:
+						inpPosStat = 0x01; //thrown, coil on
+						break;
+					case 0x20:
+						inpPosStat = 0x03; //closed, coil on
+						break;
+					}
+			}
+//          Serial.printf("Set Switch %i to %i\n", swiAddr, inpPosStat);
+          setSwitchStatus(swiAddr, (inpPosStat & 0x02)>>1, (inpPosStat & 0x01));
+          break;
+		}
+        case 0xB0: //OPC_SW_REQ
 			if (bushbyWatch) 
 				if (getBushbyStatus() > 0) 
 					break; //OPC_SW_REQ
-        case 0xB1:; //OPC_SW_REP
-//        case 0xBC:; //OPC_SW_STATE
         case 0xBD:  //OPC_SW_ACK
         {
           uint16_t swiAddr = ((newData->lnData[1] & 0x7F)) + ((newData->lnData[2] & 0x0F)<<7);

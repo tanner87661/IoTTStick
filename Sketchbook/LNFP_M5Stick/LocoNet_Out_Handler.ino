@@ -2,26 +2,44 @@
 //used by ButtonHandler library to send commands to LocoNet
 
 
-void sendSwitchCommand(uint16_t swiNr, uint8_t swiTargetPos, uint8_t coilStatus)
+void sendSwitchCommand(uint8_t opCode, uint16_t swiNr, uint8_t swiTargetPos, uint8_t coilStatus)
 {
   uint8_t currPos = getSwiStatus(swiNr); //((swiPos[swiNr >> 2] >> (2 * (swiNr % 4))) & 0x03) << 4);
 //  Serial.print("currPos ");
 //  Serial.println(currPos);
   lnTransmitMsg txData;
   txData.lnMsgSize = 4;
-  txData.lnData[0] = 0xB0; //OPC_SW_REQ
+  txData.lnData[0] = opCode; //OPC_SW_REQ, OPC_SW_REP, OPC_SW_ACK
   txData.lnData[1] = swiNr & 0x007F;
   txData.lnData[2] = (swiNr & 0x0780)>>7;
-  switch (swiTargetPos)
+  switch (opCode)
   {
-    case thrown: break;
-    case closed: txData.lnData[2] |= 0x20; break;
-    case toggle: txData.lnData[2] |= ((currPos & 0x20) ^ 0x20); break;
-    case nochange: txData.lnData[2] = (txData.lnData[2] & 0xDF) | (currPos & 0x20); break;
+    case 0xB1: //SWI_REP
+    {
+//      Serial.printf("TargetPos %i\n", swiTargetPos);
+      txData.lnData[2] |= 0x60; //use switch input
+      if (swiTargetPos == 0)
+        txData.lnData[2] &= 0x6F;
+      else
+        txData.lnData[2] |= 0x10;
+    }
+    break;
+    case 0xBD:; //SWI_ACK, same structure as next
+    case 0xB0: //SWI_REQ
+    {
+      switch (swiTargetPos)
+      {
+        case thrown: break;
+        case closed: txData.lnData[2] |= 0x20; break;
+        case toggle: txData.lnData[2] |= ((currPos & 0x20) ^ 0x20); break;
+        case nochange: txData.lnData[2] = (txData.lnData[2] & 0xDF) | (currPos & 0x20); break;
+      }
+      if (coilStatus > 0)
+        txData.lnData[2] |= 0x10;
+    }
+    break;
   }
 //  Serial.println(txData.lnData[2],16);
-  if (coilStatus > 0)
-    txData.lnData[2] |= 0x10;
   txData.lnData[3] = ~(txData.lnData[0] ^ txData.lnData[1] ^ txData.lnData[2]);
 //  Serial.printf("LN Out: %i %i %i %i\n", txData.lnData[0],txData.lnData[1],txData.lnData[2],txData.lnData[3]);
   sendMsg(txData);
@@ -29,7 +47,7 @@ void sendSwitchCommand(uint16_t swiNr, uint8_t swiTargetPos, uint8_t coilStatus)
 
 void sendSignalCommand(uint16_t signalNr, uint8_t signalAspect)
 {
-  Serial.printf("Signal Nr %i Aspect %i \n", signalNr, signalAspect);
+//  Serial.printf("Signal Nr %i Aspect %i \n", signalNr, signalAspect);
   lnTransmitMsg txData;
   uint8_t boardAddr = (((signalNr-1) & 0x07FC)>>2) + 1;
   uint8_t turnoutIndex = (signalNr-1) & 0x03;
@@ -62,7 +80,7 @@ void sendSignalCommand(uint16_t signalNr, uint8_t signalAspect)
 
 void sendBlockDetectorCommand(uint16_t bdNr, uint8_t bdStatus)
 {
-  Serial.printf("Block Detector Nr %i Status %i \n", bdNr, bdStatus);
+//  Serial.printf("Block Detector Nr %i Status %i \n", bdNr, bdStatus);
   lnTransmitMsg txData;
   txData.lnMsgSize = 4;
   txData.lnData[0] = 0xB2; //OPC_INPUT_REP
@@ -109,7 +127,7 @@ void sendButtonCommand(uint16_t btnNr, uint8_t  btnEvent)
 
 void sendAnalogCommand(uint16_t btnNr, uint16_t analogVal)
 {
-  Serial.printf("Analog Command Addr %i Value %i \n", btnNr, analogVal);
+//  Serial.printf("Analog Command Addr %i Value %i \n", btnNr, analogVal);
   lnTransmitMsg txData;
   txData.lnMsgSize = 16;
   txData.lnData[0] = 0xE5; //OPC_PEER_XFER
@@ -167,6 +185,27 @@ void sendPowerCommand(uint8_t cmdType, uint8_t pwrStatus)
 
 //callback interface to the IoTT_Buttons library. If a Button or Analog event occurs, the library calles one of these functions
 //all we do here is sending the information to LocoNet, from where we will receive it back as serial port echo that can be processed like any regular LocoNet message
+
+void onSensorEvent(uint16_t sensorAddr, uint8_t sensorEvent)
+{
+  if (sensorEvent == onbtndown)
+    sendBlockDetectorCommand(sensorAddr, 1);
+  if (sensorEvent == onbtnup)
+    sendBlockDetectorCommand(sensorAddr, 0);
+}
+
+void onSwitchReportEvent(uint16_t switchAddr, uint8_t switchEvent)
+{
+  if (switchEvent == onbtndown)
+    sendSwitchCommand(0xB1, switchAddr, switchEvent, 0);
+  if (switchEvent == onbtnup)
+    sendSwitchCommand(0xB1, switchAddr, switchEvent, 1);
+}
+
+void onSwitchRequestEvent(uint16_t switchAddr, uint8_t switchEvent)
+{
+  
+}
 
 void onButtonEvent(uint16_t btnAddr, buttonEvent thisEvent)
 {

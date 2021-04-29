@@ -22,6 +22,8 @@ buttonType getButtonTypeByName(String typeName)
   if (typeName == "off") return btnoff; //btnTypeOff;
   if (typeName == "digital") return digitalAct; //btnTypeDigital;
   if (typeName == "analog") return analog; //btnTypeAnalog;
+  if (typeName == "sensor") return sensor; //btnTypeSensor;
+  if (typeName == "swireport") return swireport; //btnTypeSwitchReport;
   return digitalAct; //default
 }
 
@@ -290,11 +292,19 @@ void IoTT_Mux64Buttons::sendButtonEvent(uint16_t btnNr, buttonEvent btnEvent)
 		if (txbtnMQTT)
 			sendBtnStatusMQTT(0, btnNr); //use reply topic
 		else
-			onButtonEvent(thisTouchData->btnAddr, btnEvent);
+			switch(thisTouchData->btnTypeDetected)
+			{
+				case digitalAct : onButtonEvent(thisTouchData->btnAddr, btnEvent); break;
+				case sensor : onSensorEvent(thisTouchData->btnAddr, btnEvent); break;
+				case swireport : onSwitchReportEvent(thisTouchData->btnAddr, btnEvent); break;
+			}
 	}
   if ((onBtnDiagnose) && (startUpCtr==0)) 
-	onBtnDiagnose(0, btnNr, thisTouchData->btnAddr, btnEvent);
+	onBtnDiagnose(thisTouchData->btnTypeDetected, btnNr, thisTouchData->btnAddr, btnEvent);
 }
+
+
+
 
 void IoTT_Mux64Buttons::sendAnalogData(uint8_t btnNr, uint16_t analogValue)
 {
@@ -310,7 +320,7 @@ void IoTT_Mux64Buttons::sendAnalogData(uint8_t btnNr, uint16_t analogValue)
 				else
 					onAnalogData(thisTouchData->btnAddr, analogValue);
 			if ((onBtnDiagnose) && (startUpCtr==0)) 
-				onBtnDiagnose(1, btnNr, thisTouchData->btnAddr, analogValue);
+				onBtnDiagnose(thisTouchData->btnTypeDetected, btnNr, thisTouchData->btnAddr, analogValue);
 			thisTouchData->nextHoldUpdateTime = millis() + analogMinMsgDelay;
 			thisTouchData->nextPeriodicUpdateTime = millis() + analogRefreshInterval;
 		}
@@ -337,11 +347,11 @@ void IoTT_Mux64Buttons::processDigitalButton(uint8_t btnNr, bool btnPressed)
 	thisTouchData->lastEvtPtr &= 0x03;
 	thisTouchData->lastStateChgTime[thisTouchData->lastEvtPtr] = millis();
 	thisTouchData->btnStatus = btnPressed;
-//	Serial.println("Button status change");
+//	Serial.printf("Button status change %i\n", thisTouchData->btnTypeDetected);
 	if (btnPressed)
 	{
 //		Serial.println("Button down");
-		sendButtonEvent(btnNr, onbtndown);
+		sendButtonEvent(btnNr, onbtndown); 
 		thisTouchData->nextHoldUpdateTime = millis() + holdThreshold;
 	}
 	else
@@ -363,7 +373,7 @@ void IoTT_Mux64Buttons::processDigitalButton(uint8_t btnNr, bool btnPressed)
     }
   }
   else
-    if (btnPressed)
+    if ((btnPressed) && (thisTouchData->btnTypeDetected == digitalAct))
 		processDigitalHold(btnNr);
 } 
 
@@ -456,25 +466,26 @@ void IoTT_Mux64Buttons::processButtons()
 				if (thisWire)
 					hlpAnalog = readMUXButton(lineNr, portNr);
 				else
-					if (thisTouchData->btnTypeDetected == digitalAct)
-						hlpAnalog = 4095 * digitalRead(thisTouchData->gpioPin);
-					else
+					if (thisTouchData->btnTypeDetected == analog)
 						hlpAnalog = analogRead(thisTouchData->gpioPin);
+					else
+						hlpAnalog = 4095 * digitalRead(thisTouchData->gpioPin);
 //				if (btnCtr == 0)
 //					Serial.printf("Ctr %i Line %i Value %i\n", btnCtr, thisTouchData->gpioPin, hlpAnalog);
 				thisAnalogAvg = round(thisTouchData->analogAvg.getEstimate((double_t) hlpAnalog + randVal)); //artifial flickering to avoid filter lockup
 
 				if (thisTouchData->btnTypeDetected != btnoff)
 				{
-					if ((thisAnalogAvg >= 0) && (thisAnalogAvg <= analogMaxVal) && ((thisTouchData->btnTypeDetected & analog) > 0))
+					if (thisTouchData->btnTypeDetected == analog)
 					{
-						sendAnalogData(btnCtr, thisAnalogAvg);
+						if ((thisAnalogAvg >= 0) && (thisAnalogAvg <= analogMaxVal))
+							sendAnalogData(btnCtr, thisAnalogAvg);
 					}
-					else if ((thisAnalogAvg <= digitalLoMax) && ((thisTouchData->btnTypeDetected & digitalAct) > 0))
+					else if (thisAnalogAvg <= digitalLoMax)
 					{
 						processDigitalButton(btnCtr, true);
 					}
-					else if ((thisAnalogAvg >= digitalHiMin) && ((thisTouchData->btnTypeDetected & digitalAct) > 0))
+					else if (thisAnalogAvg >= digitalHiMin)
 					{
 						processDigitalButton(btnCtr, false);
 					}
