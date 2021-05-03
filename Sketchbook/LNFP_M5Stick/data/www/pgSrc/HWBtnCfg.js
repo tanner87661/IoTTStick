@@ -170,8 +170,6 @@ function updateOptions(thisRow)
 		switch (j)
 		{
 			case 0: 
-//				setVisibility(true, t);
-//				setVisibility(true, ttxt);
 				setVisibility([1,3,4].indexOf(btnTypeIndex) >= 0, t.parentElement);
 				switch (btnTypeIndex)
 				{
@@ -181,8 +179,6 @@ function updateOptions(thisRow)
 				}
 				break;
 			case 1: 
-//				setVisibility(true, t);
-//				setVisibility(true, ttxt);
 				setVisibility([1,3,4].indexOf(btnTypeIndex) >= 0, t.parentElement);
 				switch (btnTypeIndex)
 				{
@@ -191,9 +187,17 @@ function updateOptions(thisRow)
 					case 4: ttxt.innerHTML = "Closed"; break;
 				}
 				break;
+			case 2: 
+				setVisibility([1,3,4].indexOf(btnTypeIndex) >= 0, t.parentElement);
+				switch (btnTypeIndex)
+				{
+					case 1: ttxt.innerHTML = "Btn Click"; break;
+					case 3: ttxt.innerHTML = "Inverse Logic"; break;
+					case 4: ttxt.innerHTML = "Inverse Logic"; break;
+				}
+				break;
 			default:
 				setVisibility([1].indexOf(btnTypeIndex) >= 0, t.parentElement);
-//				setVisibility([1].indexOf(btnTypeIndex) >= 0, ttxt);
 				break;
 		}
 		t.checked = ((configData[2].Buttons[thisRow].EventMask & (eventMask<<j)) > 0);
@@ -314,7 +318,9 @@ function setButtonStatus(portType, portNr, portAddr, portValue)
 						break;
 				}
 				break;
-			case 4: //Sensor
+			case 4: //
+				if (configData[workCfg].Buttons[portNr].EventMask & 0x04)
+					portValue ^= 0x01;
 				switch (portValue)
 				{
 					case 0: //down
@@ -328,6 +334,8 @@ function setButtonStatus(portType, portNr, portAddr, portValue)
 				}
 				break;
 			case 5: //Switch Report
+				if (configData[workCfg].Buttons[portNr].EventMask & 0x04)
+					portValue ^= 0x01;
 				switch (portValue)
 				{
 					case 0: //down

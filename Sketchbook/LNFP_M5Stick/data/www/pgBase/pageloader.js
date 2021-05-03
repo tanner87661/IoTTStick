@@ -141,15 +141,27 @@ function loadPage(pageURL)
 function sendFileData(itemType, filenametype, filename, itemData, restart)
 {
 	var configStr = "{\"Cmd\":\"CfgUpdate\", \"FileNameType\": \"" + filenametype + "\", \"FileName\": \"" + filename + "\", \"Restart\": " + restart + ", \"Type\":\"" + itemType + "\", \"Data\":" + JSON.stringify(itemData)  + "}";
+	clearCTS();
 	ws.send(configStr);
-	console.log(JSON.parse(configStr));
+//	console.log(JSON.parse(configStr));
 }
 
 function sendDeleteFile(itemType, filenametype, filename, startIndex)
 {
-	var configStr = "{\"Cmd\":\"CfgUpdate\", \"FileNameType\": \"" + filenametype + "\", \"FileName\": \"" + filename + "\", \"Type\":\"" + itemType + "\", \"Index\":" + startIndex  + "}";
-	ws.send(configStr);
-	console.log(JSON.parse(configStr));
+	if (flagCTS)
+	{
+		dlgTextDispArea.innerHTML += "Delete file " + filename + " from IoTT Stick\n";
+		scrollTextArea();
+		var configStr = "{\"Cmd\":\"CfgUpdate\", \"FileNameType\": \"" + filenametype + "\", \"FileName\": \"" + filename + "\", \"Type\":\"" + itemType + "\", \"Index\":" + startIndex  + "}";
+		clearCTS();
+		ws.send(configStr);
+//		console.log(JSON.parse(configStr));
+	}
+	else
+	{
+//		console.log("wait for flag 160");
+		setTimeout(function(){sendDeleteFile(itemType, filenametype, filename, startIndex)}, 1000);
+	}
 }
 
 function startProgressDialog(parentObj)
@@ -194,6 +206,11 @@ function startProgressDialog(parentObj)
 	return mainDlg;
 }
 
+function scrollTextArea()
+{
+	dlgTextDispArea.scrollTop = dlgTextDispArea.scrollHeight;
+}
+
 function closeDlg()
 {
 	wsInitNode = true;
@@ -205,49 +222,63 @@ function closeDlg()
 
 function uploadConfig(fromJSON) //load config data files (from disk file) to IoTT Stick
 {
-	var fileTypeName = "";
-	function findFileName(pageEntry)
+	if (flagCTS)
 	{
-		return pageEntry.ID == fileTypeName;
-	}
-	
-	transferData = [];
-	
-	for (var i = 0; i < fromJSON.length; i++)
-	{
-		if (fromJSON[i].FileName == undefined)
+		var fileTypeName = "";
+		function findFileName(pageEntry)
 		{
-			fileTypeName = fromJSON[i].Type;
-			var thisIndex = scriptList.Pages.findIndex(findFileName);
-			if (!isNaN(thisIndex))
-				fromJSON[i].FileName = scriptList.Pages[thisIndex].FileName + ".cfg";
+			return pageEntry.ID == fileTypeName;
 		}
-		sendDeleteFile("pgDelete", fromJSON[i].FileNameType, fromJSON[i].FileName, 0); //delete the one file after the last, otherwise it will be loaded
-		transferData.push(JSON.parse(JSON.stringify(fromJSON[i])));
+	
+		transferData = [];
+
+//		console.log("Create Upload Config File Dlg ", fileGroupIndex, fileSendIndex );
+		if (progressDlg ==  null)
+			progressDlg = startProgressDialog(document.getElementById("TabHolder"));
+			
+		if (progressDlg)	 
+			dlgTextDispArea.innerHTML = "";
+		progressDlg.style.display = "block";
+	
+		for (var i = 0; i < fromJSON.length; i++)
+		{
+			if (fromJSON[i].FileName == undefined)
+			{
+				fileTypeName = fromJSON[i].Type;
+				var thisIndex = scriptList.Pages.findIndex(findFileName);
+				if (!isNaN(thisIndex))
+					fromJSON[i].FileName = scriptList.Pages[thisIndex].FileName + ".cfg";
+			}
+			sendDeleteFile("pgDelete", fromJSON[i].FileNameType, fromJSON[i].FileName, 0); //delete the one file after the last, otherwise it will be loaded
+			transferData.push(JSON.parse(JSON.stringify(fromJSON[i])));
+		}
+		fileSendIndex = 0;
+		sendMultiFile();
 	}
-	if (progressDlg)	 
-		dlgTextDispArea.innerHTML = "";
-	fileSendIndex = 0;
-	sendMultiFile();
+	else
+	{
+//		console.log("wait for flag 239");
+		setTimeout(function(){uploadConfig(fromJSON)}, 1000);
+	}
 }
 
 function setCTS()
 {
 //	console.log("set CTS");
-//	flagCTS = true;
-//	clearTimeout(ctsTimeout);
+	flagCTS = true;
+	clearTimeout(ctsTimeout);
 }
 
 function clearCTS()
 {
 //	console.log("clear CTS");
-//	flagCTS = false;
-//	ctsTimeout = setTimeout(function(){setCTS() }, 5000);
+	flagCTS = false;
+	ctsTimeout = setTimeout(function(){setCTS() }, 5000);
 }
 
 function sendSingleFile()
 {
-//	if (flagCTS == true)
+	if (flagCTS == true)
 	{
 //		console.log("Create Single File Dlg ", fileGroupIndex, fileSendIndex );
 		if (progressDlg ==  null)
@@ -261,64 +292,87 @@ function sendSingleFile()
 		thisFileName += ".cfg";
 		var doRestart = (fileGroupIndex == transferData.length - 1) && (fileSendIndex == thisTransferData.FileList.length - 1);
 		sendFileData(thisTransferData.Type, thisTransferData.FileName, thisFileName, JSON.stringify(thisTransferData.FileList[fileSendIndex]), doRestart);
-		clearCTS();
 		dlgTextDispArea.innerHTML += "Send file " + thisFileName + " to IoTT Stick\n";
+		scrollTextArea();
 		fileSendIndex++; //now number of files sent so far
-	}
-	if (fileSendIndex < thisTransferData.FileList.length) //more to send
-		setTimeout(function(){sendSingleFile() }, 4000);
-	else
-	{
-		fileGroupIndex++; //now number of groups completed so far
-		if (fileGroupIndex < transferData.length)
-		{
-			fileSendIndex = 0;
+
+		if (fileSendIndex < thisTransferData.FileList.length) //more to send
 			setTimeout(function(){sendSingleFile() }, 4000);
-		}
 		else
 		{
-			if (typeof clearDisplay == 'function')
-				clearDisplay();
-			setTimeout(function(){closeDlg() }, 4000);
+			fileGroupIndex++; //now number of groups completed so far
+			if (fileGroupIndex < transferData.length)
+			{
+				fileSendIndex = 0;
+				setTimeout(function(){sendSingleFile() }, 4000);
+			}
+			else
+			{
+				if (typeof clearDisplay == 'function')
+					clearDisplay();
+				setTimeout(function(){closeDlg() }, 4000);
+			}
 		}
+	}
+	else
+	{
+//		console.log("wait for flag 297");
+		setTimeout(function(){sendSingleFile()}, 1000);
 	}
 }
 
 function sendMultiFile()
 {
-//	console.log("Create Multi File Dlg");
-	if (progressDlg ==  null)
-		progressDlg = startProgressDialog(document.getElementById("TabHolder"));
-	progressDlg.style.display = "block";
-	dlgTextDispArea.innerHTML += "Send file " + transferData[fileSendIndex].FileName + " to IoTT Stick\n";
-	sendFileData(transferData[fileSendIndex].Type, transferData[fileSendIndex].FileNameType, transferData[fileSendIndex].FileName, JSON.stringify(transferData[fileSendIndex].Data), fileSendIndex == transferData.length - 1);
-	fileSendIndex++;
-	if (fileSendIndex < transferData.length)
+	if (flagCTS == true)
 	{
-		setTimeout(function(){sendMultiFile() }, 500);
+//		console.log("Create Multi File Dlg");
+		if (progressDlg ==  null)
+			progressDlg = startProgressDialog(document.getElementById("TabHolder"));
+		progressDlg.style.display = "block";
+		dlgTextDispArea.innerHTML += "Send file " + transferData[fileSendIndex].FileName + " to IoTT Stick\n";
+		scrollTextArea();
+		sendFileData(transferData[fileSendIndex].Type, transferData[fileSendIndex].FileNameType, transferData[fileSendIndex].FileName, JSON.stringify(transferData[fileSendIndex].Data), fileSendIndex == transferData.length - 1);
+		fileSendIndex++;
+		if (fileSendIndex < transferData.length)
+		{
+			setTimeout(function(){sendMultiFile() }, 1000);
+		}
+		else
+		{
+			setTimeout(function(){closeDlg() }, 4000);
+		}
 	}
 	else
 	{
-		setTimeout(function(){closeDlg() }, 2500);
+//		console.log("wait for flag 324");
+		setTimeout(function(){sendMultiFile()}, 1000);
 	}
 }
 	
 function saveJSONConfig(fileType, fileName, configData, fileSequencer)
 {
-	var thisIndex = transferData.push(JSON.parse(JSON.stringify({"Type": "", "FileName": "", "FileNameType": "", "FileList" : []}))) - 1;
-	transferData[thisIndex].Type = fileType;
-	transferData[thisIndex].FileName = fileName;
-	transferData[thisIndex].FileNameType = fileName;
-	if (typeof fileSequencer == 'function') 
-	{ 
-		fileSequencer(configData, thisIndex); 
-		if (transferData[thisIndex].FileList.length > 0)
-			sendDeleteFile("pgDelete", transferData[thisIndex].FileNameType, transferData[thisIndex].FileName, transferData[thisIndex].FileList.length); //delete the one file after the last, otherwise it will be loaded
+	if (flagCTS)
+	{
+		var thisIndex = transferData.push(JSON.parse(JSON.stringify({"Type": "", "FileName": "", "FileNameType": "", "FileList" : []}))) - 1;
+		transferData[thisIndex].Type = fileType;
+		transferData[thisIndex].FileName = fileName;
+		transferData[thisIndex].FileNameType = fileName;
+		if (typeof fileSequencer == 'function') 
+		{ 
+			fileSequencer(configData, thisIndex); 
+			if (transferData[thisIndex].FileList.length > 0)
+				sendDeleteFile("pgDelete", transferData[thisIndex].FileNameType, transferData[thisIndex].FileName, transferData[thisIndex].FileList.length); //delete the one file after the last, otherwise it will be loaded
+		}
+		else
+		{
+			var objCopy = JSON.parse(JSON.stringify(configData));
+			transferData[thisIndex].FileList.push(objCopy);
+		}
 	}
 	else
 	{
-		var objCopy = JSON.parse(JSON.stringify(configData));
-		transferData[thisIndex].FileList.push(objCopy);
+//		console.log("wait for flag 329");
+		setTimeout(function(){saveJSONConfig(fileType, fileName, configData, fileSequencer)}, 1000);
 	}
 }
 
@@ -421,6 +475,7 @@ function startWebsockets()
 			{
 				case 1: //add file to list
 					dlgTextDispArea.innerHTML += "Receive file " + myArr.FileName + " from IoTT Stick\n";
+					scrollTextArea();
 					transferData.push(JSON.parse(JSON.stringify(myArr)));
 					break;
 				case 2: //delete list and restart

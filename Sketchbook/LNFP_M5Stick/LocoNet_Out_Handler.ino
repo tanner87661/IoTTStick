@@ -186,20 +186,22 @@ void sendPowerCommand(uint8_t cmdType, uint8_t pwrStatus)
 //callback interface to the IoTT_Buttons library. If a Button or Analog event occurs, the library calles one of these functions
 //all we do here is sending the information to LocoNet, from where we will receive it back as serial port echo that can be processed like any regular LocoNet message
 
-void onSensorEvent(uint16_t sensorAddr, uint8_t sensorEvent)
+void onSensorEvent(uint16_t sensorAddr, uint8_t sensorEvent, uint8_t eventMask)
 {
+  Serial.println(eventMask);
+  Serial.println(sensorEvent);
   if (sensorEvent == onbtndown)
-    sendBlockDetectorCommand(sensorAddr, 1);
+    sendBlockDetectorCommand(sensorAddr, (eventMask & 0x04) == 0 ? 1 : 0);
   if (sensorEvent == onbtnup)
-    sendBlockDetectorCommand(sensorAddr, 0);
+    sendBlockDetectorCommand(sensorAddr, (eventMask & 0x04) == 0 ? 0 : 1);
 }
 
-void onSwitchReportEvent(uint16_t switchAddr, uint8_t switchEvent)
+void onSwitchReportEvent(uint16_t switchAddr, uint8_t switchEvent, uint8_t eventMask)
 {
   if (switchEvent == onbtndown)
-    sendSwitchCommand(0xB1, switchAddr, switchEvent, 0);
+    sendSwitchCommand(0xB1, switchAddr, switchEvent, (eventMask & 0x04) == 0 ? 0 : 1);
   if (switchEvent == onbtnup)
-    sendSwitchCommand(0xB1, switchAddr, switchEvent, 1);
+    sendSwitchCommand(0xB1, switchAddr, switchEvent, (eventMask & 0x04) == 0 ? 1 : 0);
 }
 
 void onSwitchRequestEvent(uint16_t switchAddr, uint8_t switchEvent)

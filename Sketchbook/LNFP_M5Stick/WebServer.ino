@@ -206,6 +206,11 @@ void sendCTS()
   globalClient->text("{\"Cmd\":\"CTS\"}");
 }
 
+void sendEndConnection()
+{
+  globalClient->text("{\"Cmd\":\"EOT\"}");
+}
+
 bool addFileToTx(String fileName, int fileIndex, String cmdType, uint8_t multiModeStatus) //0: single file, 1: add multi file 2: reset multifile list 3: write multifile to disk
 {
   int tmpWrPtr = (fileListWrPtr + 1) % outListLen;
@@ -436,6 +441,7 @@ void processWsMessage(char * newMsg, int msgLen, AsyncWebSocketClient * client)
       }
       if (thisCmd == "CfgUpdate") //Config Request Format: {"Cmd":"CfgData", "Type":"pgxxxxCfg", "FileType":"xxxx", "FileName":"nnnnx.cfg", "Data":{}}
       {
+        execLoop = false;
         const char *  cmdType = doc["Type"];
         const char * fileStr = doc["Data"];
         const char *  fileName = doc["FileName"];

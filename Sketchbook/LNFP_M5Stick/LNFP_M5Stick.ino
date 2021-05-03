@@ -58,6 +58,7 @@ char * wsRxBuffer; //[32768]; //should this by dynamic?
 uint32_t wsTxReadPtr = 0;
 uint32_t wsTxWritePtr = 0;
 char * wsTxBuffer; //[32768]; //should this by dynamic?
+bool execLoop = true; //used to stop loop execution if update files are coming in. Must result in restart
 
 //global variables
 bool useStaticIP = false;
@@ -837,6 +838,8 @@ void loop() {
   else
     lastMillis = millis();  
 
+  if (execLoop)
+  {
 //  if (secElHandlerList) secElHandlerList->processLoop(); //calculates speeds in all blocks and sets signals accordingly
   if (myDcc) myDcc->process(); //receives and decodes track signals
   if (eventHandler) eventHandler->processButtonHandler(); //drives the outgoing buffer and time delayed commands
@@ -902,6 +905,7 @@ void loop() {
   }
   else
     sendKeepAlive();
+  }
   M5.update();
   processDisplay();
 //  while (Serial.available())

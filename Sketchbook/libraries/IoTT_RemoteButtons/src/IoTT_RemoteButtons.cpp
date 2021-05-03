@@ -295,8 +295,8 @@ void IoTT_Mux64Buttons::sendButtonEvent(uint16_t btnNr, buttonEvent btnEvent)
 			switch(thisTouchData->btnTypeDetected)
 			{
 				case digitalAct : onButtonEvent(thisTouchData->btnAddr, btnEvent); break;
-				case sensor : onSensorEvent(thisTouchData->btnAddr, btnEvent); break;
-				case swireport : onSwitchReportEvent(thisTouchData->btnAddr, btnEvent); break;
+				case sensor : if (evtMask & 0x03) onSensorEvent(thisTouchData->btnAddr, btnEvent, thisTouchData->btnEventMask); break;
+				case swireport : if (evtMask & 0x03) onSwitchReportEvent(thisTouchData->btnAddr, btnEvent, thisTouchData->btnEventMask); break;
 			}
 	}
   if ((onBtnDiagnose) && (startUpCtr==0)) 
