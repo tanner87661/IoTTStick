@@ -238,6 +238,7 @@ void MQTTESP32::setPingTopicName(char * newName)
 
 bool MQTTESP32::connectToBroker()
 {
+	uint32_t startTime = millis();
 	if (connect(thisNodeName, mqtt_user, mqtt_password)) 
 	{
 		// ... and resubscribe
@@ -248,9 +249,10 @@ bool MQTTESP32::connectToBroker()
 	}
 	else
 	{
-      Serial.printf("Connection failed, rc = %i\n", state());
-//      Serial.println(state());
-    }
+		reconnectInterval = min(reconnectInterval+10000, 60000);
+		startTime = round((millis() - startTime) / 1000);
+		Serial.printf("Connection failed after %i secs, error code %i\n", startTime, state());
+	}
 	return connected();
 }
 

@@ -32,7 +32,6 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #include <PubSubClient.h> //standard library, install using library manager
 
 
-#define reconnectInterval 5000  //if not connected, try to reconnect every 5 Secs
 #define queBufferSize 50 //messages that can be written in one burst before buffer overflow
 
 class MQTTESP32 : public PubSubClient
@@ -65,6 +64,7 @@ private:
 	bool sendMQTTMessage(lnReceiveBuffer txData);
 	bool sendPingMessage();
 	bool subscriptionsOK = false;
+	uint16_t reconnectInterval = 10000;  //if not connected, try to reconnect every 10 Secs initially, then increase if failed
 	static void psc_callback(char* topic, byte* payload, unsigned int length);
 
 

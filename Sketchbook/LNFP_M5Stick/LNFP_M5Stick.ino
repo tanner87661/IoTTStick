@@ -1,4 +1,4 @@
-char BBVersion[] = {'1','5','3'};
+char BBVersion[] = {'1','5','D'};
 
 //#define measurePerformance //uncomment this to display the number of loop cycles per second
 #define useM5Lite
@@ -781,13 +781,13 @@ void setup() {
 */
     Serial.println("Connect WiFi");  
     establishWifiConnection(myWebServer,dnsServer);
-    
-    if (lnMQTT)
-    {
-      Serial.println("Connect MQTT");  
-      establishMQTTConnection();
-      Serial.println("Connect MQTT done");  
-    }
+    delay(1000);    
+//    if (lnMQTT)
+//    {
+//      Serial.println("Connect MQTT");  
+//      establishMQTTConnection();
+//      Serial.println("Connect MQTT done");  
+//    }
     if (jsonConfigObj->containsKey("useNTP"))
     {
       useNTP = (bool)(*jsonConfigObj)["useNTP"];
@@ -811,8 +811,8 @@ void setup() {
     else
       Serial.println("NTP Module not defined");
     delete(jsonConfigObj);
-    if (useNTP) getInternetTime();
     startWebServer();
+//    if (useNTP) getInternetTime();
     if (lbServer)
       lbServer->startServer();
       

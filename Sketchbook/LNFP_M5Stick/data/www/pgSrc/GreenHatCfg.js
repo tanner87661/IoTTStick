@@ -69,14 +69,19 @@ function downloadSettings(sender)
 function saveConfigFileSettings()
 {
 	//step 1: save greenhat.cfg
-	saveJSONConfig(scriptList.Pages[currentPage].ID, scriptList.Pages[currentPage].FileName, configData[workCfg], null);
+//	if (JSON.stringify(configData[loadCfg]) != JSON.stringify(configData[workCfg]))
+		saveJSONConfig(scriptList.Pages[currentPage].ID, scriptList.Pages[currentPage].FileName, configData[workCfg], null);
 	//then save the other files
 	for (var i = 0; i < configData[workCfg].Modules.length; i++)
 	{
-		saveJSONConfig(configData[workCfg].Modules[i].CfgFiles[0].ID, configData[workCfg].Modules[i].CfgFiles[0].FileName, swiCfgData[workCfg], null);
-		saveJSONConfig(configData[workCfg].Modules[i].CfgFiles[0].ID, configData[workCfg].Modules[i].CfgFiles[1].FileName, btnCfgData[workCfg], null);
-		saveJSONConfig(configData[workCfg].Modules[i].CfgFiles[0].ID, configData[workCfg].Modules[i].CfgFiles[2].FileName, evtHdlrCfgData[workCfg], null);
-		saveJSONConfig(configData[workCfg].Modules[i].CfgFiles[0].ID, configData[workCfg].Modules[i].CfgFiles[3].FileName, ledData[workCfg], null);
+		if (JSON.stringify(swiCfgData[loadCfg]) != JSON.stringify(swiCfgData[workCfg]))
+			saveJSONConfig(configData[workCfg].Modules[i].CfgFiles[0].ID, configData[workCfg].Modules[i].CfgFiles[0].FileName, swiCfgData[workCfg], null);
+		if (JSON.stringify(btnCfgData[loadCfg]) != JSON.stringify(btnCfgData[workCfg]))
+			saveJSONConfig(configData[workCfg].Modules[i].CfgFiles[0].ID, configData[workCfg].Modules[i].CfgFiles[1].FileName, btnCfgData[workCfg], null);
+		if (JSON.stringify(evtHdlrCfgData[loadCfg]) != JSON.stringify(evtHdlrCfgData[workCfg]))
+			saveJSONConfig(configData[workCfg].Modules[i].CfgFiles[0].ID, configData[workCfg].Modules[i].CfgFiles[2].FileName, evtHdlrCfgData[workCfg], null);
+		if (JSON.stringify(ledData[loadCfg]) != JSON.stringify(ledData[workCfg]))
+			saveJSONConfig(configData[workCfg].Modules[i].CfgFiles[0].ID, configData[workCfg].Modules[i].CfgFiles[3].FileName, ledData[workCfg], null);
 	}
 }
 
