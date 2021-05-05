@@ -431,8 +431,9 @@ void MQTTESP32::processLoop()
         Serial.println("Reconnect MQTT Broker");
         if (connectToBroker()) 
         {
-          lastReconnectAttempt = 0;
-          Serial.println("Success");
+			reconnectInterval = reconnectStartVal;
+			lastReconnectAttempt = 0;
+			Serial.println("Success");
         }
         else
           Serial.println("Failure");

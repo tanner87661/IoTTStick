@@ -150,8 +150,11 @@ function sendDeleteFile(itemType, filenametype, filename, startIndex)
 {
 	if (flagCTS)
 	{
-		dlgTextDispArea.innerHTML += "Delete file " + filename + " from IoTT Stick\n";
-		scrollTextArea();
+//		if (dlgTextDispArea)
+		{
+			dlgTextDispArea.innerHTML += "Delete file " + filename + ".cfg from IoTT Stick\n";
+			scrollTextArea();
+		}
 		var configStr = "{\"Cmd\":\"CfgUpdate\", \"FileNameType\": \"" + filenametype + "\", \"FileName\": \"" + filename + "\", \"Type\":\"" + itemType + "\", \"Index\":" + startIndex  + "}";
 		clearCTS();
 		ws.send(configStr);
@@ -208,7 +211,8 @@ function startProgressDialog(parentObj)
 
 function scrollTextArea()
 {
-	dlgTextDispArea.scrollTop = dlgTextDispArea.scrollHeight;
+	if (dlgTextDispArea)
+		dlgTextDispArea.scrollTop = dlgTextDispArea.scrollHeight;
 }
 
 function closeDlg()
@@ -357,6 +361,9 @@ function saveJSONConfig(fileType, fileName, configData, fileSequencer)
 		transferData[thisIndex].Type = fileType;
 		transferData[thisIndex].FileName = fileName;
 		transferData[thisIndex].FileNameType = fileName;
+		if (progressDlg ==  null)
+			progressDlg = startProgressDialog(document.getElementById("TabHolder"));
+		progressDlg.style.display = "block";
 		if (typeof fileSequencer == 'function') 
 		{ 
 			fileSequencer(configData, thisIndex); 
@@ -379,9 +386,9 @@ function saveJSONConfig(fileType, fileName, configData, fileSequencer)
 function saveSettings(sender)
 {
 	transferData = []; //empty array
-	saveConfigFileSettings(); //this must be a function in each config.js
 	if (progressDlg)	 
 		dlgTextDispArea.innerHTML = "";
+	saveConfigFileSettings(); //this must be a function in each config.js
 	fileSendIndex = 0;
 	fileGroupIndex = 0;
 //	console.log(transferData);
