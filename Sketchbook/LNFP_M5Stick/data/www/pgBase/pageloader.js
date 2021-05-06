@@ -152,7 +152,7 @@ function sendDeleteFile(itemType, filenametype, filename, startIndex)
 	{
 //		if (dlgTextDispArea)
 		{
-			dlgTextDispArea.innerHTML += "Delete file " + filename + ".cfg from IoTT Stick\n";
+			dlgTextDispArea.innerHTML += "Delete file " + filename + " from IoTT Stick\n";
 			scrollTextArea();
 		}
 		var configStr = "{\"Cmd\":\"CfgUpdate\", \"FileNameType\": \"" + filenametype + "\", \"FileName\": \"" + filename + "\", \"Type\":\"" + itemType + "\", \"Index\":" + startIndex  + "}";

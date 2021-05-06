@@ -272,11 +272,11 @@ bool MQTTESP32::mustResubscribe()
 	return !subscriptionsOK;
 }
 
-uint16_t MQTTESP32::lnWriteMsg(lnTransmitMsg txData)
+int16_t MQTTESP32::lnWriteMsg(lnTransmitMsg txData)
 {
 // Serial.printf("MQTT Tx %2X\n", txData.lnData[0]);
    uint8_t hlpQuePtr = (que_wrPos + 1) % queBufferSize;
-    if (hlpQuePtr != que_rdPos) //override protection
+    if (connected() && (hlpQuePtr != que_rdPos)) //override protection
     {
 		transmitQueue[hlpQuePtr].msgType = txData.msgType;
 		transmitQueue[hlpQuePtr].lnMsgSize = txData.lnMsgSize;
@@ -291,16 +291,16 @@ uint16_t MQTTESP32::lnWriteMsg(lnTransmitMsg txData)
 	}
 	else
 	{	
-		Serial.println("MQTT Write Error. Too many messages in queue");
+//		Serial.println("MQTT Write Error. Too many messages in queue");
 		return -1;
 	}
 }
 
-uint16_t MQTTESP32::lnWriteMsg(lnReceiveBuffer txData)
+int16_t MQTTESP32::lnWriteMsg(lnReceiveBuffer txData)
 {
 // 	Serial.printf("MQTT Tx %2X\n", txData.lnData[0]);
     uint8_t hlpQuePtr = (que_wrPos + 1) % queBufferSize;
-    if (hlpQuePtr != que_rdPos) //override protection
+    if (connected() && (hlpQuePtr != que_rdPos)) //override protection
     {
 		transmitQueue[hlpQuePtr].msgType = txData.msgType;
 		transmitQueue[hlpQuePtr].lnMsgSize = txData.lnMsgSize;
@@ -315,7 +315,7 @@ uint16_t MQTTESP32::lnWriteMsg(lnReceiveBuffer txData)
 	}
 	else
 	{	
-		Serial.println("MQTT Write Error. Too many messages in queue");
+//		Serial.println("MQTT Write Error. Too many messages in queue");
 		return -1;
 	}
 }

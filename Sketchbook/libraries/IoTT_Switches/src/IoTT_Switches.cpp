@@ -610,16 +610,20 @@ void IoTT_ServoDrive::processSwitch(bool extPwrOK)
 			}
 			break;
 		case evt_button: 
-			if (getButtonValue(switchAddrList[0]) != extSwiPos)
+		{
+			uint8_t newBtnVal = getButtonValue(switchAddrList[0]);
+			if (newBtnVal != extSwiPos)
 			{
-				if (aspectList[extSwiPos].isUsed)
-				{
-					extSwiPos = getButtonValue(switchAddrList[0]);
-					targetMove = &aspectList[extSwiPos];
-//					Serial.printf("Process Button %i to Status %i \n", switchAddrList[0], extSwiPos);
-				}
+				if (newBtnVal <= aspectListLen)
+					if (aspectList[newBtnVal].isUsed)
+					{
+						extSwiPos = newBtnVal;
+						targetMove = &aspectList[newBtnVal];
+//						Serial.printf("Process Button %i to Status %i \n", switchAddrList[0], extSwiPos);
+					}
 			}
 			break;
+		}
 		case evt_blockdetector:
 		{
 			uint16_t swiStatus = 0;
@@ -634,7 +638,10 @@ void IoTT_ServoDrive::processSwitch(bool extPwrOK)
 			break;
 		}
 		case evt_transponder:
+		{
+			//this is handled in external events
 			break;
+		}
 		default:
 //			Serial.printf("Call switchtype %i \n", srcType);
 			break;
@@ -798,6 +805,7 @@ void IoTT_GreenHat::setPWMValue(uint8_t lineNr, uint16_t pwmVal)
 
 void IoTT_GreenHat::processBtnEvent(sourceType inputEvent, uint16_t btnAddr, uint16_t eventValue)
 {
+//	Serial.println("Btn Evt");
 	if (buttonHandler) 
 		buttonHandler->processBtnEvent(inputEvent, btnAddr, eventValue); //drives the outgoing buffer and time delayed commands
 	if (inputEvent == evt_transponder)

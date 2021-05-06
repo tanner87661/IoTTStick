@@ -41,8 +41,8 @@ public:
 	~MQTTESP32();
 	MQTTESP32(Client& client);
 	void processLoop();
-	uint16_t lnWriteMsg(lnTransmitMsg txData);
-	uint16_t lnWriteMsg(lnReceiveBuffer txData);
+	int16_t lnWriteMsg(lnTransmitMsg txData);
+	int16_t lnWriteMsg(lnReceiveBuffer txData);
 	void setNodeName(char * newName, bool newUseMAC = true);
 	void setBCTopicName(char * newName);
 	void setEchoTopicName(char * newName);
