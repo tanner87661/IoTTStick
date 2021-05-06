@@ -238,6 +238,7 @@ void MQTTESP32::setPingTopicName(char * newName)
 
 bool MQTTESP32::connectToBroker()
 {
+	uint32_t startTime = millis();
 	if (connect(thisNodeName, mqtt_user, mqtt_password)) 
 	{
 		// ... and resubscribe
@@ -248,9 +249,10 @@ bool MQTTESP32::connectToBroker()
 	}
 	else
 	{
-      Serial.print("Connection failed, rc= ");
-      Serial.println(state());
-    }
+		reconnectInterval = min(reconnectInterval+10000, 60000);
+		startTime = round((millis() - startTime) / 1000);
+		Serial.printf("Connection failed after %i secs, error code %i\n", startTime, state());
+	}
 	return connected();
 }
 
@@ -270,11 +272,11 @@ bool MQTTESP32::mustResubscribe()
 	return !subscriptionsOK;
 }
 
-uint16_t MQTTESP32::lnWriteMsg(lnTransmitMsg txData)
+int16_t MQTTESP32::lnWriteMsg(lnTransmitMsg txData)
 {
 // Serial.printf("MQTT Tx %2X\n", txData.lnData[0]);
    uint8_t hlpQuePtr = (que_wrPos + 1) % queBufferSize;
-    if (hlpQuePtr != que_rdPos) //override protection
+    if (connected() && (hlpQuePtr != que_rdPos)) //override protection
     {
 		transmitQueue[hlpQuePtr].msgType = txData.msgType;
 		transmitQueue[hlpQuePtr].lnMsgSize = txData.lnMsgSize;
@@ -289,16 +291,16 @@ uint16_t MQTTESP32::lnWriteMsg(lnTransmitMsg txData)
 	}
 	else
 	{	
-		Serial.println("MQTT Write Error. Too many messages in queue");
+//		Serial.println("MQTT Write Error. Too many messages in queue");
 		return -1;
 	}
 }
 
-uint16_t MQTTESP32::lnWriteMsg(lnReceiveBuffer txData)
+int16_t MQTTESP32::lnWriteMsg(lnReceiveBuffer txData)
 {
 // 	Serial.printf("MQTT Tx %2X\n", txData.lnData[0]);
     uint8_t hlpQuePtr = (que_wrPos + 1) % queBufferSize;
-    if (hlpQuePtr != que_rdPos) //override protection
+    if (connected() && (hlpQuePtr != que_rdPos)) //override protection
     {
 		transmitQueue[hlpQuePtr].msgType = txData.msgType;
 		transmitQueue[hlpQuePtr].lnMsgSize = txData.lnMsgSize;
@@ -313,7 +315,7 @@ uint16_t MQTTESP32::lnWriteMsg(lnReceiveBuffer txData)
 	}
 	else
 	{	
-		Serial.println("MQTT Write Error. Too many messages in queue");
+//		Serial.println("MQTT Write Error. Too many messages in queue");
 		return -1;
 	}
 }
@@ -429,8 +431,9 @@ void MQTTESP32::processLoop()
         Serial.println("Reconnect MQTT Broker");
         if (connectToBroker()) 
         {
-          lastReconnectAttempt = 0;
-          Serial.println("Success");
+			reconnectInterval = reconnectStartVal;
+			lastReconnectAttempt = 0;
+			Serial.println("Success");
         }
         else
           Serial.println("Failure");

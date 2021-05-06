@@ -34,7 +34,8 @@ extern char *__brkval;
  * 
  */
 #if defined(useFastLED)
-  #include <FastLED.h>
+do not use
+//  #include <FastLED.h>
 #else
   #include <Adafruit_NeoPixel.h>    //needed for the WS2812
 #endif
@@ -59,7 +60,8 @@ extern char *__brkval;
 const uint16_t LED_COUNT = 33;
 
 #ifdef useFastLED
-  #include <FastLED.h>
+do not use
+//  #include <FastLED.h>
 #else
   Adafruit_NeoPixel * strip; // = Adafruit_NeoPixel(LED_COUNT, LED_PIN, NEO_GRB + NEO_KHZ800);
 #endif
@@ -72,8 +74,9 @@ uint8_t memPtr = 0; //memory location for next byte request
 bool startMode = true;
 
 #ifdef useFastLED
-  CRGB ledChain[LED_COUNT];
-  CRGB lastCol;
+do not use
+//  CRGB ledChain[LED_COUNT];
+//  CRGB lastCol;
 #else
   uint32_t lastCol;
 #endif

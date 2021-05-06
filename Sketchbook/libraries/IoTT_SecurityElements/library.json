@@ -1,0 +1,15 @@
+{
+    "name": "IoTT_MQTTESP32",
+    "version": "1.0.0",
+    "keywords": [
+      "LocoNet", "MQTT", "IoTT"
+    ],
+    "description": "Implementation of the LocoNet MQTT Interface for ESP32",
+    "repository":
+    {
+        "type": "git",
+        "url": "https://github.com/tanner87661/IoTT_MQTTESP32"
+    },
+    "frameworks": "arduino",
+    "platforms": "espressif32"
+}

@@ -28,6 +28,11 @@ function tfText(y, x, id, evtHandler)
 	return textDiv;
 }
 
+function tfLinkText(y, x, id, evtHandler)
+{
+	return tfLink(y, x, 99, id, "Run as template", evtHandler);
+}
+
 function tfLink(y, x, index, id, linkText, evtHandler)
 {
 	var textDiv = document.createElement("a");
@@ -76,7 +81,7 @@ function tfEvtTypeSrcSel(y, x, id, evtHandler)
 function tfBtnEvtSel(y, x, id, evtHandler)
 {
 	var selectList = tfTemplateTypeSel(y, x, id, evtHandler);
-	createOptions(selectList, ["Off","Digital","Analog"]);
+	createOptions(selectList, ["Off","Digital","Analog","Detector","Switch Report"]);
 	return selectList;
 }
 

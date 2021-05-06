@@ -31,8 +31,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #include <ArduinoJson.h> //standard JSON library, can be installed in the Arduino IDE
 #include <PubSubClient.h> //standard library, install using library manager
 
-
-#define reconnectInterval 5000  //if not connected, try to reconnect every 5 Secs
+#define reconnectStartVal 10000
 #define queBufferSize 50 //messages that can be written in one burst before buffer overflow
 
 class MQTTESP32 : public PubSubClient
@@ -42,8 +41,8 @@ public:
 	~MQTTESP32();
 	MQTTESP32(Client& client);
 	void processLoop();
-	uint16_t lnWriteMsg(lnTransmitMsg txData);
-	uint16_t lnWriteMsg(lnReceiveBuffer txData);
+	int16_t lnWriteMsg(lnTransmitMsg txData);
+	int16_t lnWriteMsg(lnReceiveBuffer txData);
 	void setNodeName(char * newName, bool newUseMAC = true);
 	void setBCTopicName(char * newName);
 	void setEchoTopicName(char * newName);
@@ -65,6 +64,7 @@ private:
 	bool sendMQTTMessage(lnReceiveBuffer txData);
 	bool sendPingMessage();
 	bool subscriptionsOK = false;
+	uint16_t reconnectInterval = reconnectStartVal;  //if not connected, try to reconnect every 10 Secs initially, then increase if failed
 	static void psc_callback(char* topic, byte* payload, unsigned int length);
 
 

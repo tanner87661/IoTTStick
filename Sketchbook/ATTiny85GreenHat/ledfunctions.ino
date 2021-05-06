@@ -1,5 +1,6 @@
 #ifdef useFastLED
-
+do not use
+/*
 void initLEDChain()
 {
   chainLength = eeprom_read_word ((uint16_t *) 0);
@@ -18,7 +19,7 @@ void initLEDChain()
   FastLED.setBrightness(255); // set full brightness
   FastLED.show(); // Initialize all pixels to 'off'
 }
-
+*/
 #else
 
 void initLEDChain()
@@ -39,7 +40,7 @@ void initLEDChain()
   strip->begin();
   strip->setBrightness(10); // set full brightness
   strip->show(); // Initialize all pixels to 'off'
-  fillStrip(0x001000); //initialize dark
+  fillStrip(0x000000); //initialize dark
   strip->show(); // Initialize all pixels to 'off'
 }
 #endif
@@ -53,7 +54,8 @@ void initLEDChain()
 */
 
 #ifdef useFastLED
-
+do not use
+/*
 CRGB getColorHSV(uint8_t hue, uint8_t sat, uint8_t lval)
 {
   return CHSV(hue, sat, lval);
@@ -74,6 +76,7 @@ void showChain()
 {
   
 }
+*/
 #else
 
 uint32_t getColorHSV(uint16_t hue, uint8_t sat, uint8_t lval)

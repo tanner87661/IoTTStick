@@ -6,12 +6,117 @@ var mqttBox;
 
 var maxButtons = 0;
 
-var btnStatus = ["off", "digital", "analog"];
+var btnStatus = ["off", "digital", "analog", "sensor", "swireport"];
+
+var templateDlg = null;
+var level0Div;
+var level1Div;
+var level2Div;
+var level3Div;
+var level4Div;
+
 
 function saveConfigFileSettings()
 {
 	//step 1: save greenhat.cfg
 	saveJSONConfig(scriptList.Pages[currentPage].ID, scriptList.Pages[currentPage].FileName, configData[workCfg], null);
+}
+
+function runTemplate(sender)
+{
+	function incrementAddr(thisAddr, incrBy)
+	{
+		var resArray = [];
+		if (Array.isArray(thisAddr))
+		{
+			for (var i = 0; i < thisAddr.length; i++)
+				resArray.push(parseInt(thisAddr[i]) + incrBy);
+		}
+		else
+			if (thisAddr != undefined)
+				resArray = thisAddr + incrBy;
+		return resArray;
+	}
+	
+	var templId = templateDlg.getAttribute('templchid') - 1;
+	var templBtn = JSON.parse(JSON.stringify(configData[workCfg].Buttons[templId]));
+	var startIndex = Math.min(32, Math.max(1, document.getElementById("startchannel").value));
+	var endIndex = Math.max(1, Math.min(32, document.getElementById("endchannel").value));
+	var incrBtn =  parseInt(document.getElementById("mainaddrincr").value);
+	for (var i = startIndex; i <= endIndex; i++)
+	{
+		configData[workCfg].Buttons[i-1].ButtonType = templBtn.ButtonType;
+		configData[workCfg].Buttons[i-1].EventMask = templBtn.EventMask;
+		configData[workCfg].Buttons[i-1].ButtonAddr = templBtn.ButtonAddr + ((i-startIndex) * incrBtn);
+	}
+	loadTableData(buttonTable, configData[workCfg].Buttons);
+	templateDlg.style.display = "none";
+}
+
+function cancelTemplate(sender)
+{
+	templateDlg.style.display = "none";
+}
+
+function startTemplateDialog(parentObj, templateChannel)
+{
+	var mainDlg = document.createElement("div");
+	mainDlg.setAttribute('class', "modal");
+	mainDlg.setAttribute('templchid', templateChannel);
+	
+		var dlgDiv = document.createElement("div");
+		dlgDiv.setAttribute('class', "modal-content");
+		mainDlg.append(dlgDiv);
+	
+			var dlgSubDiv = document.createElement("div");
+			dlgSubDiv.setAttribute('class', "modal-header");
+			dlgDiv.append(dlgSubDiv);
+				var dlgSpan = document.createElement("span");
+				dlgSpan.setAttribute('class', "close");
+				dlgSpan.innerHTML = "&times;";
+				dlgSubDiv.append(dlgSpan);
+				var dlgHeader = document.createElement("h2");
+				dlgHeader.innerHTML = "Configure Address Assignment, then click Run Template"; 
+				dlgSubDiv.append(dlgHeader);
+	
+			dlgSubDiv = document.createElement("div");
+			dlgSubDiv.setAttribute('class', "modal-body");
+			dlgDiv.append(dlgSubDiv);
+				dlgTextDispArea = document.createElement("div"); //global var
+				dlgTextDispArea.setAttribute('readonly', "true");
+				dlgTextDispArea.setAttribute('style', "height: 250px; width:100%"); 
+
+				level0Div = document.createElement("div"); //global var
+				level0Div.setAttribute('style', "height: 50px; width:100%"); 
+				level0Div.setAttribute('id', "temptitle"); 
+				level0Div.innerHTML = "Set input characterstics based on settings of input #" + templateChannel.toString();
+				dlgTextDispArea.append(level0Div);
+
+				level1Div = document.createElement("div"); //global var
+				level1Div.setAttribute('style', "height: 50px; width:100%"); 
+				dlgTextDispArea.append(level1Div);
+				var tempField = createTextInput(level1Div, "tile-1_2", "Run from Input:", templateChannel.toString(), "startchannel", "");
+				tempField = createTextInput(level1Div, "tile-1_2", "to Input:", Math.min(16, templateChannel+5).toString(), "endchannel", "");
+
+				level2Div = document.createElement("div"); //global var
+				level2Div.setAttribute('style', "height: 50px; width:100%"); 
+				dlgTextDispArea.append(level2Div);
+				createTextInput(level2Div, "tile-1_2", "Increment Input Address by:", "1", "mainaddrincr", "");
+
+			dlgSubDiv.append(dlgTextDispArea);
+			var footerDiv = document.createElement("div");
+			footerDiv.setAttribute('class', "modal-footer");
+			dlgDiv.append(footerDiv);
+			var dlgHeader = document.createElement("div");
+				dlgHeader.setAttribute('style', "height: 70px; width:100%"); 
+				dlgHeader.innerHTML = "&nbsp;";
+				createButton(dlgHeader, "", "Run Template", "btnRun", "runTemplate(this)");
+				createButton(dlgHeader, "", "Cancel", "btnCancel", "cancelTemplate(this)");
+			footerDiv.append(dlgHeader);
+	parentObj.append(mainDlg);
+	var span = document.getElementsByClassName("close"); //get array of close elements, should only be 1
+	span[0].onclick = function() {templateDlg.style.display = "none";}
+	return mainDlg;
 }
 
 function setThreshold(sender)
@@ -54,6 +159,51 @@ function downloadSettings(sender)
 	downloadConfig(0x0010); //send just this
 }
 
+function updateOptions(thisRow)
+{
+	var eventMask = 0x01;
+	var btnTypeIndex = btnStatus.indexOf(configData[2].Buttons[thisRow].ButtonType);
+	for (var j = 0; j < 5; j++)
+	{
+		var t = document.getElementById("eventmask_"  + thisRow.toString() + "_" + "5_" + j.toString());
+		var ttxt = document.getElementById("eventmask_"  + thisRow.toString() + "_" + "5_" + j.toString() + "_cbtxt");
+		switch (j)
+		{
+			case 0: 
+				setVisibility([1,3,4].indexOf(btnTypeIndex) >= 0, t.parentElement);
+				switch (btnTypeIndex)
+				{
+					case 1: ttxt.innerHTML = "Btn Down"; break;
+					case 3: ttxt.innerHTML = "Occupied"; break;
+					case 4: ttxt.innerHTML = "Thrown"; break;
+				}
+				break;
+			case 1: 
+				setVisibility([1,3,4].indexOf(btnTypeIndex) >= 0, t.parentElement);
+				switch (btnTypeIndex)
+				{
+					case 1: ttxt.innerHTML = "Btn Up"; break;
+					case 3: ttxt.innerHTML = "Free"; break;
+					case 4: ttxt.innerHTML = "Closed"; break;
+				}
+				break;
+			case 2: 
+				setVisibility([1,3,4].indexOf(btnTypeIndex) >= 0, t.parentElement);
+				switch (btnTypeIndex)
+				{
+					case 1: ttxt.innerHTML = "Btn Click"; break;
+					case 3: ttxt.innerHTML = "Inverse Logic"; break;
+					case 4: ttxt.innerHTML = "Inverse Logic"; break;
+				}
+				break;
+			default:
+				setVisibility([1].indexOf(btnTypeIndex) >= 0, t.parentElement);
+				break;
+		}
+		t.checked = ((configData[2].Buttons[thisRow].EventMask & (eventMask<<j)) > 0);
+	}
+}
+
 function setButtonData(sender)
 {
 	var col = parseInt(sender.getAttribute("col"));
@@ -61,9 +211,23 @@ function setButtonData(sender)
 //	console.log(row, col);
 	switch (col)
 	{
+		case 1: //run template
+			if (templateDlg ==  null)
+				templateDlg = startTemplateDialog(document.getElementById("TabHolder"), row+1);
+			else
+				level0Div.innerHTML = "Set channel characterstics based on settings of channel #" + (row+1).toString();
+			document.getElementById("temptitle").innerHTML = "Set channel characterstics based on settings of channel #" + (row+1).toString();
+			document.getElementById("startchannel").value = (row+1).toString();
+			document.getElementById("endchannel").value = Math.min(16, row+6).toString();
+			templateDlg.setAttribute('templchid', row+1);
+			templateDlg.style.display = "block";
+			break;
 		case 2:
 //			console.log("2: ", btnStatus[sender.selectedIndex]);
 			configData[2].Buttons[row].ButtonType = btnStatus[sender.selectedIndex];
+			if ([3,4].indexOf(sender.selectedIndex) >= 0)
+				configData[2].Buttons[row].EventMask = 0x03;
+			updateOptions(row);
 			break;
 		case 3:
 //			console.log("3: ", sender.value);
@@ -98,34 +262,24 @@ function loadTableData(thisTable, thisData)
 	var th = document.getElementById(buttonTable.id + "_head");
 	var tb = document.getElementById(buttonTable.id + "_body");
 	var numCols = th.childNodes[0].children.length;
-
-	createDataTableLines(thisTable, [tfPos,tfText,tfBtnEvtSel,tfNumeric, tfText, tfBtnEvtMask], thisData.length, "setButtonData(this)");	
+	createDataTableLines(thisTable, [tfPos,tfLinkText,tfBtnEvtSel,tfNumeric, tfText, tfBtnEvtMask], thisData.length, "setButtonData(this)");	
 	for (var i=0; i<thisData.length;i++)
 	{
-		function selByName(prmVal)
-		{
-			return (prmVal == thisData[i].ButtonType);
-		}
-
 		var pinNr = Math.trunc(i/8) + 1; //nodeConfigData.BtnModConfig.DataPins[Math.trunc(i/16)];
 		var pinPort = (i % 8) + 1;
-		var e = document.getElementById(thisTable.id + "_" + i.toString() + "_" + "1");
+		var e = document.getElementById(thisTable.id + "_inp_" + i.toString() + "_" + "1");
 		writeTextField(e.id, "Pin " + pinPort.toString() + " Port " + String.fromCharCode(64 + pinNr)); //A = 65
-//		writeTextField(e.id, thisData[i].PortNr.toString() + " - Pin " + pinPort.toString() + " Group " + pinNr.toString());
+		e.setAttribute("href", "javascript:void function nop(){}();");
+		e.setAttribute("onclick", "setButtonData(this)");
+
 		var e = document.getElementById(thisTable.id + "_" + i.toString() + "_" + "2");
-		e.childNodes[0].selectedIndex = btnStatus.findIndex(selByName);
+		e.childNodes[0].selectedIndex = btnStatus.indexOf(thisData[i].ButtonType);
 		var e = document.getElementById(thisTable.id + "_" + i.toString() + "_" + "3");
 		e.childNodes[0].value = thisData[i].ButtonAddr;
 		var e = document.getElementById(thisTable.id + "_" + i.toString() + "_" + "4");
 		writeTextField(e.id, "");
 		var e = document.getElementById(thisTable.id + "_" + i.toString() + "_" + "5");
-		var eventMask = 0x01;
-		for (var j = 0; j < 5; j++)
-		{
-			var t = document.getElementById("eventmask_"  + i.toString() + "_" + "5_" + j.toString());
-			setVisibility(btnStatus.findIndex(selByName) != 2, t.parentElement);
-			t.checked = ((thisData[i].EventMask & (eventMask<<j)) > 0);
-		}
+		updateOptions(i);
 	}
 }
 
@@ -135,7 +289,7 @@ function setButtonStatus(portType, portNr, portAddr, portValue)
 	if (e)
 		switch (portType)
 		{
-			case 0: //button
+			case 2: //digitalAct
 				switch (portValue)
 				{
 					case 0: //down
@@ -164,7 +318,37 @@ function setButtonStatus(portType, portNr, portAddr, portValue)
 						break;
 				}
 				break;
-			case 1: //analog
+			case 4: //
+				if (configData[workCfg].Buttons[portNr].EventMask & 0x04)
+					portValue ^= 0x01;
+				switch (portValue)
+				{
+					case 0: //down
+						writeTextField(e.id, "Occupied");
+						e.style.backgroundColor = "hsl(0, 100%, 50%)";
+						break;
+					case 1: //up
+						writeTextField(e.id, "Free");
+						e.style.backgroundColor = "hsl(116, 100%, 50%)";
+						break;
+				}
+				break;
+			case 5: //Switch Report
+				if (configData[workCfg].Buttons[portNr].EventMask & 0x04)
+					portValue ^= 0x01;
+				switch (portValue)
+				{
+					case 0: //down
+						writeTextField(e.id, "Thrown");
+						e.style.backgroundColor = "hsl(39, 100%, 50%)";
+						break;
+					case 1: //up
+						writeTextField(e.id, "Closed");
+						e.style.backgroundColor = "hsl(116, 100%, 50%)";
+						break;
+				}
+				break;
+			case 9: //analog
 				writeTextField(e.id, "Analog " + portValue.toString());
 				var hue = Math.round(240 * (1 - (portValue/4096)));
 //				console.log(hue);
@@ -204,7 +388,7 @@ function constructPageContent(contentTab)
 		tempObj = createEmptyDiv(mainScrollBox, "div", "tile-1", "wificb");
 			createDispText(tempObj, "tile-1_4", "# of Buttons", "n/a", "maxbuttons");
 
-		buttonTable = createDataTable(mainScrollBox, "tile-1", ["Pos","Port #", "HW Button Type", "LN Button Address", "Input Status", "Send Messages"], "btnconfig", "");
+		buttonTable = createDataTable(mainScrollBox, "tile-1", ["Pos","Port #", "Input Type", "Input Address", "Input Status", "Send Messages"], "btnconfig", "");
 
 		tempObj = createEmptyDiv(mainScrollBox, "div", "tile-1", "");
 			createButton(tempObj, "", "Save & Restart", "btnSave", "saveSettings(this)");

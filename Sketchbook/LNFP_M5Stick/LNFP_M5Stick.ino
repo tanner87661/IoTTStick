@@ -1,4 +1,4 @@
-char BBVersion[] = {'1','5','2'};
+char BBVersion[] = {'1','5','3'};
 
 //#define measurePerformance //uncomment this to display the number of loop cycles per second
 #define useM5Lite
@@ -39,7 +39,7 @@ char BBVersion[] = {'1','5','2'};
 #include <IoTT_SerInjector.h> //Serial USB Port to make it an interface for LocoNet and OpenLCB
 //#include <IoTT_OpenLCB.h> //CAN port for OpenLCB
 #include <IoTT_Switches.h>
-//#include <IoTT_SecurityElements.h> //not ready yet. This is the support for ABS/APB as described in Videos #20, 21, 23, 24
+#include <IoTT_SecurityElements.h> //not ready yet. This is the support for ABS/APB as described in Videos #20, 21, 23, 24
 #include <NmraDcc.h> //install via Arduino IDE
 #include <OneDimKalman.h>
 #include <IoTT_lbServer.h>
@@ -58,6 +58,7 @@ char * wsRxBuffer; //[32768]; //should this by dynamic?
 uint32_t wsTxReadPtr = 0;
 uint32_t wsTxWritePtr = 0;
 char * wsTxBuffer; //[32768]; //should this by dynamic?
+bool execLoop = true; //used to stop loop execution if update files are coming in. Must result in restart
 
 //global variables
 bool useStaticIP = false;
@@ -780,13 +781,13 @@ void setup() {
 */
     Serial.println("Connect WiFi");  
     establishWifiConnection(myWebServer,dnsServer);
-    
-    if (lnMQTT)
-    {
-      Serial.println("Connect MQTT");  
-      establishMQTTConnection();
-      Serial.println("Connect MQTT done");  
-    }
+    delay(1000);    
+//    if (lnMQTT)
+//    {
+//      Serial.println("Connect MQTT");  
+//      establishMQTTConnection();
+//      Serial.println("Connect MQTT done");  
+//    }
     if (jsonConfigObj->containsKey("useNTP"))
     {
       useNTP = (bool)(*jsonConfigObj)["useNTP"];
@@ -810,8 +811,8 @@ void setup() {
     else
       Serial.println("NTP Module not defined");
     delete(jsonConfigObj);
-    if (useNTP) getInternetTime();
     startWebServer();
+//    if (useNTP) getInternetTime();
     if (lbServer)
       lbServer->startServer();
       
@@ -837,6 +838,8 @@ void loop() {
   else
     lastMillis = millis();  
 
+  if (execLoop)
+  {
 //  if (secElHandlerList) secElHandlerList->processLoop(); //calculates speeds in all blocks and sets signals accordingly
   if (myDcc) myDcc->process(); //receives and decodes track signals
   if (eventHandler) eventHandler->processButtonHandler(); //drives the outgoing buffer and time delayed commands
@@ -902,6 +905,7 @@ void loop() {
   }
   else
     sendKeepAlive();
+  }
   M5.update();
   processDisplay();
 //  while (Serial.available())
