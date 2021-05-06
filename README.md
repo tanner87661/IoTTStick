@@ -1,6 +1,10 @@
 # IoTTStick
 This is the development repository for the IoTT Stick, port modules and hat devices with the source code for the latest release. 
 
+2021/05/06
+- Released new version 1.5.3 with some new features for the YellowHat (buttons now can send input report and switch state report directly, no event handler)
+- major improvement of the handshake between stick and web app in case of saving and loading disk files
+
 2021/04/29
 - added support for input reports and switch reports to button inputys for YellowHat
 
