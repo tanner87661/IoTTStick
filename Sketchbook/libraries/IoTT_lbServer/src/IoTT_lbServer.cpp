@@ -75,7 +75,7 @@ void IoTT_LBServer::initLBServer(bool serverMode)
 		lntcpServer = new AsyncServer(WiFi.localIP(), lbs_Port);
 		lntcpServer->onClient(&handleNewClient, lntcpServer);
 	}
-	else
+	else //client mode
 	{
 		lntcpClient.thisClient = new AsyncClient();
 		lntcpClient.thisClient ->onData(handleDataFromClient, lntcpClient.thisClient );
@@ -126,7 +126,7 @@ void IoTT_LBServer::handleDisconnect(void* arg, AsyncClient* client)
 			break;
 		}
 	}
-	Serial.printf("\nClient disconnected. %i clients remaining \n", clients.size());
+	Serial.printf("Client disconnected. %i clients remaining \n", clients.size());
 	yield();
 }
 
@@ -370,7 +370,7 @@ void IoTT_LBServer::processServerMessage(AsyncClient* client, char * data)
 
 void IoTT_LBServer::onConnect(void *arg, AsyncClient *client)
 {
-  Serial.printf("\n LocoNet over TCP client is now connected to server %s on port %d \n", client->remoteIP().toString().c_str(), lbs_Port);
+	Serial.printf("LocoNet over TCP client is now connected to server %s on port %d \n", client->remoteIP().toString().c_str(), lbs_Port);
 }
 
 bool IoTT_LBServer::sendClientMessage(AsyncClient * thisClient, String cmdMsg, lnReceiveBuffer thisMsg)
@@ -420,22 +420,21 @@ void IoTT_LBServer::processLoop()
 	}
 	else
 	{
-		if (!lntcpClient.thisClient ->connected())
+		if (!lntcpClient.thisClient->connected())
 		{
 			long now = millis();
-			if (now - lastReconnectAttempt > lbs_reconnectInterval) 
+			if (now - lastReconnectAttempt > reconnectInterval) 
 			{
+				reconnectInterval = min(reconnectInterval+10000, 60000); //increae interval
 				lastReconnectAttempt = now;
-				Serial.print("Connect to TCP server ");
+				Serial.print("Trying to connect to TCP server ");
 				Serial.println(lbs_IP);
-				Serial.print(" ... ");
-				if (lntcpClient.thisClient->connect(lbs_IP, lbs_Port))
-					Serial.println("Success");
-				else
-					Serial.println("Failed");
+//				Serial.println(reconnectInterval);
+				lntcpClient.thisClient->connect(lbs_IP, lbs_Port);
 			}
 		}
 		else
+			reconnectInterval = lbs_reconnectStartVal;
 			if (que_wrPos != que_rdPos)
 			{
 				int hlpQuePtr = (que_rdPos + 1) % queBufferSize;

@@ -65,6 +65,7 @@ private:
 	bool sendPingMessage();
 	bool subscriptionsOK = false;
 	uint16_t reconnectInterval = reconnectStartVal;  //if not connected, try to reconnect every 10 Secs initially, then increase if failed
+	uint32_t lastReconnectAttempt = millis();
 	static void psc_callback(char* topic, byte* payload, unsigned int length);
 
 
@@ -84,7 +85,6 @@ private:
 	uint8_t  respOpCode;
 	uint16_t respID;
    
-	uint32_t lastReconnectAttempt = millis();
 	
 	char mqtt_server[50] = "broker.hivemq.com"; // = Mosquitto Server IP "192.168.xx.xx" as loaded from mqtt.cfg
 	uint16_t mqtt_port = 1883; // = Mosquitto port number, standard is 1883, 8883 for SSL connection;

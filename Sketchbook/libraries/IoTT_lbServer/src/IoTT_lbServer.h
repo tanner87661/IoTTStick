@@ -33,7 +33,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #include <vector>
 
 
-#define lbs_reconnectInterval 5000  //if not connected, try to reconnect every 5 Secs
+#define lbs_reconnectStartVal 10000
 #define queBufferSize 50 //messages that can be written in one burst before buffer overflow
 
 typedef struct
@@ -78,6 +78,8 @@ private:
     AsyncServer * lntcpServer = NULL;
     bool isServer = true;
     
+	uint16_t reconnectInterval = lbs_reconnectStartVal;  //if not connected, try to reconnect every 10 Secs initially, then increase if failed
+	uint32_t lastReconnectAttempt = millis();
 	lnReceiveBuffer transmitQueue[queBufferSize];
 	uint8_t que_rdPos = 0, que_wrPos = 0;
     bool sendClientMessage(AsyncClient * thisClient, String cmdMsg, lnReceiveBuffer thisMsg);
@@ -86,7 +88,6 @@ private:
    
 	uint32_t nextPingPoint;
 	uint32_t pingDelay = 300000; //5 Mins
-	uint32_t lastReconnectAttempt = millis();
 			
 
 	uint32_t respTime;
