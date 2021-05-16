@@ -498,13 +498,13 @@ function startWebsockets()
 					var a = document.createElement("a");
 					a.href = URL.createObjectURL(new Blob([JSON.stringify(transferData, null, 2)], {type: "text/plain"}));
 					a.setAttribute("download", "M5Config.json");
+					a.style.display = 'none';
 					document.body.appendChild(a);
 					a.click();
-					document.body.removeChild(a);			
+					document.body.removeChild(a);	
 					break;
 			}
 		}
-
   		if (myArr.Cmd == "CfgData")
   		{
 //			console.log(myArr);

@@ -34,6 +34,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
 
 #define lbs_reconnectStartVal 10000
+#define pingInterval 10000 //ping every 10 secs if there is no other traffic
 #define queBufferSize 50 //messages that can be written in one burst before buffer overflow
 
 typedef struct
@@ -71,6 +72,7 @@ private:
 	static void handleData(void* arg, tcpDef * clientData);
 	static void handleDisconnect(void* arg, AsyncClient* client);
 	static void handleTimeOut(void* arg, AsyncClient* client, uint32_t time);
+//    static void handlePoll(void *arg, AsyncClient *client);        //every 125ms when connected
 
 	static void tcpToLN(char * str, lnReceiveBuffer * recData);
 
@@ -78,18 +80,14 @@ private:
     AsyncServer * lntcpServer = NULL;
     bool isServer = true;
     
-	uint16_t reconnectInterval = lbs_reconnectStartVal;  //if not connected, try to reconnect every 10 Secs initially, then increase if failed
 	uint32_t lastReconnectAttempt = millis();
 	lnReceiveBuffer transmitQueue[queBufferSize];
 	uint8_t que_rdPos = 0, que_wrPos = 0;
     bool sendClientMessage(AsyncClient * thisClient, String cmdMsg, lnReceiveBuffer thisMsg);
+    void sendLNPing();
 	static void processServerMessage(AsyncClient* client, char * data);
 	uint8_t numWrite, numRead;
    
-	uint32_t nextPingPoint;
-	uint32_t pingDelay = 300000; //5 Mins
-			
-
 	uint32_t respTime;
 	uint8_t  respOpCode;
 	uint16_t respID;

@@ -48,6 +48,7 @@ void setup() {
     eeprom_update_word((uint16_t *) 0, 8); //chain length
     eeprom_update_word((uint16_t *) 2, 0102); //chain type
   }
+
   initLEDChain();
   fillStrip(CHSV(0,0,0)); //initialize dark
   initMUX();
