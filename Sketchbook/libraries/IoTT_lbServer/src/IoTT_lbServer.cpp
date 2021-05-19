@@ -56,7 +56,7 @@ uint8_t lbsMode = 0; //0: LN;
 IoTT_LBServer::IoTT_LBServer()
 {
 //	setCallback(psc_callback);
-	nextPingPoint = millis() + pingInterval;
+	nextPingPoint = millis() + pingInterval + random(5000);
 }
 
 IoTT_LBServer::~IoTT_LBServer()
@@ -68,7 +68,7 @@ IoTT_LBServer::~IoTT_LBServer()
 IoTT_LBServer::IoTT_LBServer(Client& client)
 {
 //	setCallback(psc_callback);
-	nextPingPoint = millis() + pingInterval;
+	nextPingPoint = millis() + pingInterval + random(5000);
 }
 
 void IoTT_LBServer::initLBServer(bool serverMode)
@@ -332,7 +332,7 @@ void IoTT_LBServer::processServerMessage(AsyncClient* client, char * data)
 				Serial.printf("Cancel Sending %i bytes because of error flags %i\n", recData.lnMsgSize, recData.errorFlags);
 			return;
 		} //everything below means we are in client mode because only a server is sending these messages
-		nextPingPoint = millis() + pingInterval;
+		nextPingPoint = millis() + pingInterval + random(5000);
 		pingSent = false;
 		if (strcmp(str,"VERSION") == 0)
 		{
@@ -377,7 +377,7 @@ void IoTT_LBServer::processServerMessage(AsyncClient* client, char * data)
 
 void IoTT_LBServer::onConnect(void *arg, AsyncClient *client)
 {
-	nextPingPoint = millis() + pingInterval;
+	nextPingPoint = millis() + pingInterval + random(5000);
 	reconnectInterval = lbs_reconnectStartVal;  //if not connected, try to reconnect every 10 Secs initially, then increase if failed
 	pingSent = false;
 	Serial.printf("LocoNet over TCP client is now connected to server %s on port %d \n", client->remoteIP().toString().c_str(), lbs_Port);
@@ -401,7 +401,7 @@ bool IoTT_LBServer::sendClientMessage(AsyncClient * thisClient, String cmdMsg, l
 				lnStr += '\n';
 				thisClient->add(lnStr.c_str(), strlen(lnStr.c_str()));
 				thisClient->send();
-				nextPingPoint = millis() + pingInterval;
+				nextPingPoint = millis() + pingInterval + random(5000);
 				yield();
 				return true;
 			}

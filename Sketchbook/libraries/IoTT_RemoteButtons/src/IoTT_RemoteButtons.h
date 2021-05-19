@@ -74,6 +74,7 @@ typedef struct
   uint16_t lastPublishedData = 0;
   buttonEvent lastPublishedEvent = onbtnup;
   bool     btnStatus = false; //true if pressed
+  bool     btnSentStatus = false; //last sent status, used for sensor debouncing
   uint32_t lastStateChgTime[4]; //used to calculate dbl click events
   uint8_t  lastEvtPtr = 0; //bufferPtr to the above
   uint32_t nextHoldUpdateTime; //timer for repeating hold events
@@ -95,6 +96,7 @@ class IoTT_Mux64Buttons
 		uint8_t numTouchButtons = 0;
 		uint16_t dblClickThreshold = 1000;
 		uint16_t holdThreshold = 500;
+		uint16_t sensorThreshold = 500;
 		uint16_t analogMinMsgDelay = 750; //minimum time between 2 analog messages. This limits the bandwidth usage
 		uint16_t analogRefreshInterval = 30000; //by default resend analog information every 30 seconds
 		uint16_t boardBaseAddress = 0;
@@ -132,6 +134,7 @@ class IoTT_Mux64Buttons
 	private:
 		void processDigitalButton(uint8_t btnNr, bool btnPressed);
 		void processDigitalHold(uint8_t btnNr);
+		void processSensorHold(uint8_t btnNr);
 		void sendButtonEvent(uint16_t btnAddr, buttonEvent btnEvent);
 		void sendAnalogData(uint8_t btnNr, uint16_t analogValue );
 		void writeI2CData(uint8_t devAddr, uint8_t * regData, uint8_t numBytes);
