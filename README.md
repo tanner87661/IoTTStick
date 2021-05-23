@@ -2,7 +2,7 @@
 This is the development repository for the IoTT Stick, port modules and hat devices with the source code for the latest release. 
 
 2021/05/22
-- Released new version 1.5.3 with some improvements in lbServer / lbClient
+- Released new version 1.5.4 with some improvements in lbServer / lbClient
 - adding bounce filter for sensor inputs, requiring a 500ms stable input before sending report message to LocoNet
 
 2021/05/06
