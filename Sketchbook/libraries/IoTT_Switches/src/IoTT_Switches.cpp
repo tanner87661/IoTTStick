@@ -978,14 +978,14 @@ void IoTT_SwitchList::loadRunTimeData(uint8_t ghNr)
     {
 		greenHatList[ghNr]->loadRunTimeData(&dataFile);
 		dataFile.close();
-		Serial.printf("Servo File %i loaded\n", ghNr);
+		Serial.printf("Servo File %i Runtime Data loaded\n", ghNr);
 	}
     else
     {
 		if (dataFile)
 			dataFile.close();
 		greenHatList[ghNr]->loadRunTimeData(NULL);
-		Serial.println("Unable to read Servo File " + String(ghNr));
+		Serial.println("Unable to read Servo File " + String(ghNr) + "Runtime Data");
 	}
 }
 

@@ -67,7 +67,7 @@ function loadDataFields(jsonData)
 //	console.log(configData[nodeCfg]);
 	writeInputField("serverport", jsonData.PortNr);
 	writeInputField("serverip", jsonData.ServerIP);
-	setVisibility([7,8].indexOf(configData[nodeCfg].InterfaceIndex) >= 0, document.getElementById("ServerTitle"));
-	setVisibility(configData[nodeCfg].InterfaceIndex == 9, document.getElementById("ServerIPDiv"));
-	setVisibility(configData[nodeCfg].InterfaceIndex == 9, document.getElementById("ClientTitle"));
+	setVisibility([8,9,10,11].indexOf(configData[nodeCfg].InterfaceIndex) >= 0, document.getElementById("ServerTitle"));
+	setVisibility(configData[nodeCfg].InterfaceIndex == 12, document.getElementById("ServerIPDiv"));
+	setVisibility(configData[nodeCfg].InterfaceIndex == 12, document.getElementById("ClientTitle"));
 }

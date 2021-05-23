@@ -31,6 +31,10 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
 #include <IoTT_lbServer.h>
 
+uint32_t nextPingPoint;
+uint16_t reconnectInterval = lbs_reconnectStartVal;  //if not connected, try to reconnect every 10 Secs initially, then increase if failed
+bool pingSent = false;
+
 static std::vector<tcpDef> clients; // a list to hold all clients
 
 IPAddress lbs_IP;
@@ -52,7 +56,7 @@ uint8_t lbsMode = 0; //0: LN;
 IoTT_LBServer::IoTT_LBServer()
 {
 //	setCallback(psc_callback);
-	nextPingPoint = millis() + pingDelay;
+	nextPingPoint = millis() + pingInterval + random(5000);
 }
 
 IoTT_LBServer::~IoTT_LBServer()
@@ -64,7 +68,7 @@ IoTT_LBServer::~IoTT_LBServer()
 IoTT_LBServer::IoTT_LBServer(Client& client)
 {
 //	setCallback(psc_callback);
-	nextPingPoint = millis() + pingDelay;
+	nextPingPoint = millis() + pingInterval + random(5000);
 }
 
 void IoTT_LBServer::initLBServer(bool serverMode)
@@ -75,11 +79,12 @@ void IoTT_LBServer::initLBServer(bool serverMode)
 		lntcpServer = new AsyncServer(WiFi.localIP(), lbs_Port);
 		lntcpServer->onClient(&handleNewClient, lntcpServer);
 	}
-	else
+	else //client mode
 	{
 		lntcpClient.thisClient = new AsyncClient();
 		lntcpClient.thisClient ->onData(handleDataFromClient, lntcpClient.thisClient );
 		lntcpClient.thisClient ->onConnect(onConnect, lntcpClient.thisClient );
+//		lntcpClient.thisClient ->onPoll(handlePoll, lntcpClient.thisClient );
 	}
 }
 
@@ -126,7 +131,7 @@ void IoTT_LBServer::handleDisconnect(void* arg, AsyncClient* client)
 			break;
 		}
 	}
-	Serial.printf("\nClient disconnected. %i clients remaining \n", clients.size());
+	Serial.printf("Client disconnected. %i clients remaining \n", clients.size());
 	yield();
 }
 
@@ -327,6 +332,8 @@ void IoTT_LBServer::processServerMessage(AsyncClient* client, char * data)
 				Serial.printf("Cancel Sending %i bytes because of error flags %i\n", recData.lnMsgSize, recData.errorFlags);
 			return;
 		} //everything below means we are in client mode because only a server is sending these messages
+		nextPingPoint = millis() + pingInterval + random(5000);
+		pingSent = false;
 		if (strcmp(str,"VERSION") == 0)
 		{
 			Serial.println(data);
@@ -346,23 +353,23 @@ void IoTT_LBServer::processServerMessage(AsyncClient* client, char * data)
 		}
 		if (strcmp(str,"SENT") == 0)
 		{
-			str = strtok_r(p, " ", &p);
-			Serial.println(str);
+//			str = strtok_r(p, " ", &p);
+//			Serial.println(str);
 			return;
 		}
 		if (strcmp(str,"TIMESTAMP") == 0)
 		{
-			Serial.println(data);
+//			Serial.println(data);
 			return;
 		}
 		if (strcmp(str,"BREAK") == 0)
 		{
-			Serial.println(data);
+//			Serial.println(data);
 			return;
 		}
 		if (strcmp(str,"ERROR") == 0)
 		{
-			Serial.println(data);
+//			Serial.println(data);
 			return;
 		}
 	}
@@ -370,7 +377,10 @@ void IoTT_LBServer::processServerMessage(AsyncClient* client, char * data)
 
 void IoTT_LBServer::onConnect(void *arg, AsyncClient *client)
 {
-  Serial.printf("\n LocoNet over TCP client is now connected to server %s on port %d \n", client->remoteIP().toString().c_str(), lbs_Port);
+	nextPingPoint = millis() + pingInterval + random(5000);
+	reconnectInterval = lbs_reconnectStartVal;  //if not connected, try to reconnect every 10 Secs initially, then increase if failed
+	pingSent = false;
+	Serial.printf("LocoNet over TCP client is now connected to server %s on port %d \n", client->remoteIP().toString().c_str(), lbs_Port);
 }
 
 bool IoTT_LBServer::sendClientMessage(AsyncClient * thisClient, String cmdMsg, lnReceiveBuffer thisMsg)
@@ -391,6 +401,7 @@ bool IoTT_LBServer::sendClientMessage(AsyncClient * thisClient, String cmdMsg, l
 				lnStr += '\n';
 				thisClient->add(lnStr.c_str(), strlen(lnStr.c_str()));
 				thisClient->send();
+				nextPingPoint = millis() + pingInterval + random(5000);
 				yield();
 				return true;
 			}
@@ -420,19 +431,16 @@ void IoTT_LBServer::processLoop()
 	}
 	else
 	{
-		if (!lntcpClient.thisClient ->connected())
+		if (!lntcpClient.thisClient->connected())
 		{
 			long now = millis();
-			if (now - lastReconnectAttempt > lbs_reconnectInterval) 
+			if (now - lastReconnectAttempt > reconnectInterval) 
 			{
+				reconnectInterval = min(reconnectInterval+10000, 60000); //increae interval
 				lastReconnectAttempt = now;
-				Serial.print("Connect to TCP server ");
+				Serial.print("Trying to connect to TCP server ");
 				Serial.println(lbs_IP);
-				Serial.print(" ... ");
-				if (lntcpClient.thisClient->connect(lbs_IP, lbs_Port))
-					Serial.println("Success");
-				else
-					Serial.println("Failed");
+				lntcpClient.thisClient->connect(lbs_IP, lbs_Port);
 			}
 		}
 		else
@@ -442,8 +450,32 @@ void IoTT_LBServer::processLoop()
 				if (sendClientMessage(lntcpClient.thisClient, "SEND", transmitQueue[hlpQuePtr]))
 					que_rdPos = hlpQuePtr; //if not successful, we keep trying
 			}
+			else // periodic pinging of server
+			{
+				if (millis() > nextPingPoint)
+				{
+					if (pingSent)
+						lntcpClient.thisClient->stop();
+					else
+					{
+						sendLNPing();
+						nextPingPoint += 2000; //2 secs ping timeout
+					}
+				}
+			}
 		
 	}
 	yield();
+}
+
+void IoTT_LBServer::sendLNPing()
+{
+//	Serial.println("Check server");
+	lnTransmitMsg txData;
+	txData.lnMsgSize = 2;
+	txData.lnData[0] = 0x81;
+	txData.lnData[1] = 0x7E;
+	lnWriteMsg(txData);
+	pingSent = true;
 }
 

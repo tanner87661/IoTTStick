@@ -188,25 +188,24 @@ void sendPowerCommand(uint8_t cmdType, uint8_t pwrStatus)
 
 void onSensorEvent(uint16_t sensorAddr, uint8_t sensorEvent, uint8_t eventMask)
 {
-  Serial.println(eventMask);
-  Serial.println(sensorEvent);
+//  Serial.println(eventMask);
+//  Serial.println(sensorEvent);
   if (sensorEvent == onbtndown)
-    sendBlockDetectorCommand(sensorAddr, (eventMask & 0x04) == 0 ? 1 : 0);
-  if (sensorEvent == onbtnup)
     sendBlockDetectorCommand(sensorAddr, (eventMask & 0x04) == 0 ? 0 : 1);
+  if (sensorEvent == onbtnup)
+    sendBlockDetectorCommand(sensorAddr, (eventMask & 0x04) == 0 ? 1 : 0);
 }
 
 void onSwitchReportEvent(uint16_t switchAddr, uint8_t switchEvent, uint8_t eventMask)
 {
-  if (switchEvent == onbtndown)
-    sendSwitchCommand(0xB1, switchAddr, switchEvent, (eventMask & 0x04) == 0 ? 0 : 1);
+  if (switchEvent == onbtndown) //this really is the status, not the event, so we need to change the logic
+    sendSwitchCommand(0xB1, switchAddr, switchEvent, (eventMask & 0x04)== 0 ? 1 : 0);
   if (switchEvent == onbtnup)
-    sendSwitchCommand(0xB1, switchAddr, switchEvent, (eventMask & 0x04) == 0 ? 1 : 0);
+    sendSwitchCommand(0xB1, switchAddr, switchEvent, (eventMask & 0x04)== 0 ? 0 : 1);
 }
 
 void onSwitchRequestEvent(uint16_t switchAddr, uint8_t switchEvent)
 {
-  
 }
 
 void onButtonEvent(uint16_t btnAddr, buttonEvent thisEvent)

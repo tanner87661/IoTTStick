@@ -295,16 +295,16 @@ void IoTT_Mux64Buttons::sendButtonEvent(uint16_t btnNr, buttonEvent btnEvent)
 			switch(thisTouchData->btnTypeDetected)
 			{
 				case digitalAct : onButtonEvent(thisTouchData->btnAddr, btnEvent); break;
-				case sensor : if (evtMask & 0x03) onSensorEvent(thisTouchData->btnAddr, btnEvent, thisTouchData->btnEventMask); break;
-				case swireport : if (evtMask & 0x03) onSwitchReportEvent(thisTouchData->btnAddr, btnEvent, thisTouchData->btnEventMask); break;
+//				case sensor : if (evtMask & 0x03) onSensorEvent(thisTouchData->btnAddr, btnEvent, thisTouchData->btnEventMask); break;
+//				case swireport : if (evtMask & 0x03) onSwitchReportEvent(thisTouchData->btnAddr, btnEvent, thisTouchData->btnEventMask); break;
+				case sensor : ;
+				case swireport: thisTouchData->nextHoldUpdateTime = millis() + sensorThreshold; break;
+
 			}
 	}
   if ((onBtnDiagnose) && (startUpCtr==0)) 
 	onBtnDiagnose(thisTouchData->btnTypeDetected, btnNr, thisTouchData->btnAddr, btnEvent);
 }
-
-
-
 
 void IoTT_Mux64Buttons::sendAnalogData(uint8_t btnNr, uint16_t analogValue)
 {
@@ -325,6 +325,21 @@ void IoTT_Mux64Buttons::sendAnalogData(uint8_t btnNr, uint16_t analogValue)
 			thisTouchData->nextPeriodicUpdateTime = millis() + analogRefreshInterval;
 		}
 	}
+}
+
+void IoTT_Mux64Buttons::processSensorHold(uint8_t btnNr) //call onButtonHold function every holdThreshold milliseconds
+{
+	IoTT_ButtonConfig * thisTouchData = &touchArray[btnNr];
+	if (thisTouchData->btnStatus != thisTouchData->btnSentStatus)
+		if (millis() > thisTouchData->nextHoldUpdateTime)
+		{
+			switch(thisTouchData->btnTypeDetected)
+			{
+				case sensor : if (thisTouchData->btnEventMask & 0x03) onSensorEvent(thisTouchData->btnAddr, thisTouchData->btnStatus, thisTouchData->btnEventMask); break;
+				case swireport : if (thisTouchData->btnEventMask & 0x03) onSwitchReportEvent(thisTouchData->btnAddr, thisTouchData->btnStatus, thisTouchData->btnEventMask); break;
+			}
+			thisTouchData->btnSentStatus = thisTouchData->btnStatus;
+		}
 }
 
 void IoTT_Mux64Buttons::processDigitalHold(uint8_t btnNr) //call onButtonHold function every holdThreshold milliseconds
@@ -348,11 +363,11 @@ void IoTT_Mux64Buttons::processDigitalButton(uint8_t btnNr, bool btnPressed)
 	thisTouchData->lastStateChgTime[thisTouchData->lastEvtPtr] = millis();
 	thisTouchData->btnStatus = btnPressed;
 //	Serial.printf("Button status change %i\n", thisTouchData->btnTypeDetected);
+	thisTouchData->nextHoldUpdateTime = millis() + holdThreshold;
 	if (btnPressed)
 	{
 //		Serial.println("Button down");
 		sendButtonEvent(btnNr, onbtndown); 
-		thisTouchData->nextHoldUpdateTime = millis() + holdThreshold;
 	}
 	else
 	{
@@ -373,8 +388,13 @@ void IoTT_Mux64Buttons::processDigitalButton(uint8_t btnNr, bool btnPressed)
     }
   }
   else
-    if ((btnPressed) && (thisTouchData->btnTypeDetected == digitalAct))
-		processDigitalHold(btnNr);
+  {
+	  switch (thisTouchData->btnTypeDetected)
+	  {
+		  case digitalAct: if (btnPressed) processDigitalHold(btnNr); break;
+		  default: processSensorHold(btnNr); break;
+	  } 
+  }
 } 
 
 void IoTT_Mux64Buttons::writeI2CData(uint8_t devAddr, uint8_t * regData, uint8_t numBytes)
