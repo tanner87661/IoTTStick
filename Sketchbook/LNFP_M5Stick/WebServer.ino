@@ -33,6 +33,7 @@ void startWebServer()
   {
     deleteAllFiles("led", configDir, configExt, true); //delete the last one only to save as much as possible
     request->send(200, "text/plain", "Last set of LED Definitions deleted. Please reload after reboot");
+    prepareShutDown();
     delay(1000);
     ESP.restart();
   });
@@ -40,6 +41,7 @@ void startWebServer()
   {
     deleteAllFiles("btnevt", configDir, configExt, true); //delete the last one only to save as much as possible
     request->send(200, "text/plain", "Last set of event definitions deleted. Please reload after reboot");
+    prepareShutDown();
     delay(1000);
     ESP.restart();
   });
@@ -460,6 +462,7 @@ void processWsMessage(char * newMsg, int msgLen, AsyncWebSocketClient * client)
           Serial.println("Restart ESP");
           saveToFile(bufferFileName);
           sendCTS();
+          prepareShutDown();
           delay(500);
           ESP.restart(); //configuration update requires restart to be sure dynamic allocation of objects is not messed up
         }
@@ -469,6 +472,7 @@ void processWsMessage(char * newMsg, int msgLen, AsyncWebSocketClient * client)
             Serial.println("Reboot ESP");
             saveToFile(bufferFileName);
             sendCTS();
+            prepareShutDown();
             delay(500);
             ESP.restart(); //configuration update requires restart to be sure dynamic allocation of objects is not messed up
           }

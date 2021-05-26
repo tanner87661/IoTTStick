@@ -893,10 +893,10 @@ void IoTT_GreenHat::loadRunTimeData(File * dataFile)
 		if (dataFile)
 		{
 			dataFile->read(buf,2);
-			thisSwiMod->currentPos = (buf[0]<<8) + buf[1]+1; //incr by 1 to make sure it is processed during startup
+			thisSwiMod->currentPos = (buf[0]<<8) + buf[1]; //incr by 1 to make sure it is processed during startup
 			dataFile->read(buf,2);
-//			thisSwiMod->extSwiPos = (buf[0]<<8) + buf[1];
-//			Serial.printf("Curr Pos %i Swi Pos %i\n", thisSwiMod->currentPos, thisSwiMod->extSwiPos);
+			thisSwiMod->extSwiPos = (buf[0]<<8) + buf[1];
+			Serial.printf("Curr Pos %i Swi Pos %i\n", thisSwiMod->currentPos, thisSwiMod->extSwiPos);
 		}
 		else
 		{
