@@ -40,8 +40,8 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 typedef struct
 {
 	AsyncClient * thisClient;
-	char rxBuffer[200];
-	uint8_t rxPtr = 0;
+//	char rxBuffer[200];
+//	uint8_t rxPtr = 0;
 } tcpDef;
 
 
@@ -69,7 +69,8 @@ private:
 	static void handleError(void* arg, AsyncClient* client, int8_t error);
 	static void handleDataFromServer(void* arg, AsyncClient* client, void *data, size_t len);
 	static void handleDataFromClient(void* arg, AsyncClient* client, void *data, size_t len);
-	static void handleData(void* arg, tcpDef * clientData);
+//	static void handleData(void* arg, tcpDef * clientData);
+	static void handleData(void* arg, AsyncClient* client, char *data, size_t len);
 	static void handleDisconnect(void* arg, AsyncClient* client);
 	static void handleTimeOut(void* arg, AsyncClient* client, uint32_t time);
 //    static void handlePoll(void *arg, AsyncClient *client);        //every 125ms when connected

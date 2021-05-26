@@ -221,15 +221,16 @@ void IoTT_LBServer::handleDataFromServer(void* arg, AsyncClient* client, void *d
 	}
 	if (currClient)
 	{
-		memcpy(&currClient->rxBuffer[currClient->rxPtr], data, len);
+//		memcpy(&currClient->rxBuffer[currClient->rxPtr], data, len);
 //		Serial.write((uint8_t *)data, len);
-		currClient->rxPtr += len;
-		if ((currClient->rxBuffer[currClient->rxPtr-1] == '\n') || (currClient->rxBuffer[currClient->rxPtr-1] == '\r'))
+//		currClient->rxPtr += len;
+//		if ((currClient->rxBuffer[currClient->rxPtr-1] == '\n') || (currClient->rxBuffer[currClient->rxPtr-1] == '\r'))
+		if ((((char*)data)[len-1] == '\n') || (((char*)data)[len-1] == '\r'))
 		{
 			//if command is complete, call handle data
-			currClient->rxBuffer[currClient->rxPtr] = '\0';
-			handleData(arg, currClient);
-			currClient->rxPtr = 0;
+//			currClient->rxBuffer[currClient->rxPtr] = '\0';
+			handleData(arg, currClient->thisClient, (char*) data, len);
+//			currClient->rxPtr = 0;
 		}
 	}
 }
@@ -242,14 +243,15 @@ void IoTT_LBServer::handleDataFromClient(void* arg, AsyncClient* client, void *d
 	if (lntcpClient.thisClient == client) 
 	{
 		//move data to lntcpClient inbuffer
-		memcpy(&lntcpClient.rxBuffer[lntcpClient.rxPtr], data, len);
-		lntcpClient.rxPtr += len;
-		if ((lntcpClient.rxBuffer[lntcpClient.rxPtr-1] == '\n') || (lntcpClient.rxBuffer[lntcpClient.rxPtr-1] == '\r'))
+//		memcpy(&lntcpClient.rxBuffer[lntcpClient.rxPtr], data, len);
+//		lntcpClient.rxPtr += len;
+//		if ((lntcpClient.rxBuffer[lntcpClient.rxPtr-1] == '\n') || (lntcpClient.rxBuffer[lntcpClient.rxPtr-1] == '\r'))
+		if ((((char*)data)[len-1] == '\n') || (((char*)data)[len-1] == '\r'))
 		{
 			//if command is complete, call handle data
-			lntcpClient.rxBuffer[lntcpClient.rxPtr] = '\0';
-			handleData(arg, &lntcpClient);
-			lntcpClient.rxPtr = 0;
+//			lntcpClient.rxBuffer[lntcpClient.rxPtr] = '\0';
+			handleData(arg, lntcpClient.thisClient, (char*) data, len);
+//			lntcpClient.rxPtr = 0;
 		}
 		else
 			Serial.println("No CRLF in data");
@@ -259,21 +261,21 @@ void IoTT_LBServer::handleDataFromClient(void* arg, AsyncClient* client, void *d
 }
 
 //this is called when data is received, either in server or client mode
-void IoTT_LBServer::handleData(void* arg, tcpDef * clientData) 
+void IoTT_LBServer::handleData(void* arg, AsyncClient* client, char *data, size_t len)
 {
 //	Serial.printf("%i bytes of data received from %s \n", clientData->rxPtr, clientData->thisClient->remoteIP().toString().c_str());
 //	Serial.write((uint8_t *)data, len);
 	uint8_t msgCtr = 0;
 
-	char buf[clientData->rxPtr];
-	char *p = &clientData->rxBuffer[0];
+	char buf[len];
+	char *p = data;
     char *subStr;
     if (strchr(p, '\n') != NULL)
 		while ((subStr = strtok_r(p, "\n", &p)) != NULL) // delimiter is the new line
 		{
 			while((*subStr=='\n') || (*subStr=='\r'))
 				subStr++;
-			processServerMessage(clientData->thisClient, subStr);
+			processServerMessage(client, subStr);
 		}
 	else
 		if (strchr(p, '\r') != NULL)
@@ -281,7 +283,7 @@ void IoTT_LBServer::handleData(void* arg, tcpDef * clientData)
 			{
 				while((*subStr=='\n') || (*subStr=='\r'))
 					subStr++;
-				processServerMessage(clientData->thisClient, subStr);
+				processServerMessage(client, subStr);
 			}
 		else
 			Serial.println("No delimiter");
@@ -320,6 +322,8 @@ void IoTT_LBServer::processServerMessage(AsyncClient* client, char * data)
 			tcpToLN(p, &recData);
 			if (recData.errorFlags == 0)
 			{
+//				Serial.write(data);
+//				Serial.println();
 //				Serial.printf("Sending %i bytes to LocoNet\n", recData.lnMsgSize);
 				recData.reqID = random(0xC000);
 				recData.reqID |= 0xC000;
@@ -446,9 +450,14 @@ void IoTT_LBServer::processLoop()
 		else
 			if (que_wrPos != que_rdPos)
 			{
-				int hlpQuePtr = (que_rdPos + 1) % queBufferSize;
-				if (sendClientMessage(lntcpClient.thisClient, "SEND", transmitQueue[hlpQuePtr]))
-					que_rdPos = hlpQuePtr; //if not successful, we keep trying
+				while (que_wrPos != que_rdPos)
+				{
+					int hlpQuePtr = (que_rdPos + 1) % queBufferSize;
+					if (sendClientMessage(lntcpClient.thisClient, "SEND", transmitQueue[hlpQuePtr]))
+						que_rdPos = hlpQuePtr; 
+					else
+						return; //if not successful, we try next time
+				}
 			}
 			else // periodic pinging of server
 			{
