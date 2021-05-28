@@ -41,12 +41,12 @@ class IoTT_BtnHandler
 		uint16_t getCondAddr(uint8_t addrIndex = 0);
 		int16_t getCondAddrIndex(uint16_t ofAddr); //index if found, -1 if not there
 		IoTT_LocoNetButtons * parentObj = NULL;
+		uint8_t numCmds = 0;
 	private:
 //		uint8_t eventType  = noevent;
 		
 		uint16_t * btnCondAddr = NULL;
 		uint16_t btnCondAddrLen = 0;
-		uint8_t numCmds = 0;
 //		uint8_t currEvent = 0;
 		IoTT_BtnHandlerCmd ** cmdList = NULL;
 };

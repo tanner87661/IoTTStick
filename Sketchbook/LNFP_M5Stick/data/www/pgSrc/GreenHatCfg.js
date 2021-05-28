@@ -26,7 +26,7 @@ var sourceOptionArray = ["switch","dynsignal","dccsignal", "button","analogvalue
 var newButtonTemplate = {"PortNr": 0, "ButtonType": "digital", "EventMask": 3, "ButtonAddr": 0};
 var newEventTemplate = {"Used": 1, "AspVal": 65535, "PosPt": 270, "MoveCfg": 0};
 var newEventHdlrTemplate = {"ButtonNr":[0],"CondData":[],"CtrlCmd": []};
-var newEventCmdTemplate = {"BtnCondAddr": [], "CmdList": [{"CtrlTarget": "switch", "CtrlAddr": 0, "CtrlType":"toggle", "CtrlValue":"on", "ExecDelay":250}]};
+var newEventCmdTemplate = {"BtnCondAddr": [], "CmdList": [{"CtrlTarget": "none", "CtrlAddr": 0, "CtrlType":"toggle", "CtrlValue":"on", "ExecDelay":250}]};
 var newColTemplate = {"Name": "New Color","RGBVal": [255, 255, 255]};
 var newLEDTemplate = {"LEDNums":[],"CtrlSource": "","CtrlAddr": [],"DisplayType":"discrete","LEDCmd": []};
 var newLEDCmdTemplate = {"Val": 0,"ColOn": "", "ColOff": "", "Mode": "static", "Rate":0, "Transition":"soft"};
@@ -1416,9 +1416,10 @@ function setSwitchData(sender)
 						btnCfgData[workCfg].Buttons[dataRow].EventMask = 0x1F;
 					else
 					{
+						cmdSelBox = document.getElementById(((thisIndex & 0x0100) > 0 ? "cmdlistbox1_" : "cmdlistbox0_") + thisRow.toString() + "_3");
+						if (cmdSelBox.selectedIndex > 1)
+							btnCfgData[workCfg].Buttons[dataRow].currDisp = 1;
 						btnCfgData[workCfg].Buttons[dataRow].EventMask = 0x03;
-						if (sender.selectgedIndex > 1)
-							sender.selectedIndex = 1;
 					}
 					evtHdlrCfgData[workCfg].ButtonHandler[dataRow] = adjustHdlrEventList(evtHdlrCfgData[workCfg].ButtonHandler[dataRow], btnCfgData[workCfg].Buttons[dataRow].EventMask == 0x03 ? 2 : 5);
 					setButtonDisplay(btnCfgData[workCfg].Buttons[dataRow], evtHdlrCfgData[workCfg].ButtonHandler, thisRow, ((thisIndex & 0x100) >> 8));

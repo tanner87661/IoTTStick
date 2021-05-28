@@ -2,7 +2,7 @@
 #define IoTT_ButtonTypeDef_h
 
 //used by greenhat, eventhandler, ledchain
-enum sourceType : uint8_t {evt_button=0, evt_analogvalue=1, evt_trackswitch=2, evt_signalmastdcc=3, evt_signalmastdyn=4, evt_blockdetector=5, evt_transponder=6, evt_powerstat=7, evt_alwayson=8, evt_nosource=255};
+enum sourceType : uint8_t {evt_button=0, evt_analogvalue=1, evt_trackswitch=2, evt_signalmastdcc=3, evt_signalmastdyn=4, evt_blockdetector=5, evt_transponder=6, evt_powerstat=7, evt_alwayson=8, evt_analogscaler=9, evt_randomgen=10, evt_nosource=255};
 
 //enum buttonType : uint8_t {btnoff=0, digitalAct=2, analog=9};
 //enum eventSource : uint8_t {buttonevt=0, analogevt=1, switchevt=2, signalevt=3, blockdetevt=4, transponderevt=5, nosource=255};

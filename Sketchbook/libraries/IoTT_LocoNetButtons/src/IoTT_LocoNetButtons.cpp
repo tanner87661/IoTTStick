@@ -349,18 +349,23 @@ void IoTT_LocoNetButtons::processAnalogEvent(uint16_t inputValue)
 {
 //	Serial.printf("Process Analog Event for Value %i \n", inputValue);
 	uint8_t eventNr = 0xFF;
-	switch (inputValue)
+	if ((eventTypeList[1]->numCmds == 0) && (eventTypeList[2]->numCmds == 0))
 	{
-		case 0: eventNr = 0; break;
-		case 0x0FFF: eventNr = 3; break;//4095
-		default:
-			if (condDataListLen > 0)
-				if (inputValue < condDataList[0]) 
-					eventNr = 1;
-				else
-					eventNr = 2;
-			break;
+		Serial.printf("Continuous %i\n", inputValue);
 	}
+	else
+		switch (inputValue)
+		{
+			case 0: eventNr = 0; break;
+			case 0x0FFF: eventNr = 3; break;//4095
+			default:
+				if (condDataListLen > 0)
+					if (inputValue < condDataList[0]) 
+						eventNr = 1;
+					else
+						eventNr = 2;
+				break;
+		}
 	if (eventNr < eventTypeListLen)
 	{
 		IoTT_BtnHandler * thisEvent = eventTypeList[eventNr];
