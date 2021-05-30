@@ -21,7 +21,7 @@ var buttonValDispType = ["Btn Down", "Btn Up", "Btn Click", "Btn Hold", "Btn Dbl
 var powerValDispType = ["Off", "On", "Idle"];
 var transponderValDispType = ["Enter", "Leave"];
 
-jsonFileVersion = "1.3.0";
+jsonFileVersion = "1.3.2";
 
 function saveConfigFileSettings()
 {
