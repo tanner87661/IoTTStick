@@ -2,13 +2,18 @@ var mainScrollBox;
 var buttonTable;
 
 var sourceOptionArray = ["switch","dynsignal","dccsignal", "button","analogvalue", "blockdetector", "transponder", "power"];
+var enableOptionArray = ["on", "off", "button", "switch", "block"];
 
 var newEventTemplate = {"BtnCondAddr": [], "CmdList":[]};
-var newButtonTemplate = {"EventSource":"button", "CondData": [], "ButtonNr": 0,	"CtrlCmd": []};
+var newButtonTemplate = {"EnableSource": "on", "EnableAddr": 0, "EnableState": 0, "EventSource":"button", "CondData": [], "ButtonNr": 0,	"CtrlCmd": []};
 var newCmdTemplate = {"CtrlTarget": "switch", "CtrlAddr": 0, "CtrlType":"toggle", "CtrlValue":"on", "ExecDelay":250};
+//var newEnableTemplate = {"EnableSource": "alwayson", "EnableAddr": 0, "EnableState": 0};
 
 var cmdOptions = ["switch", "signal", "button", "analog", "block", "power"];
 var swiCmdOptions = ["thrown","closed","toggle"];
+var swiStatOptions = ["thrown","closed"];
+var btnStatOptions = ["Btn Down","Btn Up"];
+var blockStatOptions = ["free","occupied"];
 var swiPwrOptions = ["on", "off"];
 var trackPwrOptions = ["on", "off", "idle", "toggle"];
 var buttonOptions = ["btndown", "btnup", "btnclick", "btnhold", "btndblclick"];
@@ -106,6 +111,25 @@ function setAddr2Disp(sourceMode, eventMode, thisRow, thisCol)
 	}
 	else
 		setVisibility(false, addrBox);
+}
+
+function setEnableDisp(thisRow)
+{
+	var dispDiv = document.getElementById("enablediv_" + thisRow.toString() + "_1");
+	var eventList = document.getElementById("enabletypebox_" + thisRow.toString() + "_1");
+	var addrBox = document.getElementById("enableaddressbox_" + thisRow.toString() + "_1");
+	var statusList = document.getElementById("enablecmdlistbox_" + thisRow.toString() + "_1");
+	var currOption = enableOptionArray.indexOf(configData[workCfg].ButtonHandler[thisRow].EnableSource);
+	eventList.selectedIndex = currOption;
+	switch (currOption)
+	{
+		case 2: createOptions(statusList, btnStatOptions); break; //button
+		case 3: createOptions(statusList, swiStatOptions); break; //switch
+		case 4: createOptions(statusList, blockStatOptions); break; //block
+	}
+	addrBox.value = configData[workCfg].ButtonHandler[thisRow].EnableAddr;
+	statusList.selectedIndex = configData[workCfg].ButtonHandler[thisRow].EnableState;
+	setVisibility(currOption > 1, dispDiv);
 }
 
 function adjustEventList(ofButton, newLength)
@@ -305,6 +329,17 @@ function setButtonData(sender)
 						loadTableData(buttonTable, configData[workCfg].ButtonHandler);
 					}
 					break;
+				case 21: // Enable Source
+					configData[workCfg].ButtonHandler[thisRow].EnableSource = enableOptionArray[sender.selectedIndex];
+					setEnableDisp(thisRow);
+					break;
+				case 23: // Enable Address
+					configData[workCfg].ButtonHandler[thisRow].EnableAddr = verifyNumber(sender.value, configData[2].ButtonHandler[thisRow].EnableAddr);
+					break;
+				case 24: // Enable Status
+					configData[workCfg].ButtonHandler[thisRow].EnableState = verifyNumber(sender.value, configData[2].ButtonHandler[thisRow].EnableState);
+					break;
+					
 			}
 			if (thisIndex < 5)
 				loadTableData(buttonTable, configData[workCfg].ButtonHandler);
@@ -546,6 +581,7 @@ function loadTableData(thisTable, thisData)
 		adjustSourceSelector(configData[workCfg].ButtonHandler, i, 1);
 		evtOptBox.selectedIndex = thisData[i].CurrDisp;
 		buildCmdLines(i, thisData[i]);
+		setEnableDisp(i);
 	}
 }
 

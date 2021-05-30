@@ -69,6 +69,7 @@ class IoTT_LocoNetButtons
 		int8_t hasBtnAddr(uint16_t thisAddr);
 		sourceType getEventSource();
 		sourceType hasEventSource(sourceType thisSource);
+		bool getEnableStatus();
 		int16_t getCondDataIndex(uint16_t ofData);
 		uint8_t getLastRecEvent();
 		uint8_t getLastComplEvent();
@@ -77,6 +78,9 @@ class IoTT_LocoNetButtons
 	private:
 		uint8_t lastRecButtonEvent; //last event received
 		uint8_t lastComplButtonEvent; //last event that was executed. If successful, those two are identical
+		enableType enableInput = ent_alwayson;
+		uint16_t enableAddr = 0;
+		uint8_t enableStatus = 0;
 		sourceType eventInput = evt_nosource;
 		uint16_t * btnAddrList = NULL;
 		uint8_t btnAddrListLen = 0;

@@ -13,6 +13,16 @@ sourceType getSourceTypeByName(String transName)
   return evt_trackswitch;
 };
 
+enableType getEnableTypeByName(String enableName)
+{
+  if (enableName == "on") return ent_alwayson;
+  if (enableName == "off") return ent_alwaysoff;
+  if (enableName == "switch") return ent_switch;
+  if (enableName == "button") return ent_button;
+  if (enableName == "block") return ent_block;
+  return ent_alwayson;
+};
+
 outputType getActionTypeByName(String actionName)
 { //blockdet, dccswitch, dccswitchack, dccswitchreport, dccsignal, svbutton, analoginp, powerstat
   if (actionName == "block") return blockdet; 
@@ -278,6 +288,14 @@ void IoTT_LocoNetButtons::loadButtonCfgJSON(JsonObject thisObj)
 	}
 //	if (thisObj.containsKey("CurrDisp"))
 //		currEvent = thisObj["CurrDisp"];
+
+	if (thisObj.containsKey("EnableSource"))
+		enableInput = getEnableTypeByName(thisObj["EnableSource"]);
+	if (thisObj.containsKey("EnableAddr"))
+		enableAddr = thisObj["EnableAddr"];
+	if (thisObj.containsKey("EnableState"))
+		enableStatus = thisObj["EnableState"];
+
 	if (thisObj.containsKey("EventSource"))
 		eventInput = getSourceTypeByName(thisObj["EventSource"]);
 	else	
@@ -343,6 +361,20 @@ uint8_t IoTT_LocoNetButtons::getLastRecEvent()
 uint8_t IoTT_LocoNetButtons::getLastComplEvent()
 {
 	return lastComplButtonEvent;
+}
+
+bool IoTT_LocoNetButtons::getEnableStatus()
+{
+//	Serial.printf("Check enable %i\n", enableInput);
+	switch (enableInput)
+	{
+		case ent_alwayson : return true; break;
+		case ent_alwaysoff : return false; break;
+		case ent_button: return getButtonValue(enableAddr) == enableStatus; break;
+		case ent_switch: return (((getSwiPosition(enableAddr) >> 5) & 0x01) == enableStatus); break;
+		case ent_block: return ((getBDStatus(enableAddr) & 0x01) == enableStatus); break;
+		default: return true; break;
+	}
 }
 
 void IoTT_LocoNetButtons::processAnalogEvent(uint16_t inputValue)
@@ -584,18 +616,21 @@ void IoTT_LocoNetButtonList::processBtnEvent(sourceType inputEvent, uint16_t btn
 		IoTT_LocoNetButtons * thisButton = btnList[lastButton];
 //		Serial.printf("Process Index %i\n", lastButton);
 		if (thisButton)
-			switch (thisButton->getEventSource())
-			{
-				case evt_button: thisButton->processBtnEvent(eventValue); break;
-				case evt_analogvalue: thisButton->processAnalogEvent(eventValue); break;
-				case evt_trackswitch: thisButton->processSimpleEvent(eventValue); break;
-				case evt_signalmastdyn : thisButton->processDynEvent(eventValue); break;
-				case evt_signalmastdcc: thisButton->processSignalEvent(eventValue); break;
-				case evt_blockdetector: thisButton->processBlockDetEvent(eventValue); break;
-				case evt_transponder: thisButton->processTransponderEvent(eventValue); break;
-				case evt_powerstat: thisButton->processPowerEvent(eventValue); break;
-				default: break;
-			}
+		{
+			if (thisButton->getEnableStatus())
+				switch (thisButton->getEventSource())
+				{
+					case evt_button: thisButton->processBtnEvent(eventValue); break;
+					case evt_analogvalue: thisButton->processAnalogEvent(eventValue); break;
+					case evt_trackswitch: thisButton->processSimpleEvent(eventValue); break;
+					case evt_signalmastdyn : thisButton->processDynEvent(eventValue); break;
+					case evt_signalmastdcc: thisButton->processSignalEvent(eventValue); break;
+					case evt_blockdetector: thisButton->processBlockDetEvent(eventValue); break;
+					case evt_transponder: thisButton->processTransponderEvent(eventValue); break;
+					case evt_powerstat: thisButton->processPowerEvent(eventValue); break;
+					default: break;
+				}
+		}
 		lastButton = getButtonIndexByAddress(inputEvent, btnAddr, lastButton + 1);
 	}
 }
