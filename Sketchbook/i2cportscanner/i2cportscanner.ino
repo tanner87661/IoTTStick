@@ -6,19 +6,21 @@
 */
 
 #include <Wire.h>
-#include <M5StickC.h>
+//#include <M5StickC.h>
 
 void setup() {
-  M5.begin();
+//  M5.begin();
   Serial.begin(115200);
   while (!Serial);             // Leonardo: wait for serial monitor
   Serial.println("\n\nI2C Scanner to scan for devices on each port pair D0 to D7\n");
   scanPorts();
 }
 
-uint8_t portArray[] = {0, 26}; //scl 0 SDA 26
+uint8_t portArray[] = {22, 21}; //scl 0 SDA 26
+//uint8_t portArray[] = {0, 26}; //scl 0 SDA 26
 //String portMap[] = {"D0", "D1", "D2", "D3", "D4", "D5", "D6", "D7"}; //for Wemos
-String portMap[] = {"GPIO 0", "GPIO 26"};
+String portMap[] = {"GPIO 22", "GPIO 21"}; //LC2021
+//String portMap[] = {"GPIO 0", "GPIO 26"}; //IoTT Stick
 
 void scanPorts() { 
   for (uint8_t i = 1; i < sizeof(portArray); i++) {
