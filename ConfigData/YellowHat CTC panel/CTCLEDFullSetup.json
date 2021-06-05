@@ -1,0 +1,1345 @@
+[
+  {
+    "Cmd": "CfgFiles",
+    "FileMode": 1,
+    "FileNameType": "led",
+    "FileName": "led.cfg",
+    "Type": "pgLEDCfg",
+    "Data": {
+      "LEDDefs": [
+        {
+          "LEDNums": [
+            93,
+            95,
+            97
+          ],
+          "CtrlSource": "block",
+          "CtrlAddr": [
+            0,
+            103
+          ],
+          "DisplayType": "discrete",
+          "LEDCmd": [
+            {
+              "Val": 0,
+              "ColOn": "Dark",
+              "Mode": [
+                "static"
+              ],
+              "Rate": [
+                0
+              ],
+              "Transition": [
+                "direct"
+              ],
+              "ColOff": ""
+            },
+            {
+              "Val": 1,
+              "ColOn": "Yellow",
+              "Mode": [
+                "static"
+              ],
+              "Rate": [
+                0
+              ],
+              "Transition": [
+                "direct"
+              ],
+              "ColOff": ""
+            },
+            {
+              "Val": 2,
+              "ColOn": "Green",
+              "Mode": [
+                "static"
+              ],
+              "Rate": [
+                0
+              ],
+              "Transition": [
+                "soft"
+              ]
+            },
+            {
+              "Val": 3,
+              "ColOn": "Red",
+              "Mode": [
+                "static"
+              ],
+              "Rate": [
+                0
+              ],
+              "Transition": [
+                "soft"
+              ]
+            }
+          ],
+          "MultiColor": false
+        },
+        {
+          "LEDNums": [
+            100
+          ],
+          "CtrlSource": "block",
+          "CtrlAddr": [
+            4,
+            105
+          ],
+          "DisplayType": "discrete",
+          "LEDCmd": [
+            {
+              "Val": 0,
+              "ColOn": "Dark",
+              "Mode": [
+                "static"
+              ],
+              "Rate": [
+                0
+              ],
+              "Transition": [
+                "direct"
+              ],
+              "ColOff": ""
+            },
+            {
+              "Val": 1,
+              "ColOn": "Yellow",
+              "Mode": [
+                "static"
+              ],
+              "Rate": [
+                0
+              ],
+              "Transition": [
+                "direct"
+              ],
+              "ColOff": ""
+            },
+            {
+              "Val": 2,
+              "ColOn": "Green",
+              "Mode": [
+                "static"
+              ],
+              "Rate": [
+                0
+              ],
+              "Transition": [
+                "soft"
+              ]
+            },
+            {
+              "Val": 3,
+              "ColOn": "Red",
+              "Mode": [
+                "static"
+              ],
+              "Rate": [
+                0
+              ],
+              "Transition": [
+                "soft"
+              ]
+            }
+          ],
+          "MultiColor": false
+        },
+        {
+          "LEDNums": [
+            101
+          ],
+          "CtrlSource": "block",
+          "CtrlAddr": [
+            5,
+            105
+          ],
+          "DisplayType": "discrete",
+          "LEDCmd": [
+            {
+              "Val": 0,
+              "ColOn": "Dark",
+              "Mode": [
+                "static"
+              ],
+              "Rate": [
+                0
+              ],
+              "Transition": [
+                "direct"
+              ],
+              "ColOff": ""
+            },
+            {
+              "Val": 1,
+              "ColOn": "Yellow",
+              "Mode": [
+                "static"
+              ],
+              "Rate": [
+                0
+              ],
+              "Transition": [
+                "direct"
+              ],
+              "ColOff": ""
+            },
+            {
+              "Val": 2,
+              "ColOn": "Green",
+              "Mode": [
+                "static"
+              ],
+              "Rate": [
+                0
+              ],
+              "Transition": [
+                "soft"
+              ]
+            },
+            {
+              "Val": 3,
+              "ColOn": "Red",
+              "Mode": [
+                "static"
+              ],
+              "Rate": [
+                0
+              ],
+              "Transition": [
+                "soft"
+              ]
+            }
+          ],
+          "MultiColor": false
+        },
+        {
+          "LEDNums": [
+            102
+          ],
+          "CtrlSource": "block",
+          "CtrlAddr": [
+            6,
+            105
+          ],
+          "DisplayType": "discrete",
+          "LEDCmd": [
+            {
+              "Val": 0,
+              "ColOn": "Dark",
+              "Mode": [
+                "static"
+              ],
+              "Rate": [
+                0
+              ],
+              "Transition": [
+                "direct"
+              ],
+              "ColOff": ""
+            },
+            {
+              "Val": 1,
+              "ColOn": "Yellow",
+              "Mode": [
+                "static"
+              ],
+              "Rate": [
+                0
+              ],
+              "Transition": [
+                "direct"
+              ],
+              "ColOff": ""
+            },
+            {
+              "Val": 2,
+              "ColOn": "Green",
+              "Mode": [
+                "static"
+              ],
+              "Rate": [
+                0
+              ],
+              "Transition": [
+                "soft"
+              ]
+            },
+            {
+              "Val": 3,
+              "ColOn": "Red",
+              "Mode": [
+                "static"
+              ],
+              "Rate": [
+                0
+              ],
+              "Transition": [
+                "soft"
+              ]
+            }
+          ],
+          "MultiColor": false
+        },
+        {
+          "LEDNums": [
+            55,
+            57
+          ],
+          "CtrlSource": "block",
+          "CtrlAddr": [
+            8,
+            107
+          ],
+          "DisplayType": "discrete",
+          "LEDCmd": [
+            {
+              "Val": 0,
+              "ColOn": "Dark",
+              "Mode": [
+                "static"
+              ],
+              "Rate": [
+                0
+              ],
+              "Transition": [
+                "direct"
+              ],
+              "ColOff": ""
+            },
+            {
+              "Val": 1,
+              "ColOn": "Yellow",
+              "Mode": [
+                "static"
+              ],
+              "Rate": [
+                0
+              ],
+              "Transition": [
+                "direct"
+              ],
+              "ColOff": ""
+            },
+            {
+              "Val": 2,
+              "ColOn": "Green",
+              "Mode": [
+                "static"
+              ],
+              "Rate": [
+                0
+              ],
+              "Transition": [
+                "soft"
+              ]
+            },
+            {
+              "Val": 3,
+              "ColOn": "Red",
+              "Mode": [
+                "static"
+              ],
+              "Rate": [
+                0
+              ],
+              "Transition": [
+                "soft"
+              ]
+            }
+          ],
+          "MultiColor": false
+        },
+        {
+          "LEDNums": [
+            105,
+            107
+          ],
+          "CtrlSource": "block",
+          "CtrlAddr": [
+            12,
+            106
+          ],
+          "DisplayType": "discrete",
+          "LEDCmd": [
+            {
+              "Val": 0,
+              "ColOn": "Dark",
+              "Mode": [
+                "static"
+              ],
+              "Rate": [
+                0
+              ],
+              "Transition": [
+                "direct"
+              ],
+              "ColOff": ""
+            },
+            {
+              "Val": 1,
+              "ColOn": "Yellow",
+              "Mode": [
+                "static"
+              ],
+              "Rate": [
+                0
+              ],
+              "Transition": [
+                "direct"
+              ],
+              "ColOff": ""
+            },
+            {
+              "Val": 2,
+              "ColOn": "Green",
+              "Mode": [
+                "static"
+              ],
+              "Rate": [
+                0
+              ],
+              "Transition": [
+                "soft"
+              ]
+            },
+            {
+              "Val": 3,
+              "ColOn": "Red",
+              "Mode": [
+                "static"
+              ],
+              "Rate": [
+                0
+              ],
+              "Transition": [
+                "soft"
+              ]
+            }
+          ],
+          "MultiColor": false
+        },
+        {
+          "LEDNums": [
+            83,
+            85
+          ],
+          "CtrlSource": "block",
+          "CtrlAddr": [
+            48,
+            100
+          ],
+          "DisplayType": "discrete",
+          "LEDCmd": [
+            {
+              "Val": 0,
+              "ColOn": "Dark",
+              "Mode": [
+                "static"
+              ],
+              "Rate": [
+                0
+              ],
+              "Transition": [
+                "direct"
+              ],
+              "ColOff": ""
+            },
+            {
+              "Val": 1,
+              "ColOn": "Yellow",
+              "Mode": [
+                "static"
+              ],
+              "Rate": [
+                0
+              ],
+              "Transition": [
+                "direct"
+              ],
+              "ColOff": ""
+            },
+            {
+              "Val": 2,
+              "ColOn": "Green",
+              "Mode": [
+                "static"
+              ],
+              "Rate": [
+                0
+              ],
+              "Transition": [
+                "soft"
+              ]
+            },
+            {
+              "Val": 3,
+              "ColOn": "Red",
+              "Mode": [
+                "static"
+              ],
+              "Rate": [
+                0
+              ],
+              "Transition": [
+                "soft"
+              ]
+            }
+          ],
+          "MultiColor": false
+        }
+      ],
+      "Version": "1.1.2",
+      "ChainParams": {
+        "NumLEDs": 108,
+        "Brightness": {
+          "InitLevel": 0.5,
+          "CtrlSource": "analog",
+          "Addr": 16
+        },
+        "BlinkPeriod": 500,
+        "ColorSeq": "GRB"
+      },
+      "MQTT": {
+        "Subscribe": [
+          {
+            "Topic": "LEDSET",
+            "InclAddr": false
+          },
+          {
+            "Topic": "LEDASK",
+            "InclAddr": false
+          }
+        ],
+        "Publish": [
+          {
+            "Topic": "LEDREPLY",
+            "InclAddr": false
+          }
+        ]
+      },
+      "LEDCols": [
+        {
+          "Name": "Dark",
+          "RGBVal": [
+            0,
+            0,
+            0
+          ]
+        },
+        {
+          "Name": "Red",
+          "RGBVal": [
+            255,
+            0,
+            0
+          ]
+        },
+        {
+          "Name": "Green",
+          "RGBVal": [
+            0,
+            255,
+            0
+          ]
+        },
+        {
+          "Name": "Yellow",
+          "RGBVal": [
+            255,
+            255,
+            0
+          ],
+          "HSVVal": [
+            43,
+            255,
+            255
+          ]
+        },
+        {
+          "Name": "Blue",
+          "RGBVal": [
+            0,
+            0,
+            255
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "Cmd": "CfgFiles",
+    "FileMode": 1,
+    "FileNameType": "led",
+    "FileName": "led1.cfg",
+    "Type": "pgLEDCfg",
+    "Data": {
+      "LEDDefs": [
+        {
+          "LEDNums": [
+            33,
+            35
+          ],
+          "CtrlSource": "block",
+          "CtrlAddr": [
+            52,
+            101
+          ],
+          "DisplayType": "discrete",
+          "LEDCmd": [
+            {
+              "Val": 0,
+              "ColOn": "Dark",
+              "Mode": [
+                "static"
+              ],
+              "Rate": [
+                0
+              ],
+              "Transition": [
+                "direct"
+              ],
+              "ColOff": ""
+            },
+            {
+              "Val": 1,
+              "ColOn": "Yellow",
+              "Mode": [
+                "static"
+              ],
+              "Rate": [
+                0
+              ],
+              "Transition": [
+                "direct"
+              ],
+              "ColOff": ""
+            },
+            {
+              "Val": 2,
+              "ColOn": "Green",
+              "Mode": [
+                "static"
+              ],
+              "Rate": [
+                0
+              ],
+              "Transition": [
+                "soft"
+              ]
+            },
+            {
+              "Val": 3,
+              "ColOn": "Red",
+              "Mode": [
+                "static"
+              ],
+              "Rate": [
+                0
+              ],
+              "Transition": [
+                "soft"
+              ]
+            }
+          ],
+          "MultiColor": false
+        },
+        {
+          "LEDNums": [
+            88
+          ],
+          "CtrlSource": "block",
+          "CtrlAddr": [
+            56,
+            102
+          ],
+          "DisplayType": "discrete",
+          "LEDCmd": [
+            {
+              "Val": 0,
+              "ColOn": "Dark",
+              "Mode": [
+                "static"
+              ],
+              "Rate": [
+                0
+              ],
+              "Transition": [
+                "direct"
+              ],
+              "ColOff": ""
+            },
+            {
+              "Val": 1,
+              "ColOn": "Yellow",
+              "Mode": [
+                "static"
+              ],
+              "Rate": [
+                0
+              ],
+              "Transition": [
+                "direct"
+              ],
+              "ColOff": ""
+            },
+            {
+              "Val": 2,
+              "ColOn": "Green",
+              "Mode": [
+                "static"
+              ],
+              "Rate": [
+                0
+              ],
+              "Transition": [
+                "soft"
+              ]
+            },
+            {
+              "Val": 3,
+              "ColOn": "Red",
+              "Mode": [
+                "static"
+              ],
+              "Rate": [
+                0
+              ],
+              "Transition": [
+                "soft"
+              ]
+            }
+          ],
+          "MultiColor": false
+        },
+        {
+          "LEDNums": [
+            89
+          ],
+          "CtrlSource": "block",
+          "CtrlAddr": [
+            57,
+            102
+          ],
+          "DisplayType": "discrete",
+          "LEDCmd": [
+            {
+              "Val": 0,
+              "ColOn": "Dark",
+              "Mode": [
+                "static"
+              ],
+              "Rate": [
+                0
+              ],
+              "Transition": [
+                "direct"
+              ],
+              "ColOff": ""
+            },
+            {
+              "Val": 1,
+              "ColOn": "Yellow",
+              "Mode": [
+                "static"
+              ],
+              "Rate": [
+                0
+              ],
+              "Transition": [
+                "direct"
+              ],
+              "ColOff": ""
+            },
+            {
+              "Val": 2,
+              "ColOn": "Green",
+              "Mode": [
+                "static"
+              ],
+              "Rate": [
+                0
+              ],
+              "Transition": [
+                "soft"
+              ]
+            },
+            {
+              "Val": 3,
+              "ColOn": "Red",
+              "Mode": [
+                "static"
+              ],
+              "Rate": [
+                0
+              ],
+              "Transition": [
+                "soft"
+              ]
+            }
+          ],
+          "MultiColor": false
+        },
+        {
+          "LEDNums": [
+            90
+          ],
+          "CtrlSource": "block",
+          "CtrlAddr": [
+            58,
+            102
+          ],
+          "DisplayType": "discrete",
+          "LEDCmd": [
+            {
+              "Val": 0,
+              "ColOn": "Dark",
+              "Mode": [
+                "static"
+              ],
+              "Rate": [
+                0
+              ],
+              "Transition": [
+                "direct"
+              ],
+              "ColOff": ""
+            },
+            {
+              "Val": 1,
+              "ColOn": "Yellow",
+              "Mode": [
+                "static"
+              ],
+              "Rate": [
+                0
+              ],
+              "Transition": [
+                "direct"
+              ],
+              "ColOff": ""
+            },
+            {
+              "Val": 2,
+              "ColOn": "Green",
+              "Mode": [
+                "static"
+              ],
+              "Rate": [
+                0
+              ],
+              "Transition": [
+                "soft"
+              ]
+            },
+            {
+              "Val": 3,
+              "ColOn": "Red",
+              "Mode": [
+                "static"
+              ],
+              "Rate": [
+                0
+              ],
+              "Transition": [
+                "soft"
+              ]
+            }
+          ],
+          "MultiColor": false
+        },
+        {
+          "LEDNums": [
+            43,
+            45,
+            47
+          ],
+          "CtrlSource": "block",
+          "CtrlAddr": [
+            60,
+            104
+          ],
+          "DisplayType": "discrete",
+          "LEDCmd": [
+            {
+              "Val": 0,
+              "ColOn": "Dark",
+              "Mode": [
+                "static"
+              ],
+              "Rate": [
+                0
+              ],
+              "Transition": [
+                "direct"
+              ],
+              "ColOff": ""
+            },
+            {
+              "Val": 1,
+              "ColOn": "Yellow",
+              "Mode": [
+                "static"
+              ],
+              "Rate": [
+                0
+              ],
+              "Transition": [
+                "direct"
+              ],
+              "ColOff": ""
+            },
+            {
+              "Val": 2,
+              "ColOn": "Green",
+              "Mode": [
+                "static"
+              ],
+              "Rate": [
+                0
+              ],
+              "Transition": [
+                "soft"
+              ]
+            },
+            {
+              "Val": 3,
+              "ColOn": "Red",
+              "Mode": [
+                "static"
+              ],
+              "Rate": [
+                0
+              ],
+              "Transition": [
+                "soft"
+              ]
+            }
+          ],
+          "MultiColor": false
+        },
+        {
+          "LEDNums": [
+            11,
+            103
+          ],
+          "CtrlSource": "switch",
+          "CtrlAddr": 0,
+          "DisplayType": "discrete",
+          "LEDCmd": [
+            {
+              "Val": 0,
+              "ColOn": "Dark",
+              "Mode": [
+                "static"
+              ],
+              "Rate": [
+                0
+              ],
+              "Transition": [
+                "direct"
+              ],
+              "ColOff": ""
+            },
+            {
+              "Val": 1,
+              "ColOn": "Red",
+              "Mode": [
+                "static"
+              ],
+              "Rate": [
+                0
+              ],
+              "Transition": [
+                "direct"
+              ],
+              "ColOff": ""
+            }
+          ],
+          "MultiColor": false
+        },
+        {
+          "LEDNums": [
+            9,
+            62
+          ],
+          "CtrlSource": "switch",
+          "CtrlAddr": 0,
+          "DisplayType": "discrete",
+          "LEDCmd": [
+            {
+              "Val": 0,
+              "ColOn": "Red",
+              "Mode": [
+                "static"
+              ],
+              "Rate": [
+                0
+              ],
+              "Transition": [
+                "direct"
+              ],
+              "ColOff": ""
+            },
+            {
+              "Val": 1,
+              "ColOn": "Dark",
+              "Mode": [
+                "static"
+              ],
+              "Rate": [
+                0
+              ],
+              "Transition": [
+                "direct"
+              ],
+              "ColOff": ""
+            }
+          ],
+          "MultiColor": false
+        },
+        {
+          "LEDNums": [
+            17,
+            99
+          ],
+          "CtrlSource": "switch",
+          "CtrlAddr": 1,
+          "DisplayType": "discrete",
+          "LEDCmd": [
+            {
+              "Val": 0,
+              "ColOn": "Dark",
+              "Mode": [
+                "static"
+              ],
+              "Rate": [
+                0
+              ],
+              "Transition": [
+                "direct"
+              ],
+              "ColOff": ""
+            },
+            {
+              "Val": 1,
+              "ColOn": "Red",
+              "Mode": [
+                "static"
+              ],
+              "Rate": [
+                0
+              ],
+              "Transition": [
+                "direct"
+              ],
+              "ColOff": ""
+            }
+          ],
+          "MultiColor": false
+        }
+      ]
+    }
+  },
+  {
+    "Cmd": "CfgFiles",
+    "FileMode": 1,
+    "FileNameType": "led",
+    "FileName": "led2.cfg",
+    "Type": "pgLEDCfg",
+    "Data": {
+      "LEDDefs": [
+        {
+          "LEDNums": [
+            19,
+            66
+          ],
+          "CtrlSource": "switch",
+          "CtrlAddr": 1,
+          "DisplayType": "discrete",
+          "LEDCmd": [
+            {
+              "Val": 0,
+              "ColOn": "Red",
+              "Mode": [
+                "static"
+              ],
+              "Rate": [
+                0
+              ],
+              "Transition": [
+                "direct"
+              ],
+              "ColOff": ""
+            },
+            {
+              "Val": 1,
+              "ColOn": "Dark",
+              "Mode": [
+                "static"
+              ],
+              "Rate": [
+                0
+              ],
+              "Transition": [
+                "direct"
+              ],
+              "ColOff": ""
+            }
+          ],
+          "MultiColor": false
+        },
+        {
+          "LEDNums": [
+            23,
+            91
+          ],
+          "CtrlSource": "switch",
+          "CtrlAddr": 2,
+          "DisplayType": "discrete",
+          "LEDCmd": [
+            {
+              "Val": 0,
+              "ColOn": "Dark",
+              "Mode": [
+                "static"
+              ],
+              "Rate": [
+                0
+              ],
+              "Transition": [
+                "direct"
+              ],
+              "ColOff": ""
+            },
+            {
+              "Val": 1,
+              "ColOn": "Red",
+              "Mode": [
+                "static"
+              ],
+              "Rate": [
+                0
+              ],
+              "Transition": [
+                "direct"
+              ],
+              "ColOff": ""
+            }
+          ],
+          "MultiColor": false
+        },
+        {
+          "LEDNums": [
+            21,
+            74
+          ],
+          "CtrlSource": "switch",
+          "CtrlAddr": 2,
+          "DisplayType": "discrete",
+          "LEDCmd": [
+            {
+              "Val": 0,
+              "ColOn": "Red",
+              "Mode": [
+                "static"
+              ],
+              "Rate": [
+                0
+              ],
+              "Transition": [
+                "direct"
+              ],
+              "ColOff": ""
+            },
+            {
+              "Val": 1,
+              "ColOn": "Dark",
+              "Mode": [
+                "static"
+              ],
+              "Rate": [
+                0
+              ],
+              "Transition": [
+                "direct"
+              ],
+              "ColOff": ""
+            }
+          ],
+          "MultiColor": false
+        },
+        {
+          "LEDNums": [
+            29,
+            87
+          ],
+          "CtrlSource": "switch",
+          "CtrlAddr": 3,
+          "DisplayType": "discrete",
+          "LEDCmd": [
+            {
+              "Val": 0,
+              "ColOn": "Dark",
+              "Mode": [
+                "static"
+              ],
+              "Rate": [
+                0
+              ],
+              "Transition": [
+                "direct"
+              ],
+              "ColOff": ""
+            },
+            {
+              "Val": 1,
+              "ColOn": "Red",
+              "Mode": [
+                "static"
+              ],
+              "Rate": [
+                0
+              ],
+              "Transition": [
+                "direct"
+              ],
+              "ColOff": ""
+            }
+          ],
+          "MultiColor": false
+        },
+        {
+          "LEDNums": [
+            31,
+            78
+          ],
+          "CtrlSource": "switch",
+          "CtrlAddr": 3,
+          "DisplayType": "discrete",
+          "LEDCmd": [
+            {
+              "Val": 0,
+              "ColOn": "Red",
+              "Mode": [
+                "static"
+              ],
+              "Rate": [
+                0
+              ],
+              "Transition": [
+                "direct"
+              ],
+              "ColOff": ""
+            },
+            {
+              "Val": 1,
+              "ColOn": "Dark",
+              "Mode": [
+                "static"
+              ],
+              "Rate": [
+                0
+              ],
+              "Transition": [
+                "direct"
+              ],
+              "ColOff": ""
+            }
+          ],
+          "MultiColor": false
+        },
+        {
+          "LEDNums": [
+            0,
+            7
+          ],
+          "CtrlSource": "power",
+          "CtrlAddr": 0,
+          "DisplayType": "discrete",
+          "LEDCmd": [
+            {
+              "Val": 0,
+              "ColOn": "Red",
+              "Mode": [
+                "static"
+              ],
+              "Rate": [
+                0
+              ],
+              "Transition": [
+                "direct"
+              ],
+              "ColOff": ""
+            },
+            {
+              "Val": 1,
+              "ColOn": "Green",
+              "Mode": [
+                "static"
+              ],
+              "Rate": [
+                0
+              ],
+              "Transition": [
+                "direct"
+              ],
+              "ColOff": ""
+            },
+            {
+              "Val": 2,
+              "ColOn": "Yellow",
+              "Mode": [
+                "static"
+              ],
+              "Rate": [
+                0
+              ],
+              "Transition": [
+                "soft"
+              ]
+            }
+          ],
+          "MultiColor": false
+        },
+        {
+          "CtrlSource": "switch",
+          "CtrlAddr": 200,
+          "DisplayType": "discrete",
+          "MultiColor": false,
+          "LEDCmd": [
+            {
+              "Val": 0,
+              "ColOn": "Blue",
+              "Mode": [
+                "static"
+              ],
+              "Rate": [
+                0
+              ],
+              "Transition": [
+                "soft"
+              ]
+            },
+            {
+              "Val": 1,
+              "ColOn": "Dark",
+              "Mode": [
+                "static"
+              ],
+              "Rate": [
+                0
+              ],
+              "Transition": [
+                "soft"
+              ]
+            }
+          ],
+          "LEDNums": [
+            5
+          ]
+        }
+      ]
+    }
+  }
+]

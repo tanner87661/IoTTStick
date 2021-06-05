@@ -4,6 +4,7 @@ sourceType getSourceTypeByName(String transName)
 {
   if (transName == "button") return evt_button;
   if (transName == "analogvalue") return evt_analogvalue;
+  if (transName == "analogscaler") return evt_analogscaler;
   if (transName == "switch") return evt_trackswitch;
   if (transName == "dccsignal") return evt_signalmastdcc;
   if (transName == "dynsignal") return evt_signalmastdyn;
@@ -11,6 +12,16 @@ sourceType getSourceTypeByName(String transName)
   if (transName == "transponder") return evt_transponder;
   if (transName == "power") return evt_powerstat;
   return evt_trackswitch;
+};
+
+enableType getEnableTypeByName(String enableName)
+{
+  if (enableName == "on") return ent_alwayson;
+  if (enableName == "off") return ent_alwaysoff;
+  if (enableName == "switch") return ent_switch;
+  if (enableName == "button") return ent_button;
+  if (enableName == "block") return ent_block;
+  return ent_alwayson;
 };
 
 outputType getActionTypeByName(String actionName)
@@ -117,7 +128,7 @@ void IoTT_BtnHandlerCmd::executeBtnEvent()
 			break; //power status
       case blockdet: if (sendBlockDetectorCommand) sendBlockDetectorCommand(targetAddr, cmdValue); break; //analog
       case svbutton:  if (sendButtonCommand) sendButtonCommand(targetAddr, cmdType); break; //button command
-      case analoginp:  if (sendAnalogCommand) sendAnalogCommand(targetAddr, (cmdType << 8) + cmdValue); break; //analog value
+      case analoginp:  if (sendAnalogCommand) sendAnalogCommand(targetAddr, ((cmdType & 0x0F) << 8) + cmdValue); break; //analog value, strip down to 12 bit
     }
 }
 
@@ -140,6 +151,19 @@ IoTT_BtnHandler::~IoTT_BtnHandler()
 	free(cmdList);
 	btnCondAddrLen = 0;
 	free(btnCondAddr);
+}
+
+IoTT_BtnHandlerCmd * IoTT_BtnHandler::getCmdByIndex(uint16_t thisCmd)
+{
+	return cmdList[thisCmd];
+}
+
+IoTT_BtnHandlerCmd * IoTT_BtnHandler::getCmdByTypeAddr(uint8_t cmdType, uint16_t cmdAddr)
+{
+	for (uint16_t i = 0; i < numCmds; i++)
+		if ((cmdList[i]->targetType == cmdType) && (cmdList[i]->targetAddr == cmdAddr))
+			return cmdList[i];
+	return NULL;
 }
 
 void IoTT_BtnHandler::loadButtonCfgJSON(JsonObject thisObj)
@@ -278,6 +302,14 @@ void IoTT_LocoNetButtons::loadButtonCfgJSON(JsonObject thisObj)
 	}
 //	if (thisObj.containsKey("CurrDisp"))
 //		currEvent = thisObj["CurrDisp"];
+
+	if (thisObj.containsKey("EnableSource"))
+		enableInput = getEnableTypeByName(thisObj["EnableSource"]);
+	if (thisObj.containsKey("EnableAddr"))
+		enableAddr = thisObj["EnableAddr"];
+	if (thisObj.containsKey("EnableState"))
+		enableStatus = thisObj["EnableState"];
+
 	if (thisObj.containsKey("EventSource"))
 		eventInput = getSourceTypeByName(thisObj["EventSource"]);
 	else	
@@ -305,12 +337,22 @@ sourceType IoTT_LocoNetButtons::getEventSource()
 
 sourceType IoTT_LocoNetButtons::hasEventSource(sourceType thisSource)
 {
+//	Serial.printf("found event source %i is %i\n", thisSource, eventInput);
 	switch (thisSource)
 	{
 		case evt_trackswitch: ;
 		case evt_signalmastdyn:
 			if ((eventInput == evt_trackswitch) || (eventInput == evt_signalmastdyn))
 				return eventInput;
+			else
+				return evt_nosource;
+			break;
+		case evt_analogvalue:
+			if ((eventInput == evt_analogscaler) || (eventInput == evt_analogvalue))
+			{
+//				Serial.printf("found event source %i\n", eventInput);
+				return eventInput;
+			}
 			else
 				return evt_nosource;
 			break;
@@ -326,7 +368,10 @@ int8_t IoTT_LocoNetButtons::hasBtnAddr(uint16_t thisAddr)
 {
 	for (uint8_t i = 0; i < btnAddrListLen; i++)
 		if (btnAddrList[i] == thisAddr)
+		{
+//			Serial.printf("check address %i\n", thisAddr);
 			return i;
+		}
 	return -1;
 }
 
@@ -343,6 +388,22 @@ uint8_t IoTT_LocoNetButtons::getLastRecEvent()
 uint8_t IoTT_LocoNetButtons::getLastComplEvent()
 {
 	return lastComplButtonEvent;
+}
+
+bool IoTT_LocoNetButtons::getEnableStatus()
+{
+//	Serial.printf("Check enable %i for %i \n", enableInput, enableStatus);
+	switch (enableInput)
+	{
+		case ent_alwayson : return true; break;
+		case ent_alwaysoff : return false; break;
+		case ent_button: return getButtonValue(enableAddr) == enableStatus; break;
+		case ent_switch: return (((getSwiPosition(enableAddr) >> 5) & 0x01) == enableStatus); break;
+		case ent_block: 
+//		Serial.println(getBDStatus(enableAddr));
+		return ((getBDStatus(enableAddr) & 0x01) == enableStatus); break;
+		default: return true; break;
+	}
 }
 
 void IoTT_LocoNetButtons::processAnalogEvent(uint16_t inputValue)
@@ -368,10 +429,47 @@ void IoTT_LocoNetButtons::processAnalogEvent(uint16_t inputValue)
 	}
 }
 
+void IoTT_LocoNetButtons::processAnalogScaler(uint16_t inputValue)
+{
+	if (eventTypeListLen == 2)
+	{
+		IoTT_BtnHandlerCmd execCmd;
+		execCmd.targetType = analoginp;
+		IoTT_BtnHandler * baseEvent = eventTypeList[0];
+		IoTT_BtnHandler * secEvent = eventTypeList[1];
+		for (uint16_t i = 0; i < baseEvent->numCmds; i++)
+		{
+			IoTT_BtnHandlerCmd * thisCmd = baseEvent->getCmdByIndex(i);
+			if (thisCmd->targetType == analoginp)
+			{
+				IoTT_BtnHandlerCmd * matchingCmd = secEvent->getCmdByTypeAddr(analoginp, thisCmd->targetAddr);
+				if (matchingCmd)
+				{
+					uint16_t loVal = (thisCmd->cmdType << 8) + thisCmd->cmdValue;
+					uint16_t hiVal = (matchingCmd->cmdType << 8) + matchingCmd->cmdValue;
+					float thisSlope = (float)(hiVal - loVal) / 4095;
+					int scaleVal = loVal + round(inputValue * thisSlope);
+//					Serial.printf("Hi %i Lo %i Fact %f Val %i\n", hiVal, loVal, thisSlope, scaleVal);
+					if (scaleVal > 4095) scaleVal = 4095;
+					if (scaleVal < 0) scaleVal = 0;
+					execCmd.targetAddr = thisCmd->targetAddr;
+					execCmd.cmdType = (scaleVal >> 8);
+					execCmd.cmdValue = scaleVal & 0x00FF;
+					execCmd.execDelay = 250;
+					execCmd.executeBtnEvent();
+//					Serial.printf("Process Analog Scaler for Value %i %i to Addr %i \n", inputValue, scaleVal, thisCmd->targetAddr);
+				}
+			}
+
+
+		}
+	}
+}
+
 void IoTT_LocoNetButtons::processSignalEvent(uint8_t inputValue)
 {
 	IoTT_BtnHandler * thisEvent = NULL;
-	IoTT_LocoNetButtons * secBtn = NULL;
+//	IoTT_LocoNetButtons * secBtn = NULL;
 	for (uint16_t i = 0; i < eventTypeListLen; i++)
 	{
 		thisEvent = eventTypeList[i];
@@ -579,18 +677,22 @@ void IoTT_LocoNetButtonList::processBtnEvent(sourceType inputEvent, uint16_t btn
 		IoTT_LocoNetButtons * thisButton = btnList[lastButton];
 //		Serial.printf("Process Index %i\n", lastButton);
 		if (thisButton)
-			switch (thisButton->getEventSource())
-			{
-				case evt_button: thisButton->processBtnEvent(eventValue); break;
-				case evt_analogvalue: thisButton->processAnalogEvent(eventValue); break;
-				case evt_trackswitch: thisButton->processSimpleEvent(eventValue); break;
-				case evt_signalmastdyn : thisButton->processDynEvent(eventValue); break;
-				case evt_signalmastdcc: thisButton->processSignalEvent(eventValue); break;
-				case evt_blockdetector: thisButton->processBlockDetEvent(eventValue); break;
-				case evt_transponder: thisButton->processTransponderEvent(eventValue); break;
-				case evt_powerstat: thisButton->processPowerEvent(eventValue); break;
-				default: break;
-			}
+		{
+			if (thisButton->getEnableStatus())
+				switch (thisButton->getEventSource())
+				{
+					case evt_button: thisButton->processBtnEvent(eventValue); break;
+					case evt_analogscaler: thisButton->processAnalogScaler(eventValue); break; 
+					case evt_analogvalue: thisButton->processAnalogEvent(eventValue); break;
+					case evt_trackswitch: thisButton->processSimpleEvent(eventValue); break;
+					case evt_signalmastdyn : thisButton->processDynEvent(eventValue); break;
+					case evt_signalmastdcc: thisButton->processSignalEvent(eventValue); break;
+					case evt_blockdetector: thisButton->processBlockDetEvent(eventValue); break;
+					case evt_transponder: thisButton->processTransponderEvent(eventValue); break;
+					case evt_powerstat: thisButton->processPowerEvent(eventValue); break;
+					default: break;
+				}
+		}
 		lastButton = getButtonIndexByAddress(inputEvent, btnAddr, lastButton + 1);
 	}
 }

@@ -1,14 +1,19 @@
 var mainScrollBox;
 var buttonTable;
 
-var sourceOptionArray = ["switch","dynsignal","dccsignal", "button","analogvalue", "blockdetector", "transponder", "power"];
+var sourceOptionArray = ["switch","dynsignal","dccsignal", "button","analogvalue", "blockdetector", "transponder", "power", "analogscaler"];
+var enableOptionArray = ["on", "off", "button", "switch", "block"];
 
 var newEventTemplate = {"BtnCondAddr": [], "CmdList":[]};
-var newButtonTemplate = {"EventSource":"button", "CondData": [], "ButtonNr": 0,	"CtrlCmd": []};
+var newButtonTemplate = {"EnableSource": "on", "EnableAddr": 0, "EnableState": 0, "EventSource":"button", "CondData": [], "ButtonNr": 0,	"CtrlCmd": []};
 var newCmdTemplate = {"CtrlTarget": "switch", "CtrlAddr": 0, "CtrlType":"toggle", "CtrlValue":"on", "ExecDelay":250};
+//var newEnableTemplate = {"EnableSource": "alwayson", "EnableAddr": 0, "EnableState": 0};
 
-var cmdOptions = ["switch", "signal", "button", "analog", "block", "power"];
+var cmdOptions = ["switch", "switchack", "signal", "button", "analog", "block", "power"];
 var swiCmdOptions = ["thrown","closed","toggle"];
+var swiStatOptions = ["thrown","closed"];
+var btnStatOptions = ["Btn Down","Btn Up"];
+var blockStatOptions = ["free","occupied"];
 var swiPwrOptions = ["on", "off"];
 var trackPwrOptions = ["on", "off", "idle", "toggle"];
 var buttonOptions = ["btndown", "btnup", "btnclick", "btnhold", "btndblclick"];
@@ -16,7 +21,7 @@ var buttonValDispType = ["Btn Down", "Btn Up", "Btn Click", "Btn Hold", "Btn Dbl
 var powerValDispType = ["Off", "On", "Idle"];
 var transponderValDispType = ["Enter", "Leave"];
 
-jsonFileVersion = "1.3.0";
+jsonFileVersion = "1.3.2";
 
 function saveConfigFileSettings()
 {
@@ -86,6 +91,7 @@ function setAddr2Disp(sourceMode, eventMode, thisRow, thisCol)
 			addrText.innerHTML = "Locos:&nbsp;" 
 			break;
 		case 7: dispField = false;  break; //Power State
+		case 8: dispField = false;  break; //Analog Scaler
 	}
 	if (dispField)
 	{
@@ -106,6 +112,25 @@ function setAddr2Disp(sourceMode, eventMode, thisRow, thisCol)
 	}
 	else
 		setVisibility(false, addrBox);
+}
+
+function setEnableDisp(thisRow)
+{
+	var dispDiv = document.getElementById("enablediv_" + thisRow.toString() + "_1");
+	var eventList = document.getElementById("enabletypebox_" + thisRow.toString() + "_1");
+	var addrBox = document.getElementById("enableaddressbox_" + thisRow.toString() + "_1");
+	var statusList = document.getElementById("enablecmdlistbox_" + thisRow.toString() + "_1");
+	var currOption = enableOptionArray.indexOf(configData[workCfg].ButtonHandler[thisRow].EnableSource);
+	eventList.selectedIndex = currOption;
+	switch (currOption)
+	{
+		case 2: createOptions(statusList, btnStatOptions); break; //button
+		case 3: createOptions(statusList, swiStatOptions); break; //switch
+		case 4: createOptions(statusList, blockStatOptions); break; //block
+	}
+	addrBox.value = configData[workCfg].ButtonHandler[thisRow].EnableAddr;
+	statusList.selectedIndex = configData[workCfg].ButtonHandler[thisRow].EnableState;
+	setVisibility(currOption > 1, dispDiv);
 }
 
 function adjustEventList(ofButton, newLength)
@@ -185,7 +210,8 @@ function adjustSourceSelector(thisHandlerData, thisRow, thisCol)
 			createOptions(evtListBox, optArray); 
 			break;
 		case 6: createOptions(evtListBox, transponderValDispType); break; //Transponder
-		case 7: createOptions(evtListBox, powerValDispType); break; //power options??
+		case 7: createOptions(evtListBox, powerValDispType); break; //power options
+		case 8: createOptions(evtListBox, [ "== 0", "== max"]); break; //analog scaler options
 	}
 	if (eventMode >= evtListBox.options.length)
 		eventMode = 0;
@@ -305,6 +331,17 @@ function setButtonData(sender)
 						loadTableData(buttonTable, configData[workCfg].ButtonHandler);
 					}
 					break;
+				case 21: // Enable Source
+					configData[workCfg].ButtonHandler[thisRow].EnableSource = enableOptionArray[sender.selectedIndex];
+					setEnableDisp(thisRow);
+					break;
+				case 23: // Enable Address
+					configData[workCfg].ButtonHandler[thisRow].EnableAddr = verifyNumber(sender.value, configData[2].ButtonHandler[thisRow].EnableAddr);
+					break;
+				case 24: // Enable Status
+					configData[workCfg].ButtonHandler[thisRow].EnableState = verifyNumber(sender.value, configData[2].ButtonHandler[thisRow].EnableState);
+					break;
+					
 			}
 			if (thisIndex < 5)
 				loadTableData(buttonTable, configData[workCfg].ButtonHandler);
@@ -362,38 +399,46 @@ function setCommandData(sender)
 		case 2: //set command target
 			var currTarget = configData[2].ButtonHandler[thisRow].CtrlCmd[thisCmd].CmdList[thisCmdLine].CtrlTarget;
 			configData[2].ButtonHandler[thisRow].CtrlCmd[thisCmd].CmdList[thisCmdLine].CtrlTarget = cmdOptions[sender.selectedIndex];
+			
+//			console.log(currTarget, configData[2].ButtonHandler[thisRow].CtrlCmd[thisCmd].CmdList[thisCmdLine].CtrlTarget);
+			
 			if (currTarget != configData[2].ButtonHandler[thisRow].CtrlCmd[thisCmd].CmdList[thisCmdLine].CtrlTarget)
 			{
 				configData[2].ButtonHandler[thisRow].CtrlCmd[thisCmd].CmdList[thisCmdLine].CtrlAddr = 0;
 				configData[2].ButtonHandler[thisRow].CtrlCmd[thisCmd].CmdList[thisCmdLine].ExecDelay = 250;
 				switch  (sender.selectedIndex)
 				{
-					case 0: // switch
+					case 0: ;// switch
 						configData[2].ButtonHandler[thisRow].CtrlCmd[thisCmd].CmdList[thisCmdLine].CtrlTarget = "switch";
 						configData[2].ButtonHandler[thisRow].CtrlCmd[thisCmd].CmdList[thisCmdLine].CtrlType = "toggle";
 						configData[2].ButtonHandler[thisRow].CtrlCmd[thisCmd].CmdList[thisCmdLine].CtrlValue = "on";
 						break;
-					case 1: //signal
+					case 1: //switch ack
+						configData[2].ButtonHandler[thisRow].CtrlCmd[thisCmd].CmdList[thisCmdLine].CtrlTarget = "switchack";
+						configData[2].ButtonHandler[thisRow].CtrlCmd[thisCmd].CmdList[thisCmdLine].CtrlType = "toggle";
+						configData[2].ButtonHandler[thisRow].CtrlCmd[thisCmd].CmdList[thisCmdLine].CtrlValue = "on";
+						break;
+					case 2: //signal
 						configData[2].ButtonHandler[thisRow].CtrlCmd[thisCmd].CmdList[thisCmdLine].CtrlTarget = "signal";
 						configData[2].ButtonHandler[thisRow].CtrlCmd[thisCmd].CmdList[thisCmdLine].CtrlType = "aspect";
 						configData[2].ButtonHandler[thisRow].CtrlCmd[thisCmd].CmdList[thisCmdLine].CtrlValue = "0";
 						break;
-					case 2: //button
+					case 3: //button
 						configData[2].ButtonHandler[thisRow].CtrlCmd[thisCmd].CmdList[thisCmdLine].CtrlTarget = "button";
 						configData[2].ButtonHandler[thisRow].CtrlCmd[thisCmd].CmdList[thisCmdLine].CtrlType = "btndown";
 						configData[2].ButtonHandler[thisRow].CtrlCmd[thisCmd].CmdList[thisCmdLine].CtrlValue = "0";
 						break;
-					case 3: //analog
+					case 4: //analog
 						configData[2].ButtonHandler[thisRow].CtrlCmd[thisCmd].CmdList[thisCmdLine].CtrlTarget = "analog";
 						configData[2].ButtonHandler[thisRow].CtrlCmd[thisCmd].CmdList[thisCmdLine].CtrlType = "value";
 						configData[2].ButtonHandler[thisRow].CtrlCmd[thisCmd].CmdList[thisCmdLine].CtrlValue = "0";
 						break;
-					case 4: //block
+					case 5: //block
 						configData[2].ButtonHandler[thisRow].CtrlCmd[thisCmd].CmdList[thisCmdLine].CtrlTarget = "block";
 						configData[2].ButtonHandler[thisRow].CtrlCmd[thisCmd].CmdList[thisCmdLine].CtrlType = "block";
 						configData[2].ButtonHandler[thisRow].CtrlCmd[thisCmd].CmdList[thisCmdLine].CtrlValue = "on";
 						break;
-					case 5: //power
+					case 6: //power
 						configData[2].ButtonHandler[thisRow].CtrlCmd[thisCmd].CmdList[thisCmdLine].CtrlTarget = "power";
 						configData[2].ButtonHandler[thisRow].CtrlCmd[thisCmd].CmdList[thisCmdLine].CtrlType = "idle";
 						configData[2].ButtonHandler[thisRow].CtrlCmd[thisCmd].CmdList[thisCmdLine].CtrlValue = "0";
@@ -411,7 +456,8 @@ function setCommandData(sender)
 		case 5: //set CtrlType
 			switch (configData[2].ButtonHandler[thisRow].CtrlCmd[thisCmd].CmdList[thisCmdLine].CtrlTarget)
 			{
-				case "switch": configData[2].ButtonHandler[thisRow].CtrlCmd[thisCmd].CmdList[thisCmdLine].CtrlType = swiCmdOptions[sender.selectedIndex];
+				case "switch": ;
+				case "switchack": configData[2].ButtonHandler[thisRow].CtrlCmd[thisCmd].CmdList[thisCmdLine].CtrlType = swiCmdOptions[sender.selectedIndex];
 				break;
 				case "block": configData[2].ButtonHandler[thisRow].CtrlCmd[thisCmd].CmdList[thisCmdLine].CtrlType = swiPwrOptions[sender.selectedIndex];
 				break;
@@ -424,7 +470,8 @@ function setCommandData(sender)
 		case 6: //set CtrlValue
 			switch (configData[2].ButtonHandler[thisRow].CtrlCmd[thisCmd].CmdList[thisCmdLine].CtrlTarget)
 			{
-				case "switch": configData[2].ButtonHandler[thisRow].CtrlCmd[thisCmd].CmdList[thisCmdLine].CtrlValue = swiPwrOptions[sender.selectedIndex];
+				case "switch": ;
+				case "switchack": configData[2].ButtonHandler[thisRow].CtrlCmd[thisCmd].CmdList[thisCmdLine].CtrlValue = swiPwrOptions[sender.selectedIndex];
 				break;
 				case "block": configData[2].ButtonHandler[thisRow].CtrlCmd[thisCmd].CmdList[thisCmdLine].CtrlValue = swiPwrOptions[sender.selectedIndex];
 				break;
@@ -434,8 +481,8 @@ function setCommandData(sender)
 				break;
 				case "analog": 
 					var oldVal = (parseInt(configData[2].ButtonHandler[thisRow].CtrlCmd[thisCmd].CmdList[thisCmdLine].CtrlType) << 8) + parseInt(configData[2].ButtonHandler[thisRow].CtrlCmd[thisCmd].CmdList[thisCmdLine].CtrlValue);
-					var newVal = verifyNumber(sender.value, oldVal) & 0xFFF;
-					configData[2].ButtonHandler[thisRow].CtrlCmd[thisCmd].CmdList[thisCmdLine].CtrlType = ((newVal & 0x0F00) >> 8).toString();
+					var newVal = verifyNumber(sender.value, oldVal) & 0x3FFF;
+					configData[2].ButtonHandler[thisRow].CtrlCmd[thisCmd].CmdList[thisCmdLine].CtrlType = ((newVal & 0x3F00) >> 8).toString();
 					configData[2].ButtonHandler[thisRow].CtrlCmd[thisCmd].CmdList[thisCmdLine].CtrlValue = (newVal & 0x00FF).toString();
 				break;
 			}
@@ -486,7 +533,8 @@ function buildCmdLines(lineIndex, lineData)
 
 			switch (lineData.CtrlCmd[lineData.CurrDisp].CmdList[i].CtrlTarget)
 			{
-				case "switch":
+				case "switch":;
+				case "switchack":
 					lowerDiv.append(setSwitchEditor(lineIndex, i, thisID, "setCommandData(this)", lineData.CtrlCmd[lineData.CurrDisp].CmdList[i]));
 					break;
 				case "signal":
@@ -546,6 +594,7 @@ function loadTableData(thisTable, thisData)
 		adjustSourceSelector(configData[workCfg].ButtonHandler, i, 1);
 		evtOptBox.selectedIndex = thisData[i].CurrDisp;
 		buildCmdLines(i, thisData[i]);
+		setEnableDisp(i);
 	}
 }
 

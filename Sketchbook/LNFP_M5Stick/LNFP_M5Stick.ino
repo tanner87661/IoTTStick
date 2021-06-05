@@ -1,4 +1,4 @@
-char BBVersion[] = {'1','5','4'};
+char BBVersion[] = {'1','5','5'};
 
 //#define measurePerformance //uncomment this to display the number of loop cycles per second
 #define useM5Lite

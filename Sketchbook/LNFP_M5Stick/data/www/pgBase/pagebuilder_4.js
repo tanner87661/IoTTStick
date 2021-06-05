@@ -123,7 +123,7 @@ function createListViewer(parentObj, className, dispListID)
 function tfCmdTypeSel(y, x, id, evtHandler)
 {
 	var selectList = document.createElement("select");
-	createOptions(selectList, ["Switch", "DCC Signal", "Button", "Analog Value", "Block Detector", "Power Status"]);
+	createOptions(selectList, ["Switch", "Switch (Ack)", "DCC Signal", "Button", "Analog Value", "Block Detector", "Power Status"]);
 	tfSetCoordinate(selectList, y, x, 5, id);
 	selectList.setAttribute("class", "selectorbox");
 	selectList.setAttribute("onchange", evtHandler);

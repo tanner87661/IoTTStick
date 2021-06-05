@@ -1,4 +1,5 @@
-var sourceArray = ["Switch", "Dyn. Signal", "DCC Signal", "Button","Analog Value", "Block Detector", "Transponder", "Power State"];
+var sourceArray = ["Switch", "Dyn. Signal", "DCC Signal", "Button","Analog Value", "Block Detector", "Transponder", "Power State", "Analog Scaler"];
+var enableArray = ["Always On", "Always Off", "Button", "Switch", "Block Detector"];
 var btnArray = ["Btn Down","Btn Up","Btn Click","Btn Hold", "Btn Dbl Click"];
 var btnArray0x03 = ["Btn Down","Btn Up"];
 
@@ -75,6 +76,13 @@ function tfEvtTypeSrcSel(y, x, id, evtHandler)
 {
 	var selectList = tfTemplateTypeSel(y, x, id, evtHandler);
 	createOptions(selectList, sourceArray);
+	return selectList;
+}
+
+function tfEnableTypeSel(y, x, id, evtHandler)
+{
+	var selectList = tfTemplateTypeSel(y, x, id, evtHandler);
+	createOptions(selectList, enableArray);
 	return selectList;
 }
 
@@ -245,7 +253,7 @@ function tfCommandEvtSelector(y, x, id, evtHandler)
 	var thisId = "manipulatorbox_" + y.toString() + "_" + x.toString();
 	var manpulatorElement = tfManipulatorBox(y, x, thisId, evtHandler);
 	topDiv.append(manpulatorElement);
-	createEvtElements(divElement, y, x, id, evtHandler);
+	createEvtElements(divElement, y, x, id, evtHandler, true);
 	return divElement;
 
 }
@@ -255,7 +263,7 @@ function tfCommandSwiSelector(y, x, id, evtHandler)
 	var divElement = document.createElement("div");
 	divElement.setAttribute("class", "sourcesel");
 	tfSetCoordinate(divElement, y, x, 0, id);
-	createEvtElements(divElement, y, x, id, evtHandler);
+	createEvtElements(divElement, y, x, id, evtHandler, false);
 	var upperDiv = document.createElement("div");
 	upperDiv.setAttribute("class", "editorpanel");
 	divElement.append(upperDiv);
@@ -266,7 +274,7 @@ function tfCommandSwiSelector(y, x, id, evtHandler)
 	return divElement;
 }
 
-function createEvtElements(divElement, y, x, id, evtHandler)
+function createEvtElements(divElement, y, x, id, evtHandler, showEnable)
 {
 	var upperDiv = document.createElement("div");
 	upperDiv.setAttribute("class", "editorpanel");
@@ -327,6 +335,46 @@ function createEvtElements(divElement, y, x, id, evtHandler)
 	var btnDelete = tfBtnDelete(y, x, thisId, evtHandler);
 	btnDelete.setAttribute("index", 16);
 	bottomDiv.append(btnDelete);
+
+	if (showEnable)
+	{
+		var topDiv = document.createElement("div");
+		topDiv.setAttribute("class", "editorpanel");
+		divElement.append(topDiv);
+
+		var thisText = tfText(y, x, id, evtHandler);
+		thisText.innerHTML = "Enabled by:&nbsp;";
+		topDiv.append(thisText);
+
+		thisId = "enabletypebox_" + y.toString() + "_" + x.toString();
+		var typeBox = tfEnableTypeSel(y, x, thisId, evtHandler);
+		typeBox.setAttribute("index", 21);
+		topDiv.append(typeBox);
+
+		thisId = "enablediv_" + y.toString() + "_" + x.toString();
+		var secDiv = document.createElement("div");
+		secDiv.setAttribute("class", "editorpanel");
+		secDiv.setAttribute("id", thisId);
+		divElement.append(secDiv);
+
+		var thisText = tfText(y, x, id, evtHandler);
+		thisText.innerHTML = "Addr:&nbsp;";
+		secDiv.append(thisText);
+
+		thisId = "enableaddressbox_" + y.toString() + "_" + x.toString();
+		var addrBox = tfNumeric(y, x, thisId, evtHandler);
+		addrBox.setAttribute("index", 23);
+		secDiv.append(addrBox);
+
+		var thisText = tfText(y, x, id, evtHandler);
+		thisText.innerHTML = "&nbsp;Event:&nbsp;";
+		secDiv.append(thisText);
+
+		thisId = "enablecmdlistbox_" + y.toString() + "_" + x.toString();
+		var selBox = tfInpTypeSel(y, x, thisId, evtHandler);
+		selBox.setAttribute("index", 24);
+		secDiv.append(selBox);
+	}
 }
 
 function tfLEDSelector(y, x, id, evtHandler)

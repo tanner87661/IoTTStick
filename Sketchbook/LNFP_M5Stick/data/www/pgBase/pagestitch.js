@@ -147,7 +147,7 @@ function upgradeJSONVersionBtn(jsonData)
 
 function upgradeJSONVersionBtnHdlr(jsonData)
 {
-	jsonFileVersion = "1.3.1";
+	jsonFileVersion = "1.3.2";
 	var thisVersion = jsonData.Version;
 	if (thisVersion == jsonFileVersion)
 		return jsonData;
@@ -197,6 +197,18 @@ function upgradeJSONVersionBtnHdlr(jsonData)
 		}
 		jsonData.Version = "1.3.1";
 		thisVersion = "1.3.1";
+	}
+	if (thisVersion == "1.3.1")
+	{
+		console.log("upgrade button handler from 1.3.1 to 1.3.2");
+		for (var i=0; i<jsonData.ButtonHandler.length;i++)
+		{
+			jsonData.ButtonHandler[i].EnableSource = "on";
+			jsonData.ButtonHandler[i].EnableAddr = 0;
+			jsonData.ButtonHandler[i].EnableState = 0;			
+		}
+		jsonData.Version = "1.3.2";
+		thisVersion = "1.3.2";
 	}
 	return jsonData;
 }

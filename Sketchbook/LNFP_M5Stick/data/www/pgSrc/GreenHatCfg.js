@@ -26,11 +26,12 @@ var sourceOptionArray = ["switch","dynsignal","dccsignal", "button","analogvalue
 var newButtonTemplate = {"PortNr": 0, "ButtonType": "digital", "EventMask": 3, "ButtonAddr": 0};
 var newEventTemplate = {"Used": 1, "AspVal": 65535, "PosPt": 270, "MoveCfg": 0};
 var newEventHdlrTemplate = {"ButtonNr":[0],"CondData":[],"CtrlCmd": []};
-var newEventCmdTemplate = {"BtnCondAddr": [], "CmdList": [{"CtrlTarget": "switch", "CtrlAddr": 0, "CtrlType":"toggle", "CtrlValue":"on", "ExecDelay":250}]};
+var newEventCmdTemplate = {"BtnCondAddr": [], "CmdList": [{"CtrlTarget": "none", "CtrlAddr": 0, "CtrlType":"toggle", "CtrlValue":"on", "ExecDelay":250}]};
 var newColTemplate = {"Name": "New Color","RGBVal": [255, 255, 255]};
 var newLEDTemplate = {"LEDNums":[],"CtrlSource": "","CtrlAddr": [],"DisplayType":"discrete","LEDCmd": []};
 var newLEDCmdTemplate = {"Val": 0,"ColOn": "", "ColOff": "", "Mode": "static", "Rate":0, "Transition":"soft"};
-var cmdOptions = ["switch", "signal", "block", "none"];
+var cmdOptions = ["switch", "switchack", "signal", "block", "none"];
+//var cmdOptions = ["switch", "signal", "block", "none"];
 var swiCmdOptions = ["thrown","closed","toggle"];
 var blockCmdOptions = ["occupied","free"];
 //var blockCmdOptions = ["occupied","free"];
@@ -1416,9 +1417,10 @@ function setSwitchData(sender)
 						btnCfgData[workCfg].Buttons[dataRow].EventMask = 0x1F;
 					else
 					{
+						cmdSelBox = document.getElementById(((thisIndex & 0x0100) > 0 ? "cmdlistbox1_" : "cmdlistbox0_") + thisRow.toString() + "_3");
+						if (cmdSelBox.selectedIndex > 1)
+							btnCfgData[workCfg].Buttons[dataRow].currDisp = 1;
 						btnCfgData[workCfg].Buttons[dataRow].EventMask = 0x03;
-						if (sender.selectgedIndex > 1)
-							sender.selectedIndex = 1;
 					}
 					evtHdlrCfgData[workCfg].ButtonHandler[dataRow] = adjustHdlrEventList(evtHdlrCfgData[workCfg].ButtonHandler[dataRow], btnCfgData[workCfg].Buttons[dataRow].EventMask == 0x03 ? 2 : 5);
 					setButtonDisplay(btnCfgData[workCfg].Buttons[dataRow], evtHdlrCfgData[workCfg].ButtonHandler, thisRow, ((thisIndex & 0x100) >> 8));
@@ -1541,17 +1543,17 @@ function setButtonDisplay(btnData, btnEvtArray, thisRow, thisIndex)
 		var targAddrField = document.getElementById("targetaddressbox" + thisIndex.toString() + "_" + thisRow.toString() + "_3");
 		var targEvtSel = document.getElementById("evtvalbox" + thisIndex.toString() + "_" + thisRow.toString() + "_3");
 		var targEvtVal = document.getElementById("evtvalfield" + thisIndex.toString() + "_" + thisRow.toString() + "_3");
-		var tatgetEvtText = document.getElementById("evtvaltext" + thisIndex.toString() + "_" + thisRow.toString() + "_3");
+		var targetEvtText = document.getElementById("evtvaltext" + thisIndex.toString() + "_" + thisRow.toString() + "_3");
 		
 		if (CtrlCmdData.CmdList.length > 0)
 		{
 			targetSel.selectedIndex = cmdOptions.indexOf(CtrlCmdData.CmdList[0].CtrlTarget);
 			targAddrField.value = CtrlCmdData.CmdList[0].CtrlAddr;
-			if ([1].indexOf(cmdOptions.indexOf(CtrlCmdData.CmdList[0].CtrlTarget)) >= 0)
-				tatgetEvtText.innerHTML = "&nbsp;Aspect:&nbsp";
+			if ([2].indexOf(cmdOptions.indexOf(CtrlCmdData.CmdList[0].CtrlTarget)) >= 0)
+				targetEvtText.innerHTML = "&nbsp;Aspect:&nbsp";
 			else
-				tatgetEvtText.innerHTML = "&nbsp;Event:&nbsp";
-			if ([0,1,2].indexOf(cmdOptions.indexOf(CtrlCmdData.CmdList[0].CtrlTarget)) >= 0)
+				targetEvtText.innerHTML = "&nbsp;Event:&nbsp";
+			if ([0,1,2,3].indexOf(cmdOptions.indexOf(CtrlCmdData.CmdList[0].CtrlTarget)) >= 0)
 			{
 				setVisibility(true, targAddrField);
 				setVisibility(true, targetAddrText);
@@ -1561,19 +1563,19 @@ function setButtonDisplay(btnData, btnEvtArray, thisRow, thisIndex)
 				setVisibility(false, targAddrField);
 				setVisibility(false, targetAddrText);
 			}
-			if ([0,1,2].indexOf(cmdOptions.indexOf(CtrlCmdData.CmdList[0].CtrlTarget)) >= 0)
+			if ([0,1,2,3].indexOf(cmdOptions.indexOf(CtrlCmdData.CmdList[0].CtrlTarget)) >= 0)
 			{
-				setVisibility(true, tatgetEvtText);
+				setVisibility(true, targetEvtText);
 			}
 			else
 			{
-				setVisibility(false, tatgetEvtText);
+				setVisibility(false, targetEvtText);
 			}
-			if ([0,2].indexOf(cmdOptions.indexOf(CtrlCmdData.CmdList[0].CtrlTarget)) >= 0)
+			if ([0,1,3].indexOf(cmdOptions.indexOf(CtrlCmdData.CmdList[0].CtrlTarget)) >= 0)
 				setVisibility(true, targEvtSel);
 			else
 				setVisibility(false, targEvtSel);
-			if ([1].indexOf(cmdOptions.indexOf(CtrlCmdData.CmdList[0].CtrlTarget)) >= 0)
+			if ([2].indexOf(cmdOptions.indexOf(CtrlCmdData.CmdList[0].CtrlTarget)) >= 0)
 			{
 				setVisibility(true, targEvtVal);
 				if (isNaN(CtrlCmdData.CmdList[0].CtrlValue))
@@ -1590,16 +1592,17 @@ function setButtonDisplay(btnData, btnEvtArray, thisRow, thisIndex)
 			setVisibility(false, targAddrField);
 			setVisibility(false, targEvtSel);
 			setVisibility(false, targEvtVal);
-			setVisibility(false, tatgetEvtText);
+			setVisibility(false, targetEvtText);
 		}
 		var currCmdOptions = [];
 		if (CtrlCmdData.CmdList.length > 0)
 		{
 			switch (cmdOptions.indexOf(CtrlCmdData.CmdList[0].CtrlTarget))
 			{
-				case 0: currCmdOptions = swiCmdOptions; break;
-				case 1: break; //Signal, display aspect field
-				case 2: currCmdOptions = blockCmdOptions; break;
+				case 0: ;
+				case 1: currCmdOptions = swiCmdOptions; break;
+				case 2: break; //Signal, display aspect field
+				case 3: currCmdOptions = blockCmdOptions; break;
 //				case 3: //local, display options selector
 //					currCmdOptions = getOptionList("evtcmdlistbox_" + thisRow.toString() + "_1");
 //					break;

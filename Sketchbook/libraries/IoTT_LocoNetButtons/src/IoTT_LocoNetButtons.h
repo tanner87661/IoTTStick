@@ -20,8 +20,8 @@ class IoTT_BtnHandlerCmd
 		void executeBtnEvent();
 		IoTT_BtnHandler * parentObj = NULL;
 		
-	private:
-		outputType targetType; //switch, input, button, signal, analog, power
+//	private:
+		outputType targetType; //switch, input, button, signal, analog, power, analoginp
 		uint16_t targetAddr; //address for target type
 	public:
 		uint8_t cmdType; //value parameter
@@ -41,12 +41,14 @@ class IoTT_BtnHandler
 		uint16_t getCondAddr(uint8_t addrIndex = 0);
 		int16_t getCondAddrIndex(uint16_t ofAddr); //index if found, -1 if not there
 		IoTT_LocoNetButtons * parentObj = NULL;
+		IoTT_BtnHandlerCmd * getCmdByIndex(uint16_t thisCmd);
+		IoTT_BtnHandlerCmd * getCmdByTypeAddr(uint8_t cmdType, uint16_t cmdAddr);
+		uint8_t numCmds = 0;
 	private:
 //		uint8_t eventType  = noevent;
 		
 		uint16_t * btnCondAddr = NULL;
 		uint16_t btnCondAddrLen = 0;
-		uint8_t numCmds = 0;
 //		uint8_t currEvent = 0;
 		IoTT_BtnHandlerCmd ** cmdList = NULL;
 };
@@ -63,12 +65,14 @@ class IoTT_LocoNetButtons
 		void processDynEvent(uint8_t inputValue);
 		void processSignalEvent(uint8_t inputValue);
 		void processAnalogEvent(uint16_t inputValue);
+		void processAnalogScaler(uint16_t inputValue);
 		void processTransponderEvent(uint16_t inputValue);
 		void processPowerEvent(uint16_t inputValue);
 		uint16_t getBtnAddr(uint8_t index);
 		int8_t hasBtnAddr(uint16_t thisAddr);
 		sourceType getEventSource();
 		sourceType hasEventSource(sourceType thisSource);
+		bool getEnableStatus();
 		int16_t getCondDataIndex(uint16_t ofData);
 		uint8_t getLastRecEvent();
 		uint8_t getLastComplEvent();
@@ -77,6 +81,9 @@ class IoTT_LocoNetButtons
 	private:
 		uint8_t lastRecButtonEvent; //last event received
 		uint8_t lastComplButtonEvent; //last event that was executed. If successful, those two are identical
+		enableType enableInput = ent_alwayson;
+		uint16_t enableAddr = 0;
+		uint8_t enableStatus = 0;
 		sourceType eventInput = evt_nosource;
 		uint16_t * btnAddrList = NULL;
 		uint8_t btnAddrListLen = 0;

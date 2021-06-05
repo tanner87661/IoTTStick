@@ -234,7 +234,7 @@ function tfButtonEditor(y, x, id, evtHandler)
 		thisId = "evttypebox" + pIx.toString() + "_" + y.toString() + "_" + x.toString();
 		var typeBox = tfTemplateTypeSel(y, x, thisId, evtHandler);
 //		createOptions(typeBox, ["Switch","Signal","Block Detector", "Local Only", "none"]);
-		createOptions(typeBox, ["Switch","Signal","Block Detector", "none"]);
+		createOptions(typeBox, ["Switch","Switch (Ack)","Signal","Block Detector", "none"]);
 		typeBox.setAttribute("index", (pIx<<8) + 12);
 		lowerDiv.append(typeBox);
 		thisId = "targetaddrtext" + pIx.toString() + "_" + y.toString() + "_" + x.toString();
