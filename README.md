@@ -4,6 +4,7 @@ This is the development repository for the IoTT Stick, port modules and hat devi
 2021/06/04
 - Ready to release new vesion 1.5.5 adding enabler function to event handler
 - adding analog scaler function to event handler to allow for changing ranges and slope of analog data input to adapt sensor input to the levels needed
+- adding swi ack command to event handler and GreenHat button command lists
 - some minor bug fixes
 
 2021/05/22
