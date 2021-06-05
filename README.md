@@ -1,6 +1,11 @@
 # IoTTStick
 This is the development repository for the IoTT Stick, port modules and hat devices with the source code for the latest release. 
 
+2021/06/04
+- Ready to release new vesion 1.5.5 adding enabler function to event handler
+- adding analog scaler function to event handler to allow for changing ranges and slope of analog data input to adapt sensor input to the levels needed
+- some minor bug fixes
+
 2021/05/22
 - Released new version 1.5.4 with some improvements in lbServer / lbClient
 - adding bounce filter for sensor inputs, requiring a 500ms stable input before sending report message to LocoNet
