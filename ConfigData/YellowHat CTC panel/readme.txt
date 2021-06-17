@@ -21,10 +21,11 @@ From Video #71:
 
 CTCBtnEvtSigCTC.json
 - This file has all 94 event handler settings as described in Video #71. Load it into the YellowHat driving the CTC panel
+- See slides 8 and 9 in the documentation directory for a guide where to find what functionality
 
 CTCBtnEvtSigCTCBlue.json
 - This is the LED chain definition for the signals. Load it into the BlueHat driving the signals
-
+- See slides 17, 22 and 40 in the documentation directory for a guide where to find what functionality
 
 To load any of the json data files, open the Node Configuration tab, and use the Load File function at the bottom of the page. 
 When loading the files, the Stick is sorting the files based on the content and will not overwrite other data. Your overall settings of the Stick will not be affected, the files are only replacing LED chain and Event Handler data.
