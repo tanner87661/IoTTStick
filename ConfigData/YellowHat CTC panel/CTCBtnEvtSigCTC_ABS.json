@@ -1,0 +1,3812 @@
+[
+  {
+    "Cmd": "CfgFiles",
+    "FileMode": 1,
+    "FileNameType": "btnevt",
+    "FileName": "btnevt.cfg",
+    "Type": "pgBtnHdlrCfg",
+    "Data": {
+      "ButtonHandler": [
+        {
+          "EnableSource": "switch",
+          "EnableAddr": 200,
+          "EnableState": 1,
+          "EventSource": "button",
+          "CondData": [],
+          "ButtonNr": [
+            141
+          ],
+          "CtrlCmd": [
+            {
+              "BtnCondAddr": [],
+              "CmdList": [
+                {
+                  "CtrlTarget": "switch",
+                  "CtrlAddr": 3,
+                  "CtrlType": "toggle",
+                  "CtrlValue": "on",
+                  "ExecDelay": 250
+                }
+              ]
+            },
+            {
+              "BtnCondAddr": [],
+              "CmdList": []
+            },
+            {
+              "BtnCondAddr": [],
+              "CmdList": []
+            },
+            {
+              "BtnCondAddr": [],
+              "CmdList": []
+            },
+            {
+              "BtnCondAddr": [],
+              "CmdList": []
+            }
+          ],
+          "CurrDisp": 0
+        },
+        {
+          "EnableSource": "switch",
+          "EnableAddr": 200,
+          "EnableState": 1,
+          "EventSource": "button",
+          "CondData": [],
+          "ButtonNr": [
+            142
+          ],
+          "CtrlCmd": [
+            {
+              "BtnCondAddr": [],
+              "CmdList": [
+                {
+                  "CtrlTarget": "switch",
+                  "CtrlAddr": 2,
+                  "CtrlType": "toggle",
+                  "CtrlValue": "on",
+                  "ExecDelay": 250
+                }
+              ]
+            },
+            {
+              "BtnCondAddr": [],
+              "CmdList": []
+            },
+            {
+              "BtnCondAddr": [],
+              "CmdList": []
+            },
+            {
+              "BtnCondAddr": [],
+              "CmdList": []
+            },
+            {
+              "BtnCondAddr": [],
+              "CmdList": []
+            }
+          ],
+          "CurrDisp": 0
+        },
+        {
+          "EnableSource": "switch",
+          "EnableAddr": 200,
+          "EnableState": 1,
+          "EventSource": "button",
+          "CondData": [],
+          "ButtonNr": [
+            143
+          ],
+          "CtrlCmd": [
+            {
+              "BtnCondAddr": [],
+              "CmdList": [
+                {
+                  "CtrlTarget": "switch",
+                  "CtrlAddr": 1,
+                  "CtrlType": "toggle",
+                  "CtrlValue": "on",
+                  "ExecDelay": 250
+                }
+              ]
+            },
+            {
+              "BtnCondAddr": [],
+              "CmdList": []
+            },
+            {
+              "BtnCondAddr": [],
+              "CmdList": []
+            },
+            {
+              "BtnCondAddr": [],
+              "CmdList": []
+            },
+            {
+              "BtnCondAddr": [],
+              "CmdList": []
+            }
+          ],
+          "CurrDisp": 0
+        },
+        {
+          "EnableSource": "switch",
+          "EnableAddr": 200,
+          "EnableState": 1,
+          "EventSource": "button",
+          "CondData": [],
+          "ButtonNr": [
+            144
+          ],
+          "CtrlCmd": [
+            {
+              "BtnCondAddr": [],
+              "CmdList": [
+                {
+                  "CtrlTarget": "switch",
+                  "CtrlAddr": 0,
+                  "CtrlType": "toggle",
+                  "CtrlValue": "on",
+                  "ExecDelay": 250
+                }
+              ]
+            },
+            {
+              "BtnCondAddr": [],
+              "CmdList": []
+            },
+            {
+              "BtnCondAddr": [],
+              "CmdList": []
+            },
+            {
+              "BtnCondAddr": [],
+              "CmdList": []
+            },
+            {
+              "BtnCondAddr": [],
+              "CmdList": []
+            }
+          ],
+          "CurrDisp": 0
+        },
+        {
+          "EnableSource": "on",
+          "EnableAddr": 0,
+          "EnableState": 0,
+          "EventSource": "switch",
+          "CondData": [],
+          "ButtonNr": [
+            0
+          ],
+          "CtrlCmd": [
+            {
+              "BtnCondAddr": [],
+              "CmdList": [
+                {
+                  "CtrlTarget": "switch",
+                  "CtrlAddr": 101,
+                  "CtrlType": "thrown",
+                  "CtrlValue": "on",
+                  "ExecDelay": 50
+                },
+                {
+                  "CtrlTarget": "switch",
+                  "CtrlAddr": 104,
+                  "CtrlType": "thrown",
+                  "CtrlValue": "on",
+                  "ExecDelay": 50
+                },
+                {
+                  "CtrlTarget": "block",
+                  "CtrlAddr": 300,
+                  "CtrlType": "block",
+                  "CtrlValue": "off",
+                  "ExecDelay": 50
+                }
+              ]
+            },
+            {
+              "BtnCondAddr": [],
+              "CmdList": [
+                {
+                  "CtrlTarget": "switch",
+                  "CtrlAddr": 103,
+                  "CtrlType": "thrown",
+                  "CtrlValue": "on",
+                  "ExecDelay": 50
+                },
+                {
+                  "CtrlTarget": "switch",
+                  "CtrlAddr": 106,
+                  "CtrlType": "thrown",
+                  "CtrlValue": "on",
+                  "ExecDelay": 50
+                },
+                {
+                  "CtrlTarget": "block",
+                  "CtrlAddr": 300,
+                  "CtrlType": "block",
+                  "CtrlValue": "on",
+                  "ExecDelay": 50
+                }
+              ]
+            }
+          ],
+          "CurrDisp": 1
+        },
+        {
+          "EnableSource": "on",
+          "EnableAddr": 0,
+          "EnableState": 0,
+          "EventSource": "switch",
+          "CondData": [],
+          "ButtonNr": [
+            1
+          ],
+          "CtrlCmd": [
+            {
+              "BtnCondAddr": [],
+              "CmdList": [
+                {
+                  "CtrlTarget": "block",
+                  "CtrlAddr": 301,
+                  "CtrlType": "block",
+                  "CtrlValue": "off",
+                  "ExecDelay": 50
+                }
+              ]
+            },
+            {
+              "BtnCondAddr": [],
+              "CmdList": [
+                {
+                  "CtrlTarget": "block",
+                  "CtrlAddr": 301,
+                  "CtrlType": "block",
+                  "CtrlValue": "on",
+                  "ExecDelay": 50
+                }
+              ]
+            }
+          ],
+          "CurrDisp": 0
+        },
+        {
+          "EnableSource": "on",
+          "EnableAddr": 0,
+          "EnableState": 0,
+          "EventSource": "switch",
+          "CondData": [],
+          "ButtonNr": [
+            2
+          ],
+          "CtrlCmd": [
+            {
+              "BtnCondAddr": [],
+              "CmdList": [
+                {
+                  "CtrlTarget": "block",
+                  "CtrlAddr": 302,
+                  "CtrlType": "block",
+                  "CtrlValue": "off",
+                  "ExecDelay": 50
+                }
+              ]
+            },
+            {
+              "BtnCondAddr": [],
+              "CmdList": [
+                {
+                  "CtrlTarget": "block",
+                  "CtrlAddr": 302,
+                  "CtrlType": "block",
+                  "CtrlValue": "on",
+                  "ExecDelay": 50
+                }
+              ]
+            }
+          ],
+          "CurrDisp": 1
+        },
+        {
+          "EnableSource": "on",
+          "EnableAddr": 0,
+          "EnableState": 0,
+          "EventSource": "switch",
+          "CondData": [],
+          "ButtonNr": [
+            3
+          ],
+          "CtrlCmd": [
+            {
+              "BtnCondAddr": [],
+              "CmdList": [
+                {
+                  "CtrlTarget": "switch",
+                  "CtrlAddr": 100,
+                  "CtrlType": "thrown",
+                  "CtrlValue": "on",
+                  "ExecDelay": 50
+                },
+                {
+                  "CtrlTarget": "switch",
+                  "CtrlAddr": 105,
+                  "CtrlType": "thrown",
+                  "CtrlValue": "on",
+                  "ExecDelay": 50
+                },
+                {
+                  "CtrlTarget": "block",
+                  "CtrlAddr": 303,
+                  "CtrlType": "block",
+                  "CtrlValue": "off",
+                  "ExecDelay": 50
+                }
+              ]
+            },
+            {
+              "BtnCondAddr": [],
+              "CmdList": [
+                {
+                  "CtrlTarget": "switch",
+                  "CtrlAddr": 102,
+                  "CtrlType": "thrown",
+                  "CtrlValue": "on",
+                  "ExecDelay": 50
+                },
+                {
+                  "CtrlTarget": "switch",
+                  "CtrlAddr": 107,
+                  "CtrlType": "thrown",
+                  "CtrlValue": "on",
+                  "ExecDelay": 50
+                },
+                {
+                  "CtrlTarget": "block",
+                  "CtrlAddr": 303,
+                  "CtrlType": "block",
+                  "CtrlValue": "on",
+                  "ExecDelay": 50
+                }
+              ]
+            }
+          ],
+          "CurrDisp": 0
+        },
+        {
+          "EnableSource": "on",
+          "EnableAddr": 0,
+          "EnableState": 0,
+          "EventSource": "blockdetector",
+          "CondData": [],
+          "ButtonNr": [
+            57
+          ],
+          "CtrlCmd": [
+            {
+              "BtnCondAddr": [],
+              "CmdList": []
+            },
+            {
+              "BtnCondAddr": [],
+              "CmdList": [
+                {
+                  "CtrlTarget": "switch",
+                  "CtrlAddr": 100,
+                  "CtrlType": "thrown",
+                  "CtrlValue": "on",
+                  "ExecDelay": 50
+                },
+                {
+                  "CtrlTarget": "switch",
+                  "CtrlAddr": 102,
+                  "CtrlType": "thrown",
+                  "CtrlValue": "on",
+                  "ExecDelay": 50
+                }
+              ]
+            }
+          ],
+          "CurrDisp": 1
+        }
+      ],
+      "Version": "1.3.2"
+    }
+  },
+  {
+    "Cmd": "CfgFiles",
+    "FileMode": 1,
+    "FileNameType": "btnevt",
+    "FileName": "btnevt1.cfg",
+    "Type": "pgBtnHdlrCfg",
+    "Data": {
+      "ButtonHandler": [
+        {
+          "EnableSource": "on",
+          "EnableAddr": 0,
+          "EnableState": 0,
+          "EventSource": "blockdetector",
+          "CondData": [],
+          "ButtonNr": [
+            5
+          ],
+          "CtrlCmd": [
+            {
+              "BtnCondAddr": [],
+              "CmdList": []
+            },
+            {
+              "BtnCondAddr": [],
+              "CmdList": [
+                {
+                  "CtrlTarget": "switch",
+                  "CtrlAddr": 101,
+                  "CtrlType": "thrown",
+                  "CtrlValue": "on",
+                  "ExecDelay": 50
+                },
+                {
+                  "CtrlTarget": "switch",
+                  "CtrlAddr": 103,
+                  "CtrlType": "thrown",
+                  "CtrlValue": "on",
+                  "ExecDelay": 50
+                }
+              ]
+            }
+          ],
+          "CurrDisp": 1
+        },
+        {
+          "EnableSource": "on",
+          "EnableAddr": 0,
+          "EnableState": 0,
+          "EventSource": "blockdetector",
+          "CondData": [],
+          "ButtonNr": [
+            48
+          ],
+          "CtrlCmd": [
+            {
+              "BtnCondAddr": [],
+              "CmdList": []
+            },
+            {
+              "BtnCondAddr": [],
+              "CmdList": [
+                {
+                  "CtrlTarget": "switch",
+                  "CtrlAddr": 105,
+                  "CtrlType": "thrown",
+                  "CtrlValue": "on",
+                  "ExecDelay": 50
+                }
+              ]
+            }
+          ],
+          "CurrDisp": 1
+        },
+        {
+          "EnableSource": "on",
+          "EnableAddr": 0,
+          "EnableState": 0,
+          "EventSource": "blockdetector",
+          "CondData": [],
+          "ButtonNr": [
+            52
+          ],
+          "CtrlCmd": [
+            {
+              "BtnCondAddr": [],
+              "CmdList": []
+            },
+            {
+              "BtnCondAddr": [],
+              "CmdList": [
+                {
+                  "CtrlTarget": "switch",
+                  "CtrlAddr": 107,
+                  "CtrlType": "thrown",
+                  "CtrlValue": "on",
+                  "ExecDelay": 50
+                }
+              ]
+            }
+          ],
+          "CurrDisp": 1
+        },
+        {
+          "EnableSource": "on",
+          "EnableAddr": 0,
+          "EnableState": 0,
+          "EventSource": "blockdetector",
+          "CondData": [],
+          "ButtonNr": [
+            12
+          ],
+          "CtrlCmd": [
+            {
+              "BtnCondAddr": [],
+              "CmdList": []
+            },
+            {
+              "BtnCondAddr": [],
+              "CmdList": [
+                {
+                  "CtrlTarget": "switch",
+                  "CtrlAddr": 104,
+                  "CtrlType": "thrown",
+                  "CtrlValue": "on",
+                  "ExecDelay": 50
+                }
+              ]
+            }
+          ],
+          "CurrDisp": 1
+        },
+        {
+          "EnableSource": "on",
+          "EnableAddr": 0,
+          "EnableState": 0,
+          "EventSource": "blockdetector",
+          "CondData": [],
+          "ButtonNr": [
+            8
+          ],
+          "CtrlCmd": [
+            {
+              "BtnCondAddr": [],
+              "CmdList": []
+            },
+            {
+              "BtnCondAddr": [],
+              "CmdList": [
+                {
+                  "CtrlTarget": "switch",
+                  "CtrlAddr": 106,
+                  "CtrlType": "thrown",
+                  "CtrlValue": "on",
+                  "ExecDelay": 50
+                }
+              ]
+            }
+          ],
+          "CurrDisp": 1
+        },
+        {
+          "EnableSource": "on",
+          "EnableAddr": 0,
+          "EnableState": 0,
+          "EventSource": "dccsignal",
+          "CondData": [],
+          "ButtonNr": [
+            804
+          ],
+          "CtrlCmd": [
+            {
+              "BtnCondAddr": [
+                0
+              ],
+              "CmdList": [
+                {
+                  "CtrlTarget": "block",
+                  "CtrlAddr": 304,
+                  "CtrlType": "block",
+                  "CtrlValue": "on",
+                  "ExecDelay": 50
+                }
+              ]
+            },
+            {
+              "BtnCondAddr": [
+                5
+              ],
+              "CmdList": [
+                {
+                  "CtrlTarget": "block",
+                  "CtrlAddr": 304,
+                  "CtrlType": "block",
+                  "CtrlValue": "off",
+                  "ExecDelay": 50
+                }
+              ]
+            },
+            {
+              "BtnCondAddr": [
+                10
+              ],
+              "CmdList": [
+                {
+                  "CtrlTarget": "block",
+                  "CtrlAddr": 304,
+                  "CtrlType": "block",
+                  "CtrlValue": "off",
+                  "ExecDelay": 50
+                }
+              ]
+            }
+          ],
+          "CurrDisp": 2
+        },
+        {
+          "EnableSource": "on",
+          "EnableAddr": 0,
+          "EnableState": 0,
+          "EventSource": "dccsignal",
+          "CondData": [],
+          "ButtonNr": [
+            806
+          ],
+          "CtrlCmd": [
+            {
+              "BtnCondAddr": [
+                0
+              ],
+              "CmdList": [
+                {
+                  "CtrlTarget": "block",
+                  "CtrlAddr": 306,
+                  "CtrlType": "block",
+                  "CtrlValue": "on",
+                  "ExecDelay": 50
+                }
+              ]
+            },
+            {
+              "BtnCondAddr": [
+                5
+              ],
+              "CmdList": [
+                {
+                  "CtrlTarget": "block",
+                  "CtrlAddr": 306,
+                  "CtrlType": "block",
+                  "CtrlValue": "off",
+                  "ExecDelay": 50
+                }
+              ]
+            },
+            {
+              "BtnCondAddr": [
+                10
+              ],
+              "CmdList": [
+                {
+                  "CtrlTarget": "block",
+                  "CtrlAddr": 306,
+                  "CtrlType": "block",
+                  "CtrlValue": "off",
+                  "ExecDelay": 50
+                }
+              ]
+            }
+          ],
+          "CurrDisp": 0
+        },
+        {
+          "EnableSource": "on",
+          "EnableAddr": 0,
+          "EnableState": 0,
+          "EventSource": "dccsignal",
+          "CondData": [],
+          "ButtonNr": [
+            808
+          ],
+          "CtrlCmd": [
+            {
+              "BtnCondAddr": [
+                0
+              ],
+              "CmdList": [
+                {
+                  "CtrlTarget": "block",
+                  "CtrlAddr": 308,
+                  "CtrlType": "block",
+                  "CtrlValue": "on",
+                  "ExecDelay": 50
+                }
+              ]
+            },
+            {
+              "BtnCondAddr": [
+                5
+              ],
+              "CmdList": [
+                {
+                  "CtrlTarget": "block",
+                  "CtrlAddr": 308,
+                  "CtrlType": "block",
+                  "CtrlValue": "off",
+                  "ExecDelay": 50
+                }
+              ]
+            },
+            {
+              "BtnCondAddr": [
+                10
+              ],
+              "CmdList": [
+                {
+                  "CtrlTarget": "block",
+                  "CtrlAddr": 308,
+                  "CtrlType": "block",
+                  "CtrlValue": "off",
+                  "ExecDelay": 50
+                }
+              ]
+            }
+          ],
+          "CurrDisp": 0
+        },
+        {
+          "EnableSource": "on",
+          "EnableAddr": 0,
+          "EnableState": 0,
+          "EventSource": "dccsignal",
+          "CondData": [],
+          "ButtonNr": [
+            810
+          ],
+          "CtrlCmd": [
+            {
+              "BtnCondAddr": [
+                0
+              ],
+              "CmdList": [
+                {
+                  "CtrlTarget": "block",
+                  "CtrlAddr": 310,
+                  "CtrlType": "block",
+                  "CtrlValue": "on",
+                  "ExecDelay": 50
+                }
+              ]
+            },
+            {
+              "BtnCondAddr": [
+                5
+              ],
+              "CmdList": [
+                {
+                  "CtrlTarget": "block",
+                  "CtrlAddr": 310,
+                  "CtrlType": "block",
+                  "CtrlValue": "off",
+                  "ExecDelay": 250
+                }
+              ]
+            },
+            {
+              "BtnCondAddr": [
+                10
+              ],
+              "CmdList": [
+                {
+                  "CtrlTarget": "block",
+                  "CtrlAddr": 310,
+                  "CtrlType": "block",
+                  "CtrlValue": "off",
+                  "ExecDelay": 250
+                }
+              ]
+            }
+          ],
+          "CurrDisp": 0
+        },
+        {
+          "EnableSource": "on",
+          "EnableAddr": 0,
+          "EnableState": 0,
+          "EventSource": "dccsignal",
+          "CondData": [],
+          "ButtonNr": [
+            805
+          ],
+          "CtrlCmd": [
+            {
+              "BtnCondAddr": [
+                0
+              ],
+              "CmdList": [
+                {
+                  "CtrlTarget": "block",
+                  "CtrlAddr": 305,
+                  "CtrlType": "block",
+                  "CtrlValue": "on",
+                  "ExecDelay": 50
+                }
+              ]
+            },
+            {
+              "BtnCondAddr": [
+                5
+              ],
+              "CmdList": [
+                {
+                  "CtrlTarget": "block",
+                  "CtrlAddr": 305,
+                  "CtrlType": "block",
+                  "CtrlValue": "off",
+                  "ExecDelay": 250
+                }
+              ]
+            },
+            {
+              "BtnCondAddr": [
+                10
+              ],
+              "CmdList": [
+                {
+                  "CtrlTarget": "block",
+                  "CtrlAddr": 305,
+                  "CtrlType": "block",
+                  "CtrlValue": "off",
+                  "ExecDelay": 250
+                }
+              ]
+            }
+          ],
+          "CurrDisp": 0
+        },
+        {
+          "EnableSource": "on",
+          "EnableAddr": 0,
+          "EnableState": 0,
+          "EventSource": "dccsignal",
+          "CondData": [],
+          "ButtonNr": [
+            807
+          ],
+          "CtrlCmd": [
+            {
+              "BtnCondAddr": [
+                0
+              ],
+              "CmdList": [
+                {
+                  "CtrlTarget": "block",
+                  "CtrlAddr": 307,
+                  "CtrlType": "block",
+                  "CtrlValue": "on",
+                  "ExecDelay": 50
+                }
+              ]
+            },
+            {
+              "BtnCondAddr": [
+                5
+              ],
+              "CmdList": [
+                {
+                  "CtrlTarget": "block",
+                  "CtrlAddr": 307,
+                  "CtrlType": "block",
+                  "CtrlValue": "off",
+                  "ExecDelay": 250
+                }
+              ]
+            },
+            {
+              "BtnCondAddr": [
+                10
+              ],
+              "CmdList": [
+                {
+                  "CtrlTarget": "block",
+                  "CtrlAddr": 307,
+                  "CtrlType": "block",
+                  "CtrlValue": "off",
+                  "ExecDelay": 250
+                }
+              ]
+            }
+          ],
+          "CurrDisp": 0
+        }
+      ]
+    }
+  },
+  {
+    "Cmd": "CfgFiles",
+    "FileMode": 1,
+    "FileNameType": "btnevt",
+    "FileName": "btnevt2.cfg",
+    "Type": "pgBtnHdlrCfg",
+    "Data": {
+      "ButtonHandler": [
+        {
+          "EnableSource": "on",
+          "EnableAddr": 0,
+          "EnableState": 0,
+          "EventSource": "dccsignal",
+          "CondData": [],
+          "ButtonNr": [
+            809
+          ],
+          "CtrlCmd": [
+            {
+              "BtnCondAddr": [
+                0
+              ],
+              "CmdList": [
+                {
+                  "CtrlTarget": "block",
+                  "CtrlAddr": 309,
+                  "CtrlType": "block",
+                  "CtrlValue": "on",
+                  "ExecDelay": 50
+                }
+              ]
+            },
+            {
+              "BtnCondAddr": [
+                5
+              ],
+              "CmdList": [
+                {
+                  "CtrlTarget": "block",
+                  "CtrlAddr": 309,
+                  "CtrlType": "block",
+                  "CtrlValue": "off",
+                  "ExecDelay": 250
+                }
+              ]
+            },
+            {
+              "BtnCondAddr": [
+                10
+              ],
+              "CmdList": [
+                {
+                  "CtrlTarget": "block",
+                  "CtrlAddr": 309,
+                  "CtrlType": "block",
+                  "CtrlValue": "off",
+                  "ExecDelay": 250
+                }
+              ]
+            }
+          ],
+          "CurrDisp": 0
+        },
+        {
+          "EnableSource": "on",
+          "EnableAddr": 0,
+          "EnableState": 0,
+          "EventSource": "dccsignal",
+          "CondData": [],
+          "ButtonNr": [
+            811
+          ],
+          "CtrlCmd": [
+            {
+              "BtnCondAddr": [
+                0
+              ],
+              "CmdList": [
+                {
+                  "CtrlTarget": "block",
+                  "CtrlAddr": 311,
+                  "CtrlType": "block",
+                  "CtrlValue": "on",
+                  "ExecDelay": 250
+                }
+              ]
+            },
+            {
+              "BtnCondAddr": [
+                5
+              ],
+              "CmdList": [
+                {
+                  "CtrlTarget": "block",
+                  "CtrlAddr": 311,
+                  "CtrlType": "block",
+                  "CtrlValue": "off",
+                  "ExecDelay": 250
+                }
+              ]
+            },
+            {
+              "BtnCondAddr": [
+                10
+              ],
+              "CmdList": [
+                {
+                  "CtrlTarget": "block",
+                  "CtrlAddr": 311,
+                  "CtrlType": "block",
+                  "CtrlValue": "off",
+                  "ExecDelay": 250
+                }
+              ]
+            }
+          ],
+          "CurrDisp": 0
+        },
+        {
+          "EnableSource": "block",
+          "EnableAddr": 57,
+          "EnableState": 0,
+          "EventSource": "switch",
+          "CondData": [],
+          "ButtonNr": [
+            100
+          ],
+          "CtrlCmd": [
+            {
+              "BtnCondAddr": [],
+              "CmdList": []
+            },
+            {
+              "BtnCondAddr": [],
+              "CmdList": [
+                {
+                  "CtrlTarget": "switch",
+                  "CtrlAddr": 3,
+                  "CtrlType": "closed",
+                  "CtrlValue": "on",
+                  "ExecDelay": 250
+                }
+              ]
+            }
+          ],
+          "CurrDisp": 1
+        },
+        {
+          "EnableSource": "on",
+          "EnableAddr": 12,
+          "EnableState": 0,
+          "EventSource": "switch",
+          "CondData": [],
+          "ButtonNr": [
+            100
+          ],
+          "CtrlCmd": [
+            {
+              "BtnCondAddr": [],
+              "CmdList": [
+                {
+                  "CtrlTarget": "signal",
+                  "CtrlAddr": 802,
+                  "CtrlType": "aspect",
+                  "CtrlValue": "0",
+                  "ExecDelay": 250
+                }
+              ]
+            },
+            {
+              "BtnCondAddr": [],
+              "CmdList": []
+            }
+          ],
+          "CurrDisp": 0
+        },
+        {
+          "EnableSource": "block",
+          "EnableAddr": 57,
+          "EnableState": 0,
+          "EventSource": "switch",
+          "CondData": [],
+          "ButtonNr": [
+            102
+          ],
+          "CtrlCmd": [
+            {
+              "BtnCondAddr": [],
+              "CmdList": []
+            },
+            {
+              "BtnCondAddr": [],
+              "CmdList": [
+                {
+                  "CtrlTarget": "switch",
+                  "CtrlAddr": 3,
+                  "CtrlType": "thrown",
+                  "CtrlValue": "on",
+                  "ExecDelay": 250
+                }
+              ]
+            }
+          ],
+          "CurrDisp": 1
+        },
+        {
+          "EnableSource": "on",
+          "EnableAddr": 8,
+          "EnableState": 0,
+          "EventSource": "switch",
+          "CondData": [],
+          "ButtonNr": [
+            102
+          ],
+          "CtrlCmd": [
+            {
+              "BtnCondAddr": [],
+              "CmdList": [
+                {
+                  "CtrlTarget": "signal",
+                  "CtrlAddr": 800,
+                  "CtrlType": "aspect",
+                  "CtrlValue": "0",
+                  "ExecDelay": 250
+                }
+              ]
+            },
+            {
+              "BtnCondAddr": [],
+              "CmdList": []
+            }
+          ],
+          "CurrDisp": 0
+        },
+        {
+          "EnableSource": "block",
+          "EnableAddr": 12,
+          "EnableState": 0,
+          "EventSource": "switch",
+          "CondData": [],
+          "ButtonNr": [
+            104
+          ],
+          "CtrlCmd": [
+            {
+              "BtnCondAddr": [],
+              "CmdList": []
+            },
+            {
+              "BtnCondAddr": [],
+              "CmdList": [
+                {
+                  "CtrlTarget": "switch",
+                  "CtrlAddr": 0,
+                  "CtrlType": "closed",
+                  "CtrlValue": "on",
+                  "ExecDelay": 250
+                }
+              ]
+            }
+          ],
+          "CurrDisp": 1
+        },
+        {
+          "EnableSource": "on",
+          "EnableAddr": 8,
+          "EnableState": 0,
+          "EventSource": "switch",
+          "CondData": [],
+          "ButtonNr": [
+            104
+          ],
+          "CtrlCmd": [
+            {
+              "BtnCondAddr": [],
+              "CmdList": [
+                {
+                  "CtrlTarget": "signal",
+                  "CtrlAddr": 810,
+                  "CtrlType": "aspect",
+                  "CtrlValue": "0",
+                  "ExecDelay": 250
+                }
+              ]
+            },
+            {
+              "BtnCondAddr": [],
+              "CmdList": []
+            }
+          ],
+          "CurrDisp": 0
+        },
+        {
+          "EnableSource": "block",
+          "EnableAddr": 8,
+          "EnableState": 0,
+          "EventSource": "switch",
+          "CondData": [],
+          "ButtonNr": [
+            106
+          ],
+          "CtrlCmd": [
+            {
+              "BtnCondAddr": [],
+              "CmdList": []
+            },
+            {
+              "BtnCondAddr": [],
+              "CmdList": [
+                {
+                  "CtrlTarget": "switch",
+                  "CtrlAddr": 0,
+                  "CtrlType": "thrown",
+                  "CtrlValue": "on",
+                  "ExecDelay": 250
+                }
+              ]
+            }
+          ],
+          "CurrDisp": 1
+        },
+        {
+          "EnableSource": "on",
+          "EnableAddr": 8,
+          "EnableState": 0,
+          "EventSource": "switch",
+          "CondData": [],
+          "ButtonNr": [
+            106
+          ],
+          "CtrlCmd": [
+            {
+              "BtnCondAddr": [],
+              "CmdList": [
+                {
+                  "CtrlTarget": "signal",
+                  "CtrlAddr": 810,
+                  "CtrlType": "aspect",
+                  "CtrlValue": "0",
+                  "ExecDelay": 250
+                }
+              ]
+            },
+            {
+              "BtnCondAddr": [],
+              "CmdList": []
+            }
+          ],
+          "CurrDisp": 0
+        },
+        {
+          "EnableSource": "block",
+          "EnableAddr": 5,
+          "EnableState": 0,
+          "EventSource": "switch",
+          "CondData": [],
+          "ButtonNr": [
+            101
+          ],
+          "CtrlCmd": [
+            {
+              "BtnCondAddr": [],
+              "CmdList": []
+            },
+            {
+              "BtnCondAddr": [],
+              "CmdList": [
+                {
+                  "CtrlTarget": "switch",
+                  "CtrlAddr": 0,
+                  "CtrlType": "closed",
+                  "CtrlValue": "on",
+                  "ExecDelay": 250
+                }
+              ]
+            }
+          ],
+          "CurrDisp": 1
+        },
+        {
+          "EnableSource": "on",
+          "EnableAddr": 0,
+          "EnableState": 0,
+          "EventSource": "switch",
+          "CondData": [],
+          "ButtonNr": [
+            101
+          ],
+          "CtrlCmd": [
+            {
+              "BtnCondAddr": [],
+              "CmdList": [
+                {
+                  "CtrlTarget": "signal",
+                  "CtrlAddr": 803,
+                  "CtrlType": "aspect",
+                  "CtrlValue": "0",
+                  "ExecDelay": 250
+                }
+              ]
+            },
+            {
+              "BtnCondAddr": [],
+              "CmdList": []
+            }
+          ],
+          "CurrDisp": 0
+        },
+        {
+          "EnableSource": "block",
+          "EnableAddr": 5,
+          "EnableState": 0,
+          "EventSource": "switch",
+          "CondData": [],
+          "ButtonNr": [
+            103
+          ],
+          "CtrlCmd": [
+            {
+              "BtnCondAddr": [],
+              "CmdList": []
+            },
+            {
+              "BtnCondAddr": [],
+              "CmdList": [
+                {
+                  "CtrlTarget": "switch",
+                  "CtrlAddr": 0,
+                  "CtrlType": "thrown",
+                  "CtrlValue": "on",
+                  "ExecDelay": 250
+                }
+              ]
+            }
+          ],
+          "CurrDisp": 1
+        }
+      ]
+    }
+  },
+  {
+    "Cmd": "CfgFiles",
+    "FileMode": 1,
+    "FileNameType": "btnevt",
+    "FileName": "btnevt3.cfg",
+    "Type": "pgBtnHdlrCfg",
+    "Data": {
+      "ButtonHandler": [
+        {
+          "EnableSource": "on",
+          "EnableAddr": 0,
+          "EnableState": 0,
+          "EventSource": "switch",
+          "CondData": [],
+          "ButtonNr": [
+            103
+          ],
+          "CtrlCmd": [
+            {
+              "BtnCondAddr": [],
+              "CmdList": [
+                {
+                  "CtrlTarget": "signal",
+                  "CtrlAddr": 801,
+                  "CtrlType": "aspect",
+                  "CtrlValue": "0",
+                  "ExecDelay": 250
+                }
+              ]
+            },
+            {
+              "BtnCondAddr": [],
+              "CmdList": []
+            }
+          ],
+          "CurrDisp": 0
+        },
+        {
+          "EnableSource": "block",
+          "EnableAddr": 48,
+          "EnableState": 0,
+          "EventSource": "switch",
+          "CondData": [],
+          "ButtonNr": [
+            105
+          ],
+          "CtrlCmd": [
+            {
+              "BtnCondAddr": [],
+              "CmdList": []
+            },
+            {
+              "BtnCondAddr": [],
+              "CmdList": [
+                {
+                  "CtrlTarget": "switch",
+                  "CtrlAddr": 3,
+                  "CtrlType": "closed",
+                  "CtrlValue": "on",
+                  "ExecDelay": 250
+                }
+              ]
+            }
+          ],
+          "CurrDisp": 1
+        },
+        {
+          "EnableSource": "on",
+          "EnableAddr": 60,
+          "EnableState": 0,
+          "EventSource": "switch",
+          "CondData": [],
+          "ButtonNr": [
+            105
+          ],
+          "CtrlCmd": [
+            {
+              "BtnCondAddr": [],
+              "CmdList": [
+                {
+                  "CtrlTarget": "signal",
+                  "CtrlAddr": 811,
+                  "CtrlType": "aspect",
+                  "CtrlValue": "0",
+                  "ExecDelay": 250
+                }
+              ]
+            },
+            {
+              "BtnCondAddr": [],
+              "CmdList": []
+            }
+          ],
+          "CurrDisp": 0
+        },
+        {
+          "EnableSource": "block",
+          "EnableAddr": 52,
+          "EnableState": 0,
+          "EventSource": "switch",
+          "CondData": [],
+          "ButtonNr": [
+            107
+          ],
+          "CtrlCmd": [
+            {
+              "BtnCondAddr": [],
+              "CmdList": []
+            },
+            {
+              "BtnCondAddr": [],
+              "CmdList": [
+                {
+                  "CtrlTarget": "switch",
+                  "CtrlAddr": 3,
+                  "CtrlType": "thrown",
+                  "CtrlValue": "on",
+                  "ExecDelay": 250
+                }
+              ]
+            }
+          ],
+          "CurrDisp": 1
+        },
+        {
+          "EnableSource": "on",
+          "EnableAddr": 60,
+          "EnableState": 0,
+          "EventSource": "switch",
+          "CondData": [],
+          "ButtonNr": [
+            107
+          ],
+          "CtrlCmd": [
+            {
+              "BtnCondAddr": [],
+              "CmdList": [
+                {
+                  "CtrlTarget": "signal",
+                  "CtrlAddr": 811,
+                  "CtrlType": "aspect",
+                  "CtrlValue": "0",
+                  "ExecDelay": 250
+                }
+              ]
+            },
+            {
+              "BtnCondAddr": [],
+              "CmdList": []
+            }
+          ],
+          "CurrDisp": 0
+        },
+        {
+          "EnableSource": "on",
+          "EnableAddr": 0,
+          "EnableState": 0,
+          "EventSource": "blockdetector",
+          "CondData": [],
+          "ButtonNr": [
+            0,
+            58
+          ],
+          "CtrlCmd": [
+            {
+              "BtnCondAddr": [],
+              "CmdList": [
+                {
+                  "CtrlTarget": "block",
+                  "CtrlAddr": 321,
+                  "CtrlType": "block",
+                  "CtrlValue": "off",
+                  "ExecDelay": 50
+                }
+              ]
+            },
+            {
+              "BtnCondAddr": [],
+              "CmdList": [
+                {
+                  "CtrlTarget": "block",
+                  "CtrlAddr": 321,
+                  "CtrlType": "block",
+                  "CtrlValue": "on",
+                  "ExecDelay": 250
+                }
+              ]
+            },
+            {
+              "BtnCondAddr": [],
+              "CmdList": [
+                {
+                  "CtrlTarget": "block",
+                  "CtrlAddr": 321,
+                  "CtrlType": "block",
+                  "CtrlValue": "on",
+                  "ExecDelay": 250
+                }
+              ]
+            },
+            {
+              "BtnCondAddr": [],
+              "CmdList": [
+                {
+                  "CtrlTarget": "block",
+                  "CtrlAddr": 321,
+                  "CtrlType": "block",
+                  "CtrlValue": "on",
+                  "ExecDelay": 250
+                }
+              ]
+            }
+          ],
+          "CurrDisp": 0
+        },
+        {
+          "EnableSource": "on",
+          "EnableAddr": 0,
+          "EnableState": 0,
+          "EventSource": "blockdetector",
+          "CondData": [],
+          "ButtonNr": [
+            60,
+            58
+          ],
+          "CtrlCmd": [
+            {
+              "BtnCondAddr": [],
+              "CmdList": [
+                {
+                  "CtrlTarget": "block",
+                  "CtrlAddr": 322,
+                  "CtrlType": "block",
+                  "CtrlValue": "off",
+                  "ExecDelay": 250
+                }
+              ]
+            },
+            {
+              "BtnCondAddr": [],
+              "CmdList": [
+                {
+                  "CtrlTarget": "block",
+                  "CtrlAddr": 322,
+                  "CtrlType": "block",
+                  "CtrlValue": "on",
+                  "ExecDelay": 250
+                }
+              ]
+            },
+            {
+              "BtnCondAddr": [],
+              "CmdList": [
+                {
+                  "CtrlTarget": "block",
+                  "CtrlAddr": 322,
+                  "CtrlType": "block",
+                  "CtrlValue": "on",
+                  "ExecDelay": 250
+                }
+              ]
+            },
+            {
+              "BtnCondAddr": [],
+              "CmdList": [
+                {
+                  "CtrlTarget": "block",
+                  "CtrlAddr": 322,
+                  "CtrlType": "block",
+                  "CtrlValue": "on",
+                  "ExecDelay": 250
+                }
+              ]
+            }
+          ],
+          "CurrDisp": 0
+        },
+        {
+          "EnableSource": "on",
+          "EnableAddr": 0,
+          "EnableState": 0,
+          "EventSource": "blockdetector",
+          "CondData": [],
+          "ButtonNr": [
+            0,
+            4
+          ],
+          "CtrlCmd": [
+            {
+              "BtnCondAddr": [],
+              "CmdList": [
+                {
+                  "CtrlTarget": "block",
+                  "CtrlAddr": 323,
+                  "CtrlType": "block",
+                  "CtrlValue": "off",
+                  "ExecDelay": 250
+                }
+              ]
+            },
+            {
+              "BtnCondAddr": [],
+              "CmdList": [
+                {
+                  "CtrlTarget": "block",
+                  "CtrlAddr": 323,
+                  "CtrlType": "block",
+                  "CtrlValue": "on",
+                  "ExecDelay": 250
+                }
+              ]
+            },
+            {
+              "BtnCondAddr": [],
+              "CmdList": [
+                {
+                  "CtrlTarget": "block",
+                  "CtrlAddr": 323,
+                  "CtrlType": "block",
+                  "CtrlValue": "on",
+                  "ExecDelay": 250
+                }
+              ]
+            },
+            {
+              "BtnCondAddr": [],
+              "CmdList": [
+                {
+                  "CtrlTarget": "block",
+                  "CtrlAddr": 323,
+                  "CtrlType": "block",
+                  "CtrlValue": "on",
+                  "ExecDelay": 250
+                }
+              ]
+            }
+          ],
+          "CurrDisp": 0
+        },
+        {
+          "EnableSource": "on",
+          "EnableAddr": 0,
+          "EnableState": 0,
+          "EventSource": "blockdetector",
+          "CondData": [],
+          "ButtonNr": [
+            60,
+            4
+          ],
+          "CtrlCmd": [
+            {
+              "BtnCondAddr": [],
+              "CmdList": [
+                {
+                  "CtrlTarget": "block",
+                  "CtrlAddr": 324,
+                  "CtrlType": "block",
+                  "CtrlValue": "off",
+                  "ExecDelay": 250
+                }
+              ]
+            },
+            {
+              "BtnCondAddr": [],
+              "CmdList": [
+                {
+                  "CtrlTarget": "block",
+                  "CtrlAddr": 324,
+                  "CtrlType": "block",
+                  "CtrlValue": "on",
+                  "ExecDelay": 250
+                }
+              ]
+            },
+            {
+              "BtnCondAddr": [],
+              "CmdList": [
+                {
+                  "CtrlTarget": "block",
+                  "CtrlAddr": 324,
+                  "CtrlType": "block",
+                  "CtrlValue": "on",
+                  "ExecDelay": 250
+                }
+              ]
+            },
+            {
+              "BtnCondAddr": [],
+              "CmdList": [
+                {
+                  "CtrlTarget": "block",
+                  "CtrlAddr": 324,
+                  "CtrlType": "block",
+                  "CtrlValue": "on",
+                  "ExecDelay": 250
+                }
+              ]
+            }
+          ],
+          "CurrDisp": 0
+        },
+        {
+          "EnableSource": "on",
+          "EnableAddr": 0,
+          "EnableState": 0,
+          "EventSource": "blockdetector",
+          "CondData": [],
+          "ButtonNr": [
+            56,
+            57
+          ],
+          "CtrlCmd": [
+            {
+              "BtnCondAddr": [],
+              "CmdList": [
+                {
+                  "CtrlTarget": "block",
+                  "CtrlAddr": 325,
+                  "CtrlType": "block",
+                  "CtrlValue": "off",
+                  "ExecDelay": 250
+                }
+              ]
+            },
+            {
+              "BtnCondAddr": [],
+              "CmdList": [
+                {
+                  "CtrlTarget": "block",
+                  "CtrlAddr": 325,
+                  "CtrlType": "block",
+                  "CtrlValue": "on",
+                  "ExecDelay": 250
+                }
+              ]
+            },
+            {
+              "BtnCondAddr": [],
+              "CmdList": [
+                {
+                  "CtrlTarget": "block",
+                  "CtrlAddr": 325,
+                  "CtrlType": "block",
+                  "CtrlValue": "on",
+                  "ExecDelay": 250
+                }
+              ]
+            },
+            {
+              "BtnCondAddr": [],
+              "CmdList": [
+                {
+                  "CtrlTarget": "block",
+                  "CtrlAddr": 325,
+                  "CtrlType": "block",
+                  "CtrlValue": "on",
+                  "ExecDelay": 250
+                }
+              ]
+            }
+          ],
+          "CurrDisp": 0
+        }
+      ]
+    }
+  },
+  {
+    "Cmd": "CfgFiles",
+    "FileMode": 1,
+    "FileNameType": "btnevt",
+    "FileName": "btnevt4.cfg",
+    "Type": "pgBtnHdlrCfg",
+    "Data": {
+      "ButtonHandler": [
+        {
+          "EnableSource": "on",
+          "EnableAddr": 0,
+          "EnableState": 0,
+          "EventSource": "blockdetector",
+          "CondData": [],
+          "ButtonNr": [
+            58,
+            57
+          ],
+          "CtrlCmd": [
+            {
+              "BtnCondAddr": [],
+              "CmdList": [
+                {
+                  "CtrlTarget": "block",
+                  "CtrlAddr": 326,
+                  "CtrlType": "block",
+                  "CtrlValue": "off",
+                  "ExecDelay": 250
+                }
+              ]
+            },
+            {
+              "BtnCondAddr": [],
+              "CmdList": [
+                {
+                  "CtrlTarget": "block",
+                  "CtrlAddr": 326,
+                  "CtrlType": "block",
+                  "CtrlValue": "on",
+                  "ExecDelay": 250
+                }
+              ]
+            },
+            {
+              "BtnCondAddr": [],
+              "CmdList": [
+                {
+                  "CtrlTarget": "block",
+                  "CtrlAddr": 326,
+                  "CtrlType": "block",
+                  "CtrlValue": "on",
+                  "ExecDelay": 250
+                }
+              ]
+            },
+            {
+              "BtnCondAddr": [],
+              "CmdList": [
+                {
+                  "CtrlTarget": "block",
+                  "CtrlAddr": 326,
+                  "CtrlType": "block",
+                  "CtrlValue": "on",
+                  "ExecDelay": 250
+                }
+              ]
+            }
+          ],
+          "CurrDisp": 0
+        },
+        {
+          "EnableSource": "on",
+          "EnableAddr": 0,
+          "EnableState": 0,
+          "EventSource": "blockdetector",
+          "CondData": [],
+          "ButtonNr": [
+            4,
+            5
+          ],
+          "CtrlCmd": [
+            {
+              "BtnCondAddr": [],
+              "CmdList": [
+                {
+                  "CtrlTarget": "block",
+                  "CtrlAddr": 327,
+                  "CtrlType": "block",
+                  "CtrlValue": "off",
+                  "ExecDelay": 250
+                }
+              ]
+            },
+            {
+              "BtnCondAddr": [],
+              "CmdList": [
+                {
+                  "CtrlTarget": "block",
+                  "CtrlAddr": 327,
+                  "CtrlType": "block",
+                  "CtrlValue": "on",
+                  "ExecDelay": 250
+                }
+              ]
+            },
+            {
+              "BtnCondAddr": [],
+              "CmdList": [
+                {
+                  "CtrlTarget": "block",
+                  "CtrlAddr": 327,
+                  "CtrlType": "block",
+                  "CtrlValue": "on",
+                  "ExecDelay": 250
+                }
+              ]
+            },
+            {
+              "BtnCondAddr": [],
+              "CmdList": [
+                {
+                  "CtrlTarget": "block",
+                  "CtrlAddr": 327,
+                  "CtrlType": "block",
+                  "CtrlValue": "on",
+                  "ExecDelay": 250
+                }
+              ]
+            }
+          ],
+          "CurrDisp": 0
+        },
+        {
+          "EnableSource": "on",
+          "EnableAddr": 0,
+          "EnableState": 0,
+          "EventSource": "blockdetector",
+          "CondData": [],
+          "ButtonNr": [
+            5,
+            6
+          ],
+          "CtrlCmd": [
+            {
+              "BtnCondAddr": [],
+              "CmdList": [
+                {
+                  "CtrlTarget": "block",
+                  "CtrlAddr": 328,
+                  "CtrlType": "block",
+                  "CtrlValue": "off",
+                  "ExecDelay": 250
+                }
+              ]
+            },
+            {
+              "BtnCondAddr": [],
+              "CmdList": [
+                {
+                  "CtrlTarget": "block",
+                  "CtrlAddr": 328,
+                  "CtrlType": "block",
+                  "CtrlValue": "on",
+                  "ExecDelay": 250
+                }
+              ]
+            },
+            {
+              "BtnCondAddr": [],
+              "CmdList": [
+                {
+                  "CtrlTarget": "block",
+                  "CtrlAddr": 328,
+                  "CtrlType": "block",
+                  "CtrlValue": "on",
+                  "ExecDelay": 250
+                }
+              ]
+            },
+            {
+              "BtnCondAddr": [],
+              "CmdList": [
+                {
+                  "CtrlTarget": "block",
+                  "CtrlAddr": 328,
+                  "CtrlType": "block",
+                  "CtrlValue": "on",
+                  "ExecDelay": 250
+                }
+              ]
+            }
+          ],
+          "CurrDisp": 3
+        },
+        {
+          "EnableSource": "on",
+          "EnableAddr": 0,
+          "EnableState": 0,
+          "EventSource": "blockdetector",
+          "CondData": [],
+          "ButtonNr": [
+            302,
+            321,
+            308
+          ],
+          "CtrlCmd": [
+            {
+              "BtnCondAddr": [],
+              "CmdList": []
+            },
+            {
+              "BtnCondAddr": [],
+              "CmdList": [
+                {
+                  "CtrlTarget": "signal",
+                  "CtrlAddr": 804,
+                  "CtrlType": "aspect",
+                  "CtrlValue": 10,
+                  "ExecDelay": 250
+                }
+              ]
+            },
+            {
+              "BtnCondAddr": [],
+              "CmdList": []
+            },
+            {
+              "BtnCondAddr": [],
+              "CmdList": [
+                {
+                  "CtrlTarget": "signal",
+                  "CtrlAddr": 804,
+                  "CtrlType": "aspect",
+                  "CtrlValue": "0",
+                  "ExecDelay": 250
+                }
+              ]
+            },
+            {
+              "BtnCondAddr": [],
+              "CmdList": []
+            },
+            {
+              "BtnCondAddr": [],
+              "CmdList": [
+                {
+                  "CtrlTarget": "signal",
+                  "CtrlAddr": 804,
+                  "CtrlType": "aspect",
+                  "CtrlValue": 5,
+                  "ExecDelay": 250
+                }
+              ]
+            },
+            {
+              "BtnCondAddr": [],
+              "CmdList": []
+            },
+            {
+              "BtnCondAddr": [],
+              "CmdList": [
+                {
+                  "CtrlTarget": "signal",
+                  "CtrlAddr": 804,
+                  "CtrlType": "aspect",
+                  "CtrlValue": "0",
+                  "ExecDelay": 250
+                }
+              ]
+            }
+          ],
+          "CurrDisp": 0
+        },
+        {
+          "EnableSource": "on",
+          "EnableAddr": 0,
+          "EnableState": 0,
+          "EventSource": "blockdetector",
+          "CondData": [],
+          "ButtonNr": [
+            302,
+            322,
+            306
+          ],
+          "CtrlCmd": [
+            {
+              "BtnCondAddr": [],
+              "CmdList": [
+                {
+                  "CtrlTarget": "signal",
+                  "CtrlAddr": 804,
+                  "CtrlType": "aspect",
+                  "CtrlValue": 5,
+                  "ExecDelay": 250
+                }
+              ]
+            },
+            {
+              "BtnCondAddr": [],
+              "CmdList": []
+            },
+            {
+              "BtnCondAddr": [],
+              "CmdList": [
+                {
+                  "CtrlTarget": "signal",
+                  "CtrlAddr": 804,
+                  "CtrlType": "aspect",
+                  "CtrlValue": "0",
+                  "ExecDelay": 250
+                }
+              ]
+            },
+            {
+              "BtnCondAddr": [],
+              "CmdList": []
+            },
+            {
+              "BtnCondAddr": [],
+              "CmdList": [
+                {
+                  "CtrlTarget": "signal",
+                  "CtrlAddr": 804,
+                  "CtrlType": "aspect",
+                  "CtrlValue": 5,
+                  "ExecDelay": 250
+                }
+              ]
+            },
+            {
+              "BtnCondAddr": [],
+              "CmdList": []
+            },
+            {
+              "BtnCondAddr": [],
+              "CmdList": [
+                {
+                  "CtrlTarget": "signal",
+                  "CtrlAddr": 804,
+                  "CtrlType": "aspect",
+                  "CtrlValue": "0",
+                  "ExecDelay": 250
+                }
+              ]
+            },
+            {
+              "BtnCondAddr": [],
+              "CmdList": []
+            }
+          ],
+          "CurrDisp": 6
+        },
+        {
+          "EnableSource": "on",
+          "EnableAddr": 0,
+          "EnableState": 0,
+          "EventSource": "blockdetector",
+          "CondData": [],
+          "ButtonNr": [
+            301,
+            327,
+            310
+          ],
+          "CtrlCmd": [
+            {
+              "BtnCondAddr": [],
+              "CmdList": [
+                {
+                  "CtrlTarget": "signal",
+                  "CtrlAddr": 806,
+                  "CtrlType": "aspect",
+                  "CtrlValue": 5,
+                  "ExecDelay": 50
+                },
+                {
+                  "CtrlTarget": "signal",
+                  "CtrlAddr": 808,
+                  "CtrlType": "aspect",
+                  "CtrlValue": "0",
+                  "ExecDelay": 50
+                }
+              ]
+            },
+            {
+              "BtnCondAddr": [],
+              "CmdList": [
+                {
+                  "CtrlTarget": "signal",
+                  "CtrlAddr": 806,
+                  "CtrlType": "aspect",
+                  "CtrlValue": "0",
+                  "ExecDelay": 50
+                },
+                {
+                  "CtrlTarget": "signal",
+                  "CtrlAddr": 808,
+                  "CtrlType": "aspect",
+                  "CtrlValue": 10,
+                  "ExecDelay": 50
+                }
+              ]
+            },
+            {
+              "BtnCondAddr": [],
+              "CmdList": [
+                {
+                  "CtrlTarget": "signal",
+                  "CtrlAddr": 806,
+                  "CtrlType": "aspect",
+                  "CtrlValue": "0",
+                  "ExecDelay": 50
+                },
+                {
+                  "CtrlTarget": "signal",
+                  "CtrlAddr": 808,
+                  "CtrlType": "aspect",
+                  "CtrlValue": "0",
+                  "ExecDelay": 50
+                }
+              ]
+            },
+            {
+              "BtnCondAddr": [],
+              "CmdList": [
+                {
+                  "CtrlTarget": "signal",
+                  "CtrlAddr": 806,
+                  "CtrlType": "aspect",
+                  "CtrlValue": "0",
+                  "ExecDelay": 50
+                },
+                {
+                  "CtrlTarget": "signal",
+                  "CtrlAddr": 808,
+                  "CtrlType": "aspect",
+                  "CtrlValue": "0",
+                  "ExecDelay": 50
+                }
+              ]
+            },
+            {
+              "BtnCondAddr": [],
+              "CmdList": [
+                {
+                  "CtrlTarget": "signal",
+                  "CtrlAddr": 806,
+                  "CtrlType": "aspect",
+                  "CtrlValue": 5,
+                  "ExecDelay": 50
+                },
+                {
+                  "CtrlTarget": "signal",
+                  "CtrlAddr": 808,
+                  "CtrlType": "aspect",
+                  "CtrlValue": "0",
+                  "ExecDelay": 50
+                }
+              ]
+            },
+            {
+              "BtnCondAddr": [],
+              "CmdList": [
+                {
+                  "CtrlTarget": "signal",
+                  "CtrlAddr": 806,
+                  "CtrlType": "aspect",
+                  "CtrlValue": "0",
+                  "ExecDelay": 50
+                },
+                {
+                  "CtrlTarget": "signal",
+                  "CtrlAddr": 808,
+                  "CtrlType": "aspect",
+                  "CtrlValue": 5,
+                  "ExecDelay": 50
+                }
+              ]
+            },
+            {
+              "BtnCondAddr": [],
+              "CmdList": [
+                {
+                  "CtrlTarget": "signal",
+                  "CtrlAddr": 806,
+                  "CtrlType": "aspect",
+                  "CtrlValue": "0",
+                  "ExecDelay": 50
+                },
+                {
+                  "CtrlTarget": "signal",
+                  "CtrlAddr": 808,
+                  "CtrlType": "aspect",
+                  "CtrlValue": "0",
+                  "ExecDelay": 50
+                }
+              ]
+            },
+            {
+              "BtnCondAddr": [],
+              "CmdList": [
+                {
+                  "CtrlTarget": "signal",
+                  "CtrlAddr": 806,
+                  "CtrlType": "aspect",
+                  "CtrlValue": "0",
+                  "ExecDelay": 50
+                },
+                {
+                  "CtrlTarget": "signal",
+                  "CtrlAddr": 808,
+                  "CtrlType": "aspect",
+                  "CtrlValue": "0",
+                  "ExecDelay": 50
+                }
+              ]
+            }
+          ],
+          "CurrDisp": 0
+        }
+      ]
+    }
+  },
+  {
+    "Cmd": "CfgFiles",
+    "FileMode": 1,
+    "FileNameType": "btnevt",
+    "FileName": "btnevt5.cfg",
+    "Type": "pgBtnHdlrCfg",
+    "Data": {
+      "ButtonHandler": [
+        {
+          "EnableSource": "on",
+          "EnableAddr": 0,
+          "EnableState": 0,
+          "EventSource": "blockdetector",
+          "CondData": [],
+          "ButtonNr": [
+            301,
+            321,
+            309
+          ],
+          "CtrlCmd": [
+            {
+              "BtnCondAddr": [],
+              "CmdList": []
+            },
+            {
+              "BtnCondAddr": [],
+              "CmdList": [
+                {
+                  "CtrlTarget": "signal",
+                  "CtrlAddr": 805,
+                  "CtrlType": "aspect",
+                  "CtrlValue": 10,
+                  "ExecDelay": 250
+                }
+              ]
+            },
+            {
+              "BtnCondAddr": [],
+              "CmdList": []
+            },
+            {
+              "BtnCondAddr": [],
+              "CmdList": [
+                {
+                  "CtrlTarget": "signal",
+                  "CtrlAddr": 805,
+                  "CtrlType": "aspect",
+                  "CtrlValue": "0",
+                  "ExecDelay": 250
+                }
+              ]
+            },
+            {
+              "BtnCondAddr": [],
+              "CmdList": []
+            },
+            {
+              "BtnCondAddr": [],
+              "CmdList": [
+                {
+                  "CtrlTarget": "signal",
+                  "CtrlAddr": 805,
+                  "CtrlType": "aspect",
+                  "CtrlValue": 5,
+                  "ExecDelay": 250
+                }
+              ]
+            },
+            {
+              "BtnCondAddr": [],
+              "CmdList": []
+            },
+            {
+              "BtnCondAddr": [],
+              "CmdList": [
+                {
+                  "CtrlTarget": "signal",
+                  "CtrlAddr": 805,
+                  "CtrlType": "aspect",
+                  "CtrlValue": "0",
+                  "ExecDelay": 250
+                }
+              ]
+            }
+          ],
+          "CurrDisp": 0
+        },
+        {
+          "EnableSource": "on",
+          "EnableAddr": 0,
+          "EnableState": 0,
+          "EventSource": "blockdetector",
+          "CondData": [],
+          "ButtonNr": [
+            301,
+            322,
+            307
+          ],
+          "CtrlCmd": [
+            {
+              "BtnCondAddr": [],
+              "CmdList": [
+                {
+                  "CtrlTarget": "signal",
+                  "CtrlAddr": 805,
+                  "CtrlType": "aspect",
+                  "CtrlValue": 5,
+                  "ExecDelay": 250
+                }
+              ]
+            },
+            {
+              "BtnCondAddr": [],
+              "CmdList": []
+            },
+            {
+              "BtnCondAddr": [],
+              "CmdList": [
+                {
+                  "CtrlTarget": "signal",
+                  "CtrlAddr": 805,
+                  "CtrlType": "aspect",
+                  "CtrlValue": "0",
+                  "ExecDelay": 250
+                }
+              ]
+            },
+            {
+              "BtnCondAddr": [],
+              "CmdList": []
+            },
+            {
+              "BtnCondAddr": [],
+              "CmdList": [
+                {
+                  "CtrlTarget": "signal",
+                  "CtrlAddr": 805,
+                  "CtrlType": "aspect",
+                  "CtrlValue": 5,
+                  "ExecDelay": 250
+                }
+              ]
+            },
+            {
+              "BtnCondAddr": [],
+              "CmdList": []
+            },
+            {
+              "BtnCondAddr": [],
+              "CmdList": [
+                {
+                  "CtrlTarget": "signal",
+                  "CtrlAddr": 805,
+                  "CtrlType": "aspect",
+                  "CtrlValue": "0",
+                  "ExecDelay": 250
+                }
+              ]
+            },
+            {
+              "BtnCondAddr": [],
+              "CmdList": []
+            }
+          ],
+          "CurrDisp": 0
+        },
+        {
+          "EnableSource": "on",
+          "EnableAddr": 0,
+          "EnableState": 0,
+          "EventSource": "blockdetector",
+          "CondData": [],
+          "ButtonNr": [
+            302,
+            325,
+            311
+          ],
+          "CtrlCmd": [
+            {
+              "BtnCondAddr": [],
+              "CmdList": [
+                {
+                  "CtrlTarget": "signal",
+                  "CtrlAddr": 807,
+                  "CtrlType": "aspect",
+                  "CtrlValue": 5,
+                  "ExecDelay": 250
+                },
+                {
+                  "CtrlTarget": "signal",
+                  "CtrlAddr": 809,
+                  "CtrlType": "aspect",
+                  "CtrlValue": "0",
+                  "ExecDelay": 250
+                }
+              ]
+            },
+            {
+              "BtnCondAddr": [],
+              "CmdList": [
+                {
+                  "CtrlTarget": "signal",
+                  "CtrlAddr": 807,
+                  "CtrlType": "aspect",
+                  "CtrlValue": "0",
+                  "ExecDelay": 250
+                },
+                {
+                  "CtrlTarget": "signal",
+                  "CtrlAddr": 809,
+                  "CtrlType": "aspect",
+                  "CtrlValue": 10,
+                  "ExecDelay": 250
+                }
+              ]
+            },
+            {
+              "BtnCondAddr": [],
+              "CmdList": [
+                {
+                  "CtrlTarget": "signal",
+                  "CtrlAddr": 807,
+                  "CtrlType": "aspect",
+                  "CtrlValue": "0",
+                  "ExecDelay": 250
+                },
+                {
+                  "CtrlTarget": "signal",
+                  "CtrlAddr": 809,
+                  "CtrlType": "aspect",
+                  "CtrlValue": "0",
+                  "ExecDelay": 250
+                }
+              ]
+            },
+            {
+              "BtnCondAddr": [],
+              "CmdList": [
+                {
+                  "CtrlTarget": "signal",
+                  "CtrlAddr": 807,
+                  "CtrlType": "aspect",
+                  "CtrlValue": "0",
+                  "ExecDelay": 250
+                },
+                {
+                  "CtrlTarget": "signal",
+                  "CtrlAddr": 809,
+                  "CtrlType": "aspect",
+                  "CtrlValue": "0",
+                  "ExecDelay": 250
+                }
+              ]
+            },
+            {
+              "BtnCondAddr": [],
+              "CmdList": [
+                {
+                  "CtrlTarget": "signal",
+                  "CtrlAddr": 807,
+                  "CtrlType": "aspect",
+                  "CtrlValue": 5,
+                  "ExecDelay": 250
+                },
+                {
+                  "CtrlTarget": "signal",
+                  "CtrlAddr": 809,
+                  "CtrlType": "aspect",
+                  "CtrlValue": "0",
+                  "ExecDelay": 250
+                }
+              ]
+            },
+            {
+              "BtnCondAddr": [],
+              "CmdList": [
+                {
+                  "CtrlTarget": "signal",
+                  "CtrlAddr": 807,
+                  "CtrlType": "aspect",
+                  "CtrlValue": "0",
+                  "ExecDelay": 250
+                },
+                {
+                  "CtrlTarget": "signal",
+                  "CtrlAddr": 809,
+                  "CtrlType": "aspect",
+                  "CtrlValue": 5,
+                  "ExecDelay": 250
+                }
+              ]
+            },
+            {
+              "BtnCondAddr": [],
+              "CmdList": [
+                {
+                  "CtrlTarget": "signal",
+                  "CtrlAddr": 807,
+                  "CtrlType": "aspect",
+                  "CtrlValue": "0",
+                  "ExecDelay": 250
+                },
+                {
+                  "CtrlTarget": "signal",
+                  "CtrlAddr": 809,
+                  "CtrlType": "aspect",
+                  "CtrlValue": "0",
+                  "ExecDelay": 250
+                }
+              ]
+            },
+            {
+              "BtnCondAddr": [],
+              "CmdList": [
+                {
+                  "CtrlTarget": "signal",
+                  "CtrlAddr": 807,
+                  "CtrlType": "aspect",
+                  "CtrlValue": "0",
+                  "ExecDelay": 250
+                },
+                {
+                  "CtrlTarget": "signal",
+                  "CtrlAddr": 809,
+                  "CtrlType": "aspect",
+                  "CtrlValue": "0",
+                  "ExecDelay": 250
+                }
+              ]
+            }
+          ],
+          "CurrDisp": 0
+        },
+        {
+          "EnableSource": "block",
+          "EnableAddr": 57,
+          "EnableState": 0,
+          "EventSource": "switch",
+          "CondData": [],
+          "ButtonNr": [
+            100,
+            102
+          ],
+          "CtrlCmd": [
+            {
+              "BtnCondAddr": [],
+              "CmdList": []
+            },
+            {
+              "BtnCondAddr": [],
+              "CmdList": [
+                {
+                  "CtrlTarget": "block",
+                  "CtrlAddr": 102,
+                  "CtrlType": "block",
+                  "CtrlValue": "on",
+                  "ExecDelay": 250
+                }
+              ]
+            },
+            {
+              "BtnCondAddr": [],
+              "CmdList": [
+                {
+                  "CtrlTarget": "block",
+                  "CtrlAddr": 102,
+                  "CtrlType": "block",
+                  "CtrlValue": "on",
+                  "ExecDelay": 250
+                }
+              ]
+            },
+            {
+              "BtnCondAddr": [],
+              "CmdList": [
+                {
+                  "CtrlTarget": "block",
+                  "CtrlAddr": 102,
+                  "CtrlType": "block",
+                  "CtrlValue": "on",
+                  "ExecDelay": 250
+                }
+              ]
+            }
+          ],
+          "CurrDisp": 0
+        },
+        {
+          "EnableSource": "on",
+          "EnableAddr": 0,
+          "EnableState": 0,
+          "EventSource": "switch",
+          "CondData": [],
+          "ButtonNr": [
+            100,
+            102
+          ],
+          "CtrlCmd": [
+            {
+              "BtnCondAddr": [],
+              "CmdList": [
+                {
+                  "CtrlTarget": "block",
+                  "CtrlAddr": 102,
+                  "CtrlType": "block",
+                  "CtrlValue": "off",
+                  "ExecDelay": 250
+                }
+              ]
+            },
+            {
+              "BtnCondAddr": [],
+              "CmdList": []
+            },
+            {
+              "BtnCondAddr": [],
+              "CmdList": []
+            },
+            {
+              "BtnCondAddr": [],
+              "CmdList": []
+            }
+          ],
+          "CurrDisp": 0
+        }
+      ]
+    }
+  },
+  {
+    "Cmd": "CfgFiles",
+    "FileMode": 1,
+    "FileNameType": "btnevt",
+    "FileName": "btnevt6.cfg",
+    "Type": "pgBtnHdlrCfg",
+    "Data": {
+      "ButtonHandler": [
+        {
+          "EnableSource": "block",
+          "EnableAddr": 12,
+          "EnableState": 0,
+          "EventSource": "switch",
+          "CondData": [],
+          "ButtonNr": [
+            104
+          ],
+          "CtrlCmd": [
+            {
+              "BtnCondAddr": [],
+              "CmdList": []
+            },
+            {
+              "BtnCondAddr": [],
+              "CmdList": [
+                {
+                  "CtrlTarget": "block",
+                  "CtrlAddr": 106,
+                  "CtrlType": "block",
+                  "CtrlValue": "on",
+                  "ExecDelay": 250
+                }
+              ]
+            }
+          ],
+          "CurrDisp": 1
+        },
+        {
+          "EnableSource": "on",
+          "EnableAddr": 0,
+          "EnableState": 0,
+          "EventSource": "switch",
+          "CondData": [],
+          "ButtonNr": [
+            104
+          ],
+          "CtrlCmd": [
+            {
+              "BtnCondAddr": [],
+              "CmdList": [
+                {
+                  "CtrlTarget": "block",
+                  "CtrlAddr": 106,
+                  "CtrlType": "block",
+                  "CtrlValue": "off",
+                  "ExecDelay": 250
+                }
+              ]
+            },
+            {
+              "BtnCondAddr": [],
+              "CmdList": []
+            }
+          ],
+          "CurrDisp": 0
+        },
+        {
+          "EnableSource": "block",
+          "EnableAddr": 8,
+          "EnableState": 0,
+          "EventSource": "switch",
+          "CondData": [],
+          "ButtonNr": [
+            106
+          ],
+          "CtrlCmd": [
+            {
+              "BtnCondAddr": [],
+              "CmdList": []
+            },
+            {
+              "BtnCondAddr": [],
+              "CmdList": [
+                {
+                  "CtrlTarget": "block",
+                  "CtrlAddr": 107,
+                  "CtrlType": "block",
+                  "CtrlValue": "on",
+                  "ExecDelay": 250
+                }
+              ]
+            }
+          ],
+          "CurrDisp": 0
+        },
+        {
+          "EnableSource": "on",
+          "EnableAddr": 0,
+          "EnableState": 0,
+          "EventSource": "switch",
+          "CondData": [],
+          "ButtonNr": [
+            106
+          ],
+          "CtrlCmd": [
+            {
+              "BtnCondAddr": [],
+              "CmdList": [
+                {
+                  "CtrlTarget": "block",
+                  "CtrlAddr": 107,
+                  "CtrlType": "block",
+                  "CtrlValue": "off",
+                  "ExecDelay": 250
+                }
+              ]
+            },
+            {
+              "BtnCondAddr": [],
+              "CmdList": []
+            }
+          ],
+          "CurrDisp": 0
+        },
+        {
+          "EnableSource": "block",
+          "EnableAddr": 5,
+          "EnableState": 0,
+          "EventSource": "switch",
+          "CondData": [],
+          "ButtonNr": [
+            101,
+            103
+          ],
+          "CtrlCmd": [
+            {
+              "BtnCondAddr": [],
+              "CmdList": []
+            },
+            {
+              "BtnCondAddr": [],
+              "CmdList": [
+                {
+                  "CtrlTarget": "block",
+                  "CtrlAddr": 105,
+                  "CtrlType": "block",
+                  "CtrlValue": "on",
+                  "ExecDelay": 250
+                }
+              ]
+            },
+            {
+              "BtnCondAddr": [],
+              "CmdList": [
+                {
+                  "CtrlTarget": "block",
+                  "CtrlAddr": 105,
+                  "CtrlType": "block",
+                  "CtrlValue": "on",
+                  "ExecDelay": 250
+                }
+              ]
+            },
+            {
+              "BtnCondAddr": [],
+              "CmdList": [
+                {
+                  "CtrlTarget": "block",
+                  "CtrlAddr": 105,
+                  "CtrlType": "block",
+                  "CtrlValue": "on",
+                  "ExecDelay": 250
+                }
+              ]
+            }
+          ],
+          "CurrDisp": 0
+        },
+        {
+          "EnableSource": "on",
+          "EnableAddr": 0,
+          "EnableState": 0,
+          "EventSource": "switch",
+          "CondData": [],
+          "ButtonNr": [
+            101,
+            103
+          ],
+          "CtrlCmd": [
+            {
+              "BtnCondAddr": [],
+              "CmdList": [
+                {
+                  "CtrlTarget": "block",
+                  "CtrlAddr": 105,
+                  "CtrlType": "block",
+                  "CtrlValue": "off",
+                  "ExecDelay": 250
+                }
+              ]
+            },
+            {
+              "BtnCondAddr": [],
+              "CmdList": []
+            },
+            {
+              "BtnCondAddr": [],
+              "CmdList": []
+            },
+            {
+              "BtnCondAddr": [],
+              "CmdList": []
+            }
+          ],
+          "CurrDisp": 0
+        },
+        {
+          "EnableSource": "block",
+          "EnableAddr": 48,
+          "EnableState": 0,
+          "EventSource": "switch",
+          "CondData": [],
+          "ButtonNr": [
+            105
+          ],
+          "CtrlCmd": [
+            {
+              "BtnCondAddr": [],
+              "CmdList": []
+            },
+            {
+              "BtnCondAddr": [],
+              "CmdList": [
+                {
+                  "CtrlTarget": "block",
+                  "CtrlAddr": 100,
+                  "CtrlType": "block",
+                  "CtrlValue": "on",
+                  "ExecDelay": 250
+                }
+              ]
+            }
+          ],
+          "CurrDisp": 0
+        },
+        {
+          "EnableSource": "on",
+          "EnableAddr": 0,
+          "EnableState": 0,
+          "EventSource": "switch",
+          "CondData": [],
+          "ButtonNr": [
+            105
+          ],
+          "CtrlCmd": [
+            {
+              "BtnCondAddr": [],
+              "CmdList": [
+                {
+                  "CtrlTarget": "block",
+                  "CtrlAddr": 100,
+                  "CtrlType": "block",
+                  "CtrlValue": "off",
+                  "ExecDelay": 250
+                }
+              ]
+            },
+            {
+              "BtnCondAddr": [],
+              "CmdList": []
+            }
+          ],
+          "CurrDisp": 0
+        },
+        {
+          "EnableSource": "block",
+          "EnableAddr": 52,
+          "EnableState": 0,
+          "EventSource": "switch",
+          "CondData": [],
+          "ButtonNr": [
+            107
+          ],
+          "CtrlCmd": [
+            {
+              "BtnCondAddr": [],
+              "CmdList": []
+            },
+            {
+              "BtnCondAddr": [],
+              "CmdList": [
+                {
+                  "CtrlTarget": "block",
+                  "CtrlAddr": 101,
+                  "CtrlType": "block",
+                  "CtrlValue": "on",
+                  "ExecDelay": 250
+                }
+              ]
+            }
+          ],
+          "CurrDisp": 1
+        },
+        {
+          "EnableSource": "on",
+          "EnableAddr": 0,
+          "EnableState": 0,
+          "EventSource": "switch",
+          "CondData": [],
+          "ButtonNr": [
+            107
+          ],
+          "CtrlCmd": [
+            {
+              "BtnCondAddr": [],
+              "CmdList": [
+                {
+                  "CtrlTarget": "block",
+                  "CtrlAddr": 101,
+                  "CtrlType": "block",
+                  "CtrlValue": "off",
+                  "ExecDelay": 250
+                }
+              ]
+            },
+            {
+              "BtnCondAddr": [],
+              "CmdList": []
+            }
+          ],
+          "CurrDisp": 0
+        },
+        {
+          "EnableSource": "switch",
+          "EnableAddr": 200,
+          "EnableState": 1,
+          "EventSource": "button",
+          "CondData": [
+            171
+          ],
+          "ButtonNr": [
+            178
+          ],
+          "CtrlCmd": [
+            {
+              "BtnCondAddr": [],
+              "CmdList": [
+                {
+                  "CtrlTarget": "switch",
+                  "CtrlAddr": 100,
+                  "CtrlType": "closed",
+                  "CtrlValue": "on",
+                  "ExecDelay": 250
+                }
+              ]
+            },
+            {
+              "BtnCondAddr": [],
+              "CmdList": []
+            },
+            {
+              "BtnCondAddr": [],
+              "CmdList": []
+            },
+            {
+              "BtnCondAddr": [],
+              "CmdList": []
+            },
+            {
+              "BtnCondAddr": [],
+              "CmdList": []
+            }
+          ],
+          "CurrDisp": 0
+        },
+        {
+          "EnableSource": "switch",
+          "EnableAddr": 200,
+          "EnableState": 1,
+          "EventSource": "button",
+          "CondData": [
+            178
+          ],
+          "ButtonNr": [
+            171
+          ],
+          "CtrlCmd": [
+            {
+              "BtnCondAddr": [],
+              "CmdList": [
+                {
+                  "CtrlTarget": "switch",
+                  "CtrlAddr": 105,
+                  "CtrlType": "closed",
+                  "CtrlValue": "on",
+                  "ExecDelay": 250
+                }
+              ]
+            },
+            {
+              "BtnCondAddr": [],
+              "CmdList": []
+            },
+            {
+              "BtnCondAddr": [],
+              "CmdList": []
+            },
+            {
+              "BtnCondAddr": [],
+              "CmdList": []
+            },
+            {
+              "BtnCondAddr": [],
+              "CmdList": []
+            }
+          ],
+          "CurrDisp": 0
+        },
+        {
+          "EnableSource": "switch",
+          "EnableAddr": 200,
+          "EnableState": 1,
+          "EventSource": "button",
+          "CondData": [
+            171
+          ],
+          "ButtonNr": [
+            175
+          ],
+          "CtrlCmd": [
+            {
+              "BtnCondAddr": [],
+              "CmdList": [
+                {
+                  "CtrlTarget": "switch",
+                  "CtrlAddr": 102,
+                  "CtrlType": "closed",
+                  "CtrlValue": "on",
+                  "ExecDelay": 250
+                }
+              ]
+            },
+            {
+              "BtnCondAddr": [],
+              "CmdList": []
+            },
+            {
+              "BtnCondAddr": [],
+              "CmdList": []
+            },
+            {
+              "BtnCondAddr": [],
+              "CmdList": []
+            },
+            {
+              "BtnCondAddr": [],
+              "CmdList": []
+            }
+          ],
+          "CurrDisp": 0
+        }
+      ]
+    }
+  },
+  {
+    "Cmd": "CfgFiles",
+    "FileMode": 1,
+    "FileNameType": "btnevt",
+    "FileName": "btnevt7.cfg",
+    "Type": "pgBtnHdlrCfg",
+    "Data": {
+      "ButtonHandler": [
+        {
+          "EnableSource": "switch",
+          "EnableAddr": 200,
+          "EnableState": 1,
+          "EventSource": "button",
+          "CondData": [
+            175
+          ],
+          "ButtonNr": [
+            171
+          ],
+          "CtrlCmd": [
+            {
+              "BtnCondAddr": [],
+              "CmdList": [
+                {
+                  "CtrlTarget": "switch",
+                  "CtrlAddr": 107,
+                  "CtrlType": "closed",
+                  "CtrlValue": "on",
+                  "ExecDelay": 250
+                }
+              ]
+            },
+            {
+              "BtnCondAddr": [],
+              "CmdList": []
+            },
+            {
+              "BtnCondAddr": [],
+              "CmdList": []
+            },
+            {
+              "BtnCondAddr": [],
+              "CmdList": []
+            },
+            {
+              "BtnCondAddr": [],
+              "CmdList": []
+            }
+          ],
+          "CurrDisp": 0
+        },
+        {
+          "EnableSource": "switch",
+          "EnableAddr": 200,
+          "EnableState": 1,
+          "EventSource": "button",
+          "CondData": [
+            179
+          ],
+          "ButtonNr": [
+            171
+          ],
+          "CtrlCmd": [
+            {
+              "BtnCondAddr": [],
+              "CmdList": [
+                {
+                  "CtrlTarget": "switch",
+                  "CtrlAddr": 104,
+                  "CtrlType": "closed",
+                  "CtrlValue": "on",
+                  "ExecDelay": 250
+                }
+              ]
+            },
+            {
+              "BtnCondAddr": [],
+              "CmdList": []
+            },
+            {
+              "BtnCondAddr": [],
+              "CmdList": []
+            },
+            {
+              "BtnCondAddr": [],
+              "CmdList": []
+            },
+            {
+              "BtnCondAddr": [],
+              "CmdList": []
+            }
+          ],
+          "CurrDisp": 0
+        },
+        {
+          "EnableSource": "switch",
+          "EnableAddr": 200,
+          "EnableState": 1,
+          "EventSource": "button",
+          "CondData": [
+            171
+          ],
+          "ButtonNr": [
+            179
+          ],
+          "CtrlCmd": [
+            {
+              "BtnCondAddr": [],
+              "CmdList": [
+                {
+                  "CtrlTarget": "switch",
+                  "CtrlAddr": 101,
+                  "CtrlType": "closed",
+                  "CtrlValue": "on",
+                  "ExecDelay": 250
+                }
+              ]
+            },
+            {
+              "BtnCondAddr": [],
+              "CmdList": []
+            },
+            {
+              "BtnCondAddr": [],
+              "CmdList": []
+            },
+            {
+              "BtnCondAddr": [],
+              "CmdList": []
+            },
+            {
+              "BtnCondAddr": [],
+              "CmdList": []
+            }
+          ],
+          "CurrDisp": 0
+        },
+        {
+          "EnableSource": "switch",
+          "EnableAddr": 200,
+          "EnableState": 1,
+          "EventSource": "button",
+          "CondData": [
+            174
+          ],
+          "ButtonNr": [
+            171
+          ],
+          "CtrlCmd": [
+            {
+              "BtnCondAddr": [],
+              "CmdList": [
+                {
+                  "CtrlTarget": "switch",
+                  "CtrlAddr": 106,
+                  "CtrlType": "closed",
+                  "CtrlValue": "on",
+                  "ExecDelay": 250
+                }
+              ]
+            },
+            {
+              "BtnCondAddr": [],
+              "CmdList": []
+            },
+            {
+              "BtnCondAddr": [],
+              "CmdList": []
+            },
+            {
+              "BtnCondAddr": [],
+              "CmdList": []
+            },
+            {
+              "BtnCondAddr": [],
+              "CmdList": []
+            }
+          ],
+          "CurrDisp": 0
+        },
+        {
+          "EnableSource": "switch",
+          "EnableAddr": 200,
+          "EnableState": 1,
+          "EventSource": "button",
+          "CondData": [
+            171
+          ],
+          "ButtonNr": [
+            174
+          ],
+          "CtrlCmd": [
+            {
+              "BtnCondAddr": [],
+              "CmdList": [
+                {
+                  "CtrlTarget": "switch",
+                  "CtrlAddr": 103,
+                  "CtrlType": "closed",
+                  "CtrlValue": "on",
+                  "ExecDelay": 250
+                }
+              ]
+            },
+            {
+              "BtnCondAddr": [],
+              "CmdList": []
+            },
+            {
+              "BtnCondAddr": [],
+              "CmdList": []
+            },
+            {
+              "BtnCondAddr": [],
+              "CmdList": []
+            },
+            {
+              "BtnCondAddr": [],
+              "CmdList": []
+            }
+          ],
+          "CurrDisp": 0
+        },
+        {
+          "EnableSource": "switch",
+          "EnableAddr": 100,
+          "EnableState": 1,
+          "EventSource": "button",
+          "CondData": [
+            171
+          ],
+          "ButtonNr": [
+            178
+          ],
+          "CtrlCmd": [
+            {
+              "BtnCondAddr": [],
+              "CmdList": []
+            },
+            {
+              "BtnCondAddr": [],
+              "CmdList": []
+            },
+            {
+              "BtnCondAddr": [],
+              "CmdList": []
+            },
+            {
+              "BtnCondAddr": [],
+              "CmdList": []
+            },
+            {
+              "BtnCondAddr": [],
+              "CmdList": [
+                {
+                  "CtrlTarget": "signal",
+                  "CtrlAddr": 802,
+                  "CtrlType": "aspect",
+                  "CtrlValue": 5,
+                  "ExecDelay": 250
+                }
+              ]
+            }
+          ],
+          "CurrDisp": 4
+        },
+        {
+          "EnableSource": "switch",
+          "EnableAddr": 105,
+          "EnableState": 1,
+          "EventSource": "button",
+          "CondData": [
+            171
+          ],
+          "ButtonNr": [
+            178
+          ],
+          "CtrlCmd": [
+            {
+              "BtnCondAddr": [],
+              "CmdList": []
+            },
+            {
+              "BtnCondAddr": [],
+              "CmdList": []
+            },
+            {
+              "BtnCondAddr": [],
+              "CmdList": []
+            },
+            {
+              "BtnCondAddr": [],
+              "CmdList": []
+            },
+            {
+              "BtnCondAddr": [],
+              "CmdList": [
+                {
+                  "CtrlTarget": "signal",
+                  "CtrlAddr": 811,
+                  "CtrlType": "aspect",
+                  "CtrlValue": 5,
+                  "ExecDelay": 250
+                }
+              ]
+            }
+          ],
+          "CurrDisp": 4
+        },
+        {
+          "EnableSource": "switch",
+          "EnableAddr": 102,
+          "EnableState": 1,
+          "EventSource": "button",
+          "CondData": [
+            171
+          ],
+          "ButtonNr": [
+            175
+          ],
+          "CtrlCmd": [
+            {
+              "BtnCondAddr": [],
+              "CmdList": []
+            },
+            {
+              "BtnCondAddr": [],
+              "CmdList": []
+            },
+            {
+              "BtnCondAddr": [],
+              "CmdList": []
+            },
+            {
+              "BtnCondAddr": [],
+              "CmdList": []
+            },
+            {
+              "BtnCondAddr": [],
+              "CmdList": [
+                {
+                  "CtrlTarget": "signal",
+                  "CtrlAddr": 800,
+                  "CtrlType": "aspect",
+                  "CtrlValue": 5,
+                  "ExecDelay": 250
+                }
+              ]
+            }
+          ],
+          "CurrDisp": 4
+        },
+        {
+          "EnableSource": "switch",
+          "EnableAddr": 107,
+          "EnableState": 1,
+          "EventSource": "button",
+          "CondData": [
+            171
+          ],
+          "ButtonNr": [
+            175
+          ],
+          "CtrlCmd": [
+            {
+              "BtnCondAddr": [],
+              "CmdList": []
+            },
+            {
+              "BtnCondAddr": [],
+              "CmdList": []
+            },
+            {
+              "BtnCondAddr": [],
+              "CmdList": []
+            },
+            {
+              "BtnCondAddr": [],
+              "CmdList": []
+            },
+            {
+              "BtnCondAddr": [],
+              "CmdList": [
+                {
+                  "CtrlTarget": "signal",
+                  "CtrlAddr": 811,
+                  "CtrlType": "aspect",
+                  "CtrlValue": 5,
+                  "ExecDelay": 250
+                }
+              ]
+            }
+          ],
+          "CurrDisp": 4
+        },
+        {
+          "EnableSource": "switch",
+          "EnableAddr": 104,
+          "EnableState": 1,
+          "EventSource": "button",
+          "CondData": [
+            171
+          ],
+          "ButtonNr": [
+            179
+          ],
+          "CtrlCmd": [
+            {
+              "BtnCondAddr": [],
+              "CmdList": []
+            },
+            {
+              "BtnCondAddr": [],
+              "CmdList": []
+            },
+            {
+              "BtnCondAddr": [],
+              "CmdList": []
+            },
+            {
+              "BtnCondAddr": [],
+              "CmdList": []
+            },
+            {
+              "BtnCondAddr": [],
+              "CmdList": [
+                {
+                  "CtrlTarget": "signal",
+                  "CtrlAddr": 810,
+                  "CtrlType": "aspect",
+                  "CtrlValue": 5,
+                  "ExecDelay": 250
+                }
+              ]
+            }
+          ],
+          "CurrDisp": 4
+        },
+        {
+          "EnableSource": "switch",
+          "EnableAddr": 101,
+          "EnableState": 1,
+          "EventSource": "button",
+          "CondData": [
+            171
+          ],
+          "ButtonNr": [
+            179
+          ],
+          "CtrlCmd": [
+            {
+              "BtnCondAddr": [],
+              "CmdList": []
+            },
+            {
+              "BtnCondAddr": [],
+              "CmdList": []
+            },
+            {
+              "BtnCondAddr": [],
+              "CmdList": []
+            },
+            {
+              "BtnCondAddr": [],
+              "CmdList": []
+            },
+            {
+              "BtnCondAddr": [],
+              "CmdList": [
+                {
+                  "CtrlTarget": "signal",
+                  "CtrlAddr": 803,
+                  "CtrlType": "aspect",
+                  "CtrlValue": 5,
+                  "ExecDelay": 250
+                }
+              ]
+            }
+          ],
+          "CurrDisp": 4
+        }
+      ]
+    }
+  },
+  {
+    "Cmd": "CfgFiles",
+    "FileMode": 1,
+    "FileNameType": "btnevt",
+    "FileName": "btnevt8.cfg",
+    "Type": "pgBtnHdlrCfg",
+    "Data": {
+      "ButtonHandler": [
+        {
+          "EnableSource": "switch",
+          "EnableAddr": 106,
+          "EnableState": 1,
+          "EventSource": "button",
+          "CondData": [
+            171
+          ],
+          "ButtonNr": [
+            174
+          ],
+          "CtrlCmd": [
+            {
+              "BtnCondAddr": [],
+              "CmdList": []
+            },
+            {
+              "BtnCondAddr": [],
+              "CmdList": []
+            },
+            {
+              "BtnCondAddr": [],
+              "CmdList": []
+            },
+            {
+              "BtnCondAddr": [],
+              "CmdList": []
+            },
+            {
+              "BtnCondAddr": [],
+              "CmdList": [
+                {
+                  "CtrlTarget": "signal",
+                  "CtrlAddr": 810,
+                  "CtrlType": "aspect",
+                  "CtrlValue": 5,
+                  "ExecDelay": 250
+                }
+              ]
+            }
+          ],
+          "CurrDisp": 4
+        },
+        {
+          "EnableSource": "switch",
+          "EnableAddr": 103,
+          "EnableState": 1,
+          "EventSource": "button",
+          "CondData": [
+            171
+          ],
+          "ButtonNr": [
+            179
+          ],
+          "CtrlCmd": [
+            {
+              "BtnCondAddr": [],
+              "CmdList": []
+            },
+            {
+              "BtnCondAddr": [],
+              "CmdList": []
+            },
+            {
+              "BtnCondAddr": [],
+              "CmdList": []
+            },
+            {
+              "BtnCondAddr": [],
+              "CmdList": []
+            },
+            {
+              "BtnCondAddr": [],
+              "CmdList": [
+                {
+                  "CtrlTarget": "signal",
+                  "CtrlAddr": 801,
+                  "CtrlType": "aspect",
+                  "CtrlValue": 5,
+                  "ExecDelay": 250
+                }
+              ]
+            }
+          ],
+          "CurrDisp": 4
+        }
+      ]
+    }
+  }
+]
