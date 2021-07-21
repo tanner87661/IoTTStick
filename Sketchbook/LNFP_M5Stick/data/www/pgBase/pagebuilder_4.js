@@ -436,4 +436,3 @@ function tfTransitionSelector(y, x, id, evtHandler)
 	selectList.setAttribute("onchange", evtHandler);
 	return selectList;
 }
-

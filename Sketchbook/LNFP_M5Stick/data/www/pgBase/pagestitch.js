@@ -54,7 +54,7 @@ function upgradeJSONVersionGH(jsonData)
 
 function upgradeJSONVersionSwitch(jsonData)
 {
-	jsonFileVersion = "1.0.0";
+	jsonFileVersion = "1.0.1";
 	var thisVersion = jsonData.Version;
 //	console.log(thisVersion);
 	if (thisVersion == jsonFileVersion)
@@ -64,6 +64,18 @@ function upgradeJSONVersionSwitch(jsonData)
 		//upgrade from noversion to 1.1.1
 		console.log("upgrade Switches from noversion to 1.0.0");
 		jsonData.Version = "1.0.0";
+	}
+	if (jsonData.Version == "1.0.0")
+	{
+		for (var i = 0; i < jsonData.Drivers.length; i++)
+		{
+			jsonData.Drivers[i].DevType = "servo";
+			jsonData.Drivers[i].DevOption = 3;
+		}
+		jsonData.ServoMinPos = 185;
+		jsonData.ServoMaxPos = 850;
+		jsonData.Version = "1.0.1";
+		console.log("upgrade Switches from version 1.0.0 to 1.0.1");
 	}
 	return jsonData;
 }
@@ -235,6 +247,17 @@ function addFileSeqBtnHdlr(ofObj, cfgData) //object specific function to include
 	}
 }
 
+function addFileSeqSwi(ofObj, cfgData) //object specific function to include partial files
+{
+	console.log(ofObj);
+	console.log(cfgData);
+	for (var j=0; j<ofObj.Drivers.length; j++)
+	{
+		cfgData[1].Drivers.push(JSON.parse(JSON.stringify(ofObj.Drivers[j])));
+		cfgData[2] = JSON.parse(JSON.stringify(cfgData[1]));
+	}
+}
+
 function prepareFileSeqLED(configData, transferIndex) //object specific function to create partial files
 {
 	function addEntry()
@@ -291,3 +314,30 @@ function prepareFileSeqBtnEvt(configData, transferIndex) //object specific funct
 	}
 }
 
+function prepareFileSeqSwi(configData, transferIndex) //object specific function to create partial files
+{
+	function addEntry()
+	{
+		var newEntry = {"Drivers":[]}
+		transferData[transferIndex].FileList.push(newEntry);
+		return newEntry;
+	}
+	
+	var thisEntry = addEntry();
+	thisEntry.Version = JSON.parse(JSON.stringify(configData.Version));
+	thisEntry.ServoMinPos = JSON.parse(JSON.stringify(configData.ServoMinPos));
+	thisEntry.ServoMaxPos = JSON.parse(JSON.stringify(configData.ServoMaxPos));
+	var thisFileLength = 0;
+	
+	for (var j=0; j < configData.Drivers.length;j++)
+	{
+		var thisElementStr = JSON.stringify(configData.Drivers[j]);
+		thisFileLength += thisElementStr.length;
+		thisEntry.Drivers.push(JSON.parse(thisElementStr));
+		if ((thisFileLength > targetSize) && (j < (configData.Drivers.length - 1)))
+		{
+			thisEntry = addEntry();
+			thisFileLength = 0;
+		}
+	}
+}
