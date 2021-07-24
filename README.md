@@ -1,6 +1,10 @@
 # IoTTStick
 This is the master repository for the IoTT Stick, port modules and hat devices with the source code for the latest release. 
 
+2021/07/24
+- Ready to release version 1.5.6 with new setup screen for GreenHat, including possibility to connect and drive relays and coil driver board
+- some minor bug fixes
+
 2021/06/04
 - Ready to release new vesion 1.5.5 adding enabler function to event handler
 - adding analog scaler function to event handler to allow for changing ranges and slope of analog data input to adapt sensor input to the levels needed
