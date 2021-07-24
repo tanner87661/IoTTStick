@@ -23,8 +23,10 @@ var dlgTextDispArea;
 var fileGroupIndex = 0;
 var fileSendIndex = 0;
 
-var targetSize = 3072; //3kB target length of file strings, should always fit into 16kB wsBuffer of asyncServer
-//var targetSize = 10240; //10kb target length of file strings, should always fit into 16kB wsBuffer of asyncServer
+var storeConfigFiles = false;
+
+var targetSize = 8192; //8kB target length of file strings, should always fit into 16kB wsBuffer of asyncServer
+//var targetSize = 4096; //4kb target length of file strings, should always fit into 16kB wsBuffer of asyncServer
 //var configFileTransfer;
 
 function loadPageList(pageName, menueTab, contentTab, footerTab)
@@ -495,13 +497,32 @@ function startWebsockets()
 				case 3: //write file to disk
 					if (progressDlg)
 						progressDlg.style.display = "none";
-					var a = document.createElement("a");
-					a.href = URL.createObjectURL(new Blob([JSON.stringify(transferData, null, 2)], {type: "text/plain"}));
-					a.setAttribute("download", "M5Config.json");
-					a.style.display = 'none';
-					document.body.appendChild(a);
-					a.click();
-					document.body.removeChild(a);	
+						
+						
+					if (storeConfigFiles) //store individual config files
+					{
+						console.log("SHIFT ", transferData.length);
+						for (var i = 0; i < transferData.length; i++)
+						{
+							var a = document.createElement("a");
+							a.href = URL.createObjectURL(new Blob([JSON.stringify(transferData[i].Data, null, 2)], {type: "text/plain"}));
+							a.setAttribute("download", transferData[i].FileName);
+							a.style.display = 'none';
+							document.body.appendChild(a);
+							a.click();
+							document.body.removeChild(a);	
+						}
+					}
+					else
+					{
+						var a = document.createElement("a");
+						a.href = URL.createObjectURL(new Blob([JSON.stringify(transferData, null, 2)], {type: "text/plain"}));
+						a.setAttribute("download", "IoTTConfig.json");
+						a.style.display = 'none';
+						document.body.appendChild(a);
+						a.click();
+						document.body.removeChild(a);	
+					}
 					break;
 			}
 		}

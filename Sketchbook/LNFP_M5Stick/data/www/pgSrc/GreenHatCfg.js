@@ -20,6 +20,8 @@ var numChannels = 16;
 var updateServoPos = true;
 
 var btnStatus = ["off", "digital", "analog"];
+var devOptionsList = ["Servo", "Coil Driver"];
+var devOptions = ["servo", "coil"];
 
 var ledOptionArray = ["switch", "signaldyn", "signal", "button", "analog", "block", "transponder", "power", "constant", "signalstat"];
 var sourceOptionArray = ["switch","dynsignal","dccsignal", "button","analogvalue", "blockdetector", "transponder"];
@@ -76,50 +78,33 @@ function saveConfigFileSettings()
 	for (var i = 0; i < configData[workCfg].Modules.length; i++)
 	{
 		if (JSON.stringify(swiCfgData[loadCfg]) != JSON.stringify(swiCfgData[workCfg]))
-			saveJSONConfig(configData[workCfg].Modules[i].CfgFiles[0].ID, configData[workCfg].Modules[i].CfgFiles[0].FileName, swiCfgData[workCfg], null);
+			saveJSONConfig(configData[workCfg].Modules[i].CfgFiles[0].ID, configData[workCfg].Modules[i].CfgFiles[0].FileName, swiCfgData[workCfg], prepareFileSeqSwi);
 		if (JSON.stringify(btnCfgData[loadCfg]) != JSON.stringify(btnCfgData[workCfg]))
 			saveJSONConfig(configData[workCfg].Modules[i].CfgFiles[0].ID, configData[workCfg].Modules[i].CfgFiles[1].FileName, btnCfgData[workCfg], null);
 		if (JSON.stringify(evtHdlrCfgData[loadCfg]) != JSON.stringify(evtHdlrCfgData[workCfg]))
-			saveJSONConfig(configData[workCfg].Modules[i].CfgFiles[0].ID, configData[workCfg].Modules[i].CfgFiles[2].FileName, evtHdlrCfgData[workCfg], null);
+			saveJSONConfig(configData[workCfg].Modules[i].CfgFiles[0].ID, configData[workCfg].Modules[i].CfgFiles[2].FileName, evtHdlrCfgData[workCfg], prepareFileSeqBtnEvt);
 		if (JSON.stringify(ledData[loadCfg]) != JSON.stringify(ledData[workCfg]))
-			saveJSONConfig(configData[workCfg].Modules[i].CfgFiles[0].ID, configData[workCfg].Modules[i].CfgFiles[3].FileName, ledData[workCfg], null);
+			saveJSONConfig(configData[workCfg].Modules[i].CfgFiles[0].ID, configData[workCfg].Modules[i].CfgFiles[3].FileName, ledData[workCfg], prepareFileSeqLED);
 	}
 }
 
 function addFileSeq(ofObj) //object specific function to include partial files
 {
-//	console.log(ofObj);
+	if (ofObj.Type == "pgBtnHdlrCfg")
+		addFileSeqBtnHdlr(ofObj, evtHdlrCfgData);
+
+	if (ofObj.Type == "pgSwitchCfg")
+		addFileSeqSwi(ofObj, swiCfgData);
+
+	if (ofObj.Type == "pgLEDCfg")
+		addFileSeqLED(ofObj, ledData);
+
 }
 
 function prepareFileSeq() //object specific function to create partial files
 {
 	var objCopy = JSON.parse(JSON.stringify(configData[workCfg]));
 	transferData[0].FileList.push(objCopy);
-	
-/*	
-	function addEntry()
-	{
-		var newEntry = {"ButtonHandler":[]}
-		transferData[0].FileList.push(newEntry);
-		return newEntry;
-	}
-	
-	var thisEntry = addEntry();
-	thisEntry.Version = jsonFileVersion;
-	var thisFileLength = 0;
-	
-	for (var j=0; j<configData[workCfg].ButtonHandler.length;j++)
-	{
-		var thisElementStr = JSON.stringify(configData[workCfg].ButtonHandler[j]);
-		thisFileLength += thisElementStr.length;
-		thisEntry.ButtonHandler.push(JSON.parse(thisElementStr));
-		if ((thisFileLength > targetSize) && (j < (configData[workCfg].ButtonHandler.length - 1)))
-		{
-			thisEntry = addEntry();
-			thisFileLength = 0;
-		}
-	}
-*/
 }
 
 function addDataFile(ofObj)
@@ -127,7 +112,10 @@ function addDataFile(ofObj)
 	switch (ofObj.Type)
 	{
 		case "pgSwitchCfg":
-			swiCfgData[loadCfg] = JSON.parse(JSON.stringify(ofObj.Data));
+			if (swiCfgData[loadCfg].Drivers == undefined)
+				swiCfgData[loadCfg] = JSON.parse(JSON.stringify(ofObj.Data));
+			else
+				addFileSeqSwi(ofObj.Data, swiCfgData);
 			swiCfgData[workCfg] = upgradeJSONVersionSwitch(JSON.parse(JSON.stringify(swiCfgData[loadCfg])));
 //			console.log(swiCfgData[workCfg]);
 			break;
@@ -144,7 +132,7 @@ function addDataFile(ofObj)
 			if (evtHdlrCfgData[loadCfg].ButtonHandler == undefined)
 				evtHdlrCfgData[loadCfg] = JSON.parse(JSON.stringify(ofObj.Data));
 			else
-				addFileSeqBtnHdlr(ofObj, evtHdlrCfgData);
+				addFileSeqBtnHdlr(ofObj.Data, evtHdlrCfgData);
 			evtHdlrCfgData[workCfg] = upgradeJSONVersionBtnHdlr(JSON.parse(JSON.stringify(evtHdlrCfgData[loadCfg])));
 			while (evtHdlrCfgData[workCfg].ButtonHandler.length > 32)
 				evtHdlrCfgData[workCfg].ButtonHandler.pop();
@@ -161,7 +149,7 @@ function addDataFile(ofObj)
 			if (ledData[loadCfg].LEDDefs == undefined)
 				ledData[loadCfg] = JSON.parse(JSON.stringify(ofObj.Data));
 			else
-				addFileSeqLED(ofObj, ledData);
+				addFileSeqLED(ofObj.Data, ledData);
 			ledData[workCfg] = upgradeJSONVersionLED(JSON.parse(JSON.stringify(ledData[loadCfg])));
 			while (ledData[workCfg].LEDDefs.length > 33)
 				ledData[workCfg].LEDDefs.pop();
@@ -1205,6 +1193,154 @@ function startTemplateDialog(parentObj, templateChannel)
 	return mainDlg;
 }
 
+function setOutputMode(sender, id)
+{
+	var thisRow = parseInt(sender.id.split('_')[1]);
+	var thisOption = parseInt(sender.id.split('_')[3]);
+	swiCfgData[workCfg].Drivers[thisRow].DevType = devOptions[thisOption];
+	switch (thisOption)
+	{
+		case 0: //Servo
+			swiCfgData[workCfg].Drivers[thisRow].DevOption = 2; //180 Deg
+			break;
+		case 1: 
+			swiCfgData[workCfg].Drivers[thisRow].DevOption = 0; //none
+			break;
+		case 2: 
+			swiCfgData[workCfg].Drivers[thisRow].DevOption = 0; //5V
+			break;
+	}
+	setDefaultData(thisRow, devOptions.indexOf(swiCfgData[workCfg].Drivers[thisRow].DevType), swiCfgData[workCfg].Drivers[thisRow].DevOption);
+	dispSwitchData(swiCfgData[workCfg].Drivers, thisRow);
+}
+
+function setServoVal(sender)
+{
+	if (sender.id == "servominval")
+		swiCfgData[workCfg].ServoMinPos = verifyNumber(sender.value, swiCfgData[workCfg].ServoMinPos);
+	if (sender.id == "servomaxval")
+		swiCfgData[workCfg].ServoMaxPos = verifyNumber(sender.value, swiCfgData[workCfg].ServoMaxPos);
+	for (var i = 0; i < swiCfgData[workCfg].Drivers.length; i++)
+		setDefaultData(i, devOptions.indexOf(swiCfgData[workCfg].Drivers[thisRow].DevType), swiCfgData[workCfg].Drivers[thisRow].DevOption);
+}
+
+function setServoAngle(sender, id)
+{
+	var thisRow = parseInt(sender.id.split('_')[1]);
+	var thisOption = parseInt(sender.id.split('_')[3]);
+	swiCfgData[workCfg].Drivers[thisRow].DevOption = thisOption;
+	setDefaultData(thisRow, devOptions.indexOf(swiCfgData[workCfg].Drivers[thisRow].DevType), swiCfgData[workCfg].Drivers[thisRow].DevOption);
+	dispSwitchData(swiCfgData[workCfg].Drivers, thisRow);
+}
+
+function setDefaultData(thisRow, devType, modeOption)
+{
+	switch (devType)
+	{
+		case 0: //servo
+			swiCfgData[workCfg].Drivers[thisRow].UpSpeed = 320;
+			swiCfgData[workCfg].Drivers[thisRow].DownSpeed = 320;
+			swiCfgData[workCfg].Drivers[thisRow].PowerOff = true;
+			switch (modeOption)
+			{
+				case 0:
+					if (swiCfgData[workCfg].Drivers[thisRow].Positions.length > 0)
+					{
+						var incrVal = (swiCfgData[workCfg].ServoMaxPos - swiCfgData[workCfg].ServoMinPos) >> 1;
+						if (swiCfgData[workCfg].Drivers[thisRow].Positions.length > 2)
+							incrVal = Math.trunc(incrVal / (swiCfgData[workCfg].Drivers[thisRow].Positions.length - 1));
+						for (var i = 0; i < swiCfgData[workCfg].Drivers[thisRow].Positions.length; i++)
+						{
+							swiCfgData[workCfg].Drivers[thisRow].Positions[i].PosPt = swiCfgData[workCfg].ServoMinPos + (incrVal * i);
+							swiCfgData[workCfg].Drivers[thisRow].Positions[i].MoveCfg = 5;
+						}
+					}
+					break;
+				case 1:
+					if (swiCfgData[workCfg].Drivers[thisRow].Positions.length > 0)
+					{
+						var incrVal = (swiCfgData[workCfg].ServoMaxPos - swiCfgData[workCfg].ServoMinPos) >> 1;
+						var startVal = (swiCfgData[workCfg].ServoMinPos + swiCfgData[workCfg].ServoMaxPos) >> 1;
+						if (swiCfgData[workCfg].Drivers[thisRow].Positions.length > 2)
+							incrVal = Math.trunc(incrVal / (swiCfgData[workCfg].Drivers[thisRow].Positions.length - 1));
+						for (var i = 0; i < swiCfgData[workCfg].Drivers[thisRow].Positions.length; i++)
+						{
+							swiCfgData[workCfg].Drivers[thisRow].Positions[i].PosPt = startVal + (incrVal * i);
+							swiCfgData[workCfg].Drivers[thisRow].Positions[i].MoveCfg = 5;
+						}
+					}
+					break;
+				case 2:
+					if (swiCfgData[workCfg].Drivers[thisRow].Positions.length > 0)
+					{
+						var incrVal = (swiCfgData[workCfg].ServoMaxPos - swiCfgData[workCfg].ServoMinPos);
+						if (swiCfgData[workCfg].Drivers[thisRow].Positions.length > 2)
+							incrVal = Math.trunc(incrVal / (swiCfgData[workCfg].Drivers[thisRow].Positions.length - 1));
+						for (var i = 0; i < swiCfgData[workCfg].Drivers[thisRow].Positions.length; i++)
+						{
+							swiCfgData[workCfg].Drivers[thisRow].Positions[i].PosPt = swiCfgData[workCfg].ServoMinPos + (incrVal * i);
+							swiCfgData[workCfg].Drivers[thisRow].Positions[i].MoveCfg = 5;
+						}
+					}
+					break;
+				case 3:
+					break;
+			}
+			break;
+		case 1: //relay
+			swiCfgData[workCfg].Drivers[thisRow].UpSpeed = 0;
+			swiCfgData[workCfg].Drivers[thisRow].DownSpeed = 0;
+			swiCfgData[workCfg].Drivers[thisRow].PowerOff = false;
+			if (swiCfgData[workCfg].Drivers[thisRow].Positions.length > 0)
+			{
+				for (var i = 0; i < swiCfgData[workCfg].Drivers[thisRow].Positions.length; i++)
+				{
+					swiCfgData[workCfg].Drivers[thisRow].Positions[i].PosPt = i == 0? 0 : 4095;
+					swiCfgData[workCfg].Drivers[thisRow].Positions[i].MoveCfg = 0;
+				}
+			}
+			break;
+		case 2: //led
+			swiCfgData[workCfg].Drivers[thisRow].PowerOff = false;
+			switch (modeOption)
+			{
+				case 0:
+					if (swiCfgData[workCfg].Drivers[thisRow].Positions.length > 0)
+					{
+						var incrVal = 4095;
+						swiCfgData[workCfg].Drivers[thisRow].UpSpeed = 0;
+						swiCfgData[workCfg].Drivers[thisRow].DownSpeed = 0;
+						if (swiCfgData[workCfg].Drivers[thisRow].Positions.length > 2)
+							incrVal = Math.trunc(incrVal / (swiCfgData[workCfg].Drivers[thisRow].Positions.length - 1));
+						for (var i = 0; i < swiCfgData[workCfg].Drivers[thisRow].Positions.length; i++)
+						{
+							swiCfgData[workCfg].Drivers[thisRow].Positions[i].PosPt = incrVal * i;
+							swiCfgData[workCfg].Drivers[thisRow].Positions[i].MoveCfg = 0;
+						}
+					}
+					break;
+				case 1:
+					if (swiCfgData[workCfg].Drivers[thisRow].Positions.length > 0)
+					{
+						var incrVal = 4095;
+						swiCfgData[workCfg].Drivers[thisRow].UpSpeed = 0;
+						swiCfgData[workCfg].Drivers[thisRow].DownSpeed = 0;
+						if (swiCfgData[workCfg].Drivers[thisRow].Positions.length > 2)
+							incrVal = Math.trunc(incrVal / (swiCfgData[workCfg].Drivers[thisRow].Positions.length - 1));
+						for (var i = 0; i < swiCfgData[workCfg].Drivers[thisRow].Positions.length; i++)
+						{
+							swiCfgData[workCfg].Drivers[thisRow].Positions[i].PosPt = 4095 - (incrVal * i);
+							swiCfgData[workCfg].Drivers[thisRow].Positions[i].MoveCfg = 0;
+						}
+					}
+					break;
+				case 2:
+					break;
+			}
+			break;
+	}
+}
+
 function setSwitchData(sender)
 {
 	var thisRow = parseInt(sender.getAttribute("row"));
@@ -1498,6 +1634,9 @@ function setSwitchData(sender)
 
 function dispSwitchData(swiData, thisRow)
 {
+	writeInputField("servominval", swiCfgData[workCfg].ServoMinPos);
+	writeInputField("servomaxval", swiCfgData[workCfg].ServoMaxPos);
+
 	var evtSrcBox = document.getElementById("evttypebox_" + thisRow.toString() + "_" + "1");
 	evtSrcBox.selectedIndex = sourceOptionArray.indexOf(swiData[thisRow].CmdSource);
 	var addrBox = document.getElementById("evtaddressbox_" + thisRow.toString() + "_1");
@@ -1520,6 +1659,107 @@ function dispSwitchData(swiData, thisRow)
 	document.getElementById("posslider_" + thisRow.toString() + "_" + "2").value = swiData[thisRow].Positions[swiData[thisRow].CurrDisp].PosPt;
 	writeCBInputField("softaccel_" + thisRow.toString()+ "_2", swiData[thisRow].Positions[swiData[thisRow].CurrDisp].MoveCfg & 0x04);
 	writeRBInputField("stopmode_" + thisRow.toString() + "_2", swiData[thisRow].Positions[swiData[thisRow].CurrDisp].MoveCfg & 0x03);
+
+	var devType = devOptions.indexOf(swiCfgData[workCfg].Drivers[thisRow].DevType);
+	var devMode = swiCfgData[workCfg].Drivers[thisRow].DevOption;
+	writeRBInputField("seldevtype_" + thisRow.toString() + "_" + "2", devType);
+
+	var relayPanel = document.getElementById("relaypanel_" + thisRow.toString() + "_2");
+//	var ledPanel = document.getElementById("ledpanel_" + thisRow.toString() + "_2");
+	var servoMainPanel = document.getElementById("servopanel_" + thisRow.toString() + "_2");
+	var servoSpeedPanel = document.getElementById("servospeeddiv_" + thisRow.toString() + "_2");
+	var servoAccelPanel = document.getElementById("servoacceldiv_" + thisRow.toString() + "_2");
+	var servoOscPanel = document.getElementById("servooscdiv_" + thisRow.toString() + "_2");
+	var servoHesiPanel = document.getElementById("servohesidiv_" + thisRow.toString() + "_2");
+	var servoMovePanel = document.getElementById("servomovediv_" + thisRow.toString() + "_2");
+	var servoStartStopPanel = document.getElementById("servostartstopdiv_" + thisRow.toString() + "_2");
+	var posslider = document.getElementById("posslider_" + thisRow.toString() + "_2");
+
+	switch (devType)
+	{
+		case 0: //Servo
+			setVisibility(false, relayPanel);
+//			setVisibility(false, ledPanel);
+			setVisibility(true, servoMainPanel);
+
+			setVisibility(false, servoSpeedPanel);
+			setVisibility(false, servoAccelPanel);
+			setVisibility(false, servoOscPanel);
+			setVisibility(false, servoHesiPanel);
+			setVisibility(false, servoMovePanel);
+			setVisibility(false, servoStartStopPanel);
+			writeRBInputField("servomovetype_" + thisRow.toString() + "_" + "2", devMode);
+
+			posslider.setAttribute("min", swiCfgData[workCfg].ServoMinPos);
+			posslider.setAttribute("max", swiCfgData[workCfg].ServoMaxPos);
+			
+			
+			switch (devMode)
+			{
+				case 0:
+					break;
+				case 1:
+					break;
+				case 2:
+					break;
+				case 3:
+					setVisibility(true, servoSpeedPanel);
+					setVisibility(true, servoAccelPanel);
+					setVisibility(true, servoOscPanel);
+					setVisibility(true, servoHesiPanel);
+					setVisibility(true, servoMovePanel);
+					setVisibility(true, servoStartStopPanel);
+					break;
+			}
+			break;
+		case 1:
+			setVisibility(true, relayPanel);
+//			setVisibility(false, ledPanel);
+			setVisibility(false, servoMainPanel);
+			setVisibility(false, servoSpeedPanel);
+			setVisibility(false, servoAccelPanel);
+			setVisibility(false, servoOscPanel);
+			setVisibility(false, servoHesiPanel);
+			setVisibility(false, servoMovePanel);
+			setVisibility(false, servoStartStopPanel);
+			posslider.setAttribute("min", 0);
+			posslider.setAttribute("max", 4095);
+			switch (devMode)
+			{
+				case 0:
+					break;
+			}
+			break;
+		case 2: //LED
+			setVisibility(false, relayPanel);
+//			setVisibility(true, ledPanel);
+			setVisibility(false, servoMainPanel);
+			setVisibility(false, servoSpeedPanel);
+			setVisibility(false, servoAccelPanel);
+			setVisibility(false, servoOscPanel);
+			setVisibility(false, servoHesiPanel);
+			setVisibility(false, servoMovePanel);
+			setVisibility(false, servoStartStopPanel);
+			writeRBInputField("ledtype_" + thisRow.toString() + "_" + "2", devMode);
+			posslider.setAttribute("min", 0);
+			posslider.setAttribute("max", 4095);
+			switch (devMode)
+			{
+				case 0:
+					setVisibility(false, servoMovePanel);
+					break;
+				case 1:
+					setVisibility(false, servoMovePanel);
+					break;
+				case 2:
+					setVisibility(true, servoMovePanel);
+					setVisibility(true, servoSpeedPanel);
+					break;
+			}
+			break;
+	}
+
+
 	if (updateServoPos)
 		if (swiData[thisRow].Positions[swiData[thisRow].CurrDisp].Used)
 			if (updateServoPos)
@@ -1998,6 +2238,9 @@ function constructPageContent(contentTab)
 		//LED Assignment pair vs group
 //		generalSettingsDiv = createEmptyDiv(mainScrollBox, "div", "tile-1", "");
 		createPageTitle(mainScrollBox, "div", "tile-1", "", "h3", "Board Settings");
+		generalBox0 = createEmptyDiv(mainScrollBox, "div", "tile-1", "");
+			createTextInput(generalBox0, "tile-1_4", "Servo Minimum:", "n/a", "servominval", "setServoVal(this)");
+			createTextInput(generalBox0, "tile-1_4", "Servo Maximum:", "n/a", "servomaxval", "setServoVal(this)");
 		generalBox1 = createEmptyDiv(mainScrollBox, "div", "tile-1", "");
 			createDropdownselector(generalBox1, "tile-1_4", "Color Sequence:", ["RGB", "GRB"], "colorseq", "setLEDBasics(this)");
 			createDropdownselector(generalBox1, "tile-1_4", "LED Assignment:", ["Continuous", "Blocks"], "ledblock", "setLEDBasics(this)");

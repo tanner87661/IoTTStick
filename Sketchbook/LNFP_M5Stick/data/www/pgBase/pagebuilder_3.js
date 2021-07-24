@@ -47,11 +47,49 @@ function tfCheckBox(y, x, id, evtHandler)
 
 function tfServoEditor(y, x, id, evtHandler)
 {
+//--main
 	var divElement = document.createElement("div");
 	divElement.setAttribute("class", "servosel");
 
+//--radio
+	var thisId = "seldevpanel_" + y.toString() + "_" + x.toString();
+	var radioDiv = document.createElement("div");
+	radioDiv.setAttribute("class", "servotile");
+	radioDiv.setAttribute("id", thisId);
+	divElement.append(radioDiv);
+	
+	var thisId = "seldevtype_" + y.toString() + "_" + x.toString();
+	createRadiobox(radioDiv, "tile-1_1", "Output Type:", devOptionsList, thisId, "setOutputMode(this, id)");
+
+//--relay
+	var thisId = "relaypanel_" + y.toString() + "_" + x.toString();
+	var relayDiv = document.createElement("div");
+	relayDiv.setAttribute("class", "servotile");
+	relayDiv.setAttribute("id", thisId);
+	divElement.append(relayDiv);
+
+//--servo main
+	var thisId = "servopanel_" + y.toString() + "_" + x.toString();
+	var servoDiv = document.createElement("div");
+	servoDiv.setAttribute("class", "servotile");
+	servoDiv.setAttribute("id", thisId);
+	divElement.append(servoDiv);
+
+//--servo simple
+	var thisId = "servomovetype_" + y.toString() + "_" + x.toString();
+	createRadiobox(servoDiv, "tile-1_1", "Angle:", ["90+", '90-', '180', "ind."], thisId, "setServoAngle(this, id)");
+
+	thisId = "pwroff_" + y.toString() + "_" + x.toString();
+	var cchBox = tfCheckBox(y, x, thisId, evtHandler);
+	cchBox.childNodes[0].setAttribute("index", 20);
+	cchBox.childNodes[1].innerHTML = "Power off";
+	servoDiv.append(cchBox);
+
+//--servo speed
+	var thisId = "servospeeddiv_" + y.toString() + "_" + x.toString();
 	var topDiv = document.createElement("div");
 	topDiv.setAttribute("class", "servotile");
+	topDiv.setAttribute("id", thisId);
 	divElement.append(topDiv);
 
 	topDiv.append(tfTab(y, x, 'Speed Up: &nbsp;',""));
@@ -66,8 +104,11 @@ function tfServoEditor(y, x, id, evtHandler)
 	speedDnBox.setAttribute("index", 2);
 	topDiv.append(speedDnBox);
 
+//--servo accel
+	var thisId = "servoacceldiv_" + y.toString() + "_" + x.toString();
 	var top2Div = document.createElement("div");
 	top2Div.setAttribute("class", "servotile");
+	top2Div.setAttribute("id", thisId);
 	divElement.append(top2Div);
 
 	top2Div.append(tfTab(y, x, 'Accel: &nbsp;',""));
@@ -82,14 +123,12 @@ function tfServoEditor(y, x, id, evtHandler)
 	speedBox.setAttribute("index", 4);
 	top2Div.append(speedBox);
 
-	thisId = "pwroff_" + y.toString() + "_" + x.toString();
-	var cchBox = tfCheckBox(y, x, thisId, evtHandler);
-	cchBox.childNodes[0].setAttribute("index", 20);
-	cchBox.childNodes[1].innerHTML = "Power off";
-	top2Div.append(cchBox);
 
+//--servo oscillation
+	var thisId = "servooscdiv_" + y.toString() + "_" + x.toString();
 	var top3Div = document.createElement("div");
 	top3Div.setAttribute("class", "servotile");
+	top3Div.setAttribute("id", thisId);
 	divElement.append(top3Div);
 
 	top3Div.append(tfTab(y, x, 'Frequency: &nbsp;',""));
@@ -104,8 +143,11 @@ function tfServoEditor(y, x, id, evtHandler)
 	speedBox.setAttribute("index", 6);
 	top3Div.append(speedBox);
 
+//--servo hesitation
+	var thisId = "servohesidiv_" + y.toString() + "_" + x.toString();
 	var top4Div = document.createElement("div");
 	top4Div.setAttribute("class", "servotile");
+	top4Div.setAttribute("id", thisId);
 	divElement.append(top4Div);
 
 	thisId = "hesitate_" + y.toString() + "_" + x.toString();
@@ -126,8 +168,11 @@ function tfServoEditor(y, x, id, evtHandler)
 	hesiBox.setAttribute("index", 9);
 	top4Div.append(hesiBox);
 
+//--servo movement
+	var thisId = "servomovediv_" + y.toString() + "_" + x.toString();
 	var upperDiv = document.createElement("div");
 	upperDiv.setAttribute("class", "servotile");
+	upperDiv.setAttribute("id", thisId);
 	upperDiv.style.backgroundColor = "#F5F5F5";
 	divElement.append(upperDiv);
 
@@ -137,12 +182,6 @@ function tfServoEditor(y, x, id, evtHandler)
 	cchBox.childNodes[1].innerHTML = "Enable &nbsp;";
 	upperDiv.append(cchBox);
 
-/*
-	thisId = "positiontext_" + y.toString() + "_" + x.toString();
-	var thisText = tfLink(y, x, 0, id, "Position:", evtHandler);
-	thisText.setAttribute("index", 11); //high index not causing LED table reload
-	upperDiv.append(thisText);
-*/
 	upperDiv.append(tfTab(y, x, '&nbsp;',""));
 
 	var sliderDiv = document.createElement("div");
@@ -162,15 +201,25 @@ function tfServoEditor(y, x, id, evtHandler)
 	upperDiv.append(sliderElement);
 	upperDiv.append(tfTab(y, x, '&nbsp;',""));
 
+
 	thisId = "aspectpos_" + y.toString() + "_" + x.toString();
 	var posBox = tfNumeric(y, x, thisId, evtHandler);
 	posBox.setAttribute("index", 13);
 	upperDiv.append(posBox);
 
+//--start/stop options
+	thisId = "servostartstopdiv_" + y.toString() + "_" + x.toString();
 	var lowerDiv = document.createElement("div");
 	lowerDiv.setAttribute("class", "servotile");
+	lowerDiv.setAttribute("id", thisId);
 	lowerDiv.style.backgroundColor = "#F5F5F5";
 	divElement.append(lowerDiv);
+
+
+//	var lowerDiv = document.createElement("div");
+//	lowerDiv.setAttribute("class", "servotile");
+//	lowerDiv.style.backgroundColor = "#F5F5F5";
+//	divElement.append(lowerDiv);
 	
 	thisId = "softaccel_" + y.toString() + "_" + x.toString();
 	var cchBox = tfCheckBox(y, x, thisId, evtHandler);

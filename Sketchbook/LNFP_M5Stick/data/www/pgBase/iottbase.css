@@ -197,7 +197,7 @@ body, html {
 .checkboxtext {
   float: left; 
   text-align: left;
-  text-indent: 10px;
+//  text-indent: 10px;
 }
 
 .topictext_float {
