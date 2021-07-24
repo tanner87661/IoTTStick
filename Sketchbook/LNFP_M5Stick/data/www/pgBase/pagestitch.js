@@ -72,8 +72,8 @@ function upgradeJSONVersionSwitch(jsonData)
 			jsonData.Drivers[i].DevType = "servo";
 			jsonData.Drivers[i].DevOption = 3;
 		}
-		jsonData.ServoMinPos = 185;
-		jsonData.ServoMaxPos = 850;
+		jsonData.ServoMinPos = 175;
+		jsonData.ServoMaxPos = 875;
 		jsonData.Version = "1.0.1";
 		console.log("upgrade Switches from version 1.0.0 to 1.0.1");
 	}

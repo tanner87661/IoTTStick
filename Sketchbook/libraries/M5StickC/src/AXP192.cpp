@@ -5,7 +5,7 @@ AXP192::AXP192()
   
 }
 
-void AXP192::begin(bool disableLDO2, bool disableLDO3, bool disableRTC, bool disableDCDC1, bool disableDCDC3)
+void AXP192::begin(bool disableLDO2, bool disableLDO3, bool disableRTC, bool disableDCDC1, bool disableDCDC3, bool disableLDO0)
 {  
     Wire1.begin(21, 22);
     Wire1.setClock(400000);
@@ -33,13 +33,15 @@ void AXP192::begin(bool disableLDO2, bool disableLDO3, bool disableRTC, bool dis
     // 128ms power on, 4s power off
     Write1Byte(0x36, 0x0C);
 
-    if(!disableRTC)
+    if(!disableLDO0)
     {
-        // Set RTC voltage to 3.3V
-        Write1Byte(0x91, 0xF0);
+        // Set MIC voltage to 2.8V
+        Write1Byte(0x91, 0xA0);
 
         // Set GPIO0 to LDO
         Write1Byte(0x90, 0x02);
+    }else{
+        Write1Byte(0x90, 0x07); // GPIO0 floating
     }
 
     // Disable vbus hold limit
@@ -340,7 +342,7 @@ uint16_t AXP192::GetVapsData(void)
 void AXP192::SetSleep(void)
 {
     Write1Byte(0x31 , Read8bit(0x31) | ( 1 << 3)); // Turn on short press to wake up
-    Write1Byte(0x90 , Read8bit(0x90) | 0x07); // GPIO1 floating
+    Write1Byte(0x90 , Read8bit(0x90) | 0x07); // GPIO0 floating
     Write1Byte(0x82, 0x00); // Disable ADCs
     Write1Byte(0x12, Read8bit(0x12) & 0xA1); // Disable all outputs but DCDC1
 }
@@ -523,6 +525,29 @@ void AXP192::SetLDO3(bool State)
     Write1Byte( 0x12 , buf );
 }
 
+void AXP192::SetGPIO0(bool State)
+{
+    uint8_t buf = Read8bit(0x90);
+    if ( State == true )
+    {
+        buf &= ~(0x07); // clear last 3 bits
+        buf |= 0x02;    // set as LDO
+    }
+    else
+    {
+        buf |= 0x07;    // set as floating
+    }
+    Write1Byte( 0x90 , buf );
+}
+
+// Default is VOLTAGE_4200MV
+void AXP192::SetChargeVoltage(uint8_t voltage)
+{
+    uint8_t buf = Read8bit(0x33);
+    buf = (buf & ~(0x60)) | (voltage & 0x60);
+    Write1Byte(0x33, buf);
+}
+
 // Not recommend to set charge current > 100mA, since Battery is only 80mAh.
 // more then 1C charge-rate may shorten battery life-span.
 void AXP192::SetChargeCurrent(uint8_t current)
@@ -532,23 +557,73 @@ void AXP192::SetChargeCurrent(uint8_t current)
     Write1Byte(0x33, buf);
 }
 
+// Set power off voltage
+void AXP192::SetVOff( uint8_t voltage )
+{
+    Write1Byte(0x31 , (Read8bit(0x31) & 0xf8) | voltage);
+}
+
 // Cut all power, except for LDO1 (RTC)
 void AXP192::PowerOff()
 {
     Write1Byte(0x32, Read8bit(0x32) | 0x80);     // MSB for Power Off
 }
 
-void AXP192::setEXTEN(bool enable)
-{
-	if (enable)
-		Write1Byte(0x12, Read8bit(0x12) | 0x40);     
-	else
-		Write1Byte(0x12, Read8bit(0x12) & 0xBF);     
-}
-
 void AXP192::SetAdcState(bool state)
 {
     Write1Byte(0x82, state ? 0xff : 0x00);  // Enable / Disable all ADCs
+}
+
+void AXP192::DisableAllIRQ() 
+{
+    Write1Byte(0x40, 0x00);
+    Write1Byte(0x41, 0x00);
+    Write1Byte(0x42, 0x00);
+    Write1Byte(0x43, 0x00);
+    Write1Byte(0x4a, 0x00);
+}
+
+void AXP192::EnablePressIRQ(bool short_press, bool long_press)
+{
+    uint8_t value = Read8bit(0x42);
+    value &= 0xfc;
+    value |= short_press ? (0x01 << 1) : 0x00;
+    value |= long_press ? (0x01 << 0) : 0x00;
+    Write1Byte(0x42, value);
+}
+
+void AXP192::ClearAllIRQ()
+{
+    Write1Byte(0x44, 0xff);
+    Write1Byte(0x45, 0xff);
+    Write1Byte(0x46, 0xff);
+    Write1Byte(0x47, 0xff);
+    Write1Byte(0x4D, 0xff);
+    
+}
+
+void AXP192::GetPressIRQ(bool *short_press, bool* long_press)
+{
+    uint8_t status = 0x00;
+    status = Read8bit(0x46);
+    *short_press = (status & (0x01 << 1)) ? true : false;
+    *long_press = (status & (0x01 << 0)) ? true : false;
+    
+}
+
+void AXP192::ClearPressIRQ(bool short_press, bool long_press) 
+{
+    uint8_t value = 0x00;
+    value |= short_press ? (0x01 << 1) : 0x00;
+    value |= long_press ? (0x01 << 0) : 0x00;
+    Write1Byte(0x46, value);
+}
+
+void AXP192::SetAdcRate( uint8_t rate )
+{
+    uint8_t buf = Read8bit(0x84);
+    buf = (buf & ~(0xc0)) | (rate & 0xc0);
+    Write1Byte(0x84, buf);
 }
 
 // AXP192 have a 6 byte storage, when the power is still valid, the data will not be lost
