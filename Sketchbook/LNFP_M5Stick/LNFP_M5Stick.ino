@@ -662,6 +662,7 @@ void setup() {
               else
                 mySwitchList->setGreenHatType(modLoop, comboModule);
               JsonArray cfgArray = modDefList[modLoop]["CfgFiles"];
+              
               for (uint8_t cfgLoop = 0; cfgLoop < cfgArray.size(); cfgLoop++) //4 config files: switches, buttons, button handler, LEDs
               {
                 String fileNameStr = cfgArray[cfgLoop]["FileName"];
@@ -676,7 +677,7 @@ void setup() {
                     jsonCfgObj = getDocPtr(configDir + "/"  + fileNameStr + String(subFileCtr) + configDotExt, false);
                     if (jsonCfgObj)
                     {
-                      mySwitchList->loadSwCfgJSON(modLoop, cfgLoop, *jsonDataObj, false);
+                      mySwitchList->loadSwCfgJSON(modLoop, cfgLoop, *jsonCfgObj, false);
                       delete(jsonCfgObj);
                     }
                     subFileCtr++;
