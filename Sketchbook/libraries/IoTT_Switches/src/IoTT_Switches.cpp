@@ -738,7 +738,11 @@ void IoTT_GreenHat::loadGreenHatCfgJSON(uint8_t fileNr, JsonObject thisObj, bool
 {
 //		"CfgFiles": ["gh/0/switches", "gh/0/btn", "gh/0/btnevt", "gh/0/led"]
 	
-//	Serial.printf("IoTT_GreenHat::loadGreenHatCfgJSON File Nr %i Reset %i \n", fileNr, resetList);
+	Serial.printf("IoTT_GreenHat::loadGreenHatCfgJSON File Nr %i Reset %i \n", fileNr, resetList);
+	if (thisObj.containsKey("Drivers")) Serial.println("Switches");
+	if (thisObj.containsKey("Buttons")) Serial.println("Buttons");
+	if (thisObj.containsKey("ButtonHandler")) Serial.println("ButtonHandler");
+	if (thisObj.containsKey("LEDDefs")) Serial.println("LEDDefs");
 	
 	switch (fileNr)
 	{
@@ -776,7 +780,7 @@ void IoTT_GreenHat::loadGreenHatCfgJSON(uint8_t fileNr, JsonObject thisObj, bool
 		case 2: //button handler
 			if (thisObj.containsKey("ButtonHandler"))
 				if (buttonHandler != NULL)
-					buttonHandler->loadButtonCfgJSON(thisObj);
+					buttonHandler->loadButtonCfgJSON(thisObj, false);
 				else
 					Serial.println("No Button Handler defined");
 			else
@@ -785,7 +789,7 @@ void IoTT_GreenHat::loadGreenHatCfgJSON(uint8_t fileNr, JsonObject thisObj, bool
 		case 3: //LED
 			if (thisObj.containsKey("LEDDefs"))
 				if (myChain != NULL)
-					myChain->loadLEDChainJSONObj(thisObj);
+					myChain->loadLEDChainJSONObj(thisObj, false);
 				else
 					Serial.println("No Chain defined");
 			else
@@ -1029,7 +1033,7 @@ void IoTT_SwitchList::setGreenHatType(uint8_t modNr, greenHatType modType)
 
 void IoTT_SwitchList::loadSwCfgJSON(uint8_t ghNr, uint8_t fileNr, DynamicJsonDocument doc, bool resetList)
 {
-//	Serial.printf("IoTT_SwitchList::loadSwCfgJSON Module %i File %i\n", ghNr, fileNr);
+//	Serial.printf("IoTT_SwitchList::loadSwCfgJSON Module %i File %i %i\n", ghNr, fileNr, resetList);
 	JsonObject thisObj = doc.as<JsonObject>();
 	greenHatList[ghNr]->loadGreenHatCfgJSON(fileNr, thisObj, resetList);
 	if (fileNr == 0)

@@ -104,7 +104,7 @@ bool writeJSONFile(String fileName, const char * fileStr)
 {
 //  Serial.println(fileName);
   
-//  Serial.println(*fileStr);
+//  Serial.println(fileStr);
 //  Serial.println("Writing Config File from FileStr");
   uint32_t startTime = millis();
   File dataFile = SPIFFS.open(fileName, "w");
@@ -136,10 +136,16 @@ DynamicJsonDocument * getDocPtr(String cmdFile, bool duplData)
     if (!error)
       return thisDoc;
     else
+    {
+      Serial.println("Deserialization error");
       return NULL;
+    }
   }
   else
+  {
+      Serial.println("File read error");
       return NULL;
+  }
 }
 
 void prepareShutDown()

@@ -393,6 +393,7 @@ void processWsMessage(char * newMsg, int msgLen, AsyncWebSocketClient * client)
           addFileToTx("btn", 0, "pgHWBtnCfg", 1);
         if (fileSelector & 0x0100)  
           addFileToTx("btn", 0, "pgThrottleCfg", 1);
+        int fileCtr = 0;
         if (fileSelector & 0x0200)  
         {
           if (addFileToTx("greenhat", 0, "pgGreenHatCfg", 1))
@@ -401,15 +402,28 @@ void processWsMessage(char * newMsg, int msgLen, AsyncWebSocketClient * client)
             if (doc.containsKey("ModuleNr"))
               modNr = doc["ModuleNr"];
             String fileNameStr = "gh/" + String(modNr);
-            addFileToTx(fileNameStr + "/switches", 0, "pgSwitchCfg", 1);
-            addFileToTx(fileNameStr + "/btn", 0, "pgHWBtnCfg", 1);
-            addFileToTx(fileNameStr + "/btnevt", 0, "pgBtnHdlrCfg", 1);
-            addFileToTx(fileNameStr + "/led", 0, "pgLEDCfg", 1);
+//            addFileToTx(fileNameStr + "/switches", 0, "pgSwitchCfg", 1);
+//            addFileToTx(fileNameStr + "/btn", 0, "pgHWBtnCfg", 1);
+
+            fileCtr = 0;
+            while (addFileToTx(fileNameStr + "/switches", fileCtr, "pgSwitchCfg", 1))
+              fileCtr++;
+            fileCtr = 0;
+            while (addFileToTx(fileNameStr + "/btn", fileCtr, "pgHWBtnCfg", 1))
+              fileCtr++;
+            fileCtr = 0;
+            while (addFileToTx(fileNameStr + "/btnevt", fileCtr, "pgBtnHdlrCfg", 1))
+              fileCtr++;
+//            addFileToTx(fileNameStr + "/btnevt", 0, "pgBtnHdlrCfg", 1);
+
+            fileCtr = 0;
+            while (addFileToTx(fileNameStr + "/led", fileCtr, "pgLEDCfg", 1))
+              fileCtr++;
+//            addFileToTx(fileNameStr + "/led", 0, "pgLEDCfg", 1);
           }
         }
         if (fileSelector & 0x0400)  
           addFileToTx("lbserver", 0, "pgLBSCfg", 1);
-        int fileCtr = 0;
         if (fileSelector & 0x0020)  
           while (addFileToTx("led", fileCtr, "pgLEDCfg", 1))
             fileCtr++;
