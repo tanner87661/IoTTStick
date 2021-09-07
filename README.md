@@ -1,6 +1,11 @@
 # IoTTStick
 This is the master repository for the IoTT Stick, port modules and hat devices with the source code for the latest release. 
 
+021/09/06
+- Version 1.5.7 Maintenance release
+- replaced NMRADcc library with latest version, enhances stability of DCC decoding
+- fix an error in the routine that stores the GreenHat configuration data to the flash drive
+
 2021/07/24
 - Ready to release version 1.5.6 with new setup screen for GreenHat, including possibility to connect and drive relays and coil driver board
 - some minor bug fixes
