@@ -2,6 +2,7 @@
 This is the master repository for the IoTT Stick, port modules and hat devices with the source code for the latest release. 
 
 2021/09/06
+- 1.5.7 Maintenance release
 - replaced NMRADcc library with latest version, enhances stability of DCC decoding
 - fix an error in the routine that stores the GreenHat configuration data to the flash drive
 
@@ -10,7 +11,7 @@ This is the master repository for the IoTT Stick, port modules and hat devices w
 - some minor bug fixes
 
 2021/06/04
-- Ready to release new vesion 1.5.5 adding enabler function to event handler
+- Ready to release new version 1.5.5 adding enabler function to event handler
 - adding analog scaler function to event handler to allow for changing ranges and slope of analog data input to adapt sensor input to the levels needed
 - adding swi ack command to event handler and GreenHat button command lists
 - some minor bug fixes
