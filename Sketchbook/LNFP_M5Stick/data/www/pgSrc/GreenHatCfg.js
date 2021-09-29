@@ -78,7 +78,10 @@ function saveConfigFileSettings()
 	for (var i = 0; i < configData[workCfg].Modules.length; i++)
 	{
 		if (JSON.stringify(swiCfgData[loadCfg]) != JSON.stringify(swiCfgData[workCfg]))
+		{
+//			console.log("Storing " + swiCfgData[workCfg].Drivers.length.toString());
 			saveJSONConfig(configData[workCfg].Modules[i].CfgFiles[0].ID, configData[workCfg].Modules[i].CfgFiles[0].FileName, swiCfgData[workCfg], prepareFileSeqSwi);
+		}
 		if (JSON.stringify(btnCfgData[loadCfg]) != JSON.stringify(btnCfgData[workCfg]))
 			saveJSONConfig(configData[workCfg].Modules[i].CfgFiles[0].ID, configData[workCfg].Modules[i].CfgFiles[1].FileName, btnCfgData[workCfg], null);
 		if (JSON.stringify(evtHdlrCfgData[loadCfg]) != JSON.stringify(evtHdlrCfgData[workCfg]))
@@ -112,10 +115,16 @@ function addDataFile(ofObj)
 	switch (ofObj.Type)
 	{
 		case "pgSwitchCfg":
+//			console.log(ofObj.Data);
 			if (swiCfgData[loadCfg].Drivers == undefined)
 				swiCfgData[loadCfg] = JSON.parse(JSON.stringify(ofObj.Data));
 			else
 				addFileSeqSwi(ofObj.Data, swiCfgData);
+			if (swiCfgData[loadCfg].Drivers.length > 16) //Workaround to fix problems caused by not deleting data files
+			{
+				console.log("SwiLen: " + swiCfgData[loadCfg].Drivers.length.toString());
+				swiCfgData[loadCfg].Drivers.splice(16, swiCfgData[loadCfg].Drivers.length - 16);
+			}
 			swiCfgData[workCfg] = upgradeJSONVersionSwitch(JSON.parse(JSON.stringify(swiCfgData[loadCfg])));
 //			console.log(swiCfgData[workCfg]);
 			break;

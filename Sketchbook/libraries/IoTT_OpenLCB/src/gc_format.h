@@ -34,7 +34,7 @@
 #ifndef _UTILS_GC_FORMAT_H_
 #define _UTILS_GC_FORMAT_H_
 
-#include <IoTTCommDef.h>
+#include <IoTT_CommDef.h>
 #include <ESP32CAN.h>
 #include <CAN_config.h>
 

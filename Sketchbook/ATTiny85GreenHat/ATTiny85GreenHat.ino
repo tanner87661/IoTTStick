@@ -5,7 +5,7 @@
 //#define useFastLED  //does noit work currently on ATTiny :-(
 
   #include <Arduino.h>
-  #include <TinyWire.h>
+  #include <TinyWire.h> 
 
   #define readProc receive
   #define writeProc send

@@ -28,7 +28,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
 #include <inttypes.h>
 #include <Wire.h>
-#include <IoTTCommDef.h>
+#include <IoTT_CommDef.h>
 #include <IoTT_LocoNetHybrid.h>
 #include <HardwareSerial.h>
 #include <ArduinoJson.h>
@@ -47,6 +47,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #define verBufferSize 48
 
 #define queBufferSize 50 //messages that can be written in one burst before buffer overflow
+//#define queReplyBufferSize 5 //messages to that queue get sent high priority
 
 class LocoNetESPSerial : public HardwareSerial
 {
@@ -55,10 +56,12 @@ public:
 	~LocoNetESPSerial();
 	void begin(int receivePin, int transmitPin, bool inverse_logicRx, bool inverse_logicTx);
 	void begin();
+	void setNetworkType(nodeType newNwType);
 	void processLoop();
 	void setBusyLED(int8_t ledNr, bool logLevel = true);
 	uint16_t lnWriteMsg(lnTransmitMsg txData);
 	uint16_t lnWriteMsg(lnReceiveBuffer txData);
+	uint16_t lnWriteReply(lnTransmitMsg txData);
 	void setLNCallback(cbFct newCB);
 //	int cdBackoff();
 //	bool carrierOK();
@@ -80,7 +83,9 @@ private:
    
    // Member variables
    lnTransmitMsg transmitQueue[queBufferSize];
+//   lnTransmitMsg replyQueue[queReplyBufferSize];
    uint8_t que_rdPos = 0, que_wrPos = 0;
+//   uint8_t que_replyRdPos = 0, que_replyWrPos = 0;
    lnReceiveBuffer lnInBuffer, lnEchoBuffer;
    int m_rxPin, m_txPin;
    bool m_invertRx = true;
@@ -96,6 +101,7 @@ private:
    uint16_t rx_buffer[rxBufferSize];
    uint8_t tx_buffer[txBufferSize];
 
+	
    uint8_t    bitRecStatus = 0;    //0: waiting for OpCode; 1: waiting for package data
    uint8_t    lnBufferPtr = 0; //index of next msg buffer location to read
    uint8_t    lnExpLen = 0;

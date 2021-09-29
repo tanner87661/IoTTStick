@@ -4,7 +4,7 @@
 #include <Arduino.h>
 #include <Wire.h>
 #include <ArduinoJson.h>
-#include <IoTTCommDef.h>
+#include <IoTT_CommDef.h>
 #include <IoTT_ButtonTypeDef.h>
 #include <IoTT_DigitraxBuffers.h>
 #include <OneDimKalman.h>

@@ -66,13 +66,14 @@ driveType getDriveTypeByName(String transName)
   return dualcoilAC;
 }
 
+/*
 greenHatType getGreenHatTypeByName(String transName)
 {
-  if (transName == "servo") return servoModule;
-  if (transName == "combo") return comboModule;
-  return comboModule; 
+//  if (transName == "servo") return servoModule;
+//  if (transName == "combo") return comboModule;
+  return servoModule; 
 }
-
+*/
 
 IoTT_SwitchBase::IoTT_SwitchBase() 
 {
@@ -673,6 +674,7 @@ void IoTT_ServoDrive::loadSwitchCfgJSON(JsonObject thisObj)
 }
 
 //----------------------------------------------------------------------------------------------------------------
+/*
 IoTT_ComboDrive::IoTT_ComboDrive():IoTT_SwitchBase()
 {
 }
@@ -691,7 +693,7 @@ void IoTT_ComboDrive::loadSwitchCfgJSON(JsonObject thisObj)
 //	Serial.println("IoTT_ComboDrive loadSwitchCfgJSON");
 }
 
-
+*/
 //----------------------------------------------------------------------------------------------------------------
 IoTT_GreenHat::IoTT_GreenHat()
 {
@@ -729,20 +731,22 @@ void IoTT_GreenHat::freeObjects()
 	delete switchModList; //this should automatically call the destructor of each obj
 }
 
+/*
 void IoTT_GreenHat::setGreenHatType(greenHatType newType)
 {
 	modType = newType;
 }
+*/
 
 void IoTT_GreenHat::loadGreenHatCfgJSON(uint8_t fileNr, JsonObject thisObj, bool resetList)
 {
 //		"CfgFiles": ["gh/0/switches", "gh/0/btn", "gh/0/btnevt", "gh/0/led"]
 	
-	Serial.printf("IoTT_GreenHat::loadGreenHatCfgJSON File Nr %i Reset %i \n", fileNr, resetList);
-	if (thisObj.containsKey("Drivers")) Serial.println("Switches");
-	if (thisObj.containsKey("Buttons")) Serial.println("Buttons");
-	if (thisObj.containsKey("ButtonHandler")) Serial.println("ButtonHandler");
-	if (thisObj.containsKey("LEDDefs")) Serial.println("LEDDefs");
+//	Serial.printf("IoTT_GreenHat::loadGreenHatCfgJSON File Nr %i Reset %i \n", fileNr, resetList);
+//	if (thisObj.containsKey("Drivers")) Serial.println("Switches");
+//	if (thisObj.containsKey("Buttons")) Serial.println("Buttons");
+//	if (thisObj.containsKey("ButtonHandler")) Serial.println("ButtonHandler");
+//	if (thisObj.containsKey("LEDDefs")) Serial.println("LEDDefs");
 	
 	switch (fileNr)
 	{
@@ -757,10 +761,10 @@ void IoTT_GreenHat::loadGreenHatCfgJSON(uint8_t fileNr, JsonObject thisObj, bool
 				for (int i=0; i < newListLen; i++)
 				{
 					IoTT_SwitchBase * thisSwiMod = NULL;
-					if (modType == servoModule)
+//					if (modType == servoModule)
 						thisSwiMod = new(IoTT_ServoDrive);
-					else
-						thisSwiMod = new(IoTT_ComboDrive);
+//					else
+//						thisSwiMod = new(IoTT_ComboDrive);
 					thisSwiMod->begin(this, i);
 					thisSwiMod->loadSwitchCfgJSON(driverMods[i]);
 					switchModList[switchModListLen + i] = thisSwiMod;
@@ -875,6 +879,7 @@ void IoTT_GreenHat::processSwitch(bool extPwrOK)
 void IoTT_GreenHat::saveRunTimeData(File * dataFile)
 {
 	uint8_t buf[2];
+	Serial.printf("Saving Servo Data %i Servos, 4 bytes each\n", switchModListLen);
 	for (int i=0; i < switchModListLen; i++)
 	{
 		IoTT_SwitchBase * thisSwiMod = switchModList[i];
@@ -900,7 +905,7 @@ void IoTT_GreenHat::loadRunTimeData(File * dataFile)
 			thisSwiMod->currentPos = (buf[0]<<8) + buf[1]; //incr by 1 to make sure it is processed during startup
 			dataFile->read(buf,2);
 			thisSwiMod->extSwiPos = (buf[0]<<8) + buf[1];
-			Serial.printf("Curr Pos %i Swi Pos %i\n", thisSwiMod->currentPos, thisSwiMod->extSwiPos);
+//			Serial.printf("Curr Pos %i Swi Pos %i\n", thisSwiMod->currentPos, thisSwiMod->extSwiPos);
 		}
 		else
 		{
@@ -978,7 +983,9 @@ void IoTT_SwitchList::saveRunTimeData()
 void IoTT_SwitchList::loadRunTimeData(uint8_t ghNr)
 {
     File dataFile = SPIFFS.open(servoFileName + String(ghNr), "r");
-    if ((dataFile) && (dataFile.size() == 64))
+//    Serial.println(dataFile.size());
+//    Serial.println(greenHatListLen);
+    if ((dataFile) && (dataFile.size() >= 64))
     {
 		greenHatList[ghNr]->loadRunTimeData(&dataFile);
 		dataFile.close();
@@ -989,7 +996,7 @@ void IoTT_SwitchList::loadRunTimeData(uint8_t ghNr)
 		if (dataFile)
 			dataFile.close();
 		greenHatList[ghNr]->loadRunTimeData(NULL);
-		Serial.println("Unable to read Servo File " + String(ghNr) + "Runtime Data");
+		Serial.println("Unable to read Servo File " + String(ghNr) + " Runtime Data");
 	}
 }
 
@@ -1026,10 +1033,12 @@ void IoTT_SwitchList::configModMem(uint8_t numModules)
 	}
 }
 
+/*
 void IoTT_SwitchList::setGreenHatType(uint8_t modNr, greenHatType modType)
 {
 	greenHatList[modNr]->setGreenHatType(modType);
 }
+*/
 
 void IoTT_SwitchList::loadSwCfgJSON(uint8_t ghNr, uint8_t fileNr, DynamicJsonDocument doc, bool resetList)
 {

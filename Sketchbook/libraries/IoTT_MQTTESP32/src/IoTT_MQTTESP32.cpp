@@ -278,6 +278,11 @@ int16_t MQTTESP32::lnWriteMsg(lnTransmitMsg txData)
    uint8_t hlpQuePtr = (que_wrPos + 1) % queBufferSize;
     if (connected() && (hlpQuePtr != que_rdPos)) //override protection
     {
+//		Serial.println();
+//		Serial.printf("MQTT Tx %2X", txData.lnData[0]);
+//		for (int i = 1; i < txData.lnMsgSize; i++)
+//			Serial.printf(", %2X", txData.lnData[i]);
+//		Serial.println();
 		transmitQueue[hlpQuePtr].msgType = txData.msgType;
 		transmitQueue[hlpQuePtr].lnMsgSize = txData.lnMsgSize;
 		transmitQueue[hlpQuePtr].reqID = txData.reqID;
@@ -302,6 +307,11 @@ int16_t MQTTESP32::lnWriteMsg(lnReceiveBuffer txData)
     uint8_t hlpQuePtr = (que_wrPos + 1) % queBufferSize;
     if (connected() && (hlpQuePtr != que_rdPos)) //override protection
     {
+//		Serial.println();
+//		Serial.printf("MQTT Tx %2X", txData.lnData[0]);
+//		for (int i = 1; i < txData.lnMsgSize; i++)
+//			Serial.printf(", %2X", txData.lnData[i]);
+//		Serial.println();
 		transmitQueue[hlpQuePtr].msgType = txData.msgType;
 		transmitQueue[hlpQuePtr].lnMsgSize = txData.lnMsgSize;
 		transmitQueue[hlpQuePtr].reqID = txData.reqID;

@@ -163,6 +163,7 @@ void processStatustoWebClient()
   Data["version"] = myStatusMsg;
   Data["ipaddress"] = WiFi.localIP().toString();
   Data["sigstrength"] = WiFi.RSSI();
+  Data["apname"] = WiFi.SSID();
 
   Data["temp"] = M5.Axp.GetTempInAXP192();
   Data["ubat"] = M5.Axp.GetBatVoltage();
@@ -424,13 +425,17 @@ void processWsMessage(char * newMsg, int msgLen, AsyncWebSocketClient * client)
         }
         if (fileSelector & 0x0400)  
           addFileToTx("lbserver", 0, "pgLBSCfg", 1);
+        if (fileSelector & 0x0800)  
+          addFileToTx("vwcfg", 0, "pgVoiceWCfg", 1);
+        fileCtr = 0;
         if (fileSelector & 0x0020)  
           while (addFileToTx("led", fileCtr, "pgLEDCfg", 1))
             fileCtr++;
-          fileCtr = 0;
+        fileCtr = 0;
         if (fileSelector & 0x0040)  
           while (addFileToTx("btnevt", fileCtr, "pgBtnHdlrCfg", 1))
             fileCtr++;
+        fileCtr = 0;
         if (fileSelector & 0x0080)  
           while (addFileToTx("secel", fileCtr, "pgSecElCfg", 1))
             fileCtr++;

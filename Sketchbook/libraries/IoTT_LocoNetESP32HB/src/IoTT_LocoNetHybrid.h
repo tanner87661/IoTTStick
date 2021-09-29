@@ -26,7 +26,8 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
 #include <inttypes.h>
 #include <arduino.h>
-#include <IoTTCommDef.h>
+#include <IoTT_CommDef.h>
+#include <HardwareSerial.h>
 
 #define lnBusy 0
 #define lnAwaitBackoff 1
@@ -51,6 +52,10 @@ void hybrid_end();
 void hybrid_highSpeed(bool goFast);
 void hybrid_setBusyLED(int8_t ledNr, bool logLevel);
 bool hybrid_availableForWrite();
+void hybrid_setNetworkType(nodeType newNwType);
+nodeType hybrid_getNetworkType();
+void hybrid_setBusyMode(bool newMode);
+bool hybrid_getBusyMode();
 uint16_t hybrid_available();
 bool hybrid_carrierOK();
 uint16_t hybrid_read();
@@ -59,5 +64,7 @@ void hybrid_flush();
 uint8_t  hybrid_LocoNetAvailable();
 //void hybrid_driver(); //timer interrupt occurs every 15 micros.
 //void processCommControl();
-
+//uint8_t uart_available();
+//uint8_t uart_read();
+//void setUartPort(HardwareSerial * newPort);
 #endif

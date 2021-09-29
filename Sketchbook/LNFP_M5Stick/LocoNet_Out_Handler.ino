@@ -183,6 +183,23 @@ void sendPowerCommand(uint8_t cmdType, uint8_t pwrStatus)
   sendMsg(txData);
 }
 
+uint16_t sendLocoNetReply(lnTransmitMsg txData)
+{
+//  Serial.printf("Send reply: %2X", txData.lnData[0]);
+//  for (uint8_t i = 1; i < txData.lnMsgSize; i ++)
+//    Serial.printf(" %2X ", txData.lnData[i]);
+//  Serial.println();
+  if (lnSerial)
+    lnSerial->lnWriteReply(txData);
+}
+
+uint16_t sendDCCCmdGen(lnTransmitMsg txData)
+{
+//  Serial.printf("Send it %i %i\n", txData.lnData[0], txData.lnData[1]);
+  if (usbSerial)
+    usbSerial->lnWriteMsg(txData);
+}
+
 //callback interface to the IoTT_Buttons library. If a Button or Analog event occurs, the library calles one of these functions
 //all we do here is sending the information to LocoNet, from where we will receive it back as serial port echo that can be processed like any regular LocoNet message
 

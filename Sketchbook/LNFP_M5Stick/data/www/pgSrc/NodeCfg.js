@@ -92,7 +92,8 @@ function setDisplayOptions()
 	setVisibility(configData[2].useNTP, configNTPBox);
 	setVisibility((configData[2].wifiMode & 0x01) > 0, configDHCPSection);
 	setVisibility(configData[2].useStaticIP, configDHCPBox);
-	setVisibility((configData[2].InterfaceIndex > 1) && (configData[2].InterfaceIndex != 9), configBushbyBox);
+	setVisibility([4,5,6,7,8,9,10,11,12].indexOf(configData[2].InterfaceIndex) >= 0, configBushbyBox);
+	setVisibility([4,7,8,9].indexOf(configData[2].InterfaceIndex) >= 0, configSubnetBox);
 }
 
 function setProdType(sender)
@@ -260,6 +261,11 @@ function setUseBushbyBit(sender)
 	configData[2].useBushby = sender.checked ? 1:0;
 }
 
+function setSubnet(sender)
+{
+	configData[2].subnetMode = sender.checked ? 1:0;
+}
+
 function constructPageContent(contentTab)
 {
 	var tempObj;
@@ -274,6 +280,9 @@ function constructPageContent(contentTab)
 //			createCheckbox(tempObjP, "", "MQTT Gateway", "cbMQTTGateway", "setGatewayMode(this)");
 //			createCheckbox(tempObjP, "", "LN over TCP Server", "cbTCPServer", "setGatewayMode(this)");
 		tempObj = createEmptyDiv(mainScrollBox, "div", "tile-1_4", "");
+		tempObj = createEmptyDiv(mainScrollBox, "div", "tile-1", "configSubnetBox");
+		tempObj.style.display = "none";
+			createCheckbox(tempObj, "tile-1_4", "LocoNet Subnet", "cbUseSubnet", "setSubnet(this)");
 		tempObj = createEmptyDiv(mainScrollBox, "div", "tile-1", "configBushbyBox");
 			createCheckbox(tempObj, "tile-1_4", "respect Bushby Bit", "cbUseBushbyBit", "setUseBushbyBit(this)");
 		
@@ -394,6 +403,7 @@ function loadDataFields(jsonData)
 	writeInputField("ap_ip", jsonData.apConfig.apGateway);
 	writeInputField("ap_password", jsonData.apConfig.apPassword);
 
+	writeCBInputField("cbUseSubnet", jsonData.subnetMode);
 	writeCBInputField("cbUseBushbyBit", jsonData.useBushby);
 	
 	writeCBInputField("cbUseNTP", jsonData.useNTP);

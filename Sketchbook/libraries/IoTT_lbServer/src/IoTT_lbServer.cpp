@@ -96,13 +96,13 @@ void IoTT_LBServer::startServer()
 
 void IoTT_LBServer::handleNewClient(void* arg, AsyncClient* client)
 {
-	Serial.printf("A new client has been connected to server, ip: %s", client->remoteIP().toString().c_str());
+	Serial.printf("A new client has been connected to server, ip: %s\n", client->remoteIP().toString().c_str());
 
 	tcpDef newClientData;
 	// add to list
 	newClientData.thisClient = client;
 	clients.push_back(newClientData);
-	Serial.printf("New total is %i clients\n", clients.size());
+	Serial.printf("New total is %i client(s)\n", clients.size());
   
 	for (int i = 0; i < clients.size(); i++)
 	{
@@ -215,6 +215,10 @@ void IoTT_LBServer::handleDataFromServer(void* arg, AsyncClient* client, void *d
 	{
 		if (clients[i].thisClient == client)
 		{
+//			Serial.print("Message from ");
+//			Serial.println(clients[i].thisClient->remoteIP());
+//			Serial.write((uint8_t *)data, len);
+//			Serial.println();
 			currClient = &clients[i];
 			break;
 		}
@@ -229,6 +233,7 @@ void IoTT_LBServer::handleDataFromServer(void* arg, AsyncClient* client, void *d
 		{
 			//if command is complete, call handle data
 //			currClient->rxBuffer[currClient->rxPtr] = '\0';
+//			Serial.println("Processing...");
 			handleData(arg, currClient->thisClient, (char*) data, len);
 //			currClient->rxPtr = 0;
 		}
@@ -242,6 +247,7 @@ void IoTT_LBServer::handleDataFromClient(void* arg, AsyncClient* client, void *d
 //	Serial.println("End Orig Data");
 	if (lntcpClient.thisClient == client) 
 	{
+		
 		//move data to lntcpClient inbuffer
 //		memcpy(&lntcpClient.rxBuffer[lntcpClient.rxPtr], data, len);
 //		lntcpClient.rxPtr += len;
@@ -256,8 +262,8 @@ void IoTT_LBServer::handleDataFromClient(void* arg, AsyncClient* client, void *d
 		else
 			Serial.println("No CRLF in data");
 	}
-	else
-		Serial.println("Not for us");
+//	else
+//		Serial.println("Not for us");
 }
 
 //this is called when data is received, either in server or client mode
@@ -450,7 +456,8 @@ void IoTT_LBServer::processLoop()
 		else
 			if (que_wrPos != que_rdPos)
 			{
-				while (que_wrPos != que_rdPos)
+//				Serial.print("Send message to server");
+				if (que_wrPos != que_rdPos)
 				{
 					int hlpQuePtr = (que_rdPos + 1) % queBufferSize;
 					if (sendClientMessage(lntcpClient.thisClient, "SEND", transmitQueue[hlpQuePtr]))

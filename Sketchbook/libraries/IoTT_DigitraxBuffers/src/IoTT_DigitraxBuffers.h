@@ -3,7 +3,7 @@
 #define IoTT_DigitraxBuffers_h
 
 #include <Arduino.h>
-#include <IoTTCommDef.h>
+#include <IoTT_CommDef.h>
 #include <SPIFFS.h>
 
 #define numSigs 2048
@@ -15,6 +15,8 @@
 
 #define bufferUpdateInterval 1000
 
+typedef void (*dccFct) (lnTransmitMsg *, uint8_t, uint8_t); //slot nr, fct depending value
+
 typedef uint8_t blockDetBuffer[numBDs]; //4096 input bits, 8 per byte, lsb is lowest number
 typedef uint8_t switchBuffer[numSwis]; //current status of switches, 4 per byte. First bit indicates coil state, second is position
 typedef uint8_t signalBuffer[numSigs]; //current status of aspects, 1 per byte values 0..31, 3 MSB reserved
@@ -24,14 +26,27 @@ typedef uint8_t powerStatusBuffer;
 typedef uint8_t slotData[10]; //slot data 0 is slot number, this is given by position in array, so we only need 10 bytes
 typedef slotData slotDataBuffer[numSlots];
 
-typedef uint16_t (*txFct) (lnTransmitMsg);
-
 uint32_t millisElapsed(uint32_t since);
 uint32_t microsElapsed(uint32_t since);
 
-void setTxFunction(txFct newFct);
 
+void setReplyFunction(txFct newFct);
+void setDccCmdFunction(txFct newFct);
+void setSpeedCmd(lnTransmitMsg * txBuffer, uint8_t slotNr, uint8_t speedVal);
+void setDirCmd(lnTransmitMsg * txBuffer, uint8_t slotNr, uint8_t dirMask);
+
+//void iterateMULinks(lnTransmitMsg * txBuffer, uint8_t thisSlot, uint8_t templData, dccFct procFunc);
+void generateSpeedCmd(lnTransmitMsg * txBuffer, uint8_t thisSlot, uint8_t topSpeed);
+//void generateFunctionCmd(lnTransmitMsg * txBuffer, lnReceiveBuffer * newData);
+uint8_t getTopSlot(uint8_t masterSlot);
+uint8_t getFirstSlave(uint8_t masterSlot);
+
+void prepLACKMsg(lnTransmitMsg * msgData, uint8_t ackCode, uint8_t ackData);
+void prepSlotReadMsg(lnTransmitMsg * msgData, uint8_t slotNr);
+void processLocoNetReply(lnReceiveBuffer * newData);
+void processCmdGenerator(lnReceiveBuffer * newData);
 void processLocoNetMsg(lnReceiveBuffer * newData);
+uint8_t getSlotOfAddr(uint8_t locoAddrLo, uint8_t locoAddrHi);
 
 uint8_t getBDStatus(uint16_t bdNum);
 
@@ -48,6 +63,7 @@ uint8_t getPowerStatus();
 void enableBushbyWatch(bool enableBushby);
 bool getBushbyWatch();
 
+void setSlotDirfSpeed(lnReceiveBuffer * newData);
 void setAnalogValue(uint16_t analogNum, uint16_t analogValue);
 void setSwitchStatus(uint16_t swiNum, bool swiPos, bool coilStatus);
 void setSignalAspect(uint16_t sigNum, uint8_t sigAspect);

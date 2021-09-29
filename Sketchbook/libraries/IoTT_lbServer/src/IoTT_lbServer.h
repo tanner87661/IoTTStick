@@ -27,7 +27,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #include <Math.h>
 #include <inttypes.h>
 #include <WiFi.h>
-#include <IoTTCommDef.h>
+#include <IoTT_CommDef.h>
 #include <ArduinoJSON.h>
 #include <AsyncTCP.h>
 #include <vector>

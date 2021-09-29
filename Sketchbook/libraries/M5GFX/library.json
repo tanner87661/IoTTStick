@@ -1,0 +1,16 @@
+{
+  "name": "M5GFX",
+  "description": "Library for M5Stack All Display",
+  "keywords": "M5GFX",
+  "authors": {
+    "name": "M5Stack, lovyan03",
+    "url": "http://www.m5stack.com"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/m5stack/M5GFX.git"
+  },
+  "version": "0.0.6",
+  "framework": "arduino",
+  "platforms": "espressif32"
+}

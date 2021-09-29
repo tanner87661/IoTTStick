@@ -30,16 +30,22 @@ bool deleteFile(String fileName)
 
 void deleteAllFiles(String ofNameType, String startDir, String fileExt, bool lastOnly)
 {
+  Serial.println("Delete all " + ofNameType);
   File root = SPIFFS.open(startDir);
   File thisFile = root.openNextFile();
   String lastFileName;
   while (thisFile)
   {
     String hlpStr = thisFile.name();
-    for (int i = 0; i < 10; i++)
-      hlpStr.replace(String(i), "?");
+//    Serial.println(hlpStr);
+    uint8_t extDot = hlpStr.lastIndexOf('.');
+    for (int i = 0; i < 3; i++)
+      if (isDigit(hlpStr[extDot-i]))
+        hlpStr[extDot-i] = '?';
+    
     hlpStr.replace("???", "?");
     hlpStr.replace("??", "?");
+//    Serial.println(hlpStr);
     if (hlpStr == startDir + "/" + ofNameType + "." + fileExt)
       if (lastOnly)
         lastFileName = thisFile.name();
