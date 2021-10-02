@@ -94,6 +94,10 @@ function setDisplayOptions()
 	setVisibility(configData[2].useStaticIP, configDHCPBox);
 	setVisibility([4,5,6,7,8,9,10,11,12].indexOf(configData[2].InterfaceIndex) >= 0, configBushbyBox);
 	setVisibility([4,7,8,9].indexOf(configData[2].InterfaceIndex) >= 0, configSubnetBox);
+
+	setVisibility([1, 2, 3, 4, 5, 6, 7, 8, 11, 12, 13, 14, 15, 16].indexOf(configData[2].InterfaceIndex) >= 0, document.getElementById("cbUseALM_0").parentElement);
+	setVisibility([0, 1, 5].indexOf(configData[2].HatIndex) >= 0, document.getElementById("cbUseALM_1").parentElement);
+
 }
 
 function setProdType(sender)

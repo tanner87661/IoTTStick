@@ -92,6 +92,9 @@ private:
 	uint32_t respTime;
 	uint8_t  respOpCode;
 	uint16_t respID;
+	
+	uint16_t clientTxIndex = 0;
+	bool clientTxConfirmation = false;
 };
 
 #endif

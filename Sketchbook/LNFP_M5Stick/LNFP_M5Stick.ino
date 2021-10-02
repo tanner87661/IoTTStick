@@ -767,7 +767,7 @@ void setup() {
     }
 
 //Initialize ALMs
-    if (useALM & 0x01) //Button Handler
+    if ((useALM & 0x01) && (lnSerial || lbServer)) //Button Handler only with LocoNet or lbServer
     {
       Serial.println("Load Button Handler Data");  
       jsonDataObj = getDocPtr("/configdata/btnevt.cfg", false);
@@ -820,7 +820,7 @@ void setup() {
       Serial.println("Security Elements not loaded");
 */
 
-    if (useALM & 0x02)
+    if ((useALM & 0x02) && ((useHat.devId == 0) ||(useHat.devId == 1) ||(useHat.devId == 6)))  //RedHat Serial Injector
     {
       Serial.println("Initialize VoiceWatcher");  
       voiceWatcher = new(IoTT_VoiceControl);
