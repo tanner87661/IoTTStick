@@ -96,8 +96,8 @@ void IoTT_LBServer::startServer()
 
 void IoTT_LBServer::handleNewClient(void* arg, AsyncClient* client)
 {
-	Serial.printf("A new client has been connected to server, ip: %s\n", client->remoteIP().toString().c_str());
-
+	Serial.printf("A new client has been connected to server, ip: %s with timeout %i %i\n", client->remoteIP().toString().c_str(), client->getAckTimeout(), client->getRxTimeout());
+	
 	tcpDef newClientData;
 	// add to list
 	newClientData.thisClient = client;
@@ -260,7 +260,7 @@ void IoTT_LBServer::handleData(void* arg, AsyncClient* client, char *data, size_
 {
 	char *p = data;
     char *subStr;
-    char *strEnd = subStr + len;
+    char *strEnd = data + len;
     if (strchr(p, '\n') != NULL)
 		while ((subStr = strtok_r(p, "\n", &p)) != NULL) // delimiter is the new line
 		{
