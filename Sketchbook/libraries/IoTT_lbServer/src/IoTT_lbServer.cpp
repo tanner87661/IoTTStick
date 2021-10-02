@@ -382,24 +382,27 @@ void IoTT_LBServer::onConnect(void *arg, AsyncClient *client)
 bool IoTT_LBServer::sendClientMessage(AsyncClient * thisClient, String cmdMsg, lnReceiveBuffer thisMsg)
 {
 	if (thisClient)
-//		if (thisClient->canSend())
-		if (thisClient->connected() && thisClient->canSend())
+		if (thisClient->canSend())
 		{
+//			Serial.print("sending... ");
 			String lnStr = cmdMsg;
 			char hexbuf[13];
-			if (thisClient->space() > strlen(lnStr.c_str()) && thisClient->canSend())
+			for (uint8_t i = 0; i < thisMsg.lnMsgSize; i++)
 			{
-				for (uint8_t i = 0; i < thisMsg.lnMsgSize; i++)
-				{
-					sprintf(hexbuf, " %02X", thisMsg.lnData[i]);
-					lnStr += String(hexbuf);
-				}
-				lnStr += '\r';
-				lnStr += '\n';
+				sprintf(hexbuf, " %02X", thisMsg.lnData[i]);
+				lnStr += String(hexbuf);
+			}
+			lnStr += '\r';
+			lnStr += '\n';
+//			Serial.print(thisClient->space());
+			if (thisClient->space() > strlen(lnStr.c_str())+2)
+			{
 				thisClient->add(lnStr.c_str(), strlen(lnStr.c_str()));
 				nextPingPoint = millis() + pingInterval + random(5000);
+//			Serial.println(" done");
 				return thisClient->send();
 			}
+//			Serial.println(" failed");
 		}
 	return false;
 }
