@@ -69,11 +69,10 @@ private:
 	static void handleError(void* arg, AsyncClient* client, int8_t error);
 	static void handleDataFromServer(void* arg, AsyncClient* client, void *data, size_t len);
 	static void handleDataFromClient(void* arg, AsyncClient* client, void *data, size_t len);
-//	static void handleData(void* arg, tcpDef * clientData);
 	static void handleData(void* arg, AsyncClient* client, char *data, size_t len);
 	static void handleDisconnect(void* arg, AsyncClient* client);
 	static void handleTimeOut(void* arg, AsyncClient* client, uint32_t time);
-//    static void handlePoll(void *arg, AsyncClient *client);        //every 125ms when connected
+    static void handlePoll(void *arg, AsyncClient *client);        //every 125ms when connected
 
 	static void tcpToLN(char * str, lnReceiveBuffer * recData);
 

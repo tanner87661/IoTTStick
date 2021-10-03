@@ -84,7 +84,7 @@ void IoTT_LBServer::initLBServer(bool serverMode)
 		lntcpClient.thisClient = new AsyncClient();
 		lntcpClient.thisClient ->onData(handleDataFromClient, lntcpClient.thisClient );
 		lntcpClient.thisClient ->onConnect(onConnect, lntcpClient.thisClient );
-//		lntcpClient.thisClient ->onPoll(handlePoll, lntcpClient.thisClient );
+		lntcpClient.thisClient ->onPoll(handlePoll, lntcpClient.thisClient );
 	}
 }
 
@@ -158,7 +158,7 @@ void IoTT_LBServer::loadLBServerCfgJSON(DynamicJsonDocument doc)
 
 uint16_t IoTT_LBServer::lnWriteMsg(lnTransmitMsg txData)
 {
-//	Serial.printf("LN over TCP Tx %2X\n", txData.lnData[0]);
+//	Serial.printf("LN over TCP Tx %02X\n", txData.lnData[0]);
 	uint8_t hlpQuePtr = (que_wrPos + 1) % queBufferSize;
     if (hlpQuePtr != que_rdPos) //override protection
     {
@@ -215,10 +215,10 @@ void IoTT_LBServer::handleDataFromServer(void* arg, AsyncClient* client, void *d
 	{
 		if (clients[i].thisClient == client)
 		{
-//			Serial.print("Message from ");
-//			Serial.println(clients[i].thisClient->remoteIP());
-//			Serial.write((uint8_t *)data, len);
-//			Serial.println();
+			Serial.print("Message from ");
+			Serial.println(clients[i].thisClient->remoteIP());
+			Serial.write((uint8_t *)data, len);
+			Serial.println();
 			currClient = &clients[i];
 			break;
 		}
@@ -235,9 +235,9 @@ void IoTT_LBServer::handleDataFromServer(void* arg, AsyncClient* client, void *d
 
 void IoTT_LBServer::handleDataFromClient(void* arg, AsyncClient* client, void *data, size_t len) 
 {
-//	Serial.println("handleDataFromClient");
-//	Serial.write((uint8_t *)data, len);
-//	Serial.println();
+	Serial.println("handleDataFromClient");
+	Serial.write((uint8_t *)data, len);
+	Serial.println(len);
 	if (lntcpClient.thisClient == client) 
 	{
 		
@@ -251,8 +251,8 @@ void IoTT_LBServer::handleDataFromClient(void* arg, AsyncClient* client, void *d
 		else
 			Serial.println("No CRLF in data");
 	}
-//	else
-//		Serial.println("Not for us");
+	else
+		Serial.println("Not for us");
 }
 
 //this is called when data is received, either in server or client mode
@@ -260,13 +260,14 @@ void IoTT_LBServer::handleData(void* arg, AsyncClient* client, char *data, size_
 {
 	char *p = data;
     char *subStr;
-    char *strEnd = data + len;
+    char *strEnd = data + len - 1;
     if (strchr(p, '\n') != NULL)
 		while ((subStr = strtok_r(p, "\n", &p)) != NULL) // delimiter is the new line
 		{
 			while((*subStr=='\n') || (*subStr=='\r') && (subStr < strEnd))
 				subStr++;
-			processServerMessage(client, subStr);
+			if (subStr < strEnd)
+				processServerMessage(client, subStr);
 		}
 	else
 		if (strchr(p, '\r') != NULL)
@@ -274,18 +275,23 @@ void IoTT_LBServer::handleData(void* arg, AsyncClient* client, char *data, size_
 			{
 				while((*subStr=='\n') || (*subStr=='\r') && (subStr < strEnd))
 					subStr++;
-				processServerMessage(client, subStr);
+				if (subStr < strEnd)
+					processServerMessage(client, subStr);
 			}
 		else
 			Serial.println("No delimiter");
 
 }
 
+void IoTT_LBServer::handlePoll(void *arg, AsyncClient *client)        //every 125ms when connected
+{
+//	nextPingPoint = millis() + pingInterval;
+}
+
 void IoTT_LBServer::tcpToLN(char * str, lnReceiveBuffer * thisData)
 {
 	char * p = str;
 	uint8_t xorCheckByte = 0;
-//	Serial.println(p);
 	while ((str = strtok_r(p, " ", &p)) != NULL) // delimiter is the space
 	{
 		uint8_t thisByte = strtol(str, NULL, 16) & 0x000000FF;
@@ -294,14 +300,17 @@ void IoTT_LBServer::tcpToLN(char * str, lnReceiveBuffer * thisData)
 		thisData->lnMsgSize++;
 	}
 	if (xorCheckByte != 0xFF)
+	{
+		Serial.println(p);
 		thisData->errorFlags = msgXORCheck;
+	}
 }
 
 void IoTT_LBServer::processServerMessage(AsyncClient* client, char * data)
 {
-//	Serial.println("processServerMessage");
-//	Serial.write(data);
-//	Serial.println();
+	Serial.println("processServerMessage");
+	Serial.write(data);
+	Serial.println();
 	lnReceiveBuffer recData;
 	char *p = data;
     char *str;
@@ -343,7 +352,11 @@ void IoTT_LBServer::processServerMessage(AsyncClient* client, char * data)
 				if (recData.errorFlags == 0)
 					lbsCallback(&recData);
 				else
-					Serial.printf("Error %i\n", recData.errorFlags);
+				{
+					Serial.printf("Receive Error 0x%02X\n", recData.errorFlags);
+					Serial.write(data);
+					Serial.println();
+				}
 //			Serial.println("Process RECEIVE complete");
 			return;
 		}
