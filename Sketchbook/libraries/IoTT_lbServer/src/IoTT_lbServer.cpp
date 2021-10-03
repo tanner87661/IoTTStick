@@ -215,10 +215,10 @@ void IoTT_LBServer::handleDataFromServer(void* arg, AsyncClient* client, void *d
 	{
 		if (clients[i].thisClient == client)
 		{
-			Serial.print("Message from ");
-			Serial.println(clients[i].thisClient->remoteIP());
-			Serial.write((uint8_t *)data, len);
-			Serial.println();
+//			Serial.print("Message from ");
+//			Serial.println(clients[i].thisClient->remoteIP());
+//			Serial.write((uint8_t *)data, len);
+//			Serial.println();
 			currClient = &clients[i];
 			break;
 		}
@@ -235,9 +235,9 @@ void IoTT_LBServer::handleDataFromServer(void* arg, AsyncClient* client, void *d
 
 void IoTT_LBServer::handleDataFromClient(void* arg, AsyncClient* client, void *data, size_t len) 
 {
-	Serial.println("handleDataFromClient");
-	Serial.write((uint8_t *)data, len);
-	Serial.println(len);
+//	Serial.println("handleDataFromClient");
+//	Serial.write((uint8_t *)data, len);
+//	Serial.println(len);
 	if (lntcpClient.thisClient == client) 
 	{
 		
