@@ -308,9 +308,9 @@ void IoTT_LBServer::tcpToLN(char * str, lnReceiveBuffer * thisData)
 
 void IoTT_LBServer::processServerMessage(AsyncClient* client, char * data)
 {
-	Serial.println("processServerMessage");
-	Serial.write(data);
-	Serial.println();
+//	Serial.println("processServerMessage");
+//	Serial.write(data);
+//	Serial.println();
 	lnReceiveBuffer recData;
 	char *p = data;
     char *str;
@@ -354,10 +354,9 @@ void IoTT_LBServer::processServerMessage(AsyncClient* client, char * data)
 				else
 				{
 					Serial.printf("Receive Error 0x%02X\n", recData.errorFlags);
-					Serial.write(data);
-					Serial.println();
+//					Serial.write(data);
+//					Serial.println();
 				}
-//			Serial.println("Process RECEIVE complete");
 			return;
 		}
 		if (strcmp(str,"SENT") == 0)
