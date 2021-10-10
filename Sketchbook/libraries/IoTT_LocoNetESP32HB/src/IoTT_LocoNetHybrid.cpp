@@ -26,13 +26,14 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 volatile uint8_t pinRx;
 volatile uint8_t pinTx;
 
-
 #define defaultTransmitAttempts 25 //as per LocoNet standard
 #define defaultNetworkAccessAttempts 1000 // = 15ms as per LocoNet standard
 #define defaultCDBackoffPriority 80 //20 bit times
 
-#define uartrxBufferSize 200
+#define uartrxBufferSize 50
 #define uarttxBufferSize 50 //longest possible LocoNet message is 48 bytes, buffer must be more than that
+
+#define maxBusy 100
 
 //volatile uartRxStateType uartRxState = waitStartBit;
 volatile uartModeType uartMode = uart_idle;
@@ -47,17 +48,32 @@ volatile uint16_t networkAccessAttemptCounter;
 volatile uint8_t bitCounter = 0;
 volatile uint16_t bitMask;
 
-volatile uint8_t rxrdPointer = 0;
-volatile uint8_t rxwrPointer = 0;
-volatile uint16_t rxBitBuffer = 0;
-volatile uint16_t rxBuffer[uartrxBufferSize];
-volatile uint16_t commError = 0;
+/*
+volatile uint8_t uartrdPointer = 0;
+volatile uint8_t uartwrPointer = 0;
+volatile uint16_t uartBuffer[uartrxBufferSize];
 
-volatile uint8_t txrdPointer = 0;
-volatile uint8_t txtmprdPointer = 0;
-volatile uint8_t txwrPointer = 0;
-volatile uint8_t txBuffer[uarttxBufferSize];
-volatile uint8_t tmpPointer;	
+HardwareSerial * uartPort = NULL;
+*/
+
+//volatile uint8_t tmpPointer;	
+
+typedef struct {  
+	uint8_t txrdPointer = 0;
+	uint8_t txtmprdPointer = 0;
+	uint8_t txwrPointer = 0;
+	uint8_t txBuffer[uarttxBufferSize];
+	uint8_t rxrdPointer = 0;
+	uint8_t rxwrPointer = 0;
+	uint16_t rxBuffer[uartrxBufferSize];
+	uint16_t commError = 0;
+} hybridtxbuffer;
+
+volatile hybridtxbuffer txBuf;
+volatile hybridtxbuffer busyBuf;
+volatile hybridtxbuffer * thisBuffer = &txBuf;
+
+volatile uint8_t busyCtr = maxBusy;
 
 volatile uint8_t lastByte;
 
@@ -76,6 +92,12 @@ volatile bool timerHighSpeed;
 volatile int8_t busyLED = -1;
 volatile bool   busyLevel = false;
 
+volatile bool insertBusyOPC = false;
+
+nodeType networkType = standardMode;
+
+volatile uint8_t opcBusy[] = {0x81, 0x7E};
+
 hw_timer_t * timer = NULL;
 //portMUX_TYPE timerMux = portMUX_INITIALIZER_UNLOCKED;
 //portMUX_TYPE inputMux = portMUX_INITIALIZER_UNLOCKED;
@@ -88,21 +110,33 @@ hw_timer_t * timer = NULL;
  * the service also handles the CD backoff timing and switching off the LocoNet BUSY LED (if defined)
  * in case of a collision, a 15 bit break is sent
 */
+
 static void IRAM_ATTR hybrid_driver() //timer interrupt occurs every 15 micros.
 {
+	uint8_t tmpPointer;
+/*	
+	if (uartPort)
+		while (uartPort->available())
+		{
+			uartwrPointer = (uartwrPointer + 1) % uartrxBufferSize;
+			uartBuffer[uartwrPointer] = uartPort->read();
+		}
+*/	
   switch (uartMode)
   {
     case uart_idle: //if transmitData is available and is a valid LocoNet message, access network and start sending
-      if (txrdPointer != txwrPointer) //we have a need to send a message
+	{
+      if (thisBuffer->txrdPointer != thisBuffer->txwrPointer) //we have a need to send a message
       {
-        if (txrdPointer == txtmprdPointer) //
+        if (thisBuffer->txrdPointer == thisBuffer->txtmprdPointer) //
         {
-          txtmprdPointer = (txrdPointer + 1) % uarttxBufferSize; //set temporary pointer to data to be sent
+          thisBuffer->txtmprdPointer = (thisBuffer->txrdPointer + 1) % uarttxBufferSize; //set temporary pointer to data to be sent
           transmitAttemptCounter = defaultTransmitAttempts;
           networkAccessAttemptCounter = defaultNetworkAccessAttempts;
-          commError = 0;
+          thisBuffer->commError = 0;
         }
-        if (cdBackoffCounter == 0) //network is available
+        if (hybrid_LocoNetAvailable() == lnNetAvailable)
+//        if (cdBackoffCounter == 0) //network is available
         {
 //			Serial.print("s");
 //			Serial.println(txBuffer[txtmprdPointer],16);
@@ -130,8 +164,8 @@ static void IRAM_ATTR hybrid_driver() //timer interrupt occurs every 15 micros.
             else //now we are out of options, no network access achieved
             {
               //no network access failure, permanently giving up, data is lost
-              txwrPointer = txrdPointer;
-              commError |= errorTimeout;
+              thisBuffer->txwrPointer = thisBuffer->txrdPointer;
+              thisBuffer->commError |= errorTimeout;
             }
       }      
       else 
@@ -142,33 +176,34 @@ static void IRAM_ATTR hybrid_driver() //timer interrupt occurs every 15 micros.
 		  if (lastCarrierOKTicker == 0)
 		  {
 			lastCarrierOKTicker = carrierLossNotification;
-			commError |= errorCarrierLoss;
-            tmpPointer = (rxwrPointer + 1) % uartrxBufferSize;
-            rxBuffer[tmpPointer] = (commError<<8);
-            commError = 0;
-            rxwrPointer = tmpPointer;
+			thisBuffer->commError |= errorCarrierLoss;
+            tmpPointer = (thisBuffer->rxwrPointer + 1) % uartrxBufferSize;
+            thisBuffer->rxBuffer[tmpPointer] = (thisBuffer->commError<<8);
+            thisBuffer->commError = 0;
+            thisBuffer->rxwrPointer = tmpPointer;
 		  }
 	    }
 	    else
 		  lastCarrierOKTicker = carrierLossNotification;
 	  }
       break;  
+	}
     case uart_transmit:
       //check for collisions, stop sending if collision is detected and send break. Not needed for MARK=1, but we do it anyway as it can not create a false collision detection
 
       if (digitalRead(pinRx) != digitalRead(pinTx)) //collision detected
       {
-//		Serial.print("coll");
+		Serial.print("coll");
         digitalWrite(pinTx, (inverseLogicTx ? 1:0)); //send BREAK
         uartMode = uart_collision;
         bitCounter = 15; //15 bit times
-        commError |= errorCollision;
+        thisBuffer->commError |= errorCollision;
         if (uartTxState == sendStopBit)
-          commError |= errorFrame;
-        tmpPointer = (rxwrPointer + 1) % uartrxBufferSize;
-        rxBuffer[tmpPointer] = txBuffer[txrdPointer] + (commError<<8);
-        commError = 0;
-        rxwrPointer = tmpPointer;
+          thisBuffer->commError |= errorFrame;
+        tmpPointer = (thisBuffer->rxwrPointer + 1) % uartrxBufferSize;
+        thisBuffer->rxBuffer[tmpPointer] = thisBuffer->txBuffer[thisBuffer->txrdPointer] + (thisBuffer->commError<<8);
+        thisBuffer->commError = 0;
+        thisBuffer->rxwrPointer = tmpPointer;
       }
       else
       {
@@ -180,7 +215,7 @@ static void IRAM_ATTR hybrid_driver() //timer interrupt occurs every 15 micros.
         {
           case sendStartBit: //if this is called, startBit is out, so we go to databits
             bitMask = 0x0001;
-            digitalWrite(pinTx, ((bitMask & txBuffer[txtmprdPointer]) == (inverseLogicTx ? 0:1))); //send first databit, lsb first
+            digitalWrite(pinTx, ((bitMask & thisBuffer->txBuffer[thisBuffer->txtmprdPointer]) == (inverseLogicTx ? 0:1))); //send first databit, lsb first
             uartTxState = sendDataBit;
             break;
           case sendDataBit:
@@ -191,7 +226,7 @@ static void IRAM_ATTR hybrid_driver() //timer interrupt occurs every 15 micros.
               uartTxState = sendStopBit;
             }
             else
-              digitalWrite(pinTx, ((bitMask & txBuffer[txtmprdPointer]) == (inverseLogicTx ? 0:1))); //send next databit
+              digitalWrite(pinTx, ((bitMask & thisBuffer->txBuffer[thisBuffer->txtmprdPointer]) == (inverseLogicTx ? 0:1))); //send next databit
             break;
           case sendStopBit: //if this is called, stopBit is out, we just add additional break to make sure timing errors do not add up
 //            uartTxState = sendBreakBit; //come back next time
@@ -201,22 +236,41 @@ static void IRAM_ATTR hybrid_driver() //timer interrupt occurs every 15 micros.
 //            break;
           
 //          case sendBreakBit: //if this is called, stopBit is out, so we start next byte, if there is one
-            txrdPointer = txtmprdPointer;
-            tmpPointer = (rxwrPointer + 1) % uartrxBufferSize;
-            commError |= msgEcho;
-            rxBuffer[tmpPointer] = txBuffer[txrdPointer] + (commError<<8);
-            commError = 0;
-            rxwrPointer = tmpPointer;
-            if (txrdPointer == txwrPointer) //no more data
+            thisBuffer->txrdPointer = thisBuffer->txtmprdPointer;
+            tmpPointer = (thisBuffer->rxwrPointer + 1) % uartrxBufferSize;
+            thisBuffer->commError |= msgEcho;
+            thisBuffer->rxBuffer[tmpPointer] = thisBuffer->txBuffer[thisBuffer->txrdPointer] + (thisBuffer->commError<<8);
+            thisBuffer->commError = 0;
+            thisBuffer->rxwrPointer = tmpPointer;
+            if (thisBuffer->txrdPointer == thisBuffer->txwrPointer)// && (!insertBusyOPC)) //no more data in this message and no OPC_BUSY
             {
-              currentCDBackoffPriority = defaultCDBackoffPriority; //reset network priority in case it was reduced in this transmit attempt
-              uartMode = uart_idle;
-            }
+				if ((insertBusyOPC) && (busyCtr > 0))
+				{
+					busyCtr--;
+					thisBuffer = &busyBuf;
+					thisBuffer->txrdPointer = 0;
+					thisBuffer->txtmprdPointer = 0;
+//					digitalWrite(pinTx, (inverseLogicTx ? 1:0)); //start sending start bit of next byte
+//					uartTxState = sendStartBit;
+					currentCDBackoffPriority = defaultCDBackoffPriority; //reset network priority in case it was reduced in this transmit attempt
+					uartMode = uart_idle;
+				}
+				else //return to standard buffer pointer and idle mode
+				{
+					if (thisBuffer == &busyBuf)
+					{
+						thisBuffer = &txBuf;
+//						hybrid_flush();
+					}
+					currentCDBackoffPriority = defaultCDBackoffPriority; //reset network priority in case it was reduced in this transmit attempt
+					uartMode = uart_idle;
+				}
+			}
             else
             {
-              txtmprdPointer = (txrdPointer + 1) % uarttxBufferSize;
-              digitalWrite(pinTx, (inverseLogicTx ? 1:0)); //start sending start bit
-              uartTxState = sendStartBit;
+				thisBuffer->txtmprdPointer = (thisBuffer->txrdPointer + 1) % uarttxBufferSize;
+				digitalWrite(pinTx, (inverseLogicTx ? 1:0)); //start sending start bit of next byte
+				uartTxState = sendStartBit;
             }
             break;
         }
@@ -233,9 +287,9 @@ static void IRAM_ATTR hybrid_driver() //timer interrupt occurs every 15 micros.
           if (bitCounter == 0)
           {
             digitalWrite(pinTx, (inverseLogicTx ? 0:1));
-            txwrPointer = txrdPointer;
+            thisBuffer->txwrPointer = thisBuffer->txrdPointer;
             uartMode = uart_idle;
-            commError = 0;
+            thisBuffer->commError = 0;
           }
           break;
         }
@@ -272,12 +326,13 @@ void hybrid_highSpeed(bool goFast)
 		if (goFast)
 			timerAlarmWrite(timer, 240, true); //every 15 microseconds for Tx
 		else
-			if (uartMode == uart_idle)
+			if (uartMode == uart_idle) //do not change mode if uart is busy transmitting
 				timerAlarmWrite(timer, 16000, true); //every 1 milliseconds for Tx
 			else
 				changeSpeed = false;
 		if (changeSpeed)
 		{		
+//			Serial.println(goFast ? "fst":"slw");
 			timerWrite(timer, 0);
 			timerAlarmEnable(timer);
 			timerHighSpeed = goFast;
@@ -325,12 +380,52 @@ void hybrid_setBusyLED(int8_t ledNr, bool logLevel)
 
 bool hybrid_availableForWrite()
 {
-	return (txwrPointer == txrdPointer);
+	return (txBuf.txwrPointer == txBuf.txrdPointer);// && (thisBuffer == &txBuf));
+}
+
+void hybrid_setNetworkType(nodeType newNwType)
+{
+	networkType = newNwType;
+}
+
+nodeType hybrid_getNetworkType()
+{
+	return networkType;
+}
+
+void hybrid_setBusyMode(bool newMode)
+{
+	if (newMode != insertBusyOPC)
+		if ((networkType != standardMode) && (uartMode == uart_idle))
+		{
+			insertBusyOPC = newMode; //only changeable for limited or full master
+			if (insertBusyOPC)
+			{
+			//set busyBuf data
+				busyBuf.txrdPointer = 0;
+				busyBuf.txtmprdPointer = 0;
+				busyBuf.txwrPointer = 2;
+				busyBuf.txBuffer[1] = opcBusy[0];
+				busyBuf.txBuffer[2] = opcBusy[1];
+				thisBuffer = &busyBuf;
+				busyCtr = maxBusy;
+//				hybrid_flush();
+				hybrid_highSpeed(true);
+			}
+//			Serial.println(newMode ? "set Busy":"clear Busy");
+		}
+		else
+			insertBusyOPC = false; 
+}
+
+bool hybrid_getBusyMode()
+{
+	return insertBusyOPC;
 }
 
 uint16_t hybrid_available()
 {
-	return (rxwrPointer + uartrxBufferSize - rxrdPointer) % uartrxBufferSize;
+	return (txBuf.rxwrPointer + uartrxBufferSize - txBuf.rxrdPointer) % uartrxBufferSize;
 }
 
 bool hybrid_carrierOK()
@@ -343,12 +438,12 @@ bool hybrid_carrierOK()
 
 uint16_t hybrid_read() //always check if data is available before calling this function
 {
-	if (rxrdPointer != rxwrPointer)
+	if (txBuf.rxrdPointer != txBuf.rxwrPointer)
 	{
-		uint8_t temprdPointer = (rxrdPointer + 1) % uartrxBufferSize;	
-		uint16_t thisData = rxBuffer[temprdPointer];
+		uint8_t temprdPointer = (txBuf.rxrdPointer + 1) % uartrxBufferSize;	
+		uint16_t thisData = txBuf.rxBuffer[temprdPointer];
 //		portENTER_CRITICAL_ISR(&timerMux);
-		rxrdPointer = temprdPointer;
+		txBuf.rxrdPointer = temprdPointer;
 //		portEXIT_CRITICAL_ISR(&timerMux);
 		return thisData;
 	}
@@ -358,30 +453,39 @@ uint16_t hybrid_read() //always check if data is available before calling this f
 
 uint8_t hybrid_write(uint8_t * dataByte, uint8_t numBytes)
 {
-	uint8_t tempwrPointer = txwrPointer;
+//	portENTER_CRITICAL_ISR(&inputMux);
+	uint8_t tempwrPointer = txBuf.txwrPointer;
 	uint8_t i;
+//	Serial.printf("hybrid_write %i Data byte %i \n", numBytes, dataByte[0]);
 	for (i=0; i < numBytes; i++)
 	{
 		tempwrPointer = (tempwrPointer + 1) % uarttxBufferSize;
-		if (tempwrPointer == txwrPointer) //buffer overflow protection
+		if (tempwrPointer == txBuf.txrdPointer) //buffer overflow protection
 			break;
-		txBuffer[tempwrPointer] = dataByte[i];
+//		Serial.printf("%2X ", dataByte[i]);
+		txBuf.txBuffer[tempwrPointer] = dataByte[i];
 	}
+//	Serial.println();
 	if (i == numBytes)
 	{
-//		portENTER_CRITICAL_ISR(&inputMux);
-		txwrPointer = tempwrPointer;
-//		portEXIT_CRITICAL_ISR(&inputMux);
-		return i;		
+		txBuf.txwrPointer = tempwrPointer;
+//		return i;		
 	}
 	else
-		return 0;
+	{
+//		Serial.println("Hybrid Error");
+		i = 0;
+//		return 0;
+	}
+//	portEXIT_CRITICAL_ISR(&inputMux);
+	return i;
 }
 
 void hybrid_flush()
 {
-	rxrdPointer = rxwrPointer;
-	txrdPointer = txwrPointer;
+	txBuf.rxrdPointer = txBuf.rxwrPointer;
+	txBuf.txrdPointer = txBuf.txwrPointer;
+    txBuf.commError = 0;
 }
 
 uint8_t  hybrid_LocoNetAvailable()
@@ -389,7 +493,7 @@ uint8_t  hybrid_LocoNetAvailable()
 	if (digitalRead(pinRx) == (inverseLogicRx ? 1 : 0))
 		return lnBusy;
 	else
-		if (cdBackoffCounter == 0)
+		if (((cdBackoffCounter == 0) || (networkType != standardMode)) )// && (cdBackoffCounter < (defaultCDBackoffPriority-20)))
 		{
 			return lnNetAvailable;
 		}
@@ -397,5 +501,23 @@ uint8_t  hybrid_LocoNetAvailable()
 			return lnAwaitBackoff;
 }
 
+/*
+uint8_t uart_available()
+{
+	if (uartwrPointer >= uartrdPointer)
+		return uartwrPointer - uartrdPointer;
+	else
+		return uartwrPointer + uartrxBufferSize - uartrdPointer;
+}
 
-	
+uint8_t uart_read()
+{
+	uartrdPointer = (uartrdPointer + 1) % uartrxBufferSize;
+	return uartBuffer[uartrdPointer];
+}
+
+void setUartPort(HardwareSerial * newPort)
+{
+	uartPort = newPort;
+}
+*/

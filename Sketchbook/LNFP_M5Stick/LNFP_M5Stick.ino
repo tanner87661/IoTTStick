@@ -1,7 +1,8 @@
-char BBVersion[] = {'1','5','6'};
+char BBVersion[] = {'1','5','8'};
 
 //#define measurePerformance //uncomment this to display the number of loop cycles per second
 #define useM5Lite
+#define useAI
 //Arduino published libraries. Install using the Arduino IDE or download from Github and install manually
 #include <arduino.h>
 #include <Math.h>
@@ -43,6 +44,9 @@ char BBVersion[] = {'1','5','6'};
 #include <NmraDcc.h> //install via Arduino IDE
 #include <OneDimKalman.h>
 #include <IoTT_lbServer.h>
+#ifdef useAI
+  #include <IoTT_VoiceControl.h>
+#endif
 
 //library object pointers. Libraries will be dynamically initialized as needed during the setup() function
 AsyncWebServer * myWebServer = NULL; //(80)
@@ -85,7 +89,11 @@ String bufferFileName = "/buffers.dat";
 IoTT_Mux64Buttons * myButtons = NULL;
 IoTT_LocoNetButtonList * eventHandler = NULL; 
 //IoTT_SecurityElementList * secElHandlerList = NULL;
+#ifdef useAI
+  IoTT_VoiceControl * voiceWatcher = NULL;
+#endif
 LocoNetESPSerial * lnSerial = NULL;
+nodeType subnetMode = standardMode;
 IoTT_SerInjector * usbSerial = NULL;
 IoTT_LBServer * lbServer = NULL;
 //IoTT_OpenLCB *olcbSerial = NULL;
@@ -175,7 +183,7 @@ File uploadFile; //used for web server to upload files
 //this is the outgoing communication function for IoTT_DigitraxBuffers.h, routing the outgoing messages to the correct interface
 uint16_t sendMsg(lnTransmitMsg txData)
 {
-//  Serial.printf("Call sendMsg to %i: %i, %i, %i, %i, %i \n", useInterface.devId, txData.lnMsgSize, txData.lnData[0], txData.lnData[1], txData.lnData[2], txData.lnData[3]);
+//  Serial.printf("Call sendMsg to %i: %i, %2X, %2X, %2X, %2X \n", useInterface.devId, txData.lnMsgSize, txData.lnData[0], txData.lnData[1], txData.lnData[2], txData.lnData[3]);
 //  Serial.printf("Outgoing Callback %i\n", useInterface.devId);
   switch (useInterface.devId)
   {
@@ -359,6 +367,13 @@ void setup() {
       useInterface.devCommMode = 1;
       useInterface.devId = 2;
     }
+    if (jsonConfigObj->containsKey("subnetMode"))
+    {
+      uint8_t newMode = (*jsonConfigObj)["subnetMode"];
+      if (newMode > 0)
+        subnetMode = limitedMaster;
+    }
+    
     //verify that hat and interface go together
     bool interfaceOK = false;
     for (int i = 0; i < useHat.numValid; i++) // is array of uint8_t
@@ -393,6 +408,7 @@ void setup() {
       myDcc->pin(groveRxD, 1);
       // Call the main DCC Init function to enable the DCC Receiver
       myDcc->init(MAN_ID_DIY, 10, FLAGS_CV29_BITS, 0 );
+//  myDcc->init( MAN_ID_DIY, 10, CV29_ACCESSORY_DECODER | CV29_OUTPUT_ADDRESS_MODE, 0 );
       Serial.println("DCC Init Done");
     }
     else 
@@ -405,7 +421,11 @@ void setup() {
       if ((useInterface.devId == 14) || (useInterface.devId == 15) || (useInterface.devId == 16))
         lnSerial->begin(); //Initialize as Loopback
       else
+      {
         lnSerial->begin(groveRxD, groveTxD, true, true); //true is inverted signals on Rx, Tx
+        lnSerial->setNetworkType(subnetMode); 
+        Serial.printf("LocoNet Prio Mode: %i\n", subnetMode);
+      }
       lnSerial->setBusyLED(stickLED, false);
       lnSerial->setLNCallback(callbackLocoNetMessage);
     } 
@@ -493,7 +513,7 @@ void setup() {
     else 
       Serial.println("Gateway not activated");
 
-    setTxFunction(&sendMsg); //defined in IoTT_DigitraxBuffers.h
+//    setTxFunction(&sendMsg); //defined in IoTT_DigitraxBuffers.h
     if (jsonConfigObj->containsKey("useBushby"))
       if ((bool)(*jsonConfigObj)["useBushby"])
         enableBushbyWatch(true); //defined in IoTT_DigitraxBuffers.h
@@ -576,6 +596,7 @@ void setup() {
           case 5: ; //OpenLCB
           case 6: ; //OpenLCB over MQTT
           case 7: usbSerial->setMsgType(OpenLCB); break; //OpenLCB with Gateway
+          //usbSerial->setMsgType(DCCEx); break; //DCC++Ex DCC Generator
         }
         delete(jsonDataObj); 
         Serial.println("Serial communication loaded"); 
@@ -657,10 +678,10 @@ void setup() {
 
             for (uint8_t modLoop = 0; modLoop < modDefList.size(); modLoop++)
             {
-              if (modDefList[modLoop]["Type"] == "servo")
-                mySwitchList->setGreenHatType(modLoop, servoModule);
-              else
-                mySwitchList->setGreenHatType(modLoop, comboModule);
+//              if (modDefList[modLoop]["Type"] == "servo")
+//                mySwitchList->setGreenHatType(modLoop, servoModule);
+//              else
+//                mySwitchList->setGreenHatType(modLoop, comboModule);
               JsonArray cfgArray = modDefList[modLoop]["CfgFiles"];
               
               for (uint8_t cfgLoop = 0; cfgLoop < cfgArray.size(); cfgLoop++) //4 config files: switches, buttons, button handler, LEDs
@@ -716,6 +737,29 @@ void setup() {
     else 
       Serial.println("BlackHat not activated");
 
+    if (useHat.devId == 6) //RedHat Serial Injector
+    {
+      jsonDataObj = getDocPtr("/configdata/redhat.cfg", false);
+      if (jsonDataObj != NULL)
+      {
+        Serial.println("Load DCC++Ex communication interface"); 
+        usbSerial = new IoTT_SerInjector(hatInputPin, hatTxD, false, 1);
+        usbSerial->setTxCallback(sendMsg);
+        usbSerial->loadLNCfgJSON(*jsonDataObj);
+        usbSerial->setMsgType(DCCEx); //DCC++Ex DCC Generator
+
+        setReplyFunction(sendLocoNetReply);
+        setDccCmdFunction(sendDCCCmdGen);
+        subnetMode = fullMaster;
+        if (lnSerial)
+          lnSerial->setNetworkType(subnetMode); 
+        delete(jsonDataObj); 
+        Serial.println("DCC++Ex loaded"); 
+      }
+    }
+    else
+      Serial.println("DCC++Ex not activated");
+
 //Load ALM list
     if (jsonConfigObj->containsKey("ALMTypeList") && jsonConfigObj->containsKey("ALMIndex"))
     {
@@ -728,7 +772,7 @@ void setup() {
     }
 
 //Initialize ALMs
-    if (useALM & 0x01) //Button Handler
+    if ((useALM & 0x01) && (lnSerial || lbServer || lnMQTT || commGateway)) //Button Handler only with LocoNet or lbServer
     {
       Serial.println("Load Button Handler Data");  
       jsonDataObj = getDocPtr("/configdata/btnevt.cfg", false);
@@ -780,6 +824,24 @@ void setup() {
     else 
       Serial.println("Security Elements not loaded");
 */
+#ifdef useAI
+    if ((useALM & 0x02) && ((useHat.devId == 0) ||(useHat.devId == 1) ||(useHat.devId == 6)))  //RedHat Serial Injector
+    {
+      Serial.println("Initialize VoiceWatcher");  
+      voiceWatcher = new(IoTT_VoiceControl);
+      voiceWatcher->beginKeywordRecognition();
+      voiceWatcher->setTxCallback(sendMsg);
+      jsonDataObj = getDocPtr("/configdata/vwcfg.cfg", false);
+      if (jsonDataObj != NULL)
+      {
+        voiceWatcher->loadKeywordCfgJSON(*jsonDataObj);
+        delete(jsonDataObj);
+      }
+      Serial.println("VoiceWatcher running");  
+    }
+    else
+      Serial.println("VoiceWatcher not activted");  
+#endif
     Serial.println("Connect WiFi");  
     establishWifiConnection(myWebServer,dnsServer);
     delay(1000);    
@@ -842,6 +904,9 @@ void loop() {
   if (execLoop)
   {
 //  if (secElHandlerList) secElHandlerList->processLoop(); //calculates speeds in all blocks and sets signals accordingly
+#ifdef useAI
+  if (voiceWatcher) voiceWatcher->processKeywordRecognition(); //listens for STOP and GO keywords
+#endif
   if (myDcc) myDcc->process(); //receives and decodes track signals
   if (eventHandler) eventHandler->processButtonHandler(); //drives the outgoing buffer and time delayed commands
   if (usbSerial) usbSerial->processLoop(); //drives the USB interface serial traffic
@@ -875,6 +940,7 @@ void loop() {
       {
         Serial.println("Reconnect WiFi");
         establishWifiConnection(myWebServer,dnsServer);
+        startWebServer();
       }
     }
     if ((!wifiCancelled) && ((commGateway) || (lnMQTT))) //handles all wifi communication for MQTT
@@ -902,13 +968,17 @@ void loop() {
       {
         Serial.println("Reconnect WiFi");
         establishWifiConnection(myWebServer,dnsServer);
+        startWebServer();
       }
   }
   else
     sendKeepAlive();
   }
+  if (subnetMode != standardMode)
+    if (lnSerial) lnSerial->processLoop(); //handling all LocoNet communication
   M5.update();
   processDisplay();
+  
 //  while (Serial.available())
 //  {
 //    char c = Serial.read();

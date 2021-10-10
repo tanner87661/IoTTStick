@@ -16,18 +16,21 @@ void setup() {
   scanPorts();
 }
 
-uint8_t portArray[] = {22, 21}; //scl 0 SDA 26
-//uint8_t portArray[] = {0, 26}; //scl 0 SDA 26
+//uint8_t portArray[] = {22, 21}; //scl 0 SDA 26 //LC2021
+uint8_t portArray[] = {0, 26}; //scl 0 SDA 26 //IoTT Stick
+//uint8_t portArray[] = {A5, A4}; //scl A5 SDA A4 //Arduino Uno, Nano
 //String portMap[] = {"D0", "D1", "D2", "D3", "D4", "D5", "D6", "D7"}; //for Wemos
-String portMap[] = {"GPIO 22", "GPIO 21"}; //LC2021
-//String portMap[] = {"GPIO 0", "GPIO 26"}; //IoTT Stick
+//String portMap[] = {"GPIO 22", "GPIO 21"}; //LC2021
+String portMap[] = {"GPIO 0", "GPIO 26"}; //IoTT Stick
+//String portMap[] = {"Analog IO A5", "Analog IO A4"}; //Arduino Uno, Nano
 
 void scanPorts() { 
   for (uint8_t i = 1; i < sizeof(portArray); i++) {
     for (uint8_t j = 0; j < sizeof(portArray)-1; j++) {
       if (i != j){
         Serial.println("Scanning (SDA : SCL) - " + portMap[i] + " : " + portMap[j] + " - ");
-        Wire.begin(portArray[i], portArray[j],100000);
+        Wire.begin(portArray[i], portArray[j],100000); //for ESP32
+//        Wire.begin(); //for Arduino, Nano
         delay(500);
         check_if_exist_I2C();
       }
@@ -70,6 +73,7 @@ void check_if_exist_I2C() {
 }
 
 void loop() {
-  if (Serial.read())
+//  if (Serial.read())
     scanPorts();  
+    delay(2000);
 }

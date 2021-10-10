@@ -25,7 +25,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #include <ArduinoJson.h>
 #include <Adafruit_PWMServoDriver.h>
 #include <IoTT_DigitraxBuffers.h>
-#include <IoTTCommDef.h>
+#include <IoTT_CommDef.h>
 #include <IoTT_ButtonTypeDef.h>
 #include <IoTT_RemoteButtons.h> //as introduced in video # 29, special version for Wire connection via 328P
 #include <IoTT_LocoNetButtons.h> //as introduced in video # 29
@@ -34,7 +34,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #define sgn(x) ((x) < 0 ? -1 : ((x) > 0 ? 1 : 0))
 
 enum driveType : byte {dualcoilAC=0, dualcoilDC=1, bipolarcoil=2, stallmotor=3, rcservo=4, dcmotor=5};
-enum greenHatType : byte {comboModule=1, servoModule=0};
+//enum greenHatType : byte {comboModule=1, servoModule=0};
 
 const uint16_t refreshInterval = 8000; //microseconds
 const uint8_t ledChainAddr = 0x33;
@@ -126,6 +126,7 @@ public:
 private:
 };
 
+/*
 class IoTT_ComboDrive: public IoTT_SwitchBase
 {
 public:
@@ -135,6 +136,7 @@ public:
 	virtual void loadSwitchCfgJSON(JsonObject thisObj);
 private:
 };
+*/
 
 class IoTT_GreenHat
 {
@@ -143,7 +145,7 @@ public:
 	~IoTT_GreenHat();
 	void freeObjects();
 	void begin(IoTT_SwitchList * ownerObj, uint8_t listIndex);
-	void setGreenHatType(greenHatType newType);
+//	void setGreenHatType(greenHatType newType);
 	void loadGreenHatCfgJSON(uint8_t fileNr, JsonObject thisObj, bool resetList);
 	void processSwitch(bool extPwrOK);
 	void processBtnEvent(sourceType inputEvent, uint16_t btnAddr, uint16_t eventValue);
@@ -160,7 +162,7 @@ private:
 	IoTT_Mux64Buttons * myButtons = NULL;
 	IoTT_LocoNetButtonList * buttonHandler = NULL; 
 	IoTT_ledChain * myChain = NULL;
-	greenHatType modType = servoModule;
+//	greenHatType modType = servoModule;
 	uint8_t hatIndex = 0;
 	uint8_t oddCtr = 0;
 	bool pwrOK = false;
@@ -184,7 +186,7 @@ public:
 	void processLoop(bool extPwrOK);
 	void processBtnEvent(sourceType inputEvent, uint16_t btnAddr, uint16_t eventValue);
 	void configModMem(uint8_t numModules);
-	void setGreenHatType(uint8_t modNr, greenHatType modType);
+//	void setGreenHatType(uint8_t modNr, greenHatType modType);
 	void loadSwCfgJSON(uint8_t ghNr, uint8_t fileNr, DynamicJsonDocument doc, bool resetList = true);
 	void saveRunTimeData();
 	void loadRunTimeData(uint8_t ghNr);

@@ -1,0 +1,28 @@
+#######################################
+# Syntax Coloring
+#######################################
+
+#######################################
+# Datatypes (KEYWORD1)
+#######################################
+
+DFPlayerMini	KEYWORD1
+
+#######################################
+# Methods and Functions (KEYWORD2)
+#######################################
+
+init	KEYWORD2
+reset	KEYWORD2
+playFile	KEYWORD2
+playFileAndWait	KEYWORD2
+loopFile	KEYWORD2
+setVolume	KEYWORD2
+stop	KEYWORD2
+isBusy	KEYWORD2
+wait	KEYWORD2
+loop	KEYWORD2
+
+#######################################
+# Constants (LITERAL1)
+#######################################

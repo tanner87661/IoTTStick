@@ -31,7 +31,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #include <ESP32CAN.h>
 #include <gc_format.h>
 #include <CAN_config.h>
-#include <IoTTCommDef.h>
+#include <IoTT_CommDef.h>
 
 
 // This class is compatible with the corresponding AVR one,

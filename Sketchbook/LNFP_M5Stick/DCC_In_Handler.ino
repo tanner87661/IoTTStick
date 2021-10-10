@@ -176,6 +176,7 @@ void notifyDccSigOutputState(uint16_t Addr, uint8_t State)
   char dispStr[100];  
   sprintf(dispStr, "Sig %u A%i", Addr, State);
 //  Serial.println(dispStr);
+
   updateOneShotBuffer(dispStr);
   if (lnMQTT)
   {

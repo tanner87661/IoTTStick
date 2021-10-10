@@ -84,7 +84,7 @@ void IoTT_LBServer::initLBServer(bool serverMode)
 		lntcpClient.thisClient = new AsyncClient();
 		lntcpClient.thisClient ->onData(handleDataFromClient, lntcpClient.thisClient );
 		lntcpClient.thisClient ->onConnect(onConnect, lntcpClient.thisClient );
-//		lntcpClient.thisClient ->onPoll(handlePoll, lntcpClient.thisClient );
+		lntcpClient.thisClient ->onPoll(handlePoll, lntcpClient.thisClient );
 	}
 }
 
@@ -96,13 +96,13 @@ void IoTT_LBServer::startServer()
 
 void IoTT_LBServer::handleNewClient(void* arg, AsyncClient* client)
 {
-	Serial.printf("A new client has been connected to server, ip: %s", client->remoteIP().toString().c_str());
-
+	Serial.printf("A new client has been connected to server, ip: %s with timeout %i %i\n", client->remoteIP().toString().c_str(), client->getAckTimeout(), client->getRxTimeout());
+	
 	tcpDef newClientData;
 	// add to list
 	newClientData.thisClient = client;
 	clients.push_back(newClientData);
-	Serial.printf("New total is %i clients\n", clients.size());
+	Serial.printf("New total is %i client(s)\n", clients.size());
   
 	for (int i = 0; i < clients.size(); i++)
 	{
@@ -158,7 +158,7 @@ void IoTT_LBServer::loadLBServerCfgJSON(DynamicJsonDocument doc)
 
 uint16_t IoTT_LBServer::lnWriteMsg(lnTransmitMsg txData)
 {
-//	Serial.printf("LN over TCP Tx %2X\n", txData.lnData[0]);
+//	Serial.printf("LN over TCP Tx %02X\n", txData.lnData[0]);
 	uint8_t hlpQuePtr = (que_wrPos + 1) % queBufferSize;
     if (hlpQuePtr != que_rdPos) //override protection
     {
@@ -215,22 +215,20 @@ void IoTT_LBServer::handleDataFromServer(void* arg, AsyncClient* client, void *d
 	{
 		if (clients[i].thisClient == client)
 		{
+//			Serial.print("Message from ");
+//			Serial.println(clients[i].thisClient->remoteIP());
+//			Serial.write((uint8_t *)data, len);
+//			Serial.println();
 			currClient = &clients[i];
 			break;
 		}
 	}
 	if (currClient)
 	{
-//		memcpy(&currClient->rxBuffer[currClient->rxPtr], data, len);
-//		Serial.write((uint8_t *)data, len);
-//		currClient->rxPtr += len;
-//		if ((currClient->rxBuffer[currClient->rxPtr-1] == '\n') || (currClient->rxBuffer[currClient->rxPtr-1] == '\r'))
 		if ((((char*)data)[len-1] == '\n') || (((char*)data)[len-1] == '\r'))
 		{
 			//if command is complete, call handle data
-//			currClient->rxBuffer[currClient->rxPtr] = '\0';
 			handleData(arg, currClient->thisClient, (char*) data, len);
-//			currClient->rxPtr = 0;
 		}
 	}
 }
@@ -239,13 +237,10 @@ void IoTT_LBServer::handleDataFromClient(void* arg, AsyncClient* client, void *d
 {
 //	Serial.println("handleDataFromClient");
 //	Serial.write((uint8_t *)data, len);
-//	Serial.println("End Orig Data");
+//	Serial.println(len);
 	if (lntcpClient.thisClient == client) 
 	{
-		//move data to lntcpClient inbuffer
-//		memcpy(&lntcpClient.rxBuffer[lntcpClient.rxPtr], data, len);
-//		lntcpClient.rxPtr += len;
-//		if ((lntcpClient.rxBuffer[lntcpClient.rxPtr-1] == '\n') || (lntcpClient.rxBuffer[lntcpClient.rxPtr-1] == '\r'))
+		
 		if ((((char*)data)[len-1] == '\n') || (((char*)data)[len-1] == '\r'))
 		{
 			//if command is complete, call handle data
@@ -263,38 +258,40 @@ void IoTT_LBServer::handleDataFromClient(void* arg, AsyncClient* client, void *d
 //this is called when data is received, either in server or client mode
 void IoTT_LBServer::handleData(void* arg, AsyncClient* client, char *data, size_t len)
 {
-//	Serial.printf("%i bytes of data received from %s \n", clientData->rxPtr, clientData->thisClient->remoteIP().toString().c_str());
-//	Serial.write((uint8_t *)data, len);
-	uint8_t msgCtr = 0;
-
-	char buf[len];
 	char *p = data;
     char *subStr;
+    char *strEnd = data + len - 1;
     if (strchr(p, '\n') != NULL)
 		while ((subStr = strtok_r(p, "\n", &p)) != NULL) // delimiter is the new line
 		{
-			while((*subStr=='\n') || (*subStr=='\r'))
+			while((*subStr=='\n') || (*subStr=='\r') && (subStr < strEnd))
 				subStr++;
-			processServerMessage(client, subStr);
+			if (subStr < strEnd)
+				processServerMessage(client, subStr);
 		}
 	else
 		if (strchr(p, '\r') != NULL)
 			while ((subStr = strtok_r(p, "\r", &p)) != NULL) // delimiter is the carriage return
 			{
-				while((*subStr=='\n') || (*subStr=='\r'))
+				while((*subStr=='\n') || (*subStr=='\r') && (subStr < strEnd))
 					subStr++;
-				processServerMessage(client, subStr);
+				if (subStr < strEnd)
+					processServerMessage(client, subStr);
 			}
 		else
 			Serial.println("No delimiter");
 
 }
 
+void IoTT_LBServer::handlePoll(void *arg, AsyncClient *client)        //every 125ms when connected
+{
+//	nextPingPoint = millis() + pingInterval;
+}
+
 void IoTT_LBServer::tcpToLN(char * str, lnReceiveBuffer * thisData)
 {
 	char * p = str;
 	uint8_t xorCheckByte = 0;
-//	Serial.println(p);
 	while ((str = strtok_r(p, " ", &p)) != NULL) // delimiter is the space
 	{
 		uint8_t thisByte = strtol(str, NULL, 16) & 0x000000FF;
@@ -303,7 +300,10 @@ void IoTT_LBServer::tcpToLN(char * str, lnReceiveBuffer * thisData)
 		thisData->lnMsgSize++;
 	}
 	if (xorCheckByte != 0xFF)
+	{
+		Serial.println(p);
 		thisData->errorFlags = msgXORCheck;
+	}
 }
 
 void IoTT_LBServer::processServerMessage(AsyncClient* client, char * data)
@@ -337,6 +337,7 @@ void IoTT_LBServer::processServerMessage(AsyncClient* client, char * data)
 			return;
 		} //everything below means we are in client mode because only a server is sending these messages
 		nextPingPoint = millis() + pingInterval + random(5000);
+//		Serial.println("Ping reset");
 		pingSent = false;
 		if (strcmp(str,"VERSION") == 0)
 		{
@@ -351,8 +352,11 @@ void IoTT_LBServer::processServerMessage(AsyncClient* client, char * data)
 				if (recData.errorFlags == 0)
 					lbsCallback(&recData);
 				else
-					Serial.printf("Error %i\n", recData.errorFlags);
-//			Serial.println("Process RECEIVE complete");
+				{
+					Serial.printf("Receive Error 0x%02X\n", recData.errorFlags);
+//					Serial.write(data);
+//					Serial.println();
+				}
 			return;
 		}
 		if (strcmp(str,"SENT") == 0)
@@ -390,25 +394,27 @@ void IoTT_LBServer::onConnect(void *arg, AsyncClient *client)
 bool IoTT_LBServer::sendClientMessage(AsyncClient * thisClient, String cmdMsg, lnReceiveBuffer thisMsg)
 {
 	if (thisClient)
-		if (thisClient->connected())
+		if (thisClient->canSend())
 		{
+//			Serial.print("sending... ");
 			String lnStr = cmdMsg;
 			char hexbuf[13];
-			if (thisClient->space() > strlen(lnStr.c_str()) && thisClient->canSend())
+			for (uint8_t i = 0; i < thisMsg.lnMsgSize; i++)
 			{
-				for (uint8_t i = 0; i < thisMsg.lnMsgSize; i++)
-				{
-					sprintf(hexbuf, " %02X", thisMsg.lnData[i]);
-					lnStr += String(hexbuf);
-				}
-				lnStr += '\r';
-				lnStr += '\n';
-				thisClient->add(lnStr.c_str(), strlen(lnStr.c_str()));
-				thisClient->send();
-				nextPingPoint = millis() + pingInterval + random(5000);
-				yield();
-				return true;
+				sprintf(hexbuf, " %02X", thisMsg.lnData[i]);
+				lnStr += String(hexbuf);
 			}
+			lnStr += '\r';
+			lnStr += '\n';
+//			Serial.print(thisClient->space());
+			if (thisClient->space() > strlen(lnStr.c_str())+2)
+			{
+				thisClient->add(lnStr.c_str(), strlen(lnStr.c_str()));
+				nextPingPoint = millis() + pingInterval + random(5000);
+//			Serial.println(" done");
+				return thisClient->send();
+			}
+//			Serial.println(" failed");
 		}
 	return false;
 }
@@ -417,21 +423,41 @@ void IoTT_LBServer::processLoop()
 {
 	if (isServer)
 	{
-		if (que_wrPos != que_rdPos)
+		if (clients.size() > 0)
 		{
-//			Serial.println("TCP Server send data to clients");
-			int hlpQuePtr = (que_rdPos + 1) % queBufferSize;
-			for (int i = 0; i < clients.size(); i++)
-			{	
-				sendClientMessage(clients[i].thisClient, "RECEIVE", transmitQueue[hlpQuePtr]);
-				if ((lastTxClient == clients[i].thisClient) && ((lastTxData.reqID & 0x3FFF) == (transmitQueue[hlpQuePtr].reqID & 0x3FFF)) && ((transmitQueue[hlpQuePtr].errorFlags & msgEcho) > 0))
+			if (que_wrPos != que_rdPos)
+			{
+//				Serial.println("TCP Server send data to clients");
+				int hlpQuePtr = (que_rdPos + 1) % queBufferSize;
+//				if (thisClient->canSend())
 				{
-//					Serial.printf("Send SENT OK to client %i\n", i);
-					sendClientMessage(clients[i].thisClient, "SENT OK", transmitQueue[hlpQuePtr]);
+					if (clientTxConfirmation)
+					{
+						if (sendClientMessage(clients[clientTxIndex].thisClient, "SENT OK", transmitQueue[hlpQuePtr]))
+						{
+							clientTxConfirmation = false;
+							clientTxIndex++;
+						}
+					}
+					else
+						if (sendClientMessage(clients[clientTxIndex].thisClient, "RECEIVE", transmitQueue[hlpQuePtr]))
+						{
+							if ((lastTxClient == clients[clientTxIndex].thisClient) && ((lastTxData.reqID & 0x3FFF) == (transmitQueue[hlpQuePtr].reqID & 0x3FFF)) && ((transmitQueue[hlpQuePtr].errorFlags & msgEcho) > 0))
+								clientTxConfirmation = true;
+							else
+								clientTxIndex++;
+						}
+					if (clientTxIndex == clients.size()) //message sent to all clients
+					{
+						que_rdPos = hlpQuePtr; //if not successful, we keep trying
+						clientTxIndex = 0;
+						clientTxConfirmation = false;
+					}
 				}
 			}
-			que_rdPos = hlpQuePtr; //if not successful, we keep trying
 		}
+		else
+			que_rdPos = que_wrPos; //no client, so reset out queue to prevent overflow
 	}
 	else
 	{
@@ -450,7 +476,8 @@ void IoTT_LBServer::processLoop()
 		else
 			if (que_wrPos != que_rdPos)
 			{
-				while (que_wrPos != que_rdPos)
+//				Serial.print("Send message to server");
+				if (lntcpClient.thisClient->canSend())
 				{
 					int hlpQuePtr = (que_rdPos + 1) % queBufferSize;
 					if (sendClientMessage(lntcpClient.thisClient, "SEND", transmitQueue[hlpQuePtr]))
@@ -479,7 +506,7 @@ void IoTT_LBServer::processLoop()
 
 void IoTT_LBServer::sendLNPing()
 {
-//	Serial.println("Check server");
+//	Serial.println("Ping request");
 	lnTransmitMsg txData;
 	txData.lnMsgSize = 2;
 	txData.lnData[0] = 0x81;

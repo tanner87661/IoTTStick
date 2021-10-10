@@ -27,7 +27,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #define IoTT_SerInjector_h
 
 #include <inttypes.h>
-#include <IoTTCommDef.h>
+#include <IoTT_CommDef.h>
 #include <HardwareSerial.h>
 #include <ArduinoJson.h>
 #include <IoTT_DigitraxBuffers.h>
@@ -55,10 +55,13 @@ public:
 	void begin();
 	void processLoop();
 	void setMsgType(messageType thisType);
+	messageType getMsgType();
 	uint16_t lnWriteMsg(lnTransmitMsg txData);
 	uint16_t lnWriteMsg(lnReceiveBuffer txData);
+
 	void setTxCallback(txFct newCB);
 	void loadLNCfgJSON(DynamicJsonDocument doc);
+
    
 private:
    
@@ -69,6 +72,8 @@ private:
    void processLNTransmit();
    void processLCBReceive();
    void processLCBTransmit();
+   void processDCCExReceive();
+   void processDCCExTransmit();
 
    // Member variables
    lnTransmitMsg transmitQueue[queBufferSize];
@@ -94,6 +99,8 @@ private:
    uint32_t transmitTime;
    uint8_t numWrite, numRead;
 
+   bool progTrackActive = false;
+   
    uint8_t    bitRecStatus = 0;    	//LocoNet 0: waiting for OpCode; 1: waiting for package data
 									//OLCB:	0: await start char 1: await frame type 2: await ID 3: await end char
 

@@ -6,7 +6,7 @@
 #include <FastLED.h>
 #include <ArduinoJSON.h>
 //#include <PubSubClient.h>
-#include <IoTTCommDef.h>
+#include <IoTT_CommDef.h>
 #include <IoTT_ButtonTypeDef.h>
 #include <IoTT_DigitraxBuffers.h>
 

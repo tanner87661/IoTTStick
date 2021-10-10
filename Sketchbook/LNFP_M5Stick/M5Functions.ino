@@ -463,7 +463,7 @@ void setStatusPage()
     case 3: drawText("Hat: YellowHat", 5, 3, 2); break;
     case 4: drawText("Hat: GreenHat", 5, 3, 2); break;
     case 5: drawText("Hat: BlackHat", 5, 3, 2); break;
-//    case 6: drawText("Hat: Switch Decoder", 5, 3, 2); break;
+    case 6: drawText("Hat: RedHat++", 5, 3, 2); break;
     default: drawText("Hat: unknown", 5, 3, 2); break;
   }
   switch (useInterface.devId)
@@ -495,8 +495,16 @@ void setStatusPage()
   String modList = "[";
   if (eventHandler)
     modList += "Evnt Hdlr";
+#ifdef useAI
+  if (voiceWatcher)
+  {
+    if (modList.length() > 1)
+      modList += ", ";
+    modList += "Voice";
+  }
+#endif  
 /*
-  if (secElHandlerList)
+if (secElHandlerList)
   {
     if (modList.length() > 1)
       modList += ", ";

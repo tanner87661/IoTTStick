@@ -21,7 +21,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
 #include <arduino.h>
 #include <inttypes.h>
-#include <IoTTCommDef.h>
+#include <IoTT_CommDef.h>
 #include <IoTT_LocoNetHBESP32.h>
 #include <IoTT_OpenLCB.h>
 #include <IoTT_MQTTESP32.h>

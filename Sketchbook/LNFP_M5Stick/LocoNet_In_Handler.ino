@@ -43,14 +43,15 @@ void processLNValidMsg(lnReceiveBuffer * newData)
   if (useM5Viewer == 1)
     processLNtoM5(newData);
   if (usbSerial)
-    usbSerial->lnWriteMsg(*newData);
+    if (usbSerial->getMsgType() != DCCEx)
+      usbSerial->lnWriteMsg(*newData);
   processLocoNetMsg(newData);
 //  if (secElHandlerList) secElHandlerList->processLocoNetMsg(newData); //do not call this before buffer processing as it will read new buffer values
 //   Serial.println("Done");
 }
 
-void processDataToWebClient(String thisCmd, lnReceiveBuffer * newData) //if a web browser is conneted, all LN messages are sent via Websockets
-                                                     //this is the hook for a web based LcooNet viewer
+void processDataToWebClient(String thisCmd, lnReceiveBuffer * newData)  //if a web browser is conneted, all LN messages are sent via Websockets
+                                                                        //this is the hook for a web based LcooNet viewer
 {
     DynamicJsonDocument doc(1200);
     char myMqttMsg[400];

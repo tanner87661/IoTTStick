@@ -98,17 +98,21 @@ void ln_mqttGateway::setCommMode(cmdSourceType newMode)
 
 void ln_mqttGateway::onLocoNetMessage(lnReceiveBuffer * newData) //this is the callback function for the LocoNet library
 {
-//	Serial.printf("GW onLocoNetBMsg %2X\n", newData->lnData[0]);
+//	Serial.printf("GW onLocoNetBMsg %2X %2X %i\n", newData->lnData[0], newData->errorFlags, (newData->reqID & rtc3) >> 14);
       switch ((newData->reqID & rtc3) >> 14)
       {
         case 0: //new message from LocoNet
-		  if (appCallback)
-			appCallback(newData);
-          if (mqttPort)
-			mqttPort->lnWriteMsg(*newData); //send to MQTT        
-          if (tcpPort)
-			tcpPort->lnWriteMsg(*newData); // then send to TCP
-          break;    
+			if (appCallback)
+				appCallback(newData);
+			if ((newData->errorFlags & (~msgEcho)) == 0)// && (newData->lnMsgSize > 0))//filter out echo flag
+				if (getXORCheck(&newData->lnData[0], newData->lnMsgSize))
+				{
+					if (mqttPort)
+						mqttPort->lnWriteMsg(*newData); //send to MQTT        
+					if (tcpPort)
+						tcpPort->lnWriteMsg(*newData); // then send to TCP
+				}
+			break;    
         case 1: //originally received from MQTT, than transmitted on LocoNet, now going to the application and TCP
           newData->reqID &= (~rtc3); //clear routing flags
           if ((newData->errorFlags & msgEcho) == 0) //this is a reply message to a request originating from MQTT

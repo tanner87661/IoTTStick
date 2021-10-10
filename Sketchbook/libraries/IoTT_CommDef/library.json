@@ -1,0 +1,15 @@
+{
+    "name": "IoTT_CommDef",
+    "version": "1.0.0"
+    "keywords": [
+      "MQTT Gateway", "io", "LocoNet Gateway", "Digitrax Buffers"
+    ],
+    "description": "Implementation of a LocoNet Data repository for the ESP32",
+    "repository":
+    {
+        "type": "git",
+        "url": "https://github.com/tanner87661/IoTT_CommDef"
+    },
+    "frameworks": "arduino",
+    "platforms": "espressif32"
+}
