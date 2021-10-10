@@ -1,6 +1,12 @@
 # IoTTStick
 This is the master repository for the IoTT Stick, port modules and hat devices with the source code for the latest release. 
 
+2021/10/09
+- Version 1.5.8 with support for RedHat++
+- improved lbServer/lbClient
+- improved LocoNet library
+- minor bug fixes
+
 2021/09/06
 - Version 1.5.7 Maintenance release
 - replaced NMRADcc library with latest version, enhances stability of DCC decoding
