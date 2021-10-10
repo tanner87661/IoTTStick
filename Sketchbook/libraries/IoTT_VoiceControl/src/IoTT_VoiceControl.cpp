@@ -176,6 +176,7 @@ void IoTT_VoiceControl::processKeywordRecognition()
 	if (inference.buf_ready == 1)
 //    if (microphone_inference_record())
     {
+//		uint32_t startTime = micros();
 		inference.buf_ready = 0;
 		signal_t signal;
 		signal.total_length = EI_CLASSIFIER_SLICE_SIZE;
@@ -188,7 +189,7 @@ void IoTT_VoiceControl::processKeywordRecognition()
 			Serial.printf("ERR: Failed to run classifier (%d)\n", r);
 			return;
 		}
-
+//		Serial.printf("Inference: %i\n", micros() - startTime);
 		if (++print_results >= (EI_CLASSIFIER_SLICES_PER_MODEL_WINDOW)) 
 		{	
 			for (size_t ix = 2; ix < EI_CLASSIFIER_LABEL_COUNT; ix++) 

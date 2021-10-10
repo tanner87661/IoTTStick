@@ -33,6 +33,7 @@ uint32_t microsElapsed(uint32_t since);
 void setReplyFunction(txFct newFct);
 void setDccCmdFunction(txFct newFct);
 void setSpeedCmd(lnTransmitMsg * txBuffer, uint8_t slotNr, uint8_t speedVal);
+void setProgrammingCmd(lnTransmitMsg * txBuffer, uint8_t progMode, uint8_t OpsAdrHi, uint8_t OpsAdrLo, uint8_t CVNrHi, uint8_t CVNrLo, uint8_t CVVal);
 void setDirCmd(lnTransmitMsg * txBuffer, uint8_t slotNr, uint8_t dirMask);
 
 //void iterateMULinks(lnTransmitMsg * txBuffer, uint8_t thisSlot, uint8_t templData, dccFct procFunc);

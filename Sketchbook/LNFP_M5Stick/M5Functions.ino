@@ -495,14 +495,16 @@ void setStatusPage()
   String modList = "[";
   if (eventHandler)
     modList += "Evnt Hdlr";
+#ifdef useAI
   if (voiceWatcher)
   {
     if (modList.length() > 1)
       modList += ", ";
     modList += "Voice";
   }
+#endif  
 /*
-  if (secElHandlerList)
+if (secElHandlerList)
   {
     if (modList.length() > 1)
       modList += ", ";

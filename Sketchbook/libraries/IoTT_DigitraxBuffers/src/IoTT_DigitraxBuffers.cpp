@@ -428,10 +428,24 @@ void processLocoNetReply(lnReceiveBuffer * newData)
 				replyMessage(txBuffer);
 			}
 			break;
-			case 0xEF: //OPC_WR_SL_DATA -> LACK
+			case 0xEF:
 			{
-				prepLACKMsg(&txBuffer, 0x6F, 0x7F); //no free slot
-				replyMessage(txBuffer);
+				if (newData->lnData[1] == 0x0E) //OPC_WR_SL_DATA -> LACK
+				{
+					switch (newData->lnData[2])
+					{
+						case 0x7C: //Programmer 
+							prepLACKMsg(&txBuffer, 0x6F, 0x01); //task accepted
+							replyMessage(txBuffer);
+							slotBuffer[0x7C][1] = 0x03;
+							prepSlotReadMsg(&txBuffer, 0x7C);
+							break;
+						default:
+							prepLACKMsg(&txBuffer, 0x6F, 0x7F); //no free slot
+							break;
+					}
+					replyMessage(txBuffer);
+				}
 			}
 			break;
 		}
@@ -465,6 +479,20 @@ void setSpeedCmd(lnTransmitMsg * txBuffer, uint8_t slotNr, uint8_t speedVal)
 	txBuffer->lnData[5] = slotBuffer[slotNr][3];
 	txBuffer->lnData[6] = slotBuffer[slotNr][7];
 	txBuffer->lnMsgSize = 7;
+	dccCmdMessage(*txBuffer);
+}
+
+void setProgrammingCmd(lnTransmitMsg * txBuffer, uint8_t progMode, uint8_t OpsAdrHi, uint8_t OpsAdrLo, uint8_t CVNrHi, uint8_t CVNrLo, uint8_t CVVal)
+{
+//	Serial.printf("Sp %i\n", slotBuffer[slotNr][0]);
+	txBuffer->lnData[0] = 5; //OpCode for programming commands
+	txBuffer->lnData[2] = progMode;
+	txBuffer->lnData[3] = OpsAdrHi;
+	txBuffer->lnData[4] = OpsAdrLo;
+	txBuffer->lnData[5] = CVNrHi;
+	txBuffer->lnData[6] = CVNrLo;
+	txBuffer->lnData[7] = CVVal; //new val or compare val
+	txBuffer->lnMsgSize = 8;
 	dccCmdMessage(*txBuffer);
 }
 
@@ -575,9 +603,32 @@ void processCmdGenerator(lnReceiveBuffer * newData)
         case 0xEF:; //OPC_WR_SL
         case 0xE7: //OPC_SL_RD
 		{
-//			Serial.printf("Ex %i %i\n", newData->lnData[2], newData->reqID);
-			if ((newData->reqID & 0x30) > 0) //change in refresh status
-				generateSpeedCmd(&txBuffer, newData->lnData[2], newData->lnData[5]);
+			switch (newData->lnData[1])
+			{
+				case 0x0E:
+				{
+					switch (newData->lnData[2])
+					{
+						case 0x7B: break; //FastClock
+						case 0x7C: //Programming task
+							if (newData->lnData[0] == 0xEF)
+							{
+//								Serial.println("Programming task");
+								setProgrammingCmd(&txBuffer, newData->lnData[3], newData->lnData[5], newData->lnData[6], newData->lnData[8], newData->lnData[9], newData->lnData[10]);
+							}
+							break;
+						default: 
+							if ((newData->lnData[2] > 0) && (newData->lnData[2] < 0x70)) //Loco Slots
+							{
+//								Serial.printf("Ex %i %i\n", newData->lnData[2], newData->reqID);
+								if ((newData->reqID & 0x30) > 0) //change in refresh status
+									generateSpeedCmd(&txBuffer, newData->lnData[2], newData->lnData[5]);
+							}
+							break;
+					}
+				}
+				break;
+			}
 			break;
 		}
         case 0xED: 
@@ -885,6 +936,7 @@ void processLocoNetMsg(lnReceiveBuffer * newData)
 						case 0x7B: //Fast Clock
 							break;
 						case 0x7C: //Programmer
+								sendDccCmd = true;
 							break;
 						case 0x7F: //System Configuration
 							Serial.printf("Bushby Bit is %i \n", getBushbyStatus());

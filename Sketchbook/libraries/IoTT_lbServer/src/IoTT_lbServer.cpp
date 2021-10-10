@@ -423,36 +423,41 @@ void IoTT_LBServer::processLoop()
 {
 	if (isServer)
 	{
-		if (que_wrPos != que_rdPos)
+		if (clients.size() > 0)
 		{
-//			Serial.println("TCP Server send data to clients");
-			int hlpQuePtr = (que_rdPos + 1) % queBufferSize;
-//			if (thisClient->canSend())
+			if (que_wrPos != que_rdPos)
 			{
-				if (clientTxConfirmation)
+//				Serial.println("TCP Server send data to clients");
+				int hlpQuePtr = (que_rdPos + 1) % queBufferSize;
+//				if (thisClient->canSend())
 				{
-					if (sendClientMessage(clients[clientTxIndex].thisClient, "SENT OK", transmitQueue[hlpQuePtr]))
+					if (clientTxConfirmation)
 					{
-						clientTxConfirmation = false;
-						clientTxIndex++;
-					}
-				}
-				else
-					if (sendClientMessage(clients[clientTxIndex].thisClient, "RECEIVE", transmitQueue[hlpQuePtr]))
-					{
-						if ((lastTxClient == clients[clientTxIndex].thisClient) && ((lastTxData.reqID & 0x3FFF) == (transmitQueue[hlpQuePtr].reqID & 0x3FFF)) && ((transmitQueue[hlpQuePtr].errorFlags & msgEcho) > 0))
-							clientTxConfirmation = true;
-						else
+						if (sendClientMessage(clients[clientTxIndex].thisClient, "SENT OK", transmitQueue[hlpQuePtr]))
+						{
+							clientTxConfirmation = false;
 							clientTxIndex++;
+						}
 					}
-				if (clientTxIndex == clients.size()) //message sent to all clients
-				{
-					que_rdPos = hlpQuePtr; //if not successful, we keep trying
-					clientTxIndex = 0;
-					clientTxConfirmation = false;
+					else
+						if (sendClientMessage(clients[clientTxIndex].thisClient, "RECEIVE", transmitQueue[hlpQuePtr]))
+						{
+							if ((lastTxClient == clients[clientTxIndex].thisClient) && ((lastTxData.reqID & 0x3FFF) == (transmitQueue[hlpQuePtr].reqID & 0x3FFF)) && ((transmitQueue[hlpQuePtr].errorFlags & msgEcho) > 0))
+								clientTxConfirmation = true;
+							else
+								clientTxIndex++;
+						}
+					if (clientTxIndex == clients.size()) //message sent to all clients
+					{
+						que_rdPos = hlpQuePtr; //if not successful, we keep trying
+						clientTxIndex = 0;
+						clientTxConfirmation = false;
+					}
 				}
 			}
 		}
+		else
+			que_rdPos = que_wrPos; //no client, so reset out queue to prevent overflow
 	}
 	else
 	{

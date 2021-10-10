@@ -61,6 +61,7 @@ public:
 
 	void setTxCallback(txFct newCB);
 	void loadLNCfgJSON(DynamicJsonDocument doc);
+
    
 private:
    
@@ -98,6 +99,8 @@ private:
    uint32_t transmitTime;
    uint8_t numWrite, numRead;
 
+   bool progTrackActive = false;
+   
    uint8_t    bitRecStatus = 0;    	//LocoNet 0: waiting for OpCode; 1: waiting for package data
 									//OLCB:	0: await start char 1: await frame type 2: await ID 3: await end char
 

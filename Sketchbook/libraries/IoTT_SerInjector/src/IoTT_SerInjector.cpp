@@ -339,7 +339,7 @@ void IoTT_SerInjector::processDCCExReceive()
 	while (available()) //read DCC++Ex protocol and package by message, if adaptable to LocoNet
 	{
 		char inData = read();
-		Serial.print(inData);
+//		Serial.print(inData);
 	}
 }
 
@@ -358,15 +358,15 @@ void IoTT_SerInjector::processDCCExTransmit()
 				switch (transmitQueue[hlpQuePtr].lnData[1])
 				{
 					case 0: //off
-						Serial.print("<0>");
+//						Serial.print("<0>");
 						write("<0>");
 						break;
 					case 1: //on
-						Serial.print("<1>");
+//						Serial.print("<1>");
 						write("<1>");
 						break;
 					case 2: //idle
-						Serial.print("<!>");
+//						Serial.print("<!>");
 						write("<!>");
 						break;
 				}
@@ -423,6 +423,11 @@ void IoTT_SerInjector::processDCCExTransmit()
 				strcat(txMsg, ">");
 				write(txMsg);
 //				Serial.println(txMsg);
+				break;
+			}
+			case 5: //service mode programming
+			{
+				progTrackActive = true;
 				break;
 			}
 		}

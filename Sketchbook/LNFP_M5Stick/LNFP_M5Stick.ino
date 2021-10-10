@@ -1,7 +1,8 @@
-char BBVersion[] = {'1','D','8'};
+char BBVersion[] = {'1','5','8'};
 
 //#define measurePerformance //uncomment this to display the number of loop cycles per second
 #define useM5Lite
+#define useAI
 //Arduino published libraries. Install using the Arduino IDE or download from Github and install manually
 #include <arduino.h>
 #include <Math.h>
@@ -43,7 +44,9 @@ char BBVersion[] = {'1','D','8'};
 #include <NmraDcc.h> //install via Arduino IDE
 #include <OneDimKalman.h>
 #include <IoTT_lbServer.h>
-#include <IoTT_VoiceControl.h>
+#ifdef useAI
+  #include <IoTT_VoiceControl.h>
+#endif
 
 //library object pointers. Libraries will be dynamically initialized as needed during the setup() function
 AsyncWebServer * myWebServer = NULL; //(80)
@@ -86,7 +89,9 @@ String bufferFileName = "/buffers.dat";
 IoTT_Mux64Buttons * myButtons = NULL;
 IoTT_LocoNetButtonList * eventHandler = NULL; 
 //IoTT_SecurityElementList * secElHandlerList = NULL;
-IoTT_VoiceControl * voiceWatcher = NULL;
+#ifdef useAI
+  IoTT_VoiceControl * voiceWatcher = NULL;
+#endif
 LocoNetESPSerial * lnSerial = NULL;
 nodeType subnetMode = standardMode;
 IoTT_SerInjector * usbSerial = NULL;
@@ -767,7 +772,7 @@ void setup() {
     }
 
 //Initialize ALMs
-    if ((useALM & 0x01) && (lnSerial || lbServer)) //Button Handler only with LocoNet or lbServer
+    if ((useALM & 0x01) && (lnSerial || lbServer || lnMQTT || commGateway)) //Button Handler only with LocoNet or lbServer
     {
       Serial.println("Load Button Handler Data");  
       jsonDataObj = getDocPtr("/configdata/btnevt.cfg", false);
@@ -819,7 +824,7 @@ void setup() {
     else 
       Serial.println("Security Elements not loaded");
 */
-
+#ifdef useAI
     if ((useALM & 0x02) && ((useHat.devId == 0) ||(useHat.devId == 1) ||(useHat.devId == 6)))  //RedHat Serial Injector
     {
       Serial.println("Initialize VoiceWatcher");  
@@ -836,7 +841,7 @@ void setup() {
     }
     else
       Serial.println("VoiceWatcher not activted");  
-
+#endif
     Serial.println("Connect WiFi");  
     establishWifiConnection(myWebServer,dnsServer);
     delay(1000);    
@@ -899,7 +904,9 @@ void loop() {
   if (execLoop)
   {
 //  if (secElHandlerList) secElHandlerList->processLoop(); //calculates speeds in all blocks and sets signals accordingly
+#ifdef useAI
   if (voiceWatcher) voiceWatcher->processKeywordRecognition(); //listens for STOP and GO keywords
+#endif
   if (myDcc) myDcc->process(); //receives and decodes track signals
   if (eventHandler) eventHandler->processButtonHandler(); //drives the outgoing buffer and time delayed commands
   if (usbSerial) usbSerial->processLoop(); //drives the USB interface serial traffic
