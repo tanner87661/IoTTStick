@@ -1,40 +1,7 @@
 #ifndef TMAG5170_H
 #define TMAG5170_H
 #include <Arduino.h>
-
-class TMAG5170
-{
-
-public:
-  // Constructor
-  TMAG5170(uint16_t SPI_CSpin);
-
-  //  device config
-  void device_config(uint16_t AVGsetting, uint16_t mag_tempco, uint16_t opeMode, uint16_t tempEnable, uint16_t tempRate, uint16_t tempLimitEnable, uint16_t tempCompEnable);
-
-  uint8_t rcvBuffer[4];
-  uint8_t sendBuffer[4]= {0x0F, 0x00, 0x04, 0x00};;
-
-  //  special easy settings for device evaluation
-  void initTMAG5170_forEval();
-
-  // parameters
-  uint8_t status_X, status_Y, status_Z, status_T;
-
-
-private:
-  void TMAG5170::sndSPI();
-  uint8_t setRange[3] = {X_RANGE_50mT, Y_RANGE_50mT, Z_RANGE_50mT};
-  uint16_t _SPI_CS;
-  double _Kp, _Ki, _Kd;
-  double _integral, _previousError;
-  double _bangOn, _bangOff;
-  double *_input, *_setpoint, *_output;
-  double _outputMin, _outputMax;
-  unsigned long _timeStep, _lastStep;
-  bool _stopped;
-
-}; //class TMAG5170
+#include <SPI.h>
 
 #define readReg 0x80
 #define writeReg 0x0
@@ -66,7 +33,7 @@ private:
 
 #define start_DE_CRC      0x0f000400  
 #define DeviceConfigData  0b0101000000001000
-#define DeviceStart       0b0101000000101000
+#define DeviceStart       0b0101000000101000 //0x5028
 #define RANGE_50mT 0x0
 
 //------------------DEVICE_CONFIG------------------------
@@ -128,15 +95,15 @@ private:
 #define MAG_CH_EN_Zenabled 0x100
 #define MAG_CH_EN_ZXenabled 0x140
 #define MAG_CH_EN_YZenabled 0x180
-#define MAG_CH_EN_XYZenaled 0x1C0
-#define MAG_CH_EN_XYXenaled 0x200
-#define MAG_CH_EN_YXYenaled 0x240
-#define MAG_CH_EN_YZYenaled 0x280
-#define MAG_CH_EN_ZYZenaled 0x2C0
-#define MAG_CH_EN_ZXZenaled 0x300
-#define MAG_CH_EN_XZXenaled 0x340
-#define MAG_CH_EN_XYZYXenaled 0x380
-#define MAG_CH_EN_XYZZYXenaled 0x3C0
+#define MAG_CH_EN_XYZenabled 0x1C0
+#define MAG_CH_EN_XYXenabled 0x200
+#define MAG_CH_EN_YXYenabled 0x240
+#define MAG_CH_EN_YZYenabled 0x280
+#define MAG_CH_EN_ZYZenabled 0x2C0
+#define MAG_CH_EN_ZXZenabled 0x300
+#define MAG_CH_EN_XZXenabled 0x340
+#define MAG_CH_EN_XYZYXenabled 0x380
+#define MAG_CH_EN_XYZZYXenabled 0x3C0
 
 #define Z_RANGE_MASK 0x30
 #define Z_RANGE_50mT 0x0
@@ -225,5 +192,53 @@ private:
 #define GAIN_SELECTION_XisSelected 0x4000
 #define GAIN_SELECTION_YisSelected 0x8000
 #define GAIN_SELECTION_ZisSelected 0xC000
+
+//const int chipSelectPin = 10;
+
+class TMAG5170
+{
+
+public:
+  // Constructor
+	TMAG5170(uint16_t SPI_CSpin);
+	TMAG5170(int8_t sck=-1, int8_t miso=-1, int8_t mosi=-1, int8_t ss=-1);
+
+  //  device config
+	void device_config(uint16_t AVGsetting, uint16_t mag_tempco, uint16_t opeMode, uint16_t tempEnable, uint16_t tempRate, uint16_t tempLimitEnable, uint16_t tempCompEnable);
+
+	uint8_t rcvBuffer[4];
+	uint8_t sendBuffer[4]= {0x0F, 0x00, 0x04, 0x00};;
+
+
+  //  special easy settings for device evaluation
+	void initTMAG5170_forEval();
+
+	void regConfig(unsigned char RW, unsigned char offset, unsigned int data);
+	void putSndData(unsigned int data);
+	unsigned int readRegData(byte address);
+	unsigned long readRcvData(byte address);
+	float convTempdata(unsigned int data);
+	float getTempdata();
+	float getAngledata();
+	unsigned int getAngledataRaw();
+	float getFluxdensity(unsigned char axis);
+
+  // parameters
+	uint8_t status_X, status_Y, status_Z, status_T;
+
+
+private:
+	void sndSPI();
+	uint8_t setRange[3] = {X_RANGE_50mT, Y_RANGE_50mT, Z_RANGE_50mT};
+	uint16_t _SPI_CS;
+	double _Kp, _Ki, _Kd;
+	double _integral, _previousError;
+	double _bangOn, _bangOff;
+	double *_input, *_setpoint, *_output;
+	double _outputMin, _outputMax;
+	unsigned long _timeStep, _lastStep;
+	bool _stopped;
+
+}; //class TMAG5170
 
 #endif

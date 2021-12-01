@@ -479,7 +479,7 @@ void processWsMessage(char * newMsg, int msgLen, AsyncWebSocketClient * client)
         if (!doc.containsKey("Restart")) //if old format (before multi file), then restart
         {
           Serial.println("Restart ESP");
-          saveToFile(bufferFileName);
+//          saveToFile(bufferFileName);
           sendCTS();
           prepareShutDown();
           delay(500);
@@ -489,7 +489,7 @@ void processWsMessage(char * newMsg, int msgLen, AsyncWebSocketClient * client)
           if (doc["Restart"])
           {
             Serial.println("Reboot ESP");
-            saveToFile(bufferFileName);
+//            saveToFile(bufferFileName);
             sendCTS();
             prepareShutDown();
             delay(500);

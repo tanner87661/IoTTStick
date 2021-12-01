@@ -486,13 +486,13 @@ void setProgrammingCmd(lnTransmitMsg * txBuffer, uint8_t progMode, uint8_t OpsAd
 {
 //	Serial.printf("Sp %i\n", slotBuffer[slotNr][0]);
 	txBuffer->lnData[0] = 5; //OpCode for programming commands
-	txBuffer->lnData[2] = progMode;
-	txBuffer->lnData[3] = OpsAdrHi;
-	txBuffer->lnData[4] = OpsAdrLo;
-	txBuffer->lnData[5] = CVNrHi;
-	txBuffer->lnData[6] = CVNrLo;
-	txBuffer->lnData[7] = CVVal; //new val or compare val
-	txBuffer->lnMsgSize = 8;
+	txBuffer->lnData[1] = progMode;
+	txBuffer->lnData[2] = OpsAdrHi;
+	txBuffer->lnData[3] = OpsAdrLo;
+	txBuffer->lnData[4] = CVNrHi;
+	txBuffer->lnData[5] = CVNrLo;
+	txBuffer->lnData[6] = CVVal; //new val or compare val
+	txBuffer->lnMsgSize = 7;
 	dccCmdMessage(*txBuffer);
 }
 

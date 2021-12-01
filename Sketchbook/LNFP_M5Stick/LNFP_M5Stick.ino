@@ -2,7 +2,7 @@ char BBVersion[] = {'1','5','8'};
 
 //#define measurePerformance //uncomment this to display the number of loop cycles per second
 #define useM5Lite
-#define useAI
+//#define useAI
 //Arduino published libraries. Install using the Arduino IDE or download from Github and install manually
 #include <arduino.h>
 #include <Math.h>

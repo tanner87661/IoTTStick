@@ -386,7 +386,7 @@ void IoTT_SerInjector::processDCCExTransmit()
 					break;
 					case 1: //add to refresh buffer
 					{
-						sprintf(txMsg, "<t 1 %i %i %i>", cabAddr, transmitQueue[hlpQuePtr].lnData[4], (transmitQueue[hlpQuePtr].lnData[5] & 0x20)>>5); //[4]: SPD, [5]:DIRF
+						sprintf(txMsg, "<t 1 %i %i %i>", cabAddr, transmitQueue[hlpQuePtr].lnData[4], (!transmitQueue[hlpQuePtr].lnData[5] & 0x20)>>5); //[4]: SPD, [5]:DIRF Dir bit change from LocoNet to DCC++
 						write(txMsg);
 //						Serial.println(txMsg);
 					}
@@ -427,7 +427,38 @@ void IoTT_SerInjector::processDCCExTransmit()
 			}
 			case 5: //service mode programming
 			{
-				progTrackActive = true;
+				uint16_t cabAddr = (transmitQueue[hlpQuePtr].lnData[2] << 7) + (transmitQueue[hlpQuePtr].lnData[3] &0x7F);
+				uint8_t progMode = transmitQueue[hlpQuePtr].lnData[1];
+				uint16_t cvNr = (transmitQueue[hlpQuePtr].lnData[4] << 7) + (transmitQueue[hlpQuePtr].lnData[5] &0x7F);
+				uint8_t cvVal = transmitQueue[hlpQuePtr].lnData[6];
+				switch ((progMode & 0x04) >> 2)
+				{
+					case 0: // Service Mode
+						progTrackActive = true;
+						if (progMode & 0x40) > 0) //write Op
+						{
+							if (progMode & 0x20) > 0) //byte write Op
+							{
+								sprintf(txMsg, "<W %i %i %i %i>", cvNr, cvVal, 0, 0);
+							}
+							else //bit write Op
+							{
+								uint8_t bitNr
+								uint8_t bitVal
+								sprintf(txMsg, "<B %i %i %i %i %i>", cvNr, bitNr, bitVal, 0, 0);
+							}
+						}
+						else //read op
+						{
+							sprintf(txMsg, "<R %i %i %i>", cvNr, 0, 0);
+						}
+						break;
+					case 1: //Ops Mode
+						sprintf(txMsg, "<w%i %i %i>", cabAddr, cvNr, cvVal);
+						break;
+				}
+				write(txMsg);
+//				Serial.println(txMsg);
 				break;
 			}
 		}
