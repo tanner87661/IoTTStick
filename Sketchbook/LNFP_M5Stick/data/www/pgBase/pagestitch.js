@@ -62,6 +62,22 @@ function upgradeJSONVersionGH(jsonData)
 	return jsonData;
 }
 
+function upgradeJSONVersionRH(jsonData)
+{
+	jsonFileVersion = "1.0.0";
+	var thisVersion = jsonData.Version;
+	console.log(thisVersion);
+	if (thisVersion == jsonFileVersion)
+		return jsonData;
+	if ((isNaN(thisVersion)) || (thisVersion = undefined))
+	{
+		//upgrade from noversion to 1.0.0
+		console.log("upgrade RedHat from noversion to 1.0.0");
+		jsonData.Version = "1.0.0";
+	}
+	return jsonData;
+}
+
 function upgradeJSONVersionSwitch(jsonData)
 {
 	jsonFileVersion = "1.0.1";

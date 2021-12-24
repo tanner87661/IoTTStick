@@ -334,12 +334,76 @@ void IoTT_SerInjector::processLCBTransmit()
 020 * @author Andrew Crosland Copyright (C) 2008
 021 */
 
+void IoTT_SerInjector::parseDCCEx()
+{
+	Serial.print("Parse DCC++ Message ");
+	char * cmdSeq = (char*) &lnInBuffer.lnData[0];
+	char opCode[5];
+	char * pch;
+	pch = strstr (cmdSeq," ");
+	Serial.println(cmdSeq);
+	if (pch != NULL)
+	{
+		strncpy (&opCode[0],&cmdSeq[1],pch - &cmdSeq[1]);
+		opCode[pch - &cmdSeq[1]] = (char)0;
+		if (opCode == "T")
+		{
+			Serial.println("Cab Ctrl Return");
+		}
+		if (opCode == "-")
+		{
+			Serial.println("Release Locos");
+		}
+		if (opCode == "0")
+		{
+			Serial.println("Command Successfully executed");
+		}
+		if (opCode == "X")
+		{
+			Serial.println("Command execution failed");
+		}
+	}
+}
+
 void IoTT_SerInjector::processDCCExReceive()
 {
-	while (available()) //read DCC++Ex protocol and package by message, if adaptable to LocoNet
+	while (available()) //read GridConnect protocol and package by message
 	{
 		char inData = read();
-//		Serial.print(inData);
+		switch (inData)
+		{
+			case '<' : //start new message
+				if (bitRecStatus != 0) //receiving in progress, something is wrong
+				{
+					Serial.println("Old Command not complete");
+					lnInBuffer.lnMsgSize = lnBufferPtr;
+					lnInBuffer.reqID = 0xFF; //invalid message
+//					processLNMsg(&lnInBuffer); //get rid of previous (invalid) message
+				}
+				bitRecStatus = 1; //await data bytes
+				lnInBuffer.reqID = 0;
+				lnInBuffer.reqRecTime = micros(); 
+				lnInBuffer.msgType = DCCEx;
+				lnBufferPtr = 0;
+				lnInBuffer.lnData[lnBufferPtr] = inData;
+				lnBufferPtr++; 
+				break;
+			case '>' : //terminate message
+				lnInBuffer.lnData[lnBufferPtr] = inData; //leave terminator intact
+				lnInBuffer.lnData[lnBufferPtr+1] = 0; //terminating 0 for char* interpretation
+				lnInBuffer.lnMsgSize = lnBufferPtr; //this is # of nibbles, so 2x byte length
+				lnBufferPtr = 0;
+				parseDCCEx();
+				bitRecStatus = 0;
+				break;
+			default  : //must be data (max 8 bytes)
+				if (lnBufferPtr > 0) //ignore CRLF and any char before <
+				{
+					lnInBuffer.lnData[lnBufferPtr] = inData;
+					lnBufferPtr++; 
+				} 
+				break;
+		}
 	}
 }
 
@@ -351,7 +415,7 @@ void IoTT_SerInjector::processDCCExTransmit()
 		uint8_t hlpQuePtr = (que_rdPos + 1) % queBufferSize;
 		//send to USB port
 //		Serial.printf("DCC++Ex Transmit %i %i %i\n", hlpQuePtr, transmitQueue[hlpQuePtr].lnData[0], transmitQueue[hlpQuePtr].lnData[1]);
-
+		char txMsg[50];
 		switch (transmitQueue[hlpQuePtr].lnData[0])
 		{
 			case 0: //Power management
@@ -371,7 +435,6 @@ void IoTT_SerInjector::processDCCExTransmit()
 						break;
 				}
 				break;
-			char txMsg[50];
 			case 1: //cab control
 			{
 				uint16_t cabAddr = (transmitQueue[hlpQuePtr].lnData[2] << 7) + (transmitQueue[hlpQuePtr].lnData[3] &0x7F);
@@ -386,7 +449,7 @@ void IoTT_SerInjector::processDCCExTransmit()
 					break;
 					case 1: //add to refresh buffer
 					{
-						sprintf(txMsg, "<t 1 %i %i %i>", cabAddr, transmitQueue[hlpQuePtr].lnData[4], (!transmitQueue[hlpQuePtr].lnData[5] & 0x20)>>5); //[4]: SPD, [5]:DIRF Dir bit change from LocoNet to DCC++
+						sprintf(txMsg, "<t 1 %i %i %i>", cabAddr, transmitQueue[hlpQuePtr].lnData[4], ((transmitQueue[hlpQuePtr].lnData[5] & 0x20)>>5) ^ 0x01); //[4]: SPD, [5]:DIRF Dir bit change from LocoNet to DCC++
 						write(txMsg);
 //						Serial.println(txMsg);
 					}
@@ -435,16 +498,16 @@ void IoTT_SerInjector::processDCCExTransmit()
 				{
 					case 0: // Service Mode
 						progTrackActive = true;
-						if (progMode & 0x40) > 0) //write Op
+						if ((progMode & 0x40) > 0) //write Op
 						{
-							if (progMode & 0x20) > 0) //byte write Op
+							if ((progMode & 0x20) > 0) //byte write Op
 							{
 								sprintf(txMsg, "<W %i %i %i %i>", cvNr, cvVal, 0, 0);
 							}
 							else //bit write Op
 							{
-								uint8_t bitNr
-								uint8_t bitVal
+								uint8_t bitNr;
+								uint8_t bitVal;
 								sprintf(txMsg, "<B %i %i %i %i %i>", cvNr, bitNr, bitVal, 0, 0);
 							}
 						}
@@ -458,10 +521,13 @@ void IoTT_SerInjector::processDCCExTransmit()
 						break;
 				}
 				write(txMsg);
+//				Serial.print("Out: ");
 //				Serial.println(txMsg);
 				break;
 			}
 		}
+		Serial.print("Out: ");
+		Serial.println(txMsg);
 		que_rdPos = hlpQuePtr;
 	}
 }

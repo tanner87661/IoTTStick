@@ -1,4 +1,4 @@
-char BBVersion[] = {'1','5','8'};
+char BBVersion[] = {'1','5','9'};
 
 //#define measurePerformance //uncomment this to display the number of loop cycles per second
 #define useM5Lite
@@ -584,7 +584,7 @@ void setup() {
       jsonDataObj = getDocPtr("/configdata/usb.cfg", false);
       if (jsonDataObj != NULL)
       {
-        Serial.println("Load Serial communication interface"); 
+        Serial.printf("Load Serial communication interface %i\n", useInterface.devId); 
         usbSerial = new IoTT_SerInjector(hatRxD, hatTxD, false, 1);
         usbSerial->setTxCallback(sendMsg);
         usbSerial->loadLNCfgJSON(*jsonDataObj);
@@ -739,7 +739,7 @@ void setup() {
 
     if (useHat.devId == 6) //RedHat Serial Injector
     {
-      jsonDataObj = getDocPtr("/configdata/redhat.cfg", false);
+      jsonDataObj = getDocPtr("/configdata/rhcfg.cfg", false);
       if (jsonDataObj != NULL)
       {
         Serial.println("Load DCC++Ex communication interface"); 

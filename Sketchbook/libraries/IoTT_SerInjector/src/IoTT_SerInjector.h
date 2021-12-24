@@ -66,18 +66,19 @@ public:
 private:
    
    // Member functions
-   void handleLNIn(uint8_t inData, uint8_t inFlags = 0);
-   void processLNMsg(lnTransmitMsg * recData);
-   void processLNReceive();
-   void processLNTransmit();
-   void processLCBReceive();
-   void processLCBTransmit();
-   void processDCCExReceive();
-   void processDCCExTransmit();
-
+	void handleLNIn(uint8_t inData, uint8_t inFlags = 0);
+	void processLNMsg(lnTransmitMsg * recData);
+	void processLNReceive();
+	void processLNTransmit();
+	void processLCBReceive();
+	void processLCBTransmit();
+	void processDCCExReceive();
+	void processDCCExTransmit();
+	void parseDCCEx();
+	
    // Member variables
    lnTransmitMsg transmitQueue[queBufferSize];
-   uint8_t que_rdPos, que_wrPos;
+   uint8_t que_rdPos, que_wrPos = 0;
    lnTransmitMsg lnInBuffer;
    int m_rxPin, m_txPin;
    bool m_invert = true;
@@ -89,11 +90,11 @@ private:
    bool m_highSpeed = true;
    messageType msgProtocol = LocoNet;
 
-   unsigned int rx_rdPos, rx_wrPos;
-   unsigned int tx_rdPos, tx_wrPos;
-   unsigned int ver_rdPos, ver_wrPos;
-   uint16_t rx_buffer[rxBufferSize];
-   uint8_t tx_buffer[txBufferSize];
+//   unsigned int rx_rdPos, rx_wrPos;
+//   unsigned int tx_rdPos, tx_wrPos;
+//   unsigned int ver_rdPos, ver_wrPos;
+//   uint16_t rx_buffer[rxBufferSize];
+//   uint8_t tx_buffer[txBufferSize];
 
    uint8_t transmitStatus;
    uint32_t transmitTime;

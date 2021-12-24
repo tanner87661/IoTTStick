@@ -408,6 +408,7 @@ function loadNodeDataFields(jsonData)
 
 function loadDataFields(jsonData)
 {
+	setVisibility(true, document.getElementById("pgHWBtnCfg"), false);
 	jsonData = upgradeJSONVersionBtn(jsonData);
 	configData[2] = JSON.parse(JSON.stringify(jsonData));
 	writeInputField("holdthreshold", jsonData.HoldThreshold);

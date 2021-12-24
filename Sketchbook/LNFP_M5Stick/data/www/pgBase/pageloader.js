@@ -111,27 +111,34 @@ function showMenueTabs(thisConfigData)
 	{
 		var isVisible = false;
 		var tabElement = document.getElementById(scriptList.Pages[i].ID);
+		
 		if ((scriptList.Pages[i].ProdSel.indexOf(-1) >= 0) || (scriptList.Pages[i].CommSel.indexOf(-1) >= 0))
 		{
 			isVisible = true;
+//			console.log(1);
 		}
 		var thisId = parseInt(thisConfigData.HatTypeList[thisConfigData.HatIndex].HatId);
 		if (scriptList.Pages[i].ProdSel.indexOf(thisId) >= 0)
 		{
 			isVisible = true;
+//			console.log(thisConfigData.HatIndex, thisConfigData.HatTypeList[thisConfigData.HatIndex].HatId, 2, thisId);
 		}
 		thisId = parseInt(thisConfigData.InterfaceTypeList[thisConfigData.InterfaceIndex].IntfId);
 		if (scriptList.Pages[i].CommSel.indexOf(thisId) >= 0)
 		{
 			isVisible = true;
+//			console.log(3);
 		}
 		for (var j=0; j < thisConfigData.ALMIndex.length; j++)
 			if (scriptList.Pages[i].ALMSel.indexOf(thisConfigData.ALMIndex[j]) >= 0)
 		{
 			isVisible = true;
+//			console.log(4);
 		}
-
+//		if (isVisible)
+//			console.log(tabElement);
 		setVisibility(isVisible, tabElement);
+
 	}
 }
 

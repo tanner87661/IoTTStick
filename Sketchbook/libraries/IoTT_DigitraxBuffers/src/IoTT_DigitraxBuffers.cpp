@@ -173,18 +173,45 @@ uint8_t getButtonValue(uint16_t buttonNum)
 	return buttonValueBuffer[buttonNum];
 }
 
+void setProgStatus(bool progBusy)
+{
+	if (progBusy)
+		updateTrackByte(true, 0x0C);
+	else
+		updateTrackByte(false, 0x08);
+}
+
+void updateTrackByte(bool setOp, uint8_t trackBits)
+{
+	for (uint8_t i = 1; i < maxSlots; i++)
+	{
+		if (setOp)
+			slotBuffer[i][4] |= trackBits;
+		else
+			slotBuffer[i][4] &= (!trackBits);
+	}
+	if (setOp)
+		slotBuffer[0x7C][4] |= trackBits;
+	else
+		slotBuffer[0x7C][4] &= (!trackBits);
+}
+
 void setPowerStatus(uint8_t newStatus)
 {
 	switch (newStatus)
 	{
 		case 0x82: ////OPC_OFF
 			sysPowerStatus = 0;
+			updateTrackByte(false, 0x03);
 			break;
 		case 0x83: ////OPC_ON
 			sysPowerStatus = 1;
+			updateTrackByte(true, 0x07);
 			break;
 		case 0x85: ////OPC_IDLE
 			sysPowerStatus = 2;
+			updateTrackByte(false, 0x02);
+			updateTrackByte(true, 0x05);
 			break;
 	}
 }
@@ -772,11 +799,13 @@ void processLocoNetMsg(lnReceiveBuffer * newData)
 			{
 				case 0x3C: //OPC_SW_STATE
 					if (lastSwiAddr != 0xFFFF)
+					{
 						switch (newData->lnData[2] & 0x70)
 						{
-							case 0x30: setSwitchStatus(lastSwiAddr, 1, 0); break;
-							case 0x50: setSwitchStatus(lastSwiAddr, 0, 0); break;
+							case 0x30: if ((getSwiPosition(lastSwiAddr) >> 5) == 0) setSwitchStatus(lastSwiAddr, 1, 0); break; //only change ise of deviation
+							case 0x50: if ((getSwiPosition(lastSwiAddr) >> 5) == 1) setSwitchStatus(lastSwiAddr, 0, 0); break; //to avoid setting of dyn signals
 						}
+					}
 					break;
 			}
 			lastSwiAddr = 0xFFFF;

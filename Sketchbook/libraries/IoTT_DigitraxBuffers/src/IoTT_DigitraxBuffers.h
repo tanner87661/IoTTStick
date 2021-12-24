@@ -11,7 +11,8 @@
 #define numBDs 512 //=4096/8
 #define numAnalogVals 4096
 #define numButtons 4096
-#define numSlots 128
+#define numSlots 128 //total system slots
+#define maxSlots 120 //locomotive slots
 
 #define bufferUpdateInterval 1000
 
@@ -58,6 +59,8 @@ uint32_t getLastSwitchActivity(uint16_t swiNum);
 uint8_t getSignalAspect(uint16_t sigNum);
 uint16_t getAnalogValue(uint16_t analogNum);
 uint8_t getButtonValue(uint16_t buttonNum);
+void setProgStatus(bool progBusy);
+void updateTrackByte(bool setOp, uint8_t trackBits);
 slotData * getSlotData(uint8_t slotNum);
 uint8_t getBushbyStatus();
 uint8_t getPowerStatus();

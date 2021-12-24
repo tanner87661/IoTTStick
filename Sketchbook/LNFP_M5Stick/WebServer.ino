@@ -427,6 +427,8 @@ void processWsMessage(char * newMsg, int msgLen, AsyncWebSocketClient * client)
           addFileToTx("lbserver", 0, "pgLBSCfg", 1);
         if (fileSelector & 0x0800)  
           addFileToTx("vwcfg", 0, "pgVoiceWCfg", 1);
+        if (fileSelector & 0x1000)  
+          addFileToTx("rhcfg", 0, "pgRedHatCfg", 1);
         fileCtr = 0;
         if (fileSelector & 0x0020)  
           while (addFileToTx("led", fileCtr, "pgLEDCfg", 1))
