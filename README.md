@@ -1,6 +1,10 @@
 # IoTTStick
 This is the master repository for the IoTT Stick, port modules and hat devices with the source code for the latest release. 
 
+2021/12/17
+- Version 1.5.9 with improved support for RedHat
+- minor bug fixes
+
 2021/10/23
 - Version 1.5.8 Experimental with VoiceWatcher Support
 - Watch Video#80 for more information https://youtu.be/dP01Lq9poZw
