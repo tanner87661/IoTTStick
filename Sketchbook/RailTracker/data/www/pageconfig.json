@@ -1,0 +1,7 @@
+{
+	"Pages":[
+		{"Menue":"Node Configuration", "ProdSel":[-1], "CommSel":[], "ALMSel":[], "WebPage": "index.htm", "ID":"pgNodeCfg", "FileName": "node"}, 
+		{"Menue":"LED Chain Setup", "ProdSel":[1,3], "CommSel":[], "ALMSel":[],  "WebPage": "LEDCfg.htm", "ID":"pgLEDCfg", "FileName": "led"},
+		{"Menue":"Monitor", "ProdSel":[-1], "CommSel":[], "ALMSel":[],  "WebPage": "Monitor.htm", "ID":"pgTrMonCfg", "FileName": "trmon"}
+		]
+}

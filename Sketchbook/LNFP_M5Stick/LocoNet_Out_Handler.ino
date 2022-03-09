@@ -4,7 +4,7 @@
 
 void sendSwitchCommand(uint8_t opCode, uint16_t swiNr, uint8_t swiTargetPos, uint8_t coilStatus)
 {
-  uint8_t currPos = getSwiStatus(swiNr); //((swiPos[swiNr >> 2] >> (2 * (swiNr % 4))) & 0x03) << 4);
+  uint8_t currPos = digitraxBuffer->getSwiStatus(swiNr); //((swiPos[swiNr >> 2] >> (2 * (swiNr % 4))) & 0x03) << 4);
 //  Serial.print("currPos ");
 //  Serial.println(currPos);
   lnTransmitMsg txData;
@@ -164,7 +164,7 @@ void sendPowerCommand(uint8_t cmdType, uint8_t pwrStatus)
   lnTransmitMsg txData;
   txData.lnMsgSize = 2;
   if (cmdType == toggleVal)
-    switch (getPowerStatus())
+    switch (digitraxBuffer->getPowerStatus())
     {
       case 0: txData.lnData[0] = 0x85; break; //off to OPC_IDLE
       case 1: txData.lnData[0] = 0x85; break; //on to OPC_IDLE
@@ -192,14 +192,14 @@ uint16_t sendLocoNetReply(lnTransmitMsg txData)
   if (lnSerial)
     lnSerial->lnWriteReply(txData);
 }
-
+/*
 uint16_t sendDCCCmdGen(lnTransmitMsg txData)
 {
 //  Serial.printf("Send it %i %i\n", txData.lnData[0], txData.lnData[1]);
   if (usbSerial)
     usbSerial->lnWriteMsg(txData);
 }
-
+*/
 //callback interface to the IoTT_Buttons library. If a Button or Analog event occurs, the library calles one of these functions
 //all we do here is sending the information to LocoNet, from where we will receive it back as serial port echo that can be processed like any regular LocoNet message
 
@@ -215,6 +215,7 @@ void onSensorEvent(uint16_t sensorAddr, uint8_t sensorEvent, uint8_t eventMask)
 
 void onSwitchReportEvent(uint16_t switchAddr, uint8_t switchEvent, uint8_t eventMask)
 {
+//  Serial.printf("Switch %i has position %i. \n", switchAddr, switchEvent);
   if (switchEvent == onbtndown) //this really is the status, not the event, so we need to change the logic
     sendSwitchCommand(0xB1, switchAddr, switchEvent, (eventMask & 0x04)== 0 ? 1 : 0);
   if (switchEvent == onbtnup)

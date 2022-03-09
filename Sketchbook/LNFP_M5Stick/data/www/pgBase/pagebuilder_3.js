@@ -85,6 +85,12 @@ function tfServoEditor(y, x, id, evtHandler)
 	cchBox.childNodes[1].innerHTML = "Power off";
 	servoDiv.append(cchBox);
 
+	thisId = "pwrinit_" + y.toString() + "_" + x.toString();
+	var cchBox = tfCheckBox(y, x, thisId, evtHandler);
+	cchBox.childNodes[0].setAttribute("index", 21);
+	cchBox.childNodes[1].innerHTML = "Init Pulse";
+	servoDiv.append(cchBox);
+
 //--servo speed
 	var thisId = "servospeeddiv_" + y.toString() + "_" + x.toString();
 	var topDiv = document.createElement("div");

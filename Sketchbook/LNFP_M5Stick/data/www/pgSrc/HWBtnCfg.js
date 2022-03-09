@@ -3,6 +3,10 @@ var buttonTable;
 //var listViewer;
 var mqttTitle;
 var mqttBox;
+var setupText;
+var setupBox;
+var hatType; //used to control display of input fields
+var interfaceType;
 
 var maxButtons = 0;
 
@@ -196,8 +200,11 @@ function updateOptions(thisRow)
 					case 4: ttxt.innerHTML = "Inverse Logic"; break;
 				}
 				break;
-			default:
-				setVisibility([1].indexOf(btnTypeIndex) >= 0, t.parentElement);
+			case 3: //checkbox 3 hold
+				setVisibility(([1].indexOf(btnTypeIndex) >= 0), t.parentElement);
+				break;
+			case 4: //checkbox 4 dbl click
+				setVisibility(([1].indexOf(btnTypeIndex) >= 0 && (hatType != 6)), t.parentElement);
 				break;
 		}
 		t.checked = ((configData[2].Buttons[thisRow].EventMask & (eventMask<<j)) > 0);
@@ -363,14 +370,17 @@ function constructPageContent(contentTab)
 	mainScrollBox = createEmptyDiv(contentTab, "div", "pagetopicboxscroll-y", "btnconfigdiv");
 		createPageTitle(mainScrollBox, "div", "tile-1", "", "h1", "Hardware Button Setup");
 		createPageTitle(mainScrollBox, "div", "tile-1", "", "h2", "Basic Settings");
-		tempObj = createEmptyDiv(mainScrollBox, "div", "tile-1", "");
+		var setupDiv = createEmptyDiv(mainScrollBox, "div", "tile-1", "");
+		tempObj = createEmptyDiv(setupDiv, "div", "tile-1", "");
 			createTextInput(tempObj, "tile-1_4", "Hold Threshold (ms)", "n/a", "holdthreshold", "setThreshold(this)");
-			createTextInput(tempObj, "tile-1_4", "Dbl Clk Threshold (ms)", "n/a", "dblclkthreshold", "setThreshold(this)");
-		tempObj = createEmptyDiv(mainScrollBox, "div", "tile-1", "");
-			createTextInput(tempObj, "tile-1_4", "Analog Refresh (ms)", "n/a", "analogrefresh", "setThreshold(this)");
-			createTextInput(tempObj, "tile-1_4", "Analog Sensitivity (%)", "n/a", "analogsensitivity", "setThreshold(this)");
-		tempObj = createEmptyDiv(mainScrollBox, "div", "tile-1", "wificb");
+			setupText = createTextInput(tempObj, "tile-1_4", "Dbl Clk Threshold (ms)", "n/a", "dblclkthreshold", "setThreshold(this)");
+		setupBox = createEmptyDiv(setupDiv, "div", "tile-1", "");
+			createTextInput(setupBox, "tile-1_4", "Analog Refresh (ms)", "n/a", "analogrefresh", "setThreshold(this)");
+			createTextInput(setupBox, "tile-1_4", "Analog Sensitivity (%)", "n/a", "analogsensitivity", "setThreshold(this)");
+		tempObj = createEmptyDiv(setupDiv, "div", "tile-1", "wificb");
 			createTextInput(tempObj, "tile-1_4", "Board Base Address", "n/a", "baseaddress", "setThreshold(this)");
+//		setVisibility(false, setupText);
+		setVisibility(false, setupBox);
 
 		mqttTitle = createPageTitle(mainScrollBox, "div", "tile-1", "", "h2", "MQTT Settings");
 		mqttBox = createEmptyDiv(mainScrollBox, "div", "tile-1", "");
@@ -383,6 +393,8 @@ function constructPageContent(contentTab)
 			tempObj = createEmptyDiv(mqttBox, "div", "tile-1", "");
 			createTextInput(tempObj, "tile-1_4", "(P) Btn Reply Topic:", "n/a", "mqbtnreply", "setThreshold(this)");
 			createCheckbox(tempObj, "tile-1_4", "Include Btn #", "inclbtnreply", "setThreshold(this)");
+		setVisibility(false, mqttTitle);
+		setVisibility(false, mqttBox);
 
 		createPageTitle(mainScrollBox, "div", "tile-1", "", "h2", "Button Configuration");
 		tempObj = createEmptyDiv(mainScrollBox, "div", "tile-1", "wificb");
@@ -401,13 +413,17 @@ function loadNodeDataFields(jsonData)
 {
 	maxButtons = 32; //16*jsonData.BtnModConfig.DataPins.length;
 	writeTextField("maxbuttons", maxButtons);
-	var interfaceType = jsonData.InterfaceTypeList[jsonData.InterfaceIndex].Type;
+	interfaceType = jsonData.InterfaceTypeList[jsonData.InterfaceIndex].Type;
+	hatType = jsonData.HatTypeList[jsonData.HatIndex].HatId;
 	setVisibility(interfaceType == 3, mqttTitle);
 	setVisibility(interfaceType == 3, mqttBox);
+//	setVisibility(hatType != 6, setupText);
+	setVisibility(hatType != 6, setupBox);
 }
 
 function loadDataFields(jsonData)
 {
+	setVisibility(true, document.getElementById("pgHWBtnCfg"), false);
 	jsonData = upgradeJSONVersionBtn(jsonData);
 	configData[2] = JSON.parse(JSON.stringify(jsonData));
 	writeInputField("holdthreshold", jsonData.HoldThreshold);
@@ -422,6 +438,13 @@ function loadDataFields(jsonData)
 	writeInputField("mqbtnreply", jsonData.MQTT.Publish[1].Topic);
 	writeCBInputField("inclbtnreply", jsonData.MQTT.Publish[1].InclAddr);
 	loadTableData(buttonTable, jsonData.Buttons);
+	for (var i = 0; i < 32; i++)
+	{
+		var idStr = "btnconfig_inp_" + i.toString() + "_2";
+		var dropDown = document.getElementById(idStr);
+		if (dropDown != undefined)
+			dropDown.options[2].disabled = hatType == 6;
+	}
 }
 
 function processLocoNetInput(jsonData)

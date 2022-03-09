@@ -604,7 +604,7 @@ function setLEDCmdData(sender)
 		thisCmdLine = parseInt(sender.parentElement.getAttribute("cmdline"));
 	var thisElement;
 	var thisID;
-	console.log("setLEDCmdData", thisRow, thisCol, thisIndex, thisCmdLine, sender.id, ledData[workCfg].LEDDefs[thisRow]);
+//	console.log("setLEDCmdData", thisRow, thisCol, thisIndex, thisCmdLine, sender.id, ledData[workCfg].LEDDefs[thisRow]);
 	switch (thisIndex)
 	{
 		case 1: //new Cmd Entry
@@ -1230,7 +1230,7 @@ function setServoVal(sender)
 	if (sender.id == "servomaxval")
 		swiCfgData[workCfg].ServoMaxPos = verifyNumber(sender.value, swiCfgData[workCfg].ServoMaxPos);
 	for (var i = 0; i < swiCfgData[workCfg].Drivers.length; i++)
-		setDefaultData(i, devOptions.indexOf(swiCfgData[workCfg].Drivers[thisRow].DevType), swiCfgData[workCfg].Drivers[thisRow].DevOption);
+		setDefaultData(i, devOptions.indexOf(swiCfgData[workCfg].Drivers[i].DevType), swiCfgData[workCfg].Drivers[i].DevOption);
 }
 
 function setServoAngle(sender, id)
@@ -1250,6 +1250,8 @@ function setDefaultData(thisRow, devType, modeOption)
 			swiCfgData[workCfg].Drivers[thisRow].UpSpeed = 320;
 			swiCfgData[workCfg].Drivers[thisRow].DownSpeed = 320;
 			swiCfgData[workCfg].Drivers[thisRow].PowerOff = true;
+			swiCfgData[workCfg].Drivers[thisRow].InitPulse = false;
+			setVisibility(swiCfgData[workCfg].Drivers[thisRow].PowerOff, document.getElementById("pwrinit_" + thisRow.toString() + "_2").parentElement);
 			switch (modeOption)
 			{
 				case 0:
@@ -1300,6 +1302,8 @@ function setDefaultData(thisRow, devType, modeOption)
 			swiCfgData[workCfg].Drivers[thisRow].UpSpeed = 0;
 			swiCfgData[workCfg].Drivers[thisRow].DownSpeed = 0;
 			swiCfgData[workCfg].Drivers[thisRow].PowerOff = false;
+			swiCfgData[workCfg].Drivers[thisRow].InitPulse = false;
+			setVisibility(swiCfgData[workCfg].Drivers[thisRow].PowerOff, document.getElementById("pwrinit_" + thisRow.toString() + "_2").parentElement);
 			if (swiCfgData[workCfg].Drivers[thisRow].Positions.length > 0)
 			{
 				for (var i = 0; i < swiCfgData[workCfg].Drivers[thisRow].Positions.length; i++)
@@ -1311,6 +1315,8 @@ function setDefaultData(thisRow, devType, modeOption)
 			break;
 		case 2: //led
 			swiCfgData[workCfg].Drivers[thisRow].PowerOff = false;
+			swiCfgData[workCfg].Drivers[thisRow].InitPulse = false;
+			setVisibility(swiCfgData[workCfg].Drivers[thisRow].PowerOff, document.getElementById("pwrinit_" + thisRow.toString() + "_2").parentElement);
 			switch (modeOption)
 			{
 				case 0:
@@ -1518,6 +1524,10 @@ function setSwitchData(sender)
 					break;
 				case 20: //Power Off Move End
 					swiCfgData[workCfg].Drivers[thisRow].PowerOff = sender.checked;
+					setVisibility(swiCfgData[workCfg].Drivers[thisRow].PowerOff, document.getElementById("pwrinit_" + thisRow.toString() + "_2").parentElement);
+					break;
+				case 21: //Init Pulse at Startup
+					swiCfgData[workCfg].Drivers[thisRow].InitPulse = sender.checked;
 					break;
 			}
 			break;
@@ -1656,10 +1666,11 @@ function dispSwitchData(swiData, thisRow)
 	document.getElementById("movespeeddown_" + thisRow.toString() + "_" + "2").value = swiData[thisRow].DownSpeed;
 	document.getElementById("accel_" + thisRow.toString() + "_" + "2").value = swiData[thisRow].AccelRate;
 	document.getElementById("decel_" + thisRow.toString() + "_" + "2").value = swiData[thisRow].DecelRate;
-	document.getElementById("pwroff_" + thisRow.toString() + "_" + "2").checked = swiData[thisRow].PowerOff;
+	document.getElementById("pwroff_" + thisRow.toString() + "_" + "2").checked = (swiData[thisRow].PowerOff == true);
+	document.getElementById("pwrinit_" + thisRow.toString() + "_" + "2").checked = (swiData[thisRow].InitPulse == true);
 	document.getElementById("lambda_" + thisRow.toString() + "_" + "2").value = swiData[thisRow].Lambda;
 	document.getElementById("oscfrequ_" + thisRow.toString() + "_" + "2").value = swiData[thisRow].Frequency;
-	document.getElementById("hesitate_" + thisRow.toString() + "_" + "2").checked = (swiData[thisRow].UseHesi > 0);
+	document.getElementById("hesitate_" + thisRow.toString() + "_" + "2").checked = (swiData[thisRow].UseHesi == true);
 	document.getElementById("hesipoint_" + thisRow.toString() + "_" + "2").value = swiData[thisRow].HesPoint;
 	document.getElementById("hesispeed_" + thisRow.toString() + "_" + "2").value = swiData[thisRow].HesSpeed;
 
@@ -1676,6 +1687,7 @@ function dispSwitchData(swiData, thisRow)
 	var relayPanel = document.getElementById("relaypanel_" + thisRow.toString() + "_2");
 //	var ledPanel = document.getElementById("ledpanel_" + thisRow.toString() + "_2");
 	var servoMainPanel = document.getElementById("servopanel_" + thisRow.toString() + "_2");
+	var servoInitPwrBox = document.getElementById("pwrinit_" + thisRow.toString() + "_2");
 	var servoSpeedPanel = document.getElementById("servospeeddiv_" + thisRow.toString() + "_2");
 	var servoAccelPanel = document.getElementById("servoacceldiv_" + thisRow.toString() + "_2");
 	var servoOscPanel = document.getElementById("servooscdiv_" + thisRow.toString() + "_2");
@@ -1697,6 +1709,7 @@ function dispSwitchData(swiData, thisRow)
 			setVisibility(false, servoHesiPanel);
 			setVisibility(false, servoMovePanel);
 			setVisibility(false, servoStartStopPanel);
+			setVisibility(swiData[thisRow].PowerOff, servoInitPwrBox.parentElement);
 			writeRBInputField("servomovetype_" + thisRow.toString() + "_" + "2", devMode);
 
 			posslider.setAttribute("min", swiCfgData[workCfg].ServoMinPos);

@@ -156,7 +156,8 @@ DynamicJsonDocument * getDocPtr(String cmdFile, bool duplData)
 
 void prepareShutDown()
 {
-  saveToFile(bufferFileName);
+  digitraxBuffer->saveToFile(bufferFileName);
   if (mySwitchList)
     mySwitchList->saveRunTimeData();
+  delay(50);
 }

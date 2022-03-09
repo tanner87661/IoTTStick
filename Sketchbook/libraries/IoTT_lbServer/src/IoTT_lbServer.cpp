@@ -419,6 +419,11 @@ bool IoTT_LBServer::sendClientMessage(AsyncClient * thisClient, String cmdMsg, l
 	return false;
 }
 
+String IoTT_LBServer::getServerIP()
+{
+	return isServer ? "" : lbs_IP.toString();
+}
+
 void IoTT_LBServer::processLoop()
 {
 	if (isServer)

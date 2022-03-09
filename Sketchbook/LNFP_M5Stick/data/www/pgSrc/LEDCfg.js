@@ -1008,7 +1008,7 @@ function constructPageContent(contentTab)
 
 function loadDataFields(jsonData)
 {
-	
+	setVisibility(true, document.getElementById("pgLEDCfg"), false);
 	configData[workCfg] = upgradeJSONVersion(jsonData);
 //	console.log(configData[workCfg]);
 	switch (configData[workCfg].ChainParams.ColorSeq)

@@ -1,0 +1,36 @@
+<html>
+	
+<head>
+
+<script type="text/javascript" src="/pgSrc/CMMME.js"></script>
+<script type="text/javascript" src="/pgBase/dynloader.js"></script>
+   
+</head>
+
+<body>
+<div class="pagemain">
+	<div id="MenueHolder" class="menuesectionbox"></div>	
+	<div id="TabHolder" class="tabsectionbox"></div>
+
+	<div id="FooterHolder" class="footersectionbox">
+		<div class = "inputtext_float"> 
+			<div class="inputtext_float"><a href="https://myiott.org/" target = "blank"><font size="3">Powered by IoTT</font></a></div>
+			<div class="inputtext_float"><font size="3">&nbsp; &copy; 2021 Hans Tanner</font></div>
+			<p>
+				<a href="https://chesterfield-models.co.uk/" target = "blank">
+					<img src="logocolor100.jpg" alt="chesterfield-models.co.uk" >
+				</a>
+			</p>			
+		</div>
+	</div>	
+</div>
+
+<script>
+	var url = window.location.pathname;
+	var fileName = url.substring(url.lastIndexOf('/')+1);
+	setTimeout(function(){ initPage() }, 150);
+</script>
+
+</body>
+
+</html>

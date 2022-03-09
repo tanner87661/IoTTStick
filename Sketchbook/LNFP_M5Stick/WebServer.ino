@@ -427,6 +427,10 @@ void processWsMessage(char * newMsg, int msgLen, AsyncWebSocketClient * client)
           addFileToTx("lbserver", 0, "pgLBSCfg", 1);
         if (fileSelector & 0x0800)  
           addFileToTx("vwcfg", 0, "pgVoiceWCfg", 1);
+        if (fileSelector & 0x1000)  
+          addFileToTx("rhcfg", 0, "pgRedHatCfg", 1);
+        if (fileSelector & 0x2000)  
+          addFileToTx("rhcfg", 0, "pgPrplHatCfg", 1);
         fileCtr = 0;
         if (fileSelector & 0x0020)  
           while (addFileToTx("led", fileCtr, "pgLEDCfg", 1))
@@ -479,7 +483,7 @@ void processWsMessage(char * newMsg, int msgLen, AsyncWebSocketClient * client)
         if (!doc.containsKey("Restart")) //if old format (before multi file), then restart
         {
           Serial.println("Restart ESP");
-          saveToFile(bufferFileName);
+//          saveToFile(bufferFileName);
           sendCTS();
           prepareShutDown();
           delay(500);
@@ -489,7 +493,7 @@ void processWsMessage(char * newMsg, int msgLen, AsyncWebSocketClient * client)
           if (doc["Restart"])
           {
             Serial.println("Reboot ESP");
-            saveToFile(bufferFileName);
+//            saveToFile(bufferFileName);
             sendCTS();
             prepareShutDown();
             delay(500);
@@ -498,6 +502,39 @@ void processWsMessage(char * newMsg, int msgLen, AsyncWebSocketClient * client)
 //          else
 //            Serial.println("No Reboot needed");
         sendCTS();
+      }
+      if (thisCmd == "SetSensor")  
+      {
+//        Serial.println(thisCmd);
+        if (doc.containsKey("SubCmd"))
+        {
+          String subCmd = doc["SubCmd"];
+          if (subCmd == "ClearDist")
+            if (trainSensor) 
+              trainSensor->resetDistance();
+          if (subCmd == "ClearHeading")
+            if (trainSensor) 
+              trainSensor->resetHeading();
+          if (subCmd == "RepRate")
+            if (trainSensor) 
+            {
+              uint16_t repRate = doc["Val"];
+              trainSensor->setRepRate(globalClient, repRate);
+            }
+          if (subCmd == "SetDCC")
+            if (trainSensor)
+              trainSensor->reqDCCAddrWatch(globalClient);
+          if (subCmd == "RunTest")
+            if (trainSensor)
+            {
+              float tLen = doc["TrackLen"];
+              float vMax = doc["VMax"];
+              trainSensor->startTest(tLen, vMax);
+            }
+          if (subCmd == "StopTest")
+            if (trainSensor)
+              trainSensor->stopTest();
+        }
       }
     }
   } 

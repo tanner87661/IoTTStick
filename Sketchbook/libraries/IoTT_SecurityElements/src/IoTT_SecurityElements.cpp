@@ -358,9 +358,9 @@ IoTT_SecElLeg * IoTT_SecElLeg::getConnectedLeg()
 		{
 //			Serial.println("Check SwiPos");
 			if (parentSE->switchLogic) //calling from A, answer is B or C depending on switch logic and switch position
-				return (getSwiPosition(parentSE->switchAddr) > 0) ? parentSE->connLeg[1]: parentSE->connLeg[2]; 
+				return (digitraxBuffer->getSwiPosition(parentSE->switchAddr) > 0) ? parentSE->connLeg[1]: parentSE->connLeg[2]; 
 			else
-				return (getSwiPosition(parentSE->switchAddr) == 0) ?  parentSE->connLeg[1]: parentSE->connLeg[2];
+				return (digitraxBuffer->getSwiPosition(parentSE->switchAddr) == 0) ?  parentSE->connLeg[1]: parentSE->connLeg[2];
 		}
 	}
 }
@@ -376,12 +376,12 @@ IoTT_SecElLeg * IoTT_SecElLeg::getOpenLeg() //returns pointer to B or C or NULL
 		case 3: if (parentSE->switchLogic) //answer is B or C depending on switch logic and switch position
 				{
 //					Serial.printf("Open swipos %i leg is %i\n", getSwiPosition(parentSE->switchAddr), (getSwiPosition(parentSE->switchAddr) > 0) ?  1:2);
-					return (getSwiPosition(parentSE->switchAddr) == 0) ?  parentSE->connLeg[1]: parentSE->connLeg[2]; 
+					return (digitraxBuffer->getSwiPosition(parentSE->switchAddr) == 0) ?  parentSE->connLeg[1]: parentSE->connLeg[2]; 
 				}
 				else
 				{
 //					Serial.printf("Open swipos %i leg is %i\n", getSwiPosition(parentSE->switchAddr), (getSwiPosition(parentSE->switchAddr) == 0) ?  1:2);
-					return (getSwiPosition(parentSE->switchAddr) > 0) ?  parentSE->connLeg[1]: parentSE->connLeg[2];
+					return (digitraxBuffer->getSwiPosition(parentSE->switchAddr) > 0) ?  parentSE->connLeg[1]: parentSE->connLeg[2];
 				}
 				break;
 	}
@@ -526,13 +526,13 @@ void IoTT_SecurityElement::processLocoNetMsg(lnReceiveBuffer * newData)
 void IoTT_SecurityElement::processElement()
 {
 	uint8_t eventMask = 0;
-	uint8_t hlpStat = getBDStatus(blockdetAddr);
+	uint8_t hlpStat = digitraxBuffer->getBDStatus(blockdetAddr);
 	if (hlpStat != lastBDStatus)
 	{
 		eventMask |= 0x01;
 		lastBDStatus = hlpStat;
 	}
-	hlpStat = getSwiPosition(switchAddr);
+	hlpStat = digitraxBuffer->getSwiPosition(switchAddr);
 	if (hlpStat != lastSwiPos)
 	{
 		eventMask |= 0x02;
@@ -554,7 +554,7 @@ void IoTT_SecurityElement::processABSS(uint8_t newEvents)
 		for (uint16_t i = 0; i < numLegs; i++)
 			if (connLeg[i])
 			{
-				if (getBDStatus(blockdetAddr))
+				if (digitraxBuffer->getBDStatus(blockdetAddr))
 					connLeg[i]->setDynSpeed(0); //set dynamic In speed to zero and set all signals respective aspect
 				else
 				{

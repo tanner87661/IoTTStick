@@ -90,7 +90,7 @@ class IoTT_Mux64Buttons
 	private:
 		IoTT_ButtonConfig * touchArray = NULL;
 		TwoWire * thisWire = NULL;
-		uint8_t extMode = false; //by default, MUX is used. extMode makes it use MCP23017 port commands
+		uint8_t sourceMode = 0; //by default, MUX or GPIO is used. 0: MUX or GPIO (if no Wire); 1: MCP23017 port commands; 2: Bit buffer lookup
 		uint8_t wireAddr = 0;
 		uint8_t analogPin = 0;
 		uint8_t numTouchButtons = 0;
@@ -103,6 +103,7 @@ class IoTT_Mux64Buttons
 		int16_t startUpCtr = 50;
 		float newAnalogThreshold = 1;  //new analog value gets sent out if deviation is more than x%
 		int currentChannel = -1;
+		uint32_t pollBuffer = 0; //used by event driven approach (e.g. RedHat, to set status lines)
 		bool mqttMode = false;
 		topicStruct subTopicList[1] = {{"BTNASK", false}};
 		topicStruct pubTopicList[2] = {{"BTNREPORT", false}, {"BTNREPLY", false}};
@@ -112,7 +113,7 @@ class IoTT_Mux64Buttons
 		void loadButtonCfgI2CJSON(DynamicJsonDocument doc);
 		void loadButtonCfgI2CJSONObj(JsonObject doc);
 
-		void initButtonsDirect(bool useWifi = false);
+		void initButtonsDirect(bool pollBtns = false);
 		void loadButtonCfgDirectJSON(DynamicJsonDocument doc);
 
 		void setMQTTMode(mqttTxFct txFct);
@@ -131,6 +132,7 @@ class IoTT_Mux64Buttons
 		void processButtons();
 		bool processMQTTCmd(char * topic, DynamicJsonDocument doc);
 		void sendBtnStatusMQTT(uint8_t topicNr, uint16_t btnNr);
+		void processDigitalInputBuffer(uint8_t btnNr, bool btnPressed);
 	private:
 		void processDigitalButton(uint8_t btnNr, bool btnPressed);
 		void processDigitalHold(uint8_t btnNr);

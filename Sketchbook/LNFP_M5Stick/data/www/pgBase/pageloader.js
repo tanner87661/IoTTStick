@@ -47,13 +47,13 @@ function loadPageList(pageName, menueTab, contentTab, footerTab)
 					{
 //						console.log("Setting ID", pageName, scriptList.Pages[i].ID );
 						currentPage = i; //scriptList.Pages[i].ID;
-						createMenueTabElement(menueTab, "button", "tablink", scriptList.Pages[i].ID, scriptList.Pages[i].Menue, true, "");
+						createMenueTabElement(menueTab, "button", "tablink", "main", scriptList.Pages[i].ID, scriptList.Pages[i].Menue, true, "");
 					}
 					else
-						createMenueTabElement(menueTab, "button", "tablink", scriptList.Pages[i].ID, scriptList.Pages[i].Menue, false,"loadPage('" + scriptList.Pages[i].WebPage+ "')");
+						createMenueTabElement(menueTab, "button", "tablink", "main", scriptList.Pages[i].ID, scriptList.Pages[i].Menue, false,"loadPage('" + scriptList.Pages[i].WebPage+ "')");
 						
 				}
-				updateMenueTabs(scriptList.Pages[currentPage].ID, "grey");
+				updateMenueTabs("main", scriptList.Pages[currentPage].ID, "grey");
 				constructPageContent(contentTab);
 				constructFooterContent(footerTab);
 			}
@@ -64,16 +64,17 @@ function loadPageList(pageName, menueTab, contentTab, footerTab)
 	request.send();
 }
 
-function updateMenueTabs(pageID, color) 
+function updateMenueTabs(menuName, pageID, color) 
 {
 	tablinks = document.getElementsByClassName("tablink");
 	for (i = 0; i < tablinks.length; i++) 
 	{
 //		console.log(tablinks[i].id, pageID);
-		if (tablinks[i].id == pageID)
-			tablinks[i].style.backgroundColor = color;
-		else
-			tablinks[i].style.backgroundColor = "";
+		if (tablinks[i].name == menuName)
+			if (tablinks[i].id == pageID)
+				tablinks[i].style.backgroundColor = color;
+			else
+				tablinks[i].style.backgroundColor = "";
 	}
 }
 
@@ -89,9 +90,14 @@ function setServoPos(servoNr, servoPos)
 	ws.send("{\"Cmd\":\"SetServo\", \"ServoNr\":[" + servoNr + "], \"ServoPos\":" + servoPos + "}");
 }
 
+function setSensorReportRate(rateMillis)
+{
+	ws.send("{\"Cmd\":\"SetSensor\", \"SubCmd\":\"RepRate\",\"Val\":" + rateMillis + "}");
+}
+
 function reqPageStats()
 {
-	ws.send("{\"Cmd\":\"ReqStats\"}");
+	ws.send("{\"Cmd\":\"SetSensor\"}");
 }
 
 function downloadConfig(fileSelect) //get files from Stick and store to file
@@ -111,27 +117,34 @@ function showMenueTabs(thisConfigData)
 	{
 		var isVisible = false;
 		var tabElement = document.getElementById(scriptList.Pages[i].ID);
+		
 		if ((scriptList.Pages[i].ProdSel.indexOf(-1) >= 0) || (scriptList.Pages[i].CommSel.indexOf(-1) >= 0))
 		{
 			isVisible = true;
+//			console.log(1);
 		}
 		var thisId = parseInt(thisConfigData.HatTypeList[thisConfigData.HatIndex].HatId);
 		if (scriptList.Pages[i].ProdSel.indexOf(thisId) >= 0)
 		{
 			isVisible = true;
+//			console.log(thisConfigData.HatIndex, thisConfigData.HatTypeList[thisConfigData.HatIndex].HatId, 2, thisId);
 		}
 		thisId = parseInt(thisConfigData.InterfaceTypeList[thisConfigData.InterfaceIndex].IntfId);
 		if (scriptList.Pages[i].CommSel.indexOf(thisId) >= 0)
 		{
 			isVisible = true;
+//			console.log(3);
 		}
 		for (var j=0; j < thisConfigData.ALMIndex.length; j++)
 			if (scriptList.Pages[i].ALMSel.indexOf(thisConfigData.ALMIndex[j]) >= 0)
 		{
 			isVisible = true;
+//			console.log(4);
 		}
-
+//		if (isVisible)
+//			console.log(tabElement);
 		setVisibility(isVisible, tabElement);
+
 	}
 }
 
@@ -426,6 +439,17 @@ function loadInitData()
 		}
 }
 
+function writeDiskFile(newBlob, fileName)
+{
+	var a = document.createElement("a");
+	a.href = URL.createObjectURL(newBlob);
+	a.setAttribute("download", fileName);
+	a.style.display = 'none';
+	document.body.appendChild(a);
+	a.click();
+	document.body.removeChild(a);	
+}
+
 function startWebsockets()
 {
 	ws = new WebSocket(serverIP);
@@ -464,6 +488,10 @@ function startWebsockets()
 //			console.log(JSON.stringify(myArr.Data));
 			processStatsData(myArr.Data);
 		}
+  		if ((myArr.Cmd == "SensorData") && (scriptList.Pages[currentPage].ID == "pgPrplHatCfg"))
+			processSensorInput(myArr.Data);
+  		if ((myArr.Cmd == "SpeedTableData") && (scriptList.Pages[currentPage].ID == "pgPrplHatCfg"))
+			processSpeedTableInput(myArr.Data);
   		if ((myArr.Cmd == "HWBtn") && (scriptList.Pages[currentPage].ID == "pgHWBtnCfg"))
 			processLocoNetInput(myArr.Data);
   		if ((myArr.Cmd == "HWBtn") && (scriptList.Pages[currentPage].ID == "pgThrottleCfg"))
