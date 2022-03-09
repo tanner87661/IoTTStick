@@ -18,7 +18,7 @@
  */
 #include <Arduino.h>
 #include "CommandDistributor.h"
-#include "WiThrottle.h"
+//#include "WiThrottle.h"
 
 DCCEXParser * CommandDistributor::parser=0; 
 
@@ -27,5 +27,5 @@ void  CommandDistributor::parse(byte clientId,byte * buffer, RingStream * stream
     if (!parser) parser = new DCCEXParser();
     parser->parse(streamer, buffer, streamer); 
   }
-  else WiThrottle::getThrottle(clientId)->parse(streamer, buffer);
+//  else WiThrottle::getThrottle(clientId)->parse(streamer, buffer);
 }

@@ -20,29 +20,30 @@
 #define Sensor_h
 
 #include "Arduino.h"
+#include <Math.h>
+#include "DIAG.h"
 
 #define  SENSOR_DECAY  0.03
 
-struct SensorData {
-  int snum;
-  uint8_t pin;
-  uint8_t pullUp;
-};
+#define PortBank1 A2
+#define PortBank2 A7
 
-struct Sensor{
-  static Sensor *firstSensor;
-  static Sensor *readingSensor;
-  SensorData data;
-  boolean active;
-  byte latchdelay;
-  Sensor *nextSensor;
-  static void load();
-  static void store();
-  static Sensor *create(int, int, int);
-  static Sensor* get(int);  
-  static bool remove(int);  
-  static void checkAll(Print *);
-  static void printAll(Print *);
+
+class  Sensor
+{
+  public:
+    void begin();
+    void setEnable(bool newStatus);
+    void checkAll(Print *stream);
+    void printAll(Print *stream);
+  private:
+    uint32_t outStatus;
+    uint32_t inpStatusABCD;
+    uint32_t verifyStatus;
+    uint8_t currentSensor = 0;
+    byte latchdelay;
+    bool isActive = false;
 }; // Sensor
+
 
 #endif

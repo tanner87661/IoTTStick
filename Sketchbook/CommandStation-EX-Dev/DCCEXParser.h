@@ -16,11 +16,16 @@
  *  You should have received a copy of the GNU General Public License
  *  along with CommandStation.  If not, see <https://www.gnu.org/licenses/>.
  */
+ 
 #ifndef DCCEXParser_h
 #define DCCEXParser_h
 #include <Arduino.h>
 #include "FSH.h"
 #include "RingStream.h"
+#include "RHBoardManager.h"
+#include "Outputs.h"
+
+extern BoardManager * thisBoard;
 
 typedef void (*FILTER_CALLBACK)(Print * stream, byte & opcode, byte & paramCount, int16_t p[]);
 typedef void (*AT_COMMAND_CALLBACK)(const byte * command);
@@ -28,6 +33,7 @@ typedef void (*AT_COMMAND_CALLBACK)(const byte * command);
 struct DCCEXParser
 {
    DCCEXParser();
+   void setLinks(BoardManager * myBoard);
    void loop(Stream & stream);
    void parse(Print * stream,  byte * command,  RingStream * ringStream);
    void parse(const FSH * cmd);
@@ -38,6 +44,8 @@ struct DCCEXParser
    static const int MAX_COMMAND_PARAMS=10;  // Must not exceed this
  
    private:
+
+    BoardManager * boardMgr = NULL;
   
     static const int16_t MAX_BUFFER=50;  // longest command sent in
      byte  bufferLength=0;

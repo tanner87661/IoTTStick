@@ -100,14 +100,14 @@ void  Output::activate(int s){
 
 ///////////////////////////////////////////////////////////////////////////////
 
-Output* Output::get(uint16_t n){
+Output* Output::get(int n){
   Output *tt;
   for(tt=firstOutput;tt!=NULL && tt->data.id!=n;tt=tt->nextOutput);
   return(tt);
 }
 ///////////////////////////////////////////////////////////////////////////////
 
-bool Output::remove(uint16_t n){
+bool Output::remove(int n){
   Output *tt,*pp=NULL;
 
   for(tt=firstOutput;tt!=NULL && tt->data.id!=n;pp=tt,tt=tt->nextOutput);
@@ -127,56 +127,28 @@ bool Output::remove(uint16_t n){
 ///////////////////////////////////////////////////////////////////////////////
 
 void Output::load(){
-  struct BrokenOutputData bdata;
+  struct OutputData data;
   Output *tt;
-  bool isBroken=1;
-
-  // This is a scary kluge. As we have two formats in EEPROM due to an
-  // earlier bug, we don't know which we encounter now. So we guess
-  // that if in all entries this byte has value of 7 or lower this is
-  // an iFlag and thus the broken format. Otherwise it would be a pin
-  // id. If someone uses only pins 0 to 7 of their arduino, they
-  // loose. This is (if you look at an arduino) however unlikely.
-
-  for(uint16_t i=0;i<EEStore::eeStore->data.nOutputs;i++){
-    EEPROM.get(EEStore::pointer()+ i*sizeof(struct BrokenOutputData),bdata);
-    if (bdata.iFlag > 7) { // it's a pin and not an iFlag!
-      isBroken=0;
-      break;
-    }
+/*
+  for(int i=0;i<EEStore::eeStore->data.nOutputs;i++){
+    EEPROM.get(EEStore::pointer(),data);
+    tt=create(data.id,data.pin,data.iFlag);
+    tt->data.oStatus=bitRead(tt->data.iFlag,1)?bitRead(tt->data.iFlag,2):data.oStatus;      // restore status to EEPROM value is bit 1 of iFlag=0, otherwise set to value of bit 2 of iFlag
+    digitalWrite(tt->data.pin,tt->data.oStatus ^ bitRead(tt->data.iFlag,0));
+    pinMode(tt->data.pin,OUTPUT);
+    tt->num=EEStore::pointer();
+    EEStore::advance(sizeof(tt->data));
   }
-  if ( isBroken ) {
-    for(uint16_t i=0;i<EEStore::eeStore->data.nOutputs;i++){
-      EEPROM.get(EEStore::pointer(),bdata);
-      tt=create(bdata.id,bdata.pin,bdata.iFlag);
-      tt->data.oStatus=bitRead(tt->data.iFlag,1)?bitRead(tt->data.iFlag,2):bdata.oStatus;      // restore status to EEPROM value is bit 1 of iFlag=0, otherwise set to value of bit 2 of iFlag
-      digitalWrite(tt->data.pin,tt->data.oStatus ^ bitRead(tt->data.iFlag,0));
-      pinMode(tt->data.pin,OUTPUT);
-      tt->num=EEStore::pointer();
-      EEStore::advance(sizeof(struct BrokenOutputData));
-    }
-  } else {
-    struct OutputData data;
-
-    for(uint16_t i=0;i<EEStore::eeStore->data.nOutputs;i++){
-      EEPROM.get(EEStore::pointer(),data);
-      tt=create(data.id,data.pin,data.iFlag);
-      tt->data.oStatus=bitRead(tt->data.iFlag,1)?bitRead(tt->data.iFlag,2):data.oStatus;      // restore status to EEPROM value is bit 1 of iFlag=0, otherwise set to value of bit 2 of iFlag
-      digitalWrite(tt->data.pin,tt->data.oStatus ^ bitRead(tt->data.iFlag,0));
-      pinMode(tt->data.pin,OUTPUT);
-      tt->num=EEStore::pointer();
-      EEStore::advance(sizeof(struct OutputData));
-    }
-  }
+*/
 }
 
 ///////////////////////////////////////////////////////////////////////////////
 
 void Output::store(){
   Output *tt;
-
+/*
   tt=firstOutput;
-  EEStore::eeStore->data.nOutputs=0;
+//  EEStore::eeStore->data.nOutputs=0;
 
   while(tt!=NULL){
     tt->num=EEStore::pointer();
@@ -185,13 +157,13 @@ void Output::store(){
     tt=tt->nextOutput;
     EEStore::eeStore->data.nOutputs++;
   }
-
+*/
 }
 ///////////////////////////////////////////////////////////////////////////////
 
-Output *Output::create(uint16_t id, uint8_t pin, uint8_t iFlag, uint8_t v){
+Output *Output::create(int id, int pin, int iFlag, int v){
   Output *tt;
-
+/*
   if(firstOutput==NULL){
     firstOutput=(Output *)calloc(1,sizeof(Output));
     tt=firstOutput;
@@ -217,7 +189,7 @@ Output *Output::create(uint16_t id, uint8_t pin, uint8_t iFlag, uint8_t v){
   }
 
   return(tt);
-
+*/
 }
 
 ///////////////////////////////////////////////////////////////////////////////

@@ -4,7 +4,7 @@
  *  
  *  This file is part of Asbelos DCC API
  *
- *  This is free software: you can redistribute it and/or modify
+ *  This is free softwaresensor: you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
  *  the Free Software Foundation, either version 3 of the License, or
  *  (at your option) any later version.
@@ -52,9 +52,9 @@ void DCC::begin(const FSH * motorShieldName, MotorDriver * mainDriver, MotorDriv
   shieldName=(FSH *)motorShieldName;
   StringFormatter::send(Serial,F("<iDCC-EX V-%S / %S / %S G-%S>\n"), F(VERSION), F(ARDUINO_TYPE), shieldName, F(GITHUB_SHA));
 
-  // Load stuff from EEprom
-  (void)EEPROM; // tell compiler not to warn this is unused
-  EEStore::init();
+//  // Load stuff from EEprom
+//  (void)EEPROM; // tell compiler not to warn this is unused
+//  EEStore::init();
 
   DCCWaveform::begin(mainDriver,progDriver); 
 }
@@ -904,10 +904,6 @@ void DCC::callback(int value) {
 
     switch (callbackState) {    
        case AFTER_WRITE:  // first attempt to callback after a write operation
-	    if (!ackManagerRejoin && !DCCWaveform::progTrack.autoPowerOff) {
-               callbackState=READY;
-               break;
-            }                              // lines 906-910 added. avoid wait after write. use 1 PROG
             callbackStart=millis();
             callbackState=WAITING_100;
             if (Diag::ACK) DIAG(F("Stable 100mS"));

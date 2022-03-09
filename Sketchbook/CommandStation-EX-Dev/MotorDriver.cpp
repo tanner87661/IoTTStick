@@ -53,7 +53,7 @@ MotorDriver::MotorDriver(byte power_pin, byte signal_pin, byte signal_pin2, int8
     brakePin=invertBrake ? 0-brake_pin : brake_pin;
     getFastPin(F("BRAKE"),brakePin,fastBrakePin);
     pinMode(brakePin, OUTPUT);
-    (false);
+    setBrake(false);
   }
   else brakePin=UNUSED_PIN;
   
@@ -110,34 +110,20 @@ void MotorDriver::setBrake(bool on) {
   else setLOW(fastBrakePin);
 }
 
-void MotorDriver::setSignal(SIG_STATE sigLevel) 
-{
-  if (usePWM) 
-  {
-    if (sigLevel == SIG_LOW)
-      DCCTimer::setPWM(signalPin,LOW);
-    else
-      DCCTimer::setPWM(signalPin,HIGH);
-  }
-  else 
-  {
-    if (sigLevel == SIG_SHORT) 
-    {
-      if (dualSignal) setHIGH(fastSignalPin2);
-      setHIGH(fastSignalPin);
-    }
-    else 
-      if (sigLevel == SIG_HIGH) 
-      {
-        if (dualSignal) setLOW(fastSignalPin2);
+void MotorDriver::setSignal( bool high) {
+   if (usePWM) {
+    DCCTimer::setPWM(signalPin,high);
+   }
+   else {
+     if (high) {
         setHIGH(fastSignalPin);
-      }
-      else 
-      {
-        if (dualSignal) setHIGH(fastSignalPin2);
+        if (dualSignal) setLOW(fastSignalPin2);
+     }
+     else {
         setLOW(fastSignalPin);
-      }
-  }
+        if (dualSignal) setHIGH(fastSignalPin2);
+     }
+   }
 }
 
 #if defined(ARDUINO_TEENSY32) || defined(ARDUINO_TEENSY35)|| defined(ARDUINO_TEENSY36)

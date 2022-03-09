@@ -58,6 +58,7 @@ public:
 	uint16_t lnWriteMsg(lnReceiveBuffer txData);
 	void setLNCallback(cbFct newCB);
 	void loadLBServerCfgJSON(DynamicJsonDocument doc);
+	String getServerIP();
   
 private:
    // Member functions

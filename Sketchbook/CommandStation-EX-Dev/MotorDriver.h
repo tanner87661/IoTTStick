@@ -26,8 +26,6 @@
 #define UNUSED_PIN 127 // inside int8_t
 #endif
 
-enum  SIG_STATE : byte {SIG_LOW=0, SIG_HIGH=1, SIG_SHORT=2};
-
 #if defined(__IMXRT1062__)
 struct FASTPIN {
   volatile uint32_t *inout;
@@ -47,7 +45,7 @@ class MotorDriver {
     MotorDriver(byte power_pin, byte signal_pin, byte signal_pin2, int8_t brake_pin, 
                 byte current_pin, float senseFactor, unsigned int tripMilliamps, byte faultPin);
     virtual void setPower( bool on);
-    virtual void setSignal(SIG_STATE sigLevel);
+    virtual void setSignal( bool high);
     virtual void setBrake( bool on);
     virtual int  getCurrentRaw();
     virtual unsigned int raw2mA( int raw);

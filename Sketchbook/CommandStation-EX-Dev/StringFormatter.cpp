@@ -27,7 +27,7 @@
   Print * StringFormatter::diagSerial=&Serial;
 #endif
 
-#include "LCDDisplay.h"
+//#include "LCDDisplay.h"
 
 bool Diag::ACK=false;
 bool Diag::CMD=false;
@@ -46,6 +46,7 @@ void StringFormatter::diag( const FSH* input...) {
   diagSerial->print(F(" *>\n"));
 }
 
+/*
 void StringFormatter::lcd(byte row, const FSH* input...) {
   va_list args;
 
@@ -60,6 +61,7 @@ void StringFormatter::lcd(byte row, const FSH* input...) {
   va_start(args, input);
   send2(LCDDisplay::lcdDisplay,input,args);
 }
+*/
 
 void StringFormatter::send(Print * stream, const FSH* input...) {
   va_list args;

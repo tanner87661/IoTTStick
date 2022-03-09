@@ -6,6 +6,8 @@
 #include "Nickel4020.c"
 
 uint8_t screenDef = 1; //0 for Stick; 1 for Stick C Plus
+uint8_t lineY_0[] = {3,18,33,48,63};
+uint8_t lineY_1[] = {3,15,27,39,51,63};
 
 uint16_t getXCoord(uint16_t ofValue)
 {
@@ -27,6 +29,7 @@ uint16_t getYCoord(uint16_t ofValue)
 
 #define pwrOffTimeout 30000
 #define pwrDispInterval 2000
+#define speedDispInterval 500
 
 #define dccStrLen 45
 
@@ -89,9 +92,9 @@ void processDisplay()
   else
     if ((pwrOffTimer + pwrOffTimeout) < millis()) //power off after timeout without power. Device will come on automatically when power is back
     {
-      if (useHat.devId == 5) //BlackHat, do not power down
+      if ((useHat.devId == 5) || (useHat.devId == 7))//BlackHat or PurpleHat, do not power down
       {
-        if (!darkScreen)
+        if ((useHat.devId == 5) && (!darkScreen)) //darkScreen only for BlackHat
         {
           M5.Axp.ScreenBreath(7);//7-15
           darkScreen = true;
@@ -141,6 +144,14 @@ void processDisplay()
       pwrDispTimer = millis() + pwrDispInterval;
     }
   }
+  if ((m5CurrentPage == 6) && (useHat.devId == 7))
+  {
+    if (millis() > pwrDispTimer)
+    {
+      sensorViewerPage(); 
+      pwrDispTimer = millis() + speedDispInterval;
+    }
+  }
   if(M5.BtnA.wasPressed()) //the big one
   {
 //    Serial.println("Button A");
@@ -155,7 +166,7 @@ void processDisplay()
       {
       if (m5CurrentPage != 5)
         useM5Viewer = 0;
-      if (m5CurrentPage == 6)
+      if (m5CurrentPage == 7)
         m5CurrentPage = 3;
       else
         m5CurrentPage++;
@@ -184,6 +195,15 @@ void processDisplay()
         setPwrStatusPage();
         break;
       case 6:
+        if (useHat.devId == 7)
+        {
+          pwrDispTimer = millis() + speedDispInterval;
+          sensorViewerPage();
+          break;
+        } //else go to 7
+        else
+          m5CurrentPage = 7;
+      case 7:
 //        Serial.println(useInterface.devId);
         switch (useInterface.devId)
         {
@@ -217,7 +237,11 @@ void processDisplay()
     pwrOffTimer = millis();
     switch (m5CurrentPage)
     {
-      case 6: //DCC Viewer active, toggle status
+      case 6:
+         if ((useHat.devId == 7) && trainSensor)
+          trainSensor->resetDistance();
+
+      case 7: //DCC Viewer active, toggle status
         if (useM5Viewer == 2) //DCC, so toggle mode
         {
 //          Serial.println("Switch Mode");
@@ -249,6 +273,7 @@ void processDisplay()
   
   if(pwrBtn) 
   {
+//    Serial.printf("Power Button %i\n", pwrBtn);
     pwrOffTimer = millis();
     if (pwrBtn == 1) //long press
       prepareShutDown(); //could be on the way to power off, so we save the data to SPIFFS
@@ -386,6 +411,7 @@ void setWifiConnectPage()
 
 void setWifiPage(int wifiCfgMode)
 {
+  uint8_t * lineY = screenDef == 0 ? &lineY_0[0] : &lineY_1[0];
   char outText[50];
   M5.Lcd.fillScreen(TFT_LIGHTGREY);
   M5.Lcd.setTextColor(TFT_BLACK, TFT_LIGHTGREY);
@@ -398,25 +424,28 @@ void setWifiPage(int wifiCfgMode)
       drawLogo(210, 105, 0);
       break;
   }
-
   switch (wifiCfgMode)
   {
     case 1:
     {
-      drawText("Wifi LAN connected", 5, 3, 2);
+      sprintf(outText, "IoTT Stick: %s", deviceName.c_str());
+      drawText(outText, 5, lineY[0], 2);
+      drawText("Wifi LAN connected", 5, lineY[1], 2);
+      sprintf(outText, "AP: %s", WiFi.SSID().c_str());
+      drawText(outText, 5, lineY[2], 2);
       sprintf(outText, "IP: %s", WiFi.localIP().toString().c_str());
-      drawText(outText, 5, 18, 2);
+      drawText(outText, 5, lineY[3], 2);
       break;
     }
     case 2:
     {
-      drawText("Local AP active", 5, 3, 2);
+      drawText("Local AP active", 5, lineY[0], 2);
       sprintf(outText, "AP: %s", deviceName.c_str());
-      drawText(outText, 5, 18, 2);
+      drawText(outText, 5, lineY[1], 2);
       sprintf(outText, "Password: %s", apPassword.c_str());
-      drawText(outText, 5, 33, 2);
+      drawText(outText, 5, lineY[2], 2);
       sprintf(outText, "IP: %s", WiFi.softAPIP().toString().c_str());
-      drawText(outText, 5, 48, 2);
+      drawText(outText, 5, lineY[3], 2);
       break;
     }
   }
@@ -424,6 +453,7 @@ void setWifiPage(int wifiCfgMode)
 
 void setNoWifiPage()
 {
+  uint8_t * lineY = screenDef == 0 ? &lineY_0[0] : &lineY_1[0];
   M5.Lcd.fillScreen(TFT_LIGHTGREY);
   M5.Lcd.setTextColor(TFT_BLACK, TFT_LIGHTGREY);
   switch (screenDef)
@@ -435,7 +465,7 @@ void setNoWifiPage()
       drawLogo(80, 25, 1); //80x80
       break;
   }
-  drawText("Wifi LAN disconnected", 5, 3, 2);
+  drawText("Wifi LAN disconnected", 5, lineY[0], 2);
   drawText("Click here to connect", 5, 63, 2);
 }
 
@@ -444,8 +474,10 @@ void setNoWifiPage()
 
 void setStatusPage()
 {
+  uint8_t * lineY = screenDef == 0 ? &lineY_0[0] : &lineY_1[0];
   M5.Lcd.fillScreen(TFT_LIGHTGREY);
   M5.Lcd.setTextColor(TFT_BLACK, TFT_LIGHTGREY);
+//  M5.Lcd.setTextSize(1);
   switch (screenDef)
   {
     case 0: 
@@ -457,41 +489,49 @@ void setStatusPage()
   }
   switch (useHat.devId)
   {
-    case 0: drawText("Hat: None", 5, 3, 2); break;
-    case 1: drawText("Hat: BlueHat", 5, 3, 2); break;
-    case 2: drawText("Hat: USB Serial", 5, 3, 2); break;
-    case 3: drawText("Hat: YellowHat", 5, 3, 2); break;
-    case 4: drawText("Hat: GreenHat", 5, 3, 2); break;
-    case 5: drawText("Hat: BlackHat", 5, 3, 2); break;
-    case 6: drawText("Hat: RedHat++", 5, 3, 2); break;
-    default: drawText("Hat: unknown", 5, 3, 2); break;
+    case 0: drawText("Hat: None", 5, lineY[0], 2); break;
+    case 1: drawText("Hat: BlueHat", 5, lineY[0], 2); break;
+    case 2: drawText("Hat: USB Serial", 5, lineY[0], 2); break;
+    case 3: drawText("Hat: YellowHat", 5, lineY[0], 2); break;
+    case 4: drawText("Hat: GreenHat", 5, lineY[0], 2); break;
+    case 5: drawText("Hat: BlackHat", 5, lineY[0], 2); break;
+    case 6: drawText("Hat: RedHat++", 5, lineY[0], 2); break;
+    case 7: drawText("Hat: PurpleHat", 5, lineY[0], 2); break;
+    default: drawText("Hat: unknown", 5, lineY[0], 2); break;
   }
   switch (useInterface.devId)
   {
-    case 0: drawText("No Interface", 5, 18, 2); break;
-    case 1: drawText("using DCC", 5, 18, 2); break;
-    case 2: drawText("using LocoNet", 5, 18, 2); break;
-    case 3: drawText("using LN over MQTT", 5, 18, 2); break;
-    case 4: drawText("using LocoNet", 5, 18, 2); break; //LN Gateway
-    case 5: drawText("using OpenLCB", 5, 18, 2); break; 
-    case 6: drawText("using OpenLCB over MQTT", 5, 18, 2); break; //OpenLCB 
-    case 7: drawText("using OpenLCB", 5, 18, 2); break; //OpenLCB 
-    case 8: drawText("using MQTT", 5, 18, 2); break; //native MQTT 
-    case 9: drawText("using DCC to MQTT", 5, 18, 2); break;
-    case 10: drawText("using DCC from MQTT", 5, 18, 2); break;
-    case 11: drawText("using LN/TCP(Server)", 5, 18, 2); break;
-    case 12: drawText("using LN/TCP(Client)", 5, 18, 2); break;
-    case 13: drawText("using LN/MQTT/TCP(Server)", 5, 18, 2); break;
-    case 14: drawText("using LN Loopback/TCP(Server)", 5, 18, 2); break;
-    case 15: drawText("using LN-LB/MQTT/TCP(Server)", 5, 18, 2); break;
-    case 16: drawText("using LN Loopback", 5, 18, 2); break;
-    default: drawText("unknown", 5, 18, 2); break;
+    case 0: drawText("No Interface", 5, lineY[1], 2); break;
+    case 1: drawText("using DCC", 5, lineY[1], 2); break;
+    case 2: drawText("using LocoNet", 5, lineY[1], 2); break;
+    case 3: drawText("using LN over MQTT", 5, lineY[1], 2); break;
+    case 4: drawText("using LocoNet", 5, lineY[1], 2); break; //LN Gateway
+    case 5: drawText("using OpenLCB", 5, lineY[1], 2); break; 
+    case 6: drawText("using OpenLCB over MQTT", 5, lineY[1], 2); break; //OpenLCB 
+    case 7: drawText("using OpenLCB", 5, lineY[1], 2); break; //OpenLCB 
+    case 8: drawText("using MQTT", 5, lineY[1], 2); break; //native MQTT 
+    case 9: drawText("using DCC to MQTT", 5, lineY[1], 2); break;
+    case 10: drawText("using DCC from MQTT", 5, lineY[1], 2); break;
+    case 11: drawText("using LN/TCP(Server)", 5, lineY[1], 2); break;
+    case 12: 
+    {
+      char outText[50];
+//      String outStr = lbServer->getServerIP();
+//      Serial.println(outStr);
+      sprintf(outText, "using LN/TCP(Client)");// %s", outStr[);
+      drawText(outText, 5, lineY[1], 2); break;
+    }
+    case 13: drawText("using LN/MQTT/TCP(Server)", 5, lineY[1], 2); break;
+    case 14: drawText("using LN Loopback/TCP(Server)", 5, lineY[1], 2); break;
+    case 15: drawText("using LN-LB/MQTT/TCP(Server)", 5, lineY[1], 2); break;
+    case 16: drawText("using LN Loopback", 5, lineY[1], 2); break;
+    default: drawText("unknown", 5, lineY[1], 2); break;
   }
   if ((useInterface.devId == 4) || (useInterface.devId == 7))
-    drawText("Gateway: active", 5, 33, 2);
+    drawText("Gateway: active", 5, lineY[2], 2);
   else
-    drawText("Gateway: not used", 5, 33, 2);
-  drawText("Modules:", 5, 48, 2);
+    drawText("Gateway: not used", 5, lineY[2], 2);
+  drawText("Modules:", 5, lineY[3], 2);
   String modList = "[";
   if (eventHandler)
     modList += "Evnt Hdlr";
@@ -518,7 +558,7 @@ if (secElHandlerList)
 //    modList += "Sensor Chain";
 //  }
   modList += "]";
-  drawText(&modList[0], 5, 63, 2); 
+  drawText(&modList[0], 5, lineY[4], 2); 
 }
 
 void setPwrStatusPage()
@@ -637,6 +677,53 @@ void mqttViewerPage()
   drawText("Click here to toggle", 5, 63, 2);
   m5DispLine = 0;
   useM5Viewer = 4;
+}
+
+void sensorViewerPage()
+{
+  uint8_t * lineY = screenDef == 0 ? &lineY_0[0] : &lineY_1[0];
+  if (trainSensor)
+  {
+    sensorData currData = trainSensor->getSensorData();
+    char outText[50];
+    M5.Lcd.fillScreen(TFT_LIGHTGREY);
+    M5.Lcd.setTextColor(TFT_BLACK, TFT_LIGHTGREY);
+    switch (screenDef)
+    {
+      case 0: //Stick C
+        drawLogo(140, 0, 0);
+        break;
+      case 1: //Stick C Plus
+        drawLogo(210, 0, 0);
+        break;
+    }
+    sprintf(outText, "%s Speed %.2f [mm/s]", currData.currDirFwd ? "Forward" : "Backward", abs(currData.currSpeedTech));
+    drawText(outText, 5, lineY[0], 2);
+    float_t scaleSpeed = (abs(currData.currSpeedTech)  * 36 * currData.modScale) / 10000; //[km/h]
+    if (currData.dispDim == 1)
+      scaleSpeed /= 1.6; //mph
+    sprintf(outText, "%s Scale Speed %.2f [%s]", currData.scaleName, scaleSpeed, currData.dispDim == 1 ? "mph" : "km/h");
+    M5.Lcd.setTextColor(TFT_BLUE, TFT_LIGHTGREY);
+    drawText(outText, 5, lineY[1], 2);
+    sprintf(outText, "Track Radius %.2f %s %s ", currData.dispDim == 1 ? abs(currData.currRadiusTech/25.4) : abs(currData.currRadiusTech), currData.dispDim == 1 ? "in" : "mm", currData.currRadiusTech == 0 ? "straight" : currData.currRadiusTech > 0 ? "right" : "left");
+    M5.Lcd.setTextColor(TFT_BLACK, TFT_LIGHTGREY);
+    drawText(outText, 5, lineY[2], 2);
+    sprintf(outText, "Dist [%s] Abs. %.2f Rel. %.2f", currData.dispDim == 1 ? "in" : "cm", currData.dispDim == 1 ? currData.absIntegrator/25.4 : currData.absIntegrator/10, currData.dispDim == 1 ? currData.relIntegrator/25.4 : currData.relIntegrator/10);
+    drawText(outText, 5, lineY[3], 2);
+    sprintf(outText, "Hd.: %.0f Gr.[%s] %.1f S.El. [%s] %.1f", 180*currData.eulerVectorRad[0]/PI, "%", 180*currData.eulerVectorRad[1]/PI, "%", 180*currData.eulerVectorRad[2]/PI );
+    drawText(outText, 5, lineY[4], 2);
+
+    if (screenDef == 1)
+    {
+      sprintf(outText, "Wheel Angle %.2f [deg]", currData.axisAngle);
+      drawText(outText, 5, lineY[5], 2);
+    }
+  }
+  else
+  {
+    drawText("Sensor not initialized", 5, lineY[0], 2);
+    drawText("Check IoTT Stick configuration", 5, lineY[1], 2);
+  }
 }
 
 String getLNString(lnReceiveBuffer * newData)

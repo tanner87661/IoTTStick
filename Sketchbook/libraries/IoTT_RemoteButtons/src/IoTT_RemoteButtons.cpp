@@ -40,9 +40,14 @@ IoTT_Mux64Buttons::~IoTT_Mux64Buttons()
 //    vSemaphoreDelete(buttonBaton);
 }
 
-void IoTT_Mux64Buttons::initButtonsDirect(bool useWifi)
+void IoTT_Mux64Buttons::initButtonsDirect(bool pollBtns) //default false
 {
 	btnUpdateTimer = millis(); // + btnUpdateInterval;
+	if (pollBtns) //if not set, processButtons does not read port data, buttons receive events from external source, eg DigitraxBuffers
+		sourceMode = 2; //Poll Mode
+	else
+		sourceMode = 0; //MUX or Direct Mode
+	
 }
 
 void IoTT_Mux64Buttons::initButtonsI2C(TwoWire * newWire, uint8_t Addr, uint8_t * analogPins, bool useWifi)
@@ -52,6 +57,7 @@ void IoTT_Mux64Buttons::initButtonsI2C(TwoWire * newWire, uint8_t Addr, uint8_t 
 	wireAddr = Addr; //
 	if (analogPins != NULL)
 	{
+		sourceMode = 0;
 		analogPin = analogPins[0];
 		pinMode(analogPin, INPUT_PULLUP);
 		numTouchButtons = 16 * analogPins[1]; //byte 1 has number of MUX's served by the 328P at the other end of the wire. byte 0 has the pin number where the signal shows up
@@ -60,7 +66,7 @@ void IoTT_Mux64Buttons::initButtonsI2C(TwoWire * newWire, uint8_t Addr, uint8_t 
 	{
 		Serial.printf("Init Buttons for GreenHat Addr %i\n", Addr);
 		numTouchButtons = 32;
-		extMode = true;
+		sourceMode = 1;
 		uint8_t regData[3] = {MCP23017_IODIRA, 0xFF, 0xFF};
 		writeI2CData(MCP23017_ADDRESS + Addr, &regData[0], 3);  //set to input both ports
 		writeI2CData(MCP23017_ADDRESS + Addr+1, &regData[0], 3);  
@@ -352,10 +358,21 @@ void IoTT_Mux64Buttons::processDigitalHold(uint8_t btnNr) //call onButtonHold fu
   }
 }
 
+void IoTT_Mux64Buttons::processDigitalInputBuffer(uint8_t btnNr, bool btnPressed)
+{
+	uint32_t inpMask = 0x00000001 << btnNr;
+	if (btnPressed)
+		pollBuffer |= inpMask;
+	else
+		pollBuffer &= (~inpMask);
+}
+
 void IoTT_Mux64Buttons::processDigitalButton(uint8_t btnNr, bool btnPressed)
 {
 //  if (btnNr == 2) Serial.println(btnPressed);
   IoTT_ButtonConfig * thisTouchData = &touchArray[btnNr];
+  if (!thisTouchData)
+	Serial.printf("No button # %i found\n", btnNr);
   if (btnPressed != thisTouchData->btnStatus)
   {
 	thisTouchData->lastEvtPtr++;
@@ -450,68 +467,88 @@ void IoTT_Mux64Buttons::processButtons()
 	uint16_t thisAnalogAvg;
 	double_t randVal = random(-50, 50) / 1000;
 
-	if (!thisWire)
-	  pinMode(0, INPUT); //this is a workaround for the moment. Somewhere the settings for pin 0 are accidently changed, leading to constant reading of 1
-						 //remove when problem is fixed	
 
 	if (millisElapsed(btnUpdateTimer) > btnUpdateInterval)
 	{
 		btnUpdateTimer = millis();
-		if (extMode)
+		switch (sourceMode)
 		{
-			uint16_t portData = 0;
-			uint8_t bitData[4] = {0,0,0,0}; //0,2: Btn; 1,3: Pos 
-			portData = readEXTPort(MCP23017_ADDRESS + wireAddr); //channels 9-16
-			bitData[2] = (portData & 0xFF00) >> 8;
-			bitData[3] = mirrorByte(portData & 0x00FF);
-			portData = readEXTPort(MCP23017_ADDRESS + wireAddr + 1); //channels 1-8
-			bitData[0] = (portData & 0xFF00) >> 8;
-			bitData[1] = mirrorByte(portData & 0x00FF);
-//			Serial.printf("A Btn: %2X A Pos: %2X B Btn: %2X B Pos: %2X \n", bitData[0], bitData[1], bitData[2], bitData[3]);
-			for (uint8_t btnCtr = 0; btnCtr < numTouchButtons; btnCtr++)
+			case 0: //MUX or Direct GPIO
 			{
-				uint8_t byteNr = ((btnCtr & 0x10)>>3) + (btnCtr & 1);
-				uint8_t bitNr = ((btnCtr>>1) & 0x07);
-//				Serial.printf("Btn: %i Byte: %i Bit: %i Result: %i\n", btnCtr, byteNr, bitNr, !(bitData[byteNr] & (0x01 << bitNr)));
-				processDigitalButton(btnCtr, !(bitData[byteNr] & (0x01 << bitNr)));
-			}
-		}
-		else
-			for (uint8_t btnCtr = 0; btnCtr < numTouchButtons; btnCtr++)
-			{
-				thisTouchData = &touchArray[btnCtr];
-				int lineNr = btnCtr & 0x0F; //btnCtr % 16;
-				int portNr = 0x01 << (btnCtr >> 4); //0x01 << trunc(btnCtr/16);
-	
-				if (thisWire)
-					hlpAnalog = readMUXButton(lineNr, portNr);
-				else
-					if (thisTouchData->btnTypeDetected == analog)
-						hlpAnalog = analogRead(thisTouchData->gpioPin);
-					else
-						hlpAnalog = 4095 * digitalRead(thisTouchData->gpioPin);
-//				if (btnCtr == 0)
-//					Serial.printf("Ctr %i Line %i Value %i\n", btnCtr, thisTouchData->gpioPin, hlpAnalog);
-				thisAnalogAvg = round(thisTouchData->analogAvg.getEstimate((double_t) hlpAnalog + randVal)); //artifial flickering to avoid filter lockup
-
-				if (thisTouchData->btnTypeDetected != btnoff)
+				if (!thisWire) //currently YellowHat and BlackHat
 				{
-					if (thisTouchData->btnTypeDetected == analog)
-					{
-						if ((thisAnalogAvg >= 0) && (thisAnalogAvg <= analogMaxVal))
-							sendAnalogData(btnCtr, thisAnalogAvg);
-					}
-					else if (thisAnalogAvg <= digitalLoMax)
-					{
-						processDigitalButton(btnCtr, true);
-					}
-					else if (thisAnalogAvg >= digitalHiMin)
-					{
-						processDigitalButton(btnCtr, false);
-					}
+					pinMode(0, INPUT); //this is a workaround for the moment. Somewhere the settings for pin 0 are accidently changed, leading to constant reading of 1
+										//remove when problem is fixed	
+//					Serial.println("Btn fix");
 				}
+				for (uint8_t btnCtr = 0; btnCtr < numTouchButtons; btnCtr++)
+				{
+					thisTouchData = &touchArray[btnCtr];
+					int lineNr = btnCtr & 0x0F; //btnCtr % 16;
+					int portNr = 0x01 << (btnCtr >> 4); //0x01 << trunc(btnCtr/16);
+	
+					if (thisWire)
+						hlpAnalog = readMUXButton(lineNr, portNr);
+					else
+						if (thisTouchData->btnTypeDetected == analog)
+							hlpAnalog = analogRead(thisTouchData->gpioPin);
+						else
+							hlpAnalog = 4095 * digitalRead(thisTouchData->gpioPin);
+//					if (btnCtr == 0)
+//						Serial.printf("Ctr %i Line %i Value %i\n", btnCtr, thisTouchData->gpioPin, hlpAnalog);
+					thisAnalogAvg = round(thisTouchData->analogAvg.getEstimate((double_t) hlpAnalog + randVal)); //artifial flickering to avoid filter lockup
 
+					if (thisTouchData->btnTypeDetected != btnoff)
+					{
+						if (thisTouchData->btnTypeDetected == analog)
+						{
+							if ((thisAnalogAvg >= 0) && (thisAnalogAvg <= analogMaxVal))
+								sendAnalogData(btnCtr, thisAnalogAvg);
+						}
+						else if (thisAnalogAvg <= digitalLoMax)
+						{
+							processDigitalButton(btnCtr, true);
+						}
+						else if (thisAnalogAvg >= digitalHiMin)
+						{
+							processDigitalButton(btnCtr, false);
+						}
+					}
+
+				}
 			}
+			break;
+			case 1: //MCP23017
+			{
+				uint16_t portData = 0;
+				uint8_t bitData[4] = {0,0,0,0}; //0,2: Btn; 1,3: Pos 
+				portData = readEXTPort(MCP23017_ADDRESS + wireAddr); //channels 9-16
+				bitData[2] = (portData & 0xFF00) >> 8;
+				bitData[3] = mirrorByte(portData & 0x00FF);
+				portData = readEXTPort(MCP23017_ADDRESS + wireAddr + 1); //channels 1-8
+				bitData[0] = (portData & 0xFF00) >> 8;
+				bitData[1] = mirrorByte(portData & 0x00FF);
+//				Serial.printf("A Btn: %2X A Pos: %2X B Btn: %2X B Pos: %2X \n", bitData[0], bitData[1], bitData[2], bitData[3]);
+				for (uint8_t btnCtr = 0; btnCtr < numTouchButtons; btnCtr++)
+				{
+					uint8_t byteNr = ((btnCtr & 0x10)>>3) + (btnCtr & 1);
+					uint8_t bitNr = ((btnCtr>>1) & 0x07);
+//					Serial.printf("Btn: %i Byte: %i Bit: %i Result: %i\n", btnCtr, byteNr, bitNr, !(bitData[byteNr] & (0x01 << bitNr)));
+					processDigitalButton(btnCtr, !(bitData[byteNr] & (0x01 << bitNr)));
+				}
+			}
+			break;
+			case 2: //external
+			{
+				uint32_t bitMask = 0x00000001;
+				for (uint8_t btnCtr = 0; btnCtr < 32; btnCtr++)
+				{
+					processDigitalButton(btnCtr, pollBuffer & bitMask);
+					bitMask = bitMask << 1;
+				}
+			}
+			break;
+		}
 	}
 }
 

@@ -70,6 +70,11 @@ decide to ignore the <q ID> return and only react to <Q ID> triggers.
 #include "EEStore.h"
 
 
+void Sensor::begin()
+{
+  
+}
+
 ///////////////////////////////////////////////////////////////////////////////
 //
 // checks one defined sensors and prints _changed_ sensor state
@@ -78,33 +83,68 @@ decide to ignore the <q ID> return and only react to <Q ID> triggers.
 // be checked att next invocation.
 //
 ///////////////////////////////////////////////////////////////////////////////
+uint16_t ctr = 0;
 
-void Sensor::checkAll(Print *stream){
+/*
+ *  uint32_t outStatus;
+    uint32_t inpStatusABCD;
+    uint32_t verifyStatus;
+    uint8_t currentSensor = 0;
+    byte latchdelay;
 
-  if (firstSensor == NULL) return;
-  if (readingSensor == NULL) readingSensor=firstSensor;
+ */
+void Sensor::setEnable(bool newStatus)
+{
+  isActive = newStatus;
+}
 
-  bool sensorstate = digitalRead(readingSensor->data.pin);
-
-  if (!sensorstate == readingSensor->active) { // active==true means sensorstate=0/false so sensor unchanged
-    // no change
-    if (readingSensor->latchdelay != 0) {
-      // enable if you want to debug contact jitter
-      //if (stream != NULL) StringFormatter::send(stream, F("JITTER %d %d\n"), 
-      //                                          readingSensor->latchdelay, readingSensor->data.snum);
-       readingSensor->latchdelay=0; // reset
+void Sensor::checkAll(Print *stream)
+{
+//  if (latchdelay >0)
+//  {
+//    latchdelay--;
+//    return;
+//  }
+  if (!isActive)
+    return;
+  uint16_t portMask = PORTB & 0x0F;
+  ctr++;
+  if ((portMask == 0) && (ctr >= 1000))
+  {
+    ctr = 0;
+    uint32_t compRes = ~(inpStatusABCD ^ verifyStatus); //flag unchanged bits
+    uint32_t compSent = (verifyStatus ^ outStatus) & compRes; //flag everything unchanged but not yet sent
+    uint32_t verifyMask = 0x00000001;
+    for (uint8_t i = 0; i < 32; i++)
+    {
+      if ((compSent & verifyMask) > 0)
+      {
+        if (stream != NULL) 
+          StringFormatter::send(stream, F("<%c %d>\n"), (verifyStatus & verifyMask) > 0 ? 'Q' : 'q', i);
+      }
+      verifyMask = verifyMask << 1;
     }
-  } else if (readingSensor->latchdelay < 127) { // byte, max 255, good value unknown yet
-    // change but first increase anti-jitter counter
-    readingSensor->latchdelay++;
-  } else {
-    // make the change
-    readingSensor->active = !sensorstate;
-    readingSensor->latchdelay=0; // reset 
-    if (stream != NULL) StringFormatter::send(stream, F("<%c %d>\n"), readingSensor->active ? 'Q' : 'q', readingSensor->data.snum);
+    outStatus = verifyStatus;
+    verifyStatus = inpStatusABCD; //roll up new data to verifyStatusfor next loop
+  }
+  uint16_t bitMask = 0x0001 << portMask;
+  uint16_t* inpArray = (uint16_t*)&inpStatusABCD;
+  if (analogRead(PortBank1) > 200) //Banks A,B
+  {
+    inpArray[0] |= bitMask;
+  }
+  else
+  {
+    inpArray[0] &= ~bitMask;
   }
 
-  readingSensor=readingSensor->nextSensor;
+  if (analogRead(PortBank2) > 200) //Banks C,D
+    inpArray[1] |= bitMask;
+  else
+    inpArray[1] &= ~bitMask;
+  portMask = (portMask + 1) & 0x0F;
+  PORTB = (PORTB & 0xF0) | portMask;
+//  latchdelay = 0;
 } // Sensor::checkAll
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -113,101 +153,15 @@ void Sensor::checkAll(Print *stream){
 //
 ///////////////////////////////////////////////////////////////////////////////
 
-void Sensor::printAll(Print *stream){
-
-  for(Sensor * tt=firstSensor;tt!=NULL;tt=tt->nextSensor){
-    if (stream != NULL)
-      StringFormatter::send(stream, F("<%c %d>\n"), tt->active ? 'Q' : 'q', tt->data.snum);
-  } // loop over all sensors
+void Sensor::printAll(Print *stream)
+{
+  uint32_t verifyMask = 0x00000001;
+  for (uint8_t i = 0; i < 32; i++)
+  {
+    if (stream != NULL) 
+      StringFormatter::send(stream, F("<%c %d>\n"), (inpStatusABCD & verifyMask) > 0 ? 'Q' : 'q', i);
+  }
+  verifyMask = verifyMask << 1;
 } // Sensor::printAll
 
 ///////////////////////////////////////////////////////////////////////////////
-
-Sensor *Sensor::create(int snum, int pin, int pullUp){
-  Sensor *tt;
-
-  if(firstSensor==NULL){
-    firstSensor=(Sensor *)calloc(1,sizeof(Sensor));
-    tt=firstSensor;
-  } else if((tt=get(snum))==NULL){
-    tt=firstSensor;
-    while(tt->nextSensor!=NULL)
-      tt=tt->nextSensor;
-    tt->nextSensor=(Sensor *)calloc(1,sizeof(Sensor));
-    tt=tt->nextSensor;
-  }
-
-  if(tt==NULL) return tt;       // problem allocating memory
-
-  tt->data.snum=snum;
-  tt->data.pin=pin;
-  tt->data.pullUp=(pullUp==0?LOW:HIGH);
-  tt->active=false;
-  tt->latchdelay=0;
-  pinMode(pin,INPUT);         // set mode to input
-  digitalWrite(pin,pullUp);   // don't use Arduino's internal pull-up resistors for external infrared sensors --- each sensor must have its own 1K external pull-up resistor
-
-  return tt;
-
-}
-
-///////////////////////////////////////////////////////////////////////////////
-
-Sensor* Sensor::get(int n){
-  Sensor *tt;
-  for(tt=firstSensor;tt!=NULL && tt->data.snum!=n;tt=tt->nextSensor);
-  return tt ;
-}
-///////////////////////////////////////////////////////////////////////////////
-
-bool Sensor::remove(int n){
-  Sensor *tt,*pp=NULL;
-
-  for(tt=firstSensor;tt!=NULL && tt->data.snum!=n;pp=tt,tt=tt->nextSensor);
-
-  if (tt==NULL)  return false;
-  
-  if(tt==firstSensor)
-    firstSensor=tt->nextSensor;
-  else
-    pp->nextSensor=tt->nextSensor;
-
-  if (readingSensor==tt) readingSensor=tt->nextSensor;
-  free(tt);
-
-  return true;
-}
-
-///////////////////////////////////////////////////////////////////////////////
-
-void Sensor::load(){
-  struct SensorData data;
-  Sensor *tt;
-
-  for(uint16_t i=0;i<EEStore::eeStore->data.nSensors;i++){
-    EEPROM.get(EEStore::pointer(),data);
-    tt=create(data.snum,data.pin,data.pullUp);
-    EEStore::advance(sizeof(tt->data));
-  }
-}
-
-///////////////////////////////////////////////////////////////////////////////
-
-void Sensor::store(){
-  Sensor *tt;
-
-  tt=firstSensor;
-  EEStore::eeStore->data.nSensors=0;
-
-  while(tt!=NULL){
-    EEPROM.put(EEStore::pointer(),tt->data);
-    EEStore::advance(sizeof(tt->data));
-    tt=tt->nextSensor;
-    EEStore::eeStore->data.nSensors++;
-  }
-}
-
-///////////////////////////////////////////////////////////////////////////////
-
-Sensor *Sensor::firstSensor=NULL;
-Sensor *Sensor::readingSensor=NULL;

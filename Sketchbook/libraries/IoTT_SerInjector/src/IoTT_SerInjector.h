@@ -47,6 +47,8 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
 #define queBufferSize 50 //messages that can be written in one burst before buffer overflow
 
+class IoTT_DigitraxBuffers;
+
 class IoTT_SerInjector : public HardwareSerial
 {
 public:
@@ -54,7 +56,7 @@ public:
 	~IoTT_SerInjector();
 	void begin();
 	void processLoop();
-	void setMsgType(messageType thisType);
+	void setProtType(messageType thisType);
 	messageType getMsgType();
 	uint16_t lnWriteMsg(lnTransmitMsg txData);
 	uint16_t lnWriteMsg(lnReceiveBuffer txData);
@@ -62,19 +64,19 @@ public:
 	void setTxCallback(txFct newCB);
 	void loadLNCfgJSON(DynamicJsonDocument doc);
 
-   
 private:
    
    // Member functions
 	void handleLNIn(uint8_t inData, uint8_t inFlags = 0);
-	void processLNMsg(lnTransmitMsg * recData);
+	void processLNMsg(lnTransmitMsg* recData);
 	void processLNReceive();
 	void processLNTransmit();
 	void processLCBReceive();
 	void processLCBTransmit();
 	void processDCCExReceive();
 	void processDCCExTransmit();
-	void parseDCCEx();
+	int parseDCCExNumVal(char** startAt, uint8_t* cntVal);
+	bool parseDCCEx(lnTransmitMsg* thisEntry, lnTransmitMsg* txBuffer);
 	
    // Member variables
    lnTransmitMsg transmitQueue[queBufferSize];
@@ -88,14 +90,7 @@ private:
    bool receiveMode;
    int8_t busyLED = -1;
    bool m_highSpeed = true;
-   messageType msgProtocol = LocoNet;
-
-//   unsigned int rx_rdPos, rx_wrPos;
-//   unsigned int tx_rdPos, tx_wrPos;
-//   unsigned int ver_rdPos, ver_wrPos;
-//   uint16_t rx_buffer[rxBufferSize];
-//   uint8_t tx_buffer[txBufferSize];
-
+   messageType usedProtocol = LocoNet;
    uint8_t transmitStatus;
    uint32_t transmitTime;
    uint8_t numWrite, numRead;
@@ -111,7 +106,9 @@ private:
    
 };
 
-//this is the callback function. Provide a function of this name and parameter in your application and it will be called when a new message is received
-extern void onLocoNetMessage(lnReceiveBuffer * recData) __attribute__ ((weak));
+//extern IoTT_DigitraxBuffers* digitraxBuffer; //pointer to DigitraxBuffers
+//extern IoTT_SerInjector* usbSerial;
 
+//this is the callback function. Provide a function of this name and parameter in your application and it will be called when a new message is received
+extern void onLocoNetMessage(lnReceiveBuffer* recData) __attribute__ ((weak));
 #endif

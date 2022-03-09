@@ -157,7 +157,7 @@ void updateOneShotBuffer(char dispStr[])
 
 void notifyDccAccTurnoutOutput(uint16_t Addr, uint8_t Direction, uint8_t OutputPower )
 {
-  setSwitchStatus(Addr-1, Direction, OutputPower);
+  digitraxBuffer->setSwiStatus(Addr-1, Direction, OutputPower);
   char dispStr[100];  
   sprintf(dispStr, "Swi %u %s %s", Addr, Direction==0? "Th":"Cl", OutputPower==0?"Off":"On");
 //  Serial.println(dispStr);
@@ -172,7 +172,7 @@ void notifyDccAccTurnoutOutput(uint16_t Addr, uint8_t Direction, uint8_t OutputP
 // This function is called whenever a DCC Signal Aspect Packet is received
 void notifyDccSigOutputState(uint16_t Addr, uint8_t State)
 {
-  setSignalAspect(Addr, State);
+  digitraxBuffer->setSignalAspect(Addr, State);
   char dispStr[100];  
   sprintf(dispStr, "Sig %u A%i", Addr, State);
 //  Serial.println(dispStr);

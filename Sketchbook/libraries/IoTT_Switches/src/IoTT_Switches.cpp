@@ -266,13 +266,13 @@ void IoTT_SwitchBase::loadRunTimeData(File * dataFile)
 			case evt_trackswitch: //single switch address, just initialize address
 			{
 //				Serial.printf("%i Track Switch to pos %i\n", modIndex, extSwiPos);
-				setSwitchStatus(switchAddrList[0], extSwiPos, 0);
+				digitraxBuffer->setSwiStatus(switchAddrList[0], extSwiPos, 0);
 				break; 
 			}
 			case evt_signalmastdyn: //multiple addresses, initialize last acording to extSwiPos
 			{
-				setSwitchStatus(switchAddrList[extSwiPos>>1], extSwiPos, 0);
-				uint32_t hlpAct = getLastSwitchActivity(switchAddrList[extSwiPos>>1]);
+				digitraxBuffer->setSwiStatus(switchAddrList[extSwiPos>>1], extSwiPos, 0);
+				uint32_t hlpAct = digitraxBuffer->getLastSwiActivity(switchAddrList[extSwiPos>>1]);
 //				Serial.printf("%i Dyn Signal %i to aspect  %i\n", modIndex, switchAddrList[extSwiPos>>1], extSwiPos);
 				break; 
 			}
@@ -280,7 +280,7 @@ void IoTT_SwitchBase::loadRunTimeData(File * dataFile)
 			{
 //				Serial.printf("%i DCC Signal %i to aspect %i\n", modIndex, switchAddrList[0], extSwiPos);
 				
-				setSignalAspect(switchAddrList[0], extSwiPos);
+				digitraxBuffer->setSignalAspect(switchAddrList[0], extSwiPos);
 				break; 
 			}
 		}
@@ -595,7 +595,7 @@ void IoTT_ServoDrive::processSwitch(bool extPwrOK)
 		{
 			uint16_t swiStatus = 0;
 			for (int8_t i = (switchAddrListLen-1); i >= 0; i--) //check for the latest position
-				swiStatus = (2 * swiStatus) + ((getSwiPosition(switchAddrList[i]) >> 5) & 0x01);
+				swiStatus = (2 * swiStatus) + ((digitraxBuffer->getSwiPosition(switchAddrList[i]) >> 5) & 0x01);
 			if (((swiStatus != extSwiPos) || endMoveInitPulse) && aspectList[swiStatus].isUsed)
 			{
 //				Serial.printf("Ext Tg Move 475 %i %i\n", extSwiPos, swiStatus);
@@ -613,7 +613,7 @@ void IoTT_ServoDrive::processSwitch(bool extPwrOK)
 			uint8_t dynSwi = 0;
 			for (uint8_t i = 0; i < switchAddrListLen; i++) //check for the latest activity
 			{
-				hlpAct = getLastSwitchActivity(switchAddrList[i]);
+				hlpAct = digitraxBuffer->getLastSwiActivity(switchAddrList[i]);
 				if (hlpAct > lastAct)
 				{
 					dynSwi = i;
@@ -623,7 +623,7 @@ void IoTT_ServoDrive::processSwitch(bool extPwrOK)
 			if (lastAct != 0) //we have activity
 			{
 				uint8_t aspectNr = dynSwi * 2;
-				if (((getSwiPosition(switchAddrList[dynSwi]) >> 4) & 0x02) > 0)
+				if (((digitraxBuffer->getSwiPosition(switchAddrList[dynSwi]) >> 4) & 0x02) > 0)
 					aspectNr++; //this is the final aspect #
 				if (((extSwiPos != aspectNr) || endMoveInitPulse)  && aspectList[aspectNr].isUsed)
 				{
@@ -638,7 +638,7 @@ void IoTT_ServoDrive::processSwitch(bool extPwrOK)
 		case evt_signalmastdcc:
 		{
 			uint16_t sigAddress = switchAddrList[0];
-			uint8_t sigAspect = getSignalAspect(sigAddress);
+			uint8_t sigAspect = digitraxBuffer->getSignalAspect(sigAddress);
 			if (sigAspect != extSwiPos)
 			{
 //				Serial.printf("Get %i Ext %i\n", sigAspect, extSwiPos);
@@ -670,9 +670,9 @@ void IoTT_ServoDrive::processSwitch(bool extPwrOK)
 			break;
 		}
 		case evt_analogvalue:
-			if ((getAnalogValue(switchAddrList[0]) != extSwiPos) || endMoveInitPulse)
+			if ((digitraxBuffer->getAnalogValue(switchAddrList[0]) != extSwiPos) || endMoveInitPulse)
 			{
-				extSwiPos = getAnalogValue(switchAddrList[0]);
+				extSwiPos = digitraxBuffer->getAnalogValue(switchAddrList[0]);
 				if (((aspectList[1].isUsed) || (aspectList[2].isUsed)) && (condDataListLen > 0))  //use individual aspects
 				{
 					switch (extSwiPos)
@@ -712,7 +712,7 @@ void IoTT_ServoDrive::processSwitch(bool extPwrOK)
 			break;
 		case evt_button: 
 		{
-			uint8_t newBtnVal = getButtonValue(switchAddrList[0]);
+			uint8_t newBtnVal = digitraxBuffer->getButtonValue(switchAddrList[0]);
 			if ((newBtnVal != extSwiPos) || endMoveInitPulse)
 			{
 				if (newBtnVal <= aspectListLen)
@@ -729,7 +729,7 @@ void IoTT_ServoDrive::processSwitch(bool extPwrOK)
 		{
 			uint16_t swiStatus = 0;
 			for (int8_t i = (switchAddrListLen-1); i >= 0; i--) //check for the latest position
-				swiStatus = (2 * swiStatus) + (getBDStatus(switchAddrList[i]) & 0x01);
+				swiStatus = (2 * swiStatus) + (digitraxBuffer->getBDStatus(switchAddrList[i]) & 0x01);
 			if (((swiStatus != extSwiPos) || endMoveInitPulse) && aspectList[swiStatus].isUsed)
 			{
 				targetMove = &aspectList[swiStatus];

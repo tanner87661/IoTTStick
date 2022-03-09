@@ -1,24 +1,3 @@
-/*
- *  (c) 2020 Chris Harlow. All rights reserved.
- *  (c) 2021 Fred Decker.  All rights reserved.
- *  (c) 2020 Harald Barth. All rights reserved.
- *  (c) 2020 Anthony W - Dayton. All rights reserved.
- *
- *  This file is part of CommandStation-EX
- *
- *  This is free software: you can redistribute it and/or modify
- *  it under the terms of the GNU General Public License as published by
- *  the Free Software Foundation, either version 3 of the License, or
- *  (at your option) any later version.
- *
- *  It is distributed in the hope that it will be useful,
- *  but WITHOUT ANY WARRANTY; without even the implied warranty of
- *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- *  GNU General Public License for more details.
- *
- *  You should have received a copy of the GNU General Public License
- *  along with CommandStation.  If not, see <https://www.gnu.org/licenses/>.
- */
 #ifndef MotorDrivers_h
 #define MotorDrivers_h
 #include <Arduino.h>
@@ -42,11 +21,20 @@
 // If the brakePin is negative that means the sense
 // of the brake pin on the motor bridge is inverted
 // (HIGH == release brake)
-//
+
+
+//    MotorDriver(byte power_pin, byte signal_pin, byte signal_pin2, int8_t brake_pin, 
+//                byte current_pin, float senseFactor, unsigned int tripMilliamps, byte faultPin);
+
 // Arduino standard Motor Shield
+#define REDHAT_MOTOR_SHIELD F("STANDARD_MOTOR_SHIELD"),                                                 \
+                         new MotorDriver(7, 4, 5, UNUSED_PIN, A1, 41.54, 5000, UNUSED_PIN), \
+                         new MotorDriver(6, 2, UNUSED_PIN, UNUSED_PIN, A5, 2.99, 2000, UNUSED_PIN)
+
 #define STANDARD_MOTOR_SHIELD F("STANDARD_MOTOR_SHIELD"),                                                 \
                               new MotorDriver(3, 12, UNUSED_PIN, UNUSED_PIN, A0, 2.99, 2000, UNUSED_PIN), \
                               new MotorDriver(11, 13, UNUSED_PIN, UNUSED_PIN, A1, 2.99, 2000, UNUSED_PIN)
+
 
 // Pololu Motor Shield
 #define POLOLU_MOTOR_SHIELD F("POLOLU_MOTOR_SHIELD"),                                                 \

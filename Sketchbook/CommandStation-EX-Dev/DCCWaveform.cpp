@@ -25,7 +25,7 @@
 #include "DIAG.h"
 #include "freeMemory.h"
 
-DCCWaveform  DCCWaveform::mainTrack(PREAMBLE_BITS_MAIN, true, 8); //8 is number of cutout halfbits
+DCCWaveform  DCCWaveform::mainTrack(PREAMBLE_BITS_MAIN, true);
 DCCWaveform  DCCWaveform::progTrack(PREAMBLE_BITS_PROG, false);
 
 bool DCCWaveform::progTrackSyncMain=false; 
@@ -63,9 +63,7 @@ void DCCWaveform::interruptHandler() {
   // member functions would be cleaner but have more overhead
   byte sigMain=signalTransform[mainTrack.state];
   byte sigProg=progTrackSyncMain? sigMain : signalTransform[progTrack.state];
-//  if (mainTrack.state == WAVE_SHORT)
-//    sigMain = SIG_SHORT;
-//    Serial.print(sigMain);
+  
   // Set the signal state for both tracks
   mainTrack.motorDriver->setSignal(sigMain);
   progTrack.motorDriver->setSignal(sigProg);
@@ -76,7 +74,7 @@ void DCCWaveform::interruptHandler() {
 
 
   // WAVE_PENDING means we dont yet know what the next bit is
-  if ((mainTrack.state==WAVE_PENDING) || (mainTrack.state==WAVE_SHORT)) mainTrack.interrupt2();  
+  if (mainTrack.state==WAVE_PENDING) mainTrack.interrupt2();  
   if (progTrack.state==WAVE_PENDING) progTrack.interrupt2();
   else if (progTrack.ackPending) progTrack.checkAck();
 
@@ -93,7 +91,7 @@ void DCCWaveform::interruptHandler() {
 const byte bitMask[] = {0x00, 0x80, 0x40, 0x20, 0x10, 0x08, 0x04, 0x02, 0x01};
 
 
-DCCWaveform::DCCWaveform( byte preambleBits, bool isMain, byte cutoffBits) {
+DCCWaveform::DCCWaveform( byte preambleBits, bool isMain) {
   isMainTrack = isMain;
   packetPending = false;
   memcpy(transmitPacket, idlePacket, sizeof(idlePacket));
@@ -101,7 +99,6 @@ DCCWaveform::DCCWaveform( byte preambleBits, bool isMain, byte cutoffBits) {
   // The +1 below is to allow the preamble generator to create the stop bit
   // for the previous packet. 
   requiredPreambles = preambleBits+1;  
-  requiredCutoffs = cutoffBits;
   bytes_sent = 0;
   bits_sent = 0;
   sampleDelay = 0;
@@ -134,6 +131,7 @@ void DCCWaveform::checkPowerOverload(bool ackManagerActive) {
     case POWERMODE::ON:
       // Check current
       lastCurrent=motorDriver->getCurrentRaw();
+//      Serial.println(lastCurrent);
       if (lastCurrent < 0) {
 	  // We have a fault pin condition to take care of
 	  lastCurrent = -lastCurrent;
@@ -183,35 +181,30 @@ void DCCWaveform::checkPowerOverload(bool ackManagerActive) {
   }
 }
 // For each state of the wave  nextState=stateTransform[currentState] 
-//enum  WAVE_STATE : byte {WAVE_START=0,WAVE_MID_1=1,WAVE_HIGH_0=2,WAVE_MID_0=3,WAVE_LOW_0=4,WAVE_PENDING=5, WAVE_SHORT=6};
-
 const WAVE_STATE DCCWaveform::stateTransform[]={
-   /* WAVE_START   -> */ WAVE_PENDING, //5
-   /* WAVE_MID_1   -> */ WAVE_START, //0
-   /* WAVE_HIGH_0  -> */ WAVE_MID_0, //3
-   /* WAVE_MID_0   -> */ WAVE_LOW_0, // 4
-   /* WAVE_LOW_0   -> */ WAVE_START, // 0
-   /* WAVE_PENDING (should not happen) -> */ WAVE_PENDING,
-   /* WAVE_SHORT   -> */ WAVE_SHORT};
+   /* WAVE_START   -> */ WAVE_PENDING,
+   /* WAVE_MID_1   -> */ WAVE_START,
+   /* WAVE_HIGH_0  -> */ WAVE_MID_0,
+   /* WAVE_MID_0   -> */ WAVE_LOW_0,
+   /* WAVE_LOW_0   -> */ WAVE_START,
+   /* WAVE_PENDING (should not happen) -> */ WAVE_PENDING};
 
 // For each state of the wave, signal pin is HIGH or LOW   
-const byte DCCWaveform::signalTransform[]={
-   /* WAVE_START   -> */ SIG_HIGH,
-   /* WAVE_MID_1   -> */ SIG_LOW, //entry point for 1-bit
-   /* WAVE_HIGH_0  -> */ SIG_HIGH, //entry point for 0 bit
-   /* WAVE_MID_0   -> */ SIG_LOW,
-   /* WAVE_LOW_0   -> */ SIG_LOW,
-   /* WAVE_PENDING (should not happen) -> */ SIG_LOW,
-   /* WAVE_SHORT  -> */ SIG_SHORT};
+const bool DCCWaveform::signalTransform[]={
+   /* WAVE_START   -> */ HIGH,
+   /* WAVE_MID_1   -> */ LOW,
+   /* WAVE_HIGH_0  -> */ HIGH,
+   /* WAVE_MID_0   -> */ LOW,
+   /* WAVE_LOW_0   -> */ LOW,
+   /* WAVE_PENDING (should not happen) -> */ LOW};
         
 void DCCWaveform::interrupt2() {
   // calculate the next bit to be sent:
   // set state WAVE_MID_1  for a 1=bit
   //        or WAVE_HIGH_0 for a 0 bit.
 
-  if (remainingPreambles > 0 ) 
-  {
-    state = (remainingPreambles > requiredPreambles) ? WAVE_SHORT : WAVE_MID_1;  // switch state to trigger LOW on next interrupt
+  if (remainingPreambles > 0 ) {
+    state=WAVE_MID_1;  // switch state to trigger LOW on next interrupt
     remainingPreambles--;
     // Update free memory diagnostic as we don't have anything else to do this time.
     // Allow for checkAck and its called functions using 22 bytes more.
@@ -234,7 +227,7 @@ void DCCWaveform::interrupt2() {
     if (bytes_sent >= transmitLength) {
       // end of transmission buffer... repeat or switch to next message
       bytes_sent = 0;
-      remainingPreambles = requiredPreambles + requiredCutoffs;
+      remainingPreambles = requiredPreambles;
 
       if (transmitRepeats > 0) {
         transmitRepeats--;

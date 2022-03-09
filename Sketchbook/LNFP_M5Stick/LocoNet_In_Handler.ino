@@ -14,6 +14,10 @@ void callbackLocoNetMessage(lnReceiveBuffer * newData) //this is the landing poi
 
 void processLNError(lnReceiveBuffer * newData)
 {
+//   Serial.printf("LN Msg %i ReqID %i with %i bytes requested %i: ", newData->errorFlags, newData->reqID, newData->lnMsgSize, newData->reqRecTime); 
+//   for (int i=0; i<newData->lnMsgSize; i++)
+//     Serial.printf("0x%02X ", newData->lnData[i]);
+//   Serial.println();
   if ((newData->errorFlags & errorCollision) > 0)
     Serial.println("LocoNet Error: LocoNet Collision detected");
   if ((newData->errorFlags & errorFrame) > 0)
@@ -45,7 +49,7 @@ void processLNValidMsg(lnReceiveBuffer * newData)
   if (usbSerial)
     if (usbSerial->getMsgType() != DCCEx)
       usbSerial->lnWriteMsg(*newData);
-  processLocoNetMsg(newData);
+  digitraxBuffer->processLocoNetMsg(newData); //send it to DigitraxBuffers
 //  if (secElHandlerList) secElHandlerList->processLocoNetMsg(newData); //do not call this before buffer processing as it will read new buffer values
 //   Serial.println("Done");
 }
@@ -78,7 +82,7 @@ void handleTranspondingEvent(uint16_t zoneAddr, uint16_t locoAddr, uint8_t event
 void handleSwiEvent(uint16_t swiAddr, uint8_t swiPos, uint8_t coilStat)
 {
   //add code here for event actions other than updating internal buffer
-//  Serial.printf("Incoming Switch Command for Switch %i Position %i Status %i\n", swiAddr, swiPos, coilStat);
+  Serial.printf("Incoming Switch Command for Switch %i Position %i Status %i\n", swiAddr, swiPos, coilStat);
   if (eventHandler) eventHandler->processBtnEvent(evt_trackswitch, swiAddr, swiPos);
   if (mySwitchList) mySwitchList->processBtnEvent(evt_trackswitch, swiAddr, swiPos);
 //  if (myChain) myChain->processBtnEvent(evt_trackswitch, swiAddr, swiPos);
@@ -103,8 +107,8 @@ void handleSignalEvent(uint16_t sigAddr, uint8_t sigAspect)
 void handlePowerStatus()
 {
   //add code here for event actions other than updating internal buffer
-//  Serial.printf("Incoming Power Status Event. New Status: %i\n", getPowerStatus());
-  if (eventHandler) eventHandler->processBtnEvent(evt_powerstat, 0, getPowerStatus());
+//  Serial.printf("Incoming Power Status Event. New Status: %i\n", digitraxBuffer->getPowerStatus());
+  if (eventHandler) eventHandler->processBtnEvent(evt_powerstat, 0, digitraxBuffer->getPowerStatus());
 }
 
 void handleAnalogValue(uint16_t analogAddr, uint16_t inputValue)

@@ -397,11 +397,11 @@ bool IoTT_LocoNetButtons::getEnableStatus()
 	{
 		case ent_alwayson : return true; break;
 		case ent_alwaysoff : return false; break;
-		case ent_button: return getButtonValue(enableAddr) == enableStatus; break;
-		case ent_switch: return (((getSwiPosition(enableAddr) >> 5) & 0x01) == enableStatus); break;
+		case ent_button: return digitraxBuffer->getButtonValue(enableAddr) == enableStatus; break;
+		case ent_switch: return (((digitraxBuffer->getSwiPosition(enableAddr) >> 5) & 0x01) == enableStatus); break;
 		case ent_block: 
 //		Serial.println(getBDStatus(enableAddr));
-		return ((getBDStatus(enableAddr) & 0x01) == enableStatus); break;
+		return ((digitraxBuffer->getBDStatus(enableAddr) & 0x01) == enableStatus); break;
 		default: return true; break;
 	}
 }
@@ -486,7 +486,7 @@ void IoTT_LocoNetButtons::processSimpleEvent(uint8_t inputValue)
 {
 	uint16_t swiStatus = 0;
 	for (int8_t i = (btnAddrListLen-1); i >= 0; i--) //check for the latest position
-		swiStatus = (2 * swiStatus) + ((getSwiPosition(btnAddrList[i]) >> 5) & 0x01);
+		swiStatus = (2 * swiStatus) + ((digitraxBuffer->getSwiPosition(btnAddrList[i]) >> 5) & 0x01);
 	if ((swiStatus != lastEvent) && (swiStatus < eventTypeListLen))
 	{
 		IoTT_BtnHandler * thisEvent = eventTypeList[swiStatus];
@@ -500,7 +500,7 @@ void IoTT_LocoNetButtons::processBlockDetEvent(uint8_t inputValue)
 {
 	uint16_t bdStatus = 0;
 	for (int8_t i = (btnAddrListLen-1); i >= 0; i--) //check for the latest position
-		bdStatus = (2 * bdStatus) + (getBDStatus(btnAddrList[i]) & 0x01);
+		bdStatus = (2 * bdStatus) + (digitraxBuffer->getBDStatus(btnAddrList[i]) & 0x01);
 	if ((bdStatus != lastEvent) && (bdStatus < eventTypeListLen))
 	{
 		IoTT_BtnHandler * thisEvent = eventTypeList[bdStatus];
@@ -517,7 +517,7 @@ void IoTT_LocoNetButtons::processDynEvent(uint8_t inputValue)
 	uint8_t dynSwi = 0;
 	for (uint8_t i = 0; i < btnAddrListLen; i++) //check for the latest activity
 	{
-		hlpAct = getLastSwitchActivity(btnAddrList[i]);
+		hlpAct = digitraxBuffer->getLastSwiActivity(btnAddrList[i]);
 		if (hlpAct > lastAct)
 		{
 			dynSwi = i;
@@ -527,7 +527,7 @@ void IoTT_LocoNetButtons::processDynEvent(uint8_t inputValue)
 	if (lastAct != 0) //we have activity
 	{
 		uint8_t aspectNr = dynSwi * 2;
-		if (((getSwiPosition(btnAddrList[dynSwi]) >> 4) & 0x02) > 0)
+		if (((digitraxBuffer->getSwiPosition(btnAddrList[dynSwi]) >> 4) & 0x02) > 0)
 			aspectNr++; //this is the final aspect #
 		if ((aspectNr != lastEvent) && (aspectNr < eventTypeListLen))
 		{

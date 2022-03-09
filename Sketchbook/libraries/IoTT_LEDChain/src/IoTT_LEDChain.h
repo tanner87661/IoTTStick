@@ -119,7 +119,6 @@ class IoTT_ledChain
 		uint16_t getChainLength();
 		CRGB * getChain();
 		float_t getBrightness();
-		void setBrightness(float_t newVal);
 		sourceType getBrightnessControlType();
 		uint16_t getBrightnessControlAddr();
 		IoTT_ColorDefinitions* getColorByName(String colName);
@@ -130,6 +129,7 @@ class IoTT_ledChain
 	private:
 		void freeObjects();
 		void updateLEDs();
+		void setBrightness(float_t newVal);
 		
 		uint16_t I2CAddr = 0x00;
 		TwoWire * thisWire = NULL;
@@ -147,7 +147,7 @@ class IoTT_ledChain
 		IoTT_LEDHandler** LEDHandlerList = NULL;
 		uint16_t LEDHandlerListLen = 0;
 
-		float currentBrightness = 1;
+		float currentBrightness = 0.8;
 		sourceType brightnessControlType = evt_nosource; //not defined
 		uint16_t brightnessControlAddr = 0;
 		

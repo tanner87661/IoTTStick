@@ -21,8 +21,6 @@
 #include "DCCEXParser.h"
 #include "DCC.h"
 #include "DCCWaveform.h"
-#include "Turnouts.h"
-#include "Outputs.h"
 #include "Sensors.h"
 #include "freeMemory.h"
 #include "GITHUB_SHA.h"
@@ -79,6 +77,11 @@ void DCCEXParser::flush()
     inCommandPayload = false;
 }
 
+void DCCEXParser::setLinks(BoardManager * myBoard)
+{
+  boardMgr = myBoard;
+}
+
 void DCCEXParser::loop(Stream &stream)
 {
     while (stream.available())
@@ -97,7 +100,10 @@ void DCCEXParser::loop(Stream &stream)
         else if (ch == '>')
         {
             buffer[bufferLength] = '\0';
+            uint8_t outStat = PORTB;
+            PORTB |= 0x01; //to keep the power relay going
             parse(&stream, buffer, NULL); // Parse this (No ringStream for serial)
+            PORTB = outStat;
             inCommandPayload = false;
             break;
         }
@@ -106,7 +112,8 @@ void DCCEXParser::loop(Stream &stream)
             buffer[bufferLength++] = ch;
         }
     }
-    Sensor::checkAll(&stream); // Update and print changes
+    if (boardMgr)
+      boardMgr->checkAllSensors(&stream); // Update and print changes
 }
 
 int16_t DCCEXParser::splitValues(int16_t result[MAX_COMMAND_PARAMS], const byte *cmd)
@@ -390,6 +397,8 @@ void DCCEXParser::parse(Print *stream, byte *com, RingStream * ringStream)
     case 'W': // WRITE CV ON PROG <W CV VALUE CALLBACKNUM CALLBACKSUB>
             if (!stashCallback(stream, p, ringStream))
                 break;
+        if (thisBoard)
+          thisBoard->setProgTrack(true);
         if (params == 1) // <W id> Write new loco id (clearing consist and managing short/long)
             DCC::setLocoId(p[0],callback_Wloco);
         else // WRITE CV ON PROG <W CV VALUE [CALLBACKNUM] [CALLBACKSUB]>
@@ -400,7 +409,8 @@ void DCCEXParser::parse(Print *stream, byte *com, RingStream * ringStream)
         if (params == 2)
         { // <V CV VALUE>
             if (!stashCallback(stream, p, ringStream))
-                break;
+            if (thisBoard)
+              thisBoard->setProgTrack(true);
             DCC::verifyCVByte(p[0], p[1], callback_Vbyte);
             return;
         }
@@ -408,6 +418,8 @@ void DCCEXParser::parse(Print *stream, byte *com, RingStream * ringStream)
         {
             if (!stashCallback(stream, p, ringStream))
                 break;
+            if (thisBoard)
+              thisBoard->setProgTrack(true);
             DCC::verifyCVBit(p[0], p[1], p[2], callback_Vbit);
             return;
         }
@@ -415,7 +427,9 @@ void DCCEXParser::parse(Print *stream, byte *com, RingStream * ringStream)
 
     case 'B': // WRITE CV BIT ON PROG <B CV BIT VALUE CALLBACKNUM CALLBACKSUB>
         if (!stashCallback(stream, p, ringStream))
-            break;
+          break;
+        if (thisBoard)
+          thisBoard->setProgTrack(true);
         DCC::writeCVBit(p[0], p[1], p[2], callback_B);
         return;
 
@@ -424,6 +438,8 @@ void DCCEXParser::parse(Print *stream, byte *com, RingStream * ringStream)
         { // <R CV CALLBACKNUM CALLBACKSUB>
             if (!stashCallback(stream, p, ringStream))
                 break;
+          if (thisBoard)
+            thisBoard->setProgTrack(true);
             DCC::readCV(p[0], callback_R);
             return;
         }
@@ -431,6 +447,8 @@ void DCCEXParser::parse(Print *stream, byte *com, RingStream * ringStream)
         { // <R> New read loco id
             if (!stashCallback(stream, p, ringStream))
                 break;
+            if (thisBoard)
+              thisBoard->setProgTrack(true);
             DCC::getLocoId(callback_Rloco);
             return;
         }
@@ -494,21 +512,24 @@ void DCCEXParser::parse(Print *stream, byte *com, RingStream * ringStream)
         return;
 
     case 'Q': // SENSORS <Q>
-        Sensor::printAll(stream);
+        if (boardMgr)
+          boardMgr->printAllSensors(stream);  //send all Sensor  states
         return;
 
     case 's': // <s>
         StringFormatter::send(stream, F("<p%d>\n"), DCCWaveform::mainTrack.getPowerMode() == POWERMODE::ON);
         StringFormatter::send(stream, F("<iDCC-EX V-%S / %S / %S G-%S>\n"), F(VERSION), F(ARDUINO_TYPE), DCC::getMotorShieldName(), F(GITHUB_SHA));
-        Turnout::printAll(stream); //send all Turnout states
-        Output::printAll(stream);  //send all Output  states
-        Sensor::printAll(stream);  //send all Sensor  states
+//        Turnout::printAll(stream); //send all Turnout states
+//        Output::printAll(stream);  //send all Output  states
+        if (boardMgr)
+          boardMgr->printAllSensors(stream);  //send all Sensor  states
         // TODO Send stats of  speed reminders table
         return;       
 
     case 'E': // STORE EPROM <E>
         EEStore::store();
-        StringFormatter::send(stream, F("<e %d %d %d>\n"), EEStore::eeStore->data.nTurnouts, EEStore::eeStore->data.nSensors, EEStore::eeStore->data.nOutputs);
+        StringFormatter::send(stream, F("<e %x>\n"), EEStore::eeStore->data.boardConfig);
+//        StringFormatter::send(stream, F("<e %d %d %d>\n"), EEStore::eeStore->data.nTurnouts, EEStore::eeStore->data.nSensors, EEStore::eeStore->data.nOutputs);
         return;
 
     case 'e': // CLEAR EPROM <e>
@@ -564,25 +585,51 @@ void DCCEXParser::parse(Print *stream, byte *com, RingStream * ringStream)
 
 bool DCCEXParser::parseZ(Print *stream, int16_t params, int16_t p[])
 {
-
     switch (params)
     {
     
     case 2: // <Z ID ACTIVATE>
     {
-        Output *o = Output::get(p[0]);
-        if (o == NULL)
-            return false;
-        o->activate(p[1]);
+      switch (p[0])
+      {
+        case 1025:
+          boardMgr->setDeviceMode(p[1]);
+          break;
+        case 1026:
+          boardMgr->setDeviceOutput(p[1], p[2]);
+          break;
+        case 1027:
+          boardMgr->setOutputCurrent(0, p[1]);
+          break;
+        case 1028:
+          boardMgr->setOutputCurrent(1, p[1]);
+          break;
+        case 1029:
+          boardMgr->setOutputCurrent(2, p[1]);
+          break;
+        case 1030:
+          boardMgr->setLEDBrightness(p[1]);
+          break;
+      }
         StringFormatter::send(stream, F("<Y %d %d>\n"), p[0], p[1]);
     }
-        return true;
+    return true;
 
-    case 3: // <Z ID PIN IFLAG>
-        if (p[0] < 0 ||
-	    p[1] > 255 || p[1] <= 1 || // Pins 0 and 1 are Serial to USB
-	    p[2] <   0 || p[2] > 7 )
-	  return false;
+/*
+ * RedHat setup Codes starting at 1025
+ * 1025 Device Mode: 0: Off 1: Cmd Stn 2: Booster with LocoNet 3: Booster no LocoNet 65535: Reboot 328P
+ * 1026 Output Enable: Bit Nr, Status --  Bit 0: IBT-2 Bit 1: ProgSignal enable Bit 2: RailSync enable   Bit 3: SourceSelect 
+ * 1027 Set current IBT-2 VarVal has current in mAmps
+ * 1028 Set ack current Prog Track
+ * 1029 Set max current RailSync
+ * 1030 LED Brightness analog value 0-100 in percent ofull brightness
+*/
+
+
+
+/*
+
+    case 3: // <Z ID PIN INVERT>
         if (!Output::create(p[0], p[1], p[2], 1))
           return false;
         StringFormatter::send(stream, F("<O>\n"));
@@ -603,7 +650,9 @@ bool DCCEXParser::parseZ(Print *stream, int16_t params, int16_t p[])
             StringFormatter::send(stream, F("<Y %d %d %d %d>\n"), tt->data.id, tt->data.pin, tt->data.iFlag, tt->data.oStatus);
         }
         return gotone;
+
     }
+*/
     default:
         return false;
     }
@@ -654,6 +703,7 @@ void DCCEXParser::funcmap(int16_t cab, byte value, byte fstart, byte fstop)
 //===================================
 bool DCCEXParser::parseT(Print *stream, int16_t params, int16_t p[])
 {
+/*
     switch (params)
     {
     case 0: // <T>  list turnout definitions
@@ -693,6 +743,7 @@ bool DCCEXParser::parseT(Print *stream, int16_t params, int16_t p[])
     default:
         return false; // will <x>
     }
+*/
 }
 
 bool DCCEXParser::parseS(Print *stream, int16_t params, int16_t p[])
@@ -701,24 +752,24 @@ bool DCCEXParser::parseS(Print *stream, int16_t params, int16_t p[])
     switch (params)
     {
     case 3: // <S id pin pullup>  create sensor. pullUp indicator (0=LOW/1=HIGH)
-        if (!Sensor::create(p[0], p[1], p[2]))
-          return false;
+//        if (!Sensor::create(p[0], p[1], p[2]))
+//          return false;
         StringFormatter::send(stream, F("<O>\n"));
         return true;
 
     case 1: // S id> remove sensor
-        if (!Sensor::remove(p[0]))
-          return false;
+//        if (!Sensor::remove(p[0]))
+//          return false;
         StringFormatter::send(stream, F("<O>\n"));
         return true;
 
     case 0: // <S> list sensor definitions
-	if (Sensor::firstSensor == NULL)
-	    return false;
-        for (Sensor *tt = Sensor::firstSensor; tt != NULL; tt = tt->nextSensor)
-        {
-            StringFormatter::send(stream, F("<Q %d %d %d>\n"), tt->data.snum, tt->data.pin, tt->data.pullUp);
-        }
+//	if (Sensor::firstSensor == NULL)
+//	    return false;
+//        for (Sensor *tt = Sensor::firstSensor; tt != NULL; tt = tt->nextSensor)
+//        {
+//            StringFormatter::send(stream, F("<Q %d %d %d>\n"), tt->data.snum, tt->data.pin, tt->data.pullUp);
+//        }
         return true;
 
     default: // invalid number of arguments
@@ -843,6 +894,8 @@ void DCCEXParser::callback_W(int16_t result)
     StringFormatter::send(getAsyncReplyStream(),
           F("<r%d|%d|%d %d>\n"), stashP[2], stashP[3], stashP[0], result == 1 ? stashP[1] : -1);
     commitAsyncReplyStream();
+    if (thisBoard)
+      thisBoard->setProgTrack(false);
 }
 
 void DCCEXParser::callback_B(int16_t result)
@@ -850,28 +903,38 @@ void DCCEXParser::callback_B(int16_t result)
     StringFormatter::send(getAsyncReplyStream(), 
           F("<r%d|%d|%d %d %d>\n"), stashP[3], stashP[4], stashP[0], stashP[1], result == 1 ? stashP[2] : -1);
     commitAsyncReplyStream();
+    if (thisBoard)
+      thisBoard->setProgTrack(false);
 }
 void DCCEXParser::callback_Vbit(int16_t result)
 {
     StringFormatter::send(getAsyncReplyStream(), F("<v %d %d %d>\n"), stashP[0], stashP[1], result);
     commitAsyncReplyStream();
+    if (thisBoard)
+      thisBoard->setProgTrack(false);
 }
 void DCCEXParser::callback_Vbyte(int16_t result)
 {
     StringFormatter::send(getAsyncReplyStream(), F("<v %d %d>\n"), stashP[0], result);
     commitAsyncReplyStream();
+    if (thisBoard)
+      thisBoard->setProgTrack(false);
 }
 
 void DCCEXParser::callback_R(int16_t result)
 {
     StringFormatter::send(getAsyncReplyStream(), F("<r%d|%d|%d %d>\n"), stashP[1], stashP[2], stashP[0], result);
     commitAsyncReplyStream();
+    if (thisBoard)
+      thisBoard->setProgTrack(false);
 }
 
 void DCCEXParser::callback_Rloco(int16_t result)
 {
     StringFormatter::send(getAsyncReplyStream(), F("<r %d>\n"), result);
     commitAsyncReplyStream();
+    if (thisBoard)
+      thisBoard->setProgTrack(false);
 }
 
 void DCCEXParser::callback_Wloco(int16_t result)
@@ -879,4 +942,6 @@ void DCCEXParser::callback_Wloco(int16_t result)
     if (result==1) result=stashP[0]; // pick up original requested id from command
     StringFormatter::send(getAsyncReplyStream(), F("<w %d>\n"), result);
     commitAsyncReplyStream();
+    if (thisBoard)
+      thisBoard->setProgTrack(false);
 }

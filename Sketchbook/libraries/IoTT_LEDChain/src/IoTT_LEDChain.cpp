@@ -479,7 +479,7 @@ void IoTT_LEDHandler::updateBlockDet()
 
 	uint16_t blockStatus = 0;
 	for (int8_t i = (ctrlAddrListLen-1); i >= 0; i--) //check for the latest position
-		blockStatus = (2 * blockStatus) + (getBDStatus(ctrlAddrList[i]) & 0x01);
+		blockStatus = (2 * blockStatus) + (digitraxBuffer->getBDStatus(ctrlAddrList[i]) & 0x01);
 
 	if (lastValue != blockStatus)
 	{
@@ -507,7 +507,7 @@ void IoTT_LEDHandler::updateSwSignalPos(bool isDynamic)
 		uint8_t dynSwi = 0;
 		for (int i = 0; i < ctrlAddrListLen; i++) //check for the latest activity
 		{
-			uint32_t hlpAct = getLastSwitchActivity(ctrlAddrList[i]);
+			uint32_t hlpAct = digitraxBuffer->getLastSwiActivity(ctrlAddrList[i]);
 			if (hlpAct > lastAct)
 			{
 				dynSwi = i;
@@ -520,7 +520,7 @@ void IoTT_LEDHandler::updateSwSignalPos(bool isDynamic)
 			{
 //				Serial.printf("Updating %i activity for Switch %i\n", dynSwi, ctrlAddrList[dynSwi]);
 				swiStatus = 2 * dynSwi;
-				if (((getSwiStatus(ctrlAddrList[dynSwi]) >> 4) & 0x02) > 0)
+				if (((digitraxBuffer->getSwiStatus(ctrlAddrList[dynSwi]) >> 4) & 0x02) > 0)
 					swiStatus++;
 				lastActivity = lastAct;
 			}
@@ -530,7 +530,7 @@ void IoTT_LEDHandler::updateSwSignalPos(bool isDynamic)
 	{
 		for (int i = 0; i < ctrlAddrListLen; i++)
 		{
-			if (((getSwiStatus(ctrlAddrList[i]) >> 4) & 0x02) > 0)
+			if (((digitraxBuffer->getSwiStatus(ctrlAddrList[i]) >> 4) & 0x02) > 0)
 				swiStatus |= swiBitMask;
 			swiBitMask <<= 1;
 		}
@@ -582,7 +582,7 @@ void IoTT_LEDHandler::updateSignalPos()
 	IoTT_LEDCmdList * cmdDef = NULL;
 	IoTT_LEDCmdList * cmdDefLin = NULL;
 	uint16_t sigAddress = ctrlAddrList[0];
-	uint16_t sigAspect = getSignalAspect(ctrlAddrList[0]);
+	uint16_t sigAspect = digitraxBuffer->getSignalAspect(ctrlAddrList[0]);
 	if (lastValue != sigAspect)
 	{
 		lastValue = sigAspect;
@@ -626,7 +626,7 @@ void IoTT_LEDHandler::updateButtonPos()
 {
 	IoTT_LEDCmdList * cmdDef = NULL;
 	uint16_t btnNr = ctrlAddrList[0];
-	uint16_t btnState = getButtonValue(btnNr);
+	uint16_t btnState = digitraxBuffer->getButtonValue(btnNr);
 	int16_t nextVal = -1;
 	int16_t nextInd = -1;
 	if (lastValue != btnState)
@@ -655,7 +655,7 @@ void IoTT_LEDHandler::updateAnalogValue()
 	IoTT_LEDCmdList * cmdDef = NULL;
 	IoTT_LEDCmdList * cmdDefLin = NULL;
 	uint16_t analogNr = ctrlAddrList[0];
-	uint16_t analogVal = getAnalogValue(analogNr);
+	uint16_t analogVal = digitraxBuffer->getAnalogValue(analogNr);
 	if (lastValue != analogVal)
 	{
 		lastValue = analogVal;
@@ -712,14 +712,14 @@ void IoTT_LEDHandler::updatePowerStatus()
 	IoTT_LEDCmdList * cmdDef = NULL;
 	int16_t nextVal = -1;
 	int16_t nextInd = -1;
-	if (lastValue != getPowerStatus())
+	if (lastValue != digitraxBuffer->getPowerStatus())
 	{
-		lastValue = getPowerStatus();
+		lastValue = digitraxBuffer->getPowerStatus();
 		blinkTimer = millis();
 	}
 	for (int i = 0; i < cmdListLen; i++)
 	{
-		if ((getPowerStatus() <= cmdList[i]->upToVal[0]) && (getPowerStatus() > nextVal))
+		if ((digitraxBuffer->getPowerStatus() <= cmdList[i]->upToVal[0]) && (digitraxBuffer->getPowerStatus() > nextVal))
 		{
 			nextInd = i;
 			nextVal = cmdList[i]->upToVal[0];
@@ -911,11 +911,14 @@ void IoTT_ledChain::loadLEDChainJSONObj(JsonObject doc, bool resetList)
 	if (doc.containsKey("ChainParams"))
     {
         chainLength = doc["ChainParams"]["NumLEDs"];
-//        Serial.println(chainLength);
+        Serial.printf("Length: %i\n", chainLength);
         if (thisWire)
 			if (chainLength > i2cMaxChainLength)
-				chainLength = i2cMaxChainLength; //for safety. Value limited in config already
+				chainLength = i2cMaxChainLength; //for safety. Value limited in config alreadyhtness: %i\n",
         currentBrightness = doc["ChainParams"]["Brightness"]["InitLevel"];
+        if (currentBrightness > 1 || (currentBrightness < 0))
+			currentBrightness = 0.8;
+//        Serial.printf("JSON Brightness: %f\n", currentBrightness);
         if (doc.containsKey("MQTT"))
         {
 			JsonObject myMQTT = doc["MQTT"];
@@ -954,12 +957,16 @@ void IoTT_ledChain::loadLEDChainJSONObj(JsonObject doc, bool resetList)
         initChain(chainLength);
 		switch (brightnessControlType)
 		{
-			case evt_analogvalue: setAnalogValue(brightnessControlAddr, round(4095 * currentBrightness)); break;
-			default: currentBrightness = 1.0; break;
+			case evt_analogvalue: digitraxBuffer->setAnalogValue(brightnessControlAddr, round(4095 * currentBrightness)); break;
+//			default: currentBrightness = 1.0; break;
 		}
+//       Serial.printf("Brightness: %f\n", currentBrightness);
+ 
     }
     else
-		Serial.println("No Chain Params");
+    {
+		Serial.println("No Chain Params, use defaults");
+	}
 //	Serial.println("Load Colors");
     if (doc.containsKey("LEDCols"))
     {
@@ -1027,7 +1034,8 @@ float_t IoTT_ledChain::getBrightness()
 void IoTT_ledChain::setBrightness(float_t newVal)
 {
 	currentBrightness = newVal;
-}
+//    Serial.printf("Set new Brightness: %f\n", currentBrightness);
+ }
 
 sourceType IoTT_ledChain::getBrightnessControlType()
 {
@@ -1073,7 +1081,7 @@ void IoTT_ledChain::subscribeTopics()
 
 void IoTT_ledChain::setCurrColHSV(uint16_t ledNr, CHSV newCol)
 {
-//	Serial.printf("Set HSV %i to %i\n", ledNr, newCol);
+//	Serial.printf("Set HSV %i to %i\n", ledNr, chainMode);
 	if ((ledNr >= 0) && (ledNr < chainLength))
 	{
 	#ifdef useRTOS
@@ -1082,7 +1090,7 @@ void IoTT_ledChain::setCurrColHSV(uint16_t ledNr, CHSV newCol)
 	    switch (chainMode)
 	    {
 			case hatDirect:
-//			    Serial.println("call Direct");
+//			    Serial.printf("Set LED %i to %i %i %i\n", ledNr, newCol.h, newCol.s, newCol.v);
 				ledChain[ledNr] = newCol;
 				break;
 			case hatI2C:
@@ -1164,8 +1172,10 @@ void IoTT_ledChain::updateLEDs()
 {
 	switch (getBrightnessControlType())
 	{
-		case evt_analogvalue: setBrightness((float)getAnalogValue(getBrightnessControlAddr())/4095); break;
-		default: setBrightness(1.0); break;
+		case evt_analogvalue: setBrightness((float)digitraxBuffer->getAnalogValue(getBrightnessControlAddr())/4095); 
+			break;
+		default: 
+			break;
 	}
 //	Serial.printf("update %i\n", LEDHandlerListLen);
 	if (LEDHandlerListLen > 0)
@@ -1404,16 +1414,17 @@ void IoTT_ledChain::processChain()
 	
 	if ((needUpdate) || (refreshAnyway) > 0)
 	{
-//		Serial.printf("refresh LEDs %i %i\n", needUpdate,refreshAnyway);
 #ifdef useRTOS
 		xSemaphoreTake(ledBaton, portMAX_DELAY);
 #endif
 	    switch (chainMode)
 	    {
 			case hatDirect:
+//				Serial.printf("refresh LEDs Direct %i %i\n", needUpdate, refreshAnyway);
 				FastLED.show();
 				break;
 			case hatI2C:
+//				Serial.printf("refresh LEDs I2C %i %i\n", needUpdate, refreshAnyway);
 				showI2CLED();
 				break;
 		}

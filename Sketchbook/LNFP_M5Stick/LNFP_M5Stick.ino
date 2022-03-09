@@ -42,8 +42,9 @@ char BBVersion[] = {'1','5','9'};
 #include <IoTT_Switches.h>
 #include <IoTT_SecurityElements.h> //not ready yet. This is the support for ABS/APB as described in Videos #20, 21, 23, 24
 #include <NmraDcc.h> //install via Arduino IDE
-#include <OneDimKalman.h>
+//#include <OneDimKalman.h>
 #include <IoTT_lbServer.h>
+#include <IoTT_TrainSensor.h>
 #ifdef useAI
   #include <IoTT_VoiceControl.h>
 #endif
@@ -96,6 +97,7 @@ LocoNetESPSerial * lnSerial = NULL;
 nodeType subnetMode = standardMode;
 IoTT_SerInjector * usbSerial = NULL;
 IoTT_LBServer * lbServer = NULL;
+IoTT_DigitraxBuffers * digitraxBuffer = NULL; //pointer to DigitraxBuffers
 //IoTT_OpenLCB *olcbSerial = NULL;
 //HardwareSerial *wireSerial = NULL;
 ln_mqttGateway * commGateway = NULL;
@@ -103,7 +105,7 @@ IoTT_ledChain * myChain = NULL;
 IoTT_SwitchList * mySwitchList = NULL;
 MQTTESP32 * lnMQTT = NULL;
 NmraDcc  * myDcc = NULL;
-
+IoTT_TrainSensor * trainSensor = NULL;
 //some variables used for performance measurement
 #ifdef measurePerformance
 uint16_t loopCtr = 0;
@@ -122,7 +124,8 @@ constexpr gpio_num_t groveTxCAN = GPIO_NUM_32; //for OpenLCB CAN
 #define hatRxD 0
 #define hatTxD 26
 #define hatInputPin 36 //25+ //36
-#define hatDataPin 26 //used to send LED data from FastLED. First, set to output low, then call show
+#define hatDataPin 26 //26 used to send LED data from FastLED to BlueHat. First, set to output low, then call show
+#define rhDataPin 0 //used to send LED data from FastLED to the RedHat. First, set to output low, then call show
 #define yellowWireAddr 0x18 //I2C Address used on hats with I2C slave 328P
 uint8_t hatData[] = {1, hatDataPin}; //pin definition for LED library
 uint8_t analogPins[] = {hatInputPin, 2}; //analog pin used for button reading, number of button MUX (connected via I2C)
@@ -260,7 +263,7 @@ void setup() {
   Serial.println("Init SPIFFS");
   SPIFFS.begin(); //File System. Size is set to 1 MB during compile time and loaded with configuration data and web pages
   UniqueIDdump(Serial);
-  loadFromFile(bufferFileName);
+  digitraxBuffer = new IoTT_DigitraxBuffers(sendMsg); //initialization with standard LocoNet communication function
   myWebServer = new AsyncWebServer(80);
   dnsServer = new DNSServer();
   wifiClient = new WiFiClient();
@@ -512,13 +515,11 @@ void setup() {
     }
     else 
       Serial.println("Gateway not activated");
-
-//    setTxFunction(&sendMsg); //defined in IoTT_DigitraxBuffers.h
     if (jsonConfigObj->containsKey("useBushby"))
       if ((bool)(*jsonConfigObj)["useBushby"])
-        enableBushbyWatch(true); //defined in IoTT_DigitraxBuffers.h
+        digitraxBuffer->enableBushbyWatch(true); //defined in IoTT_DigitraxBuffers.h
       else
-        enableBushbyWatch(false);
+        digitraxBuffer->enableBushbyWatch(false);
         
     if (useHat.devId == 1) //BlueHat or CTC Hat
     {
@@ -531,48 +532,32 @@ void setup() {
         jsonDataObj = getDocPtr("/configdata/led.cfg", false);
         if (jsonDataObj != NULL)
         {
-        Serial.println(String(ESP.getFreeHeap()));
         Serial.println("Create LED Chain"); 
           myChain = new IoTT_ledChain(); // ... construct now, and call setup later
-        Serial.println(String(ESP.getFreeHeap()));
-        Serial.println("Load LED Chain Data"); 
           myChain->loadLEDChainJSON(*jsonDataObj);
-        Serial.println(String(ESP.getFreeHeap()));
-        Serial.println("Delete JSON Object"); 
           delete(jsonDataObj);
           uint16_t subFileCtr = 1;
           while (SPIFFS.exists("/configdata/led" + String(subFileCtr) + ".cfg"))
           {
-//            Serial.printf("trying File %i\n", subFileCtr);
-        Serial.println(String(ESP.getFreeHeap()));
-        Serial.println("Create next JSON Doc"); 
             jsonDataObj = getDocPtr("/configdata/led" + String(subFileCtr) + ".cfg", false);
             if (jsonDataObj)
             {
-//              Serial.println("Load Chain File");
-        Serial.println(String(ESP.getFreeHeap()));
-        Serial.println("Load LED Chain Data"); 
               myChain->loadLEDChainJSON(*jsonDataObj, false);
-        Serial.println(String(ESP.getFreeHeap()));
-        Serial.println("Delete JSON Object"); 
               delete(jsonDataObj);
             }
             subFileCtr++;
           }
-        Serial.println(String(ESP.getFreeHeap()));
-        Serial.println("Init LED Chain"); 
           if (useInterface.devCommMode == 3)
             myChain->setMQTTMode(mqttTransmit);
-          Serial.printf("Init LED Chain on Pin %i, %i LEDs long\n", hatDataPin, myChain->getChainLength());
-//          Serial.println(myChain->colTypeNum);
-            if (myChain->colTypeNum == 0x66)
-            {
-              FastLED.addLeds<WS2811, hatDataPin, GRB>(myChain->getChain(), myChain->getChainLength()); 
-            }
-            if (myChain->colTypeNum == 0x0C)
-            {
-              FastLED.addLeds<WS2811, hatDataPin, RGB>(myChain->getChain(), myChain->getChainLength()); 
-            }
+//          Serial.printf("Init LED Chain on Pin %i, %i LEDs long\n", hatDataPin, myChain->getChainLength());
+          if (myChain->colTypeNum == 0x66)
+          {
+            FastLED.addLeds<WS2811, hatDataPin, GRB>(myChain->getChain(), myChain->getChainLength()); 
+          }
+          if (myChain->colTypeNum == 0x0C)
+          {
+            FastLED.addLeds<WS2811, hatDataPin, RGB>(myChain->getChain(), myChain->getChainLength()); 
+          }
         }
       }
     }
@@ -592,11 +577,11 @@ void setup() {
         {
           case 2: ; // LocoNet
           case 3: ; //LocoNet over MQTT
-          case 4: usbSerial->setMsgType(LocoNet); break; //LocoNet with Gateway
+          case 4: usbSerial->setProtType(LocoNet); break; //LocoNet with Gateway
           case 5: ; //OpenLCB
           case 6: ; //OpenLCB over MQTT
-          case 7: usbSerial->setMsgType(OpenLCB); break; //OpenLCB with Gateway
-          //usbSerial->setMsgType(DCCEx); break; //DCC++Ex DCC Generator
+          case 7: usbSerial->setProtType(OpenLCB); break; //OpenLCB with Gateway
+          //usbSerial->setProtType(DCCEx); break; //DCC++Ex DCC Generator
         }
         delete(jsonDataObj); 
         Serial.println("Serial communication loaded"); 
@@ -724,7 +709,7 @@ void setup() {
         {
           Serial.println("Load BlackHat Button Data");  
           myButtons = new IoTT_Mux64Buttons();
-          myButtons->initButtonsDirect();
+          myButtons->initButtonsDirect(false); //GPIO mode
           myButtons->loadButtonCfgDirectJSON(*jsonDataObj);
           if (useInterface.devCommMode == 3) //MQTT
             myButtons->setMQTTMode(mqttTransmit);
@@ -737,28 +722,78 @@ void setup() {
     else 
       Serial.println("BlackHat not activated");
 
-    if (useHat.devId == 6) //RedHat Serial Injector
+    if ((useHat.devId == 6) || (useHat.devId == 8)) //RedHat Serial Injector in Cmd Stn or Booster mode
     {
       jsonDataObj = getDocPtr("/configdata/rhcfg.cfg", false);
       if (jsonDataObj != NULL)
       {
         Serial.println("Load DCC++Ex communication interface"); 
-        usbSerial = new IoTT_SerInjector(hatInputPin, hatTxD, false, 1);
-        usbSerial->setTxCallback(sendMsg);
-        usbSerial->loadLNCfgJSON(*jsonDataObj);
-        usbSerial->setMsgType(DCCEx); //DCC++Ex DCC Generator
-
-        setReplyFunction(sendLocoNetReply);
-        setDccCmdFunction(sendDCCCmdGen);
-        subnetMode = fullMaster;
-        if (lnSerial)
-          lnSerial->setNetworkType(subnetMode); 
+        if (useHat.devId == 6) //Cmd Stn mode
+        {
+          subnetMode = fullMaster;
+          digitraxBuffer->setRedHatMode(sendLocoNetReply, *jsonDataObj); //function hooks in DigitraxBuffers
+          if (lnSerial)
+            lnSerial->setNetworkType(subnetMode); 
+        }
+        else
+        {
+          digitraxBuffer->setRedHatMode(NULL, *jsonDataObj); //function hooks in DigitraxBuffers
+        }
         delete(jsonDataObj); 
+
+        jsonDataObj = getDocPtr("/configdata/led.cfg", false);
+        if (jsonDataObj != NULL)
+        {
+          myChain = new IoTT_ledChain(); // ... construct now, and call setup later
+          myChain->loadLEDChainJSON(*jsonDataObj);
+          delete(jsonDataObj);
+          uint16_t subFileCtr = 1;
+          while (SPIFFS.exists("/configdata/led" + String(subFileCtr) + ".cfg"))
+          {
+            jsonDataObj = getDocPtr("/configdata/led" + String(subFileCtr) + ".cfg", false);
+            if (jsonDataObj)
+            {
+              myChain->loadLEDChainJSON(*jsonDataObj, false);
+              delete(jsonDataObj);
+            }
+            subFileCtr++;
+          }
+          if (useInterface.devCommMode == 3)
+            myChain->setMQTTMode(mqttTransmit);
+          if (myChain->colTypeNum == 0x66)
+          {
+            FastLED.addLeds<WS2811, rhDataPin, GRB>(myChain->getChain(), myChain->getChainLength()); 
+          }
+          if (myChain->colTypeNum == 0x0C)
+          {
+            FastLED.addLeds<WS2811, rhDataPin, RGB>(myChain->getChain(), myChain->getChainLength()); 
+          }
+        }
         Serial.println("DCC++Ex loaded"); 
       }
     }
     else
       Serial.println("DCC++Ex not activated");
+
+    if (useHat.devId == 7) //PurpleHat Trainside sensor
+    {
+      jsonDataObj = getDocPtr("/configdata/phcfg.cfg", false);
+      if (jsonDataObj != NULL)
+      {
+        Wire.begin(hatSDA, hatSCL, 400000); //initialize the I2C interface 400kHz
+        Serial.println("Load Trainside Sensor"); 
+        trainSensor = new IoTT_TrainSensor(&Wire);
+        trainSensor->setTxCallback(sendMsg);
+        trainSensor->loadLNCfgJSON(*jsonDataObj);
+        delete(jsonDataObj); 
+        Serial.println("Purple Sensor loaded"); 
+      }
+    }
+    else
+      Serial.println("Purple Sensor not activated");
+
+  //load switch status data from file. If not Cmd Stn mode, slot buffer is cleared, otherwise, load slot buffer from previous session
+  digitraxBuffer->loadFromFile(bufferFileName); //load previous dataset
 
 //Load ALM list
     if (jsonConfigObj->containsKey("ALMTypeList") && jsonConfigObj->containsKey("ALMIndex"))
@@ -913,6 +948,7 @@ void loop() {
   if (lbServer) lbServer->processLoop(); //drives the LocoNet over TCP interface traffic
   if (lnSerial) lnSerial->processLoop(); //handling all LocoNet communication
 //  if (olcbSerial) olcbSerial->processLoop(); //handling all OpenLCB communication
+  if (trainSensor) trainSensor->processLoop(); //getting the data fromn the speed sensor
 
   if (myChain)
     hatVerified = myChain->isVerified();
@@ -975,7 +1011,7 @@ void loop() {
     sendKeepAlive();
   }
   if (subnetMode != standardMode)
-    if (lnSerial) lnSerial->processLoop(); //handling all LocoNet communication
+    if (lnSerial) lnSerial->processLoop(); //enable all LocoNet communication
   M5.update();
   processDisplay();
   
@@ -986,5 +1022,5 @@ void loop() {
 //    sendAnalogCommand(22,17);
 //  }
 
-  processBufferUpdates(); //updating DigitraxBuffers by querying information from LocoNet, e.g. slot statuses
+  digitraxBuffer->processLoop(); //updating DigitraxBuffers by querying information from LocoNet, e.g. slot statuses
 }

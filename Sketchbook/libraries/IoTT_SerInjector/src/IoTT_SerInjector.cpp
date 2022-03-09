@@ -27,6 +27,8 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
 txFct usbCallback = NULL;
 
+class IoTT_DigitraxBuffers;
+
 IoTT_SerInjector::IoTT_SerInjector(int receivePin, int transmitPin, bool inverse_logic, int uartNr, unsigned int buffSize) : HardwareSerial(uartNr) 
 {
 	m_invert = inverse_logic;
@@ -50,14 +52,15 @@ void IoTT_SerInjector::begin() {
 	m_highSpeed = true;
 }
 
-void IoTT_SerInjector::setMsgType(messageType thisType)
+void IoTT_SerInjector::setProtType(messageType thisType)
 {
-	msgProtocol = thisType;
+	Serial.printf("Set Msg Type %i\n", thisType);
+	usedProtocol = thisType;
 }
 
 messageType IoTT_SerInjector::getMsgType()
 {
-	return msgProtocol;
+	return usedProtocol;
 }
 
 void IoTT_SerInjector::loadLNCfgJSON(DynamicJsonDocument doc)
@@ -123,7 +126,7 @@ void IoTT_SerInjector::setTxCallback(txFct newCB)
 	usbCallback = newCB;
 }
 
-void IoTT_SerInjector::processLNMsg(lnTransmitMsg * recData)
+void IoTT_SerInjector::processLNMsg(lnTransmitMsg* recData)
 {
 	//send to PC/USB
 	if (usbCallback)
@@ -137,12 +140,13 @@ void IoTT_SerInjector::handleLNIn(uint8_t inData, uint8_t inFlags) //called for 
 
 void IoTT_SerInjector::processLoop()
 {
-	
-	switch (msgProtocol)
+//	Serial.println(msgProtocol);
+	switch (usedProtocol)
 	{
 		case LocoNet: processLNReceive(); processLNTransmit(); break;
 		case OpenLCB: processLCBReceive(); processLCBTransmit(); break;
 		case DCCEx: processDCCExReceive(); processDCCExTransmit(); break;
+		default: Serial.println("unknown protocol"); break;
 	}
 	yield();
 }
@@ -206,7 +210,7 @@ void IoTT_SerInjector::processLNReceive()
 			}
 			else
 			{
-			Serial.println("unexpected data byte while waiting for OpCode");
+			Serial.println("LN unexpected data byte while waiting for OpCode");
 			//unexpected data byte while waiting for OpCode
 				lnInBuffer.lnMsgSize = 1;
 				lnInBuffer.reqID = 0;
@@ -334,35 +338,86 @@ void IoTT_SerInjector::processLCBTransmit()
 020 * @author Andrew Crosland Copyright (C) 2008
 021 */
 
-void IoTT_SerInjector::parseDCCEx()
+int IoTT_SerInjector::parseDCCExNumVal(char** startAt, uint8_t* cntVal)
 {
-	Serial.print("Parse DCC++ Message ");
-	char * cmdSeq = (char*) &lnInBuffer.lnData[0];
-	char opCode[5];
-	char * pch;
-	pch = strstr (cmdSeq," ");
-	Serial.println(cmdSeq);
-	if (pch != NULL)
+	while (!isDigit(**startAt) && (**startAt != '-')) 
 	{
-		strncpy (&opCode[0],&cmdSeq[1],pch - &cmdSeq[1]);
-		opCode[pch - &cmdSeq[1]] = (char)0;
-		if (opCode == "T")
+		*startAt = *startAt + 1;
+		*cntVal += 1;  // = *cntVal + 1;
+	}
+	char* upTo = *startAt;
+	while ((isDigit(*upTo)) || (*upTo == '-')) upTo++;
+	char tempBuf[10];
+	strncpy(&tempBuf[0], *startAt, upTo - *startAt);
+	return atoi(tempBuf);
+}
+
+bool IoTT_SerInjector::parseDCCEx(lnTransmitMsg* thisEntry, lnTransmitMsg* txBuffer)
+{
+//	Serial.print("Parse DCC++ Message ");
+	char* readPtr = (char*) &lnInBuffer.lnData[0];
+	while ((*readPtr == '<') || (*readPtr == ' '))
+		readPtr++;
+	Serial.println(*readPtr);
+	uint8_t posCtr = 0;
+	if (readPtr != NULL)
+	{
+		char opCode = *readPtr;
+		if ((opCode == 'Q') || (opCode == 'q')) //sensor input
+		{
+			txBuffer->lnData[0] = 11; //sensor input
+//			Serial.println("sensor input");
+			uint8_t retVal = parseDCCExNumVal(&readPtr, &posCtr);
+			txBuffer->lnData[1] = retVal; //sensor nr
+			txBuffer->lnData[2] = opCode == 'Q' ? 0 : 1;
+			txBuffer->lnMsgSize = 3;
+			txBuffer->reqID = 0x00; 
+			return true;
+		}
+		if (opCode == 'T')
 		{
 			Serial.println("Cab Ctrl Return");
 		}
-		if (opCode == "-")
+		if (opCode == '-')
 		{
 			Serial.println("Release Locos");
 		}
-		if (opCode == "0")
+		if (opCode == '0')
 		{
 			Serial.println("Command Successfully executed");
 		}
-		if (opCode == "X")
+		if (opCode == 'r')
+		{
+			txBuffer->lnData[0] = 5; //progMode
+//			Serial.println("programmer reply");
+			uint16_t retVal = parseDCCExNumVal(&readPtr, &posCtr);
+			txBuffer->lnData[1] = retVal >> 8; //priv code
+			txBuffer->lnData[2] = retVal & 0x00FF;
+			readPtr += posCtr;
+			posCtr = 0;
+			retVal = parseDCCExNumVal(&readPtr, &posCtr);
+			txBuffer->lnData[3] = retVal >> 8; //priv code
+			txBuffer->lnData[4] = retVal & 0x00FF;
+			readPtr += posCtr;
+			posCtr = 0;
+			retVal = parseDCCExNumVal(&readPtr, &posCtr);
+			txBuffer->lnData[5] = retVal >> 8; //CV nr
+			txBuffer->lnData[6] = retVal & 0x00FF;
+			readPtr += posCtr;
+			posCtr = 0;
+			int16_t cvVal = parseDCCExNumVal(&readPtr, &posCtr);
+			txBuffer->lnData[7] = cvVal >> 8; //Value
+			txBuffer->lnData[8] = cvVal & 0x00FF;
+			txBuffer->lnMsgSize = 9;
+			txBuffer->reqID = 0x00; 
+			return true;
+		}
+		if (opCode == 'X')
 		{
 			Serial.println("Command execution failed");
 		}
 	}
+	return false;
 }
 
 void IoTT_SerInjector::processDCCExReceive()
@@ -370,6 +425,7 @@ void IoTT_SerInjector::processDCCExReceive()
 	while (available()) //read GridConnect protocol and package by message
 	{
 		char inData = read();
+//		Serial.print(inData);
 		switch (inData)
 		{
 			case '<' : //start new message
@@ -389,18 +445,24 @@ void IoTT_SerInjector::processDCCExReceive()
 				lnBufferPtr++; 
 				break;
 			case '>' : //terminate message
-				lnInBuffer.lnData[lnBufferPtr] = inData; //leave terminator intact
-				lnInBuffer.lnData[lnBufferPtr+1] = 0; //terminating 0 for char* interpretation
-				lnInBuffer.lnMsgSize = lnBufferPtr; //this is # of nibbles, so 2x byte length
-				lnBufferPtr = 0;
-				parseDCCEx();
-				bitRecStatus = 0;
+				{
+					lnInBuffer.lnData[lnBufferPtr] = inData; //leave terminator intact
+					lnInBuffer.lnData[lnBufferPtr+1] = 0; //terminating 0 for char* interpretation
+					lnInBuffer.lnMsgSize = lnBufferPtr; //this is # of nibbles, so 2x byte length
+					lnBufferPtr = 0;
+					lnTransmitMsg txOutBuffer;
+//					Serial.println("Parse");
+					if (parseDCCEx(&lnInBuffer, &txOutBuffer))
+						processLNMsg(&txOutBuffer);
+					bitRecStatus = 0;
+				}
 				break;
 			default  : //must be data (max 8 bytes)
 				if (lnBufferPtr > 0) //ignore CRLF and any char before <
 				{
 					lnInBuffer.lnData[lnBufferPtr] = inData;
-					lnBufferPtr++; 
+					if (lnBufferPtr < lnMaxMsgSize)
+						lnBufferPtr++; 
 				} 
 				break;
 		}
@@ -413,6 +475,7 @@ void IoTT_SerInjector::processDCCExTransmit()
     if (que_wrPos != que_rdPos) //override protection
     {
 		uint8_t hlpQuePtr = (que_rdPos + 1) % queBufferSize;
+
 		//send to USB port
 //		Serial.printf("DCC++Ex Transmit %i %i %i\n", hlpQuePtr, transmitQueue[hlpQuePtr].lnData[0], transmitQueue[hlpQuePtr].lnData[1]);
 		char txMsg[50];
@@ -523,6 +586,13 @@ void IoTT_SerInjector::processDCCExTransmit()
 				write(txMsg);
 //				Serial.print("Out: ");
 //				Serial.println(txMsg);
+				break;
+			}
+			case 99: //System configuration
+			{
+				uint16_t cfgId = (transmitQueue[hlpQuePtr].lnData[1] << 7) + (transmitQueue[hlpQuePtr].lnData[2] &0x7F);
+				uint16_t cfgVal = (transmitQueue[hlpQuePtr].lnData[3] << 7) + (transmitQueue[hlpQuePtr].lnData[4] &0x7F);
+				sprintf(txMsg, "<Z %i %i>", cfgId, cfgVal);
 				break;
 			}
 		}

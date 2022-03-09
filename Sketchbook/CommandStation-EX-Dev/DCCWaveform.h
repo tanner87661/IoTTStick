@@ -28,13 +28,13 @@ const int  POWER_SAMPLE_OFF_WAIT = 1000;
 const int  POWER_SAMPLE_OVERLOAD_WAIT = 20;
 
 // Number of preamble bits.
-const int   PREAMBLE_BITS_MAIN = 20;
+const int   PREAMBLE_BITS_MAIN = 16;
 const int   PREAMBLE_BITS_PROG = 22;
 const byte   MAX_PACKET_SIZE = 5;  // NMRA standard extended packets, payload size WITHOUT checksum.
 
 // The WAVE_STATE enum is deliberately numbered because a change of order would be catastrophic
 // to the transform array.
-enum  WAVE_STATE : byte {WAVE_START=0,WAVE_MID_1=1,WAVE_HIGH_0=2,WAVE_MID_0=3,WAVE_LOW_0=4,WAVE_PENDING=5, WAVE_SHORT=6};
+enum  WAVE_STATE : byte {WAVE_START=0,WAVE_MID_1=1,WAVE_HIGH_0=2,WAVE_MID_0=3,WAVE_LOW_0=4,WAVE_PENDING=5};
 
 
 // NOTE: static functions are used for the overall controller, then
@@ -48,7 +48,7 @@ const byte resetPacket[] = {0x00, 0x00, 0x00};
 
 class DCCWaveform {
   public:
-    DCCWaveform( byte preambleBits, bool isMain, byte cutoffBits = 0);
+    DCCWaveform( byte preambleBits, bool isMain);
     static void begin(MotorDriver * mainDriver, MotorDriver * progDriver);
     static void loop(bool ackManagerActive);
     static DCCWaveform  mainTrack;
@@ -111,10 +111,10 @@ class DCCWaveform {
   private:
     
 // For each state of the wave  nextState=stateTransform[currentState] 
-   static const WAVE_STATE stateTransform[7];
+   static const WAVE_STATE stateTransform[6];
 
-// For each state of the wave, signal pin is HIGH or LOW. Both pins are high for DCC Cutout
-   static const byte signalTransform[7];
+// For each state of the wave, signal pin is HIGH or LOW   
+   static const bool signalTransform[6];
   
     static void interruptHandler();
     void interrupt2();
@@ -128,7 +128,6 @@ class DCCWaveform {
     byte transmitRepeats;      // remaining repeats of transmission
     byte remainingPreambles;
     byte requiredPreambles;
-    byte requiredCutoffs;
     byte bits_sent;           // 0-8 (yes 9 bits) sent for current byte
     byte bytes_sent;          // number of bytes sent from transmitPacket
     WAVE_STATE state;         // wave generator state machine

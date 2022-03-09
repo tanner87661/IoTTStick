@@ -3,14 +3,7 @@
 
 #include "StringFormatter.h"
 
-
-#define VERSION "3.1.6"
-// 3.1.6 Make output ID two bytes and guess format/size of registered outputs found in EEPROM
-// 3.1.5 Fix LCD corruption on power-up
-// 3.1.4 Refactor OLED and LCD drivers and remove unused code
-// 3.1.3 Add a loop delay to give more time for sensing an Ethernet cable connection
-// 3.1.2 Eliminate wait after write when prog is joined or prog power is off
-// 3.1.1 SH1106 OLED Display Offset Fix
+#define VERSION "3.1.0"
 // 3.0.16 Ignore CV1 bit 7 read rejected by decoder when identifying loco id.  
 // 3.0.15 only send function commands once, not 4 times
 // 3.0.14 gap in ack tolerant fix,  prog track power management over join fix. 

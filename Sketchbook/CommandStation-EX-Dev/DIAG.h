@@ -21,5 +21,5 @@
 
 #include "StringFormatter.h"
 #define DIAG  StringFormatter::diag
-#define LCD   StringFormatter::lcd
+//#define LCD   StringFormatter::lcd
 #endif

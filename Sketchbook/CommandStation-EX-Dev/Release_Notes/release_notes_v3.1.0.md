@@ -1,13 +1,8 @@
-The DCC-EX Team is pleased to release CommandStation-EX-v3.1.0 as a Production Release.  Release v3.1.0 is a minor release that adds additional features and fixes a number of bugs. With the number of new features, this could have easily been a major release. The team is continually improving the architecture of DCC++EX to make it more flexible and optimizing the code so as to get more performance from the Arduino (and other) microprocessors.  This release includes all of the Point Releases from v3.0.1 to v3.0.16.
-
-**Downloads (zip and tar.gz) below. These are named without version number in the folder name to make the Arduino IDE happy.**
-
-[CommandStation-EX.zip](https://github.com/DCC-EX/CommandStation-EX/releases/download/v3.1.0-Prod/CommandStation-EX.zip)
-[CommandStation-EX.tar.gz](https://github.com/DCC-EX/CommandStation-EX/releases/download/v3.1.0-Prod/CommandStation-EX.tar.gz)
+DCC-EX Team is pleased to release CommandStation-EX-v3.1.0 as a Production Release.  Release v3.1.0 is a minor release that adds additional features and fixes a number of bugs. With the number of new features, this could have easily been a major release. The team is continually improving the architecture of DCC++EX to make it more flexible and optimizing the code so as to get more perfromance from the Arduino microprocessors.  This release includes  all of the Point Releases from v3.0.1 to v3.0.16.
 
 **Known Issues**
 
-- **Wi-Fi** - works, but requires sending <AT> commands from a serial monitor if you want to switch between AP mode and STA station mode after initial setup
+- **Wi-Fi** - works, but requires sending <AT> commands from a serial monitor if you want to switch between AP mode and STA station mode.
 - **Pololu Motor Shield** - is supported with this release, but the user may have to adjust timings to enable programming mode due to limitation in its current sensing circuitry
 
 #### Summary of key features and/or bug fixes by Point Release
@@ -139,7 +134,7 @@ The DCC-EX Team is pleased to release CommandStation-EX-v3.1.0 as a Production R
 - **Fix EEPROM bugs**
 - **Number of locos discovery command** - `<#>` command
 - **Support for more locomotives** - 20 locomotives on an UNO and 50 an a Mega.
-- **Automatic slot management** - slot variable in throttle/function commands are ignored and slot management is taken care of automatically. `<->` and `<- CAB>` commands added to release locos from memory and stop packets to the track.
+- **Automatic slot managment** - slot variable in throttle/function commands are ignored and slot management is taken care of automatically. `<!>` command added to release locos from memory.
 
 **Key Contributors**
 
@@ -154,13 +149,9 @@ The DCC-EX Team is pleased to release CommandStation-EX-v3.1.0 as a Production R
 - Neil McKechnie - Worcestershire, UK (NeilMck)
 - Fred Decker - Holly Springs, North Carolina, USA (FlightRisk)
 - Dave Cutting - Logan, Utah, USA (Dave Cutting/ David Cutting)
-- M Steve Todd -  
+- M Steve Todd - - Engine Driver and JMRI Interface
 - Scott Catalano - Pennsylvania
 - Gregor Baues - Île-de-France, France (grbba)
-
-**Engine Driver and JMRI Interface**
-
-- M Steve Todd
 
 **exInstaller Software**
 
@@ -184,9 +175,9 @@ The DCC-EX Team is pleased to release CommandStation-EX-v3.1.0 as a Production R
 **Beta Testing / Release Management / Support**
 
 - Larry Dribin - Release Management
-- Kevin Smith - Rochester Hills, Michigan USA (KC Smith)
 - Keith Ledbetter
-- BradVan der Elst
+- Kevin Smith - Rochester Hills, Michigan USA (KC Smith)
+- Brad Van der Elst
 - Andrew Pye
 - Mike Bowers
 - Randy McKenzie
@@ -199,8 +190,3 @@ The DCC-EX Team is pleased to release CommandStation-EX-v3.1.0 as a Production R
 - Gajanatha Kobbekaduwe
 - Sumner Patterson
 - Paul - Virginia, USA
-
-**Downloads (zip and tar.gz) below. These are named without version number in the folder name to make the Arduino IDE happy.**
-
-[CommandStation-EX.zip](https://github.com/DCC-EX/CommandStation-EX/releases/download/v3.1.0-Prod/CommandStation-EX.zip)
-[CommandStation-EX.tar.gz](https://github.com/DCC-EX/CommandStation-EX/releases/download/v3.1.0-Prod/CommandStation-EX.tar.gz)

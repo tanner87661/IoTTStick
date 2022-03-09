@@ -27,8 +27,7 @@
 /*
  *  © 2020,2021 Chris Harlow, Harald Barth, David Cutting, 
  *  Fred Decker, Gregor Baues, Anthony W - Dayton  All rights reserved.
- *  
- *  This file is part of CommandStation-EX
+ * 
  *
  *  This is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -43,15 +42,21 @@
  *  You should have received a copy of the GNU General Public License
  *  along with CommandStation.  If not, see <https://www.gnu.org/licenses/>.
  */
-
+//#define cycleCount
 
 #include "DCCEX.h"
 
 // Create a serial command parser for the USB connection, 
 // This supports JMRI or manual diagnostics and commands
 // to be issued from the USB serial console.
-DCCEXParser serialParser;
+  DCCEXParser serialParser;
+  BoardManager * thisBoard = NULL;
 
+#ifdef cycleCount
+  uint32_t lastCount = millis();
+  uint16_t cycCtr = 0; 
+#endif
+  
 void setup()
 {
   // The main sketch has responsibilities during setup()
@@ -60,52 +65,53 @@ void setup()
   // This is normally Serial but uses SerialUSB on a SAMD processor
   Serial.begin(115200);
 
-  DIAG(F("License GPLv3 fsf.org (c) dcc-ex.com"));
-
-  CONDITIONAL_LCD_START {
-    // This block is still executed for DIAGS if LCD not in use 
-    LCD(0,F("DCC++ EX v%S"),F(VERSION));
-    LCD(1,F("Lic GPLv3")); 
-    }   
-
-  // Responsibility 2: Start all the communications before the DCC engine
-  // Start the WiFi interface on a MEGA, Uno cannot currently handle WiFi
-  // Start Ethernet if it exists
-#if WIFI_ON
-  WifiInterface::setup(WIFI_SERIAL_LINK_SPEED, F(WIFI_SSID), F(WIFI_PASSWORD), F(WIFI_HOSTNAME), IP_PORT, WIFI_CHANNEL);
-#endif // WIFI_ON
-
-#if ETHERNET_ON
-  EthernetInterface::setup();
-#endif // ETHERNET_ON
-
   // Responsibility 3: Start the DCC engine.
   // Note: this provides DCC with two motor drivers, main and prog, which handle the motor shield(s)
   // Standard supported devices have pre-configured macros but custome hardware installations require
   //  detailed pin mappings and may also require modified subclasses of the MotorDriver to implement specialist logic.
+
   // STANDARD_MOTOR_SHIELD, POLOLU_MOTOR_SHIELD, FIREBOX_MK1, FIREBOX_MK1S are pre defined in MotorShields.h
-  DCC::begin(MOTOR_SHIELD_TYPE);
 
-  #if defined(RMFT_ACTIVE) 
-      RMFT::begin();
-  #endif
 
+  thisBoard = new BoardManager;
+  thisBoard->intializeBoard();
+
+  thisBoard->setLED(0, CHSV(0,255,255));
+  thisBoard->setLED(1, CHSV(85,255,255));
+  thisBoard->setLED(2, CHSV(170,255,255));
+  FastLED.show();
+
+  while (!thisBoard->verifyPowerSignal())
+  {
+    thisBoard->setLEDDispStatus();
+    DIAG(F("Waiting for Power Supply"));
+    delay(1000);
+  }
+  
+  serialParser.setLinks(thisBoard);
+  thisBoard->setLEDDispStatus();
+         
   #if __has_include ( "mySetup.h")
         #define SETUP(cmd) serialParser.parse(F(cmd))  
         #include "mySetup.h"
         #undef SETUP
        #endif
-
-  #if defined(LCN_SERIAL)
-      LCN_SERIAL.begin(115200); 
-      LCN::init(LCN_SERIAL);
-  #endif
-
-  LCD(1,F("Ready")); 
 }
 
 void loop()
 {
+
+#ifdef cycleCount
+  cycCtr++;
+  if ((millis() - lastCount) > 1000)
+  {
+    DIAG(F("Loops: %d"), cycCtr);
+    lastCount += 1000;
+    cycCtr = 0; 
+  }
+#endif
+
+  
   // The main sketch has responsibilities during loop()
 
   // Responsibility 1: Handle DCC background processes
@@ -114,25 +120,8 @@ void loop()
 
   // Responsibility 2: handle any incoming commands on USB connection
   serialParser.loop(Serial);
+  thisBoard->processLoop();
 
-// Responsibility 3: Optionally handle any incoming WiFi traffic
-#if WIFI_ON
-  WifiInterface::loop();
-#endif
-#if ETHERNET_ON
-  EthernetInterface::loop();
-#endif
-
-#if defined(RMFT_ACTIVE) 
-  RMFT::loop();
-#endif
-
-  #if defined(LCN_SERIAL) 
-      LCN::loop();
-  #endif
-
-  LCDDisplay::loop();  // ignored if LCD not in use 
-  
   // Report any decrease in memory (will automatically trigger on first call)
   static int ramLowWatermark = __INT_MAX__; // replaced on first loop 
 
@@ -140,6 +129,6 @@ void loop()
   if (freeNow < ramLowWatermark)
   {
     ramLowWatermark = freeNow;
-    LCD(2,F("Free RAM=%5db"), ramLowWatermark);
+//    LCD(2,F("Free RAM=%5db"), ramLowWatermark);
   }
 }

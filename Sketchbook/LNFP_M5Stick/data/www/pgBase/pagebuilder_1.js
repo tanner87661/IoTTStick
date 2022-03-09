@@ -1,9 +1,9 @@
-function createMenueTabElement(parentObj, objType, className, objID, objTitle, visible, clickFct)
+function createMenueTabElement(parentObj, objType, className, menuName, objID, objTitle, visible, clickFct)
 {
 	var docElement = document.createElement(objType);
 	docElement.setAttribute('class', className);	
 	docElement.setAttribute("id", objID);
-	docElement.setAttribute("name", objTitle);
+	docElement.setAttribute("name", menuName);
 	docElement.setAttribute("onclick", clickFct);
 	setVisibility(visible, docElement);
 	
@@ -63,6 +63,7 @@ function createDispText(parentObj, divclass, labelText, dispText, dispObjID)
 
 	var textElement = document.createElement("div");
 	textElement.setAttribute('class', "inputtext_tab1");
+	textElement.setAttribute('id', dispObjID + "_txt");
 	textElement.append(document.createTextNode(labelText));
 	textDiv.append(textElement);
 	
@@ -212,6 +213,7 @@ function createTextInput(parentObj, divclass, labelText, inputText, cbObjID, onc
 
 	var textElement = document.createElement("div");
 	textElement.setAttribute('class', "inputtext_tab1");
+	textElement.setAttribute('id', cbObjID + "_txt");
 	textElement.append(document.createTextNode(labelText));
 	textDiv.append(textElement);
 
