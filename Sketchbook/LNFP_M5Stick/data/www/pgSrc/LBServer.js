@@ -36,6 +36,9 @@ function constructPageContent(contentTab)
 		tempObj = createPageTitle(mainScrollBox, "div", "tile-1", "BasicCfg_Title", "h1", "LocoNet over TCP Client Configuration");
 		tempObj.setAttribute("id", "ClientTitle");
 		setVisibility(false, tempObj);
+		tempObj = createPageTitle(mainScrollBox, "div", "tile-1", "BasicCfg_Title", "h1", "WiThrottle Configuration");
+		tempObj.setAttribute("id", "WiClientTitle");
+		setVisibility(false, tempObj);
 
 //		createPageTitle(mainScrollBox, "div", "tile-1", "", "h2", "Basic Settings");
 
@@ -68,6 +71,7 @@ function loadDataFields(jsonData)
 	writeInputField("serverport", jsonData.PortNr);
 	writeInputField("serverip", jsonData.ServerIP);
 	setVisibility([8,9,10,11].indexOf(configData[nodeCfg].InterfaceIndex) >= 0, document.getElementById("ServerTitle"));
-	setVisibility(configData[nodeCfg].InterfaceIndex == 12, document.getElementById("ServerIPDiv"));
-	setVisibility(configData[nodeCfg].InterfaceIndex == 12, document.getElementById("ClientTitle"));
+	setVisibility([12,13].indexOf(configData[nodeCfg].InterfaceIndex) >= 0, document.getElementById("ServerIPDiv"));
+	setVisibility([12].indexOf(configData[nodeCfg].InterfaceIndex) >= 0, document.getElementById("ClientTitle"));
+	setVisibility([13].indexOf(configData[nodeCfg].InterfaceIndex) >= 0, document.getElementById("WiClientTitle"));
 }

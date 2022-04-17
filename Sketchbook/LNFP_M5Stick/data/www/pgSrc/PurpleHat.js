@@ -14,6 +14,15 @@ var tabSetup;
 var tabMeasurement;
 var tabSpeedMatch;
 var tabGPS;
+var tabProgrammer;
+var cvTableNative;
+var cvTableJMRI;
+var techSpeedDiv;
+var speedTableDiv;
+
+
+var fwTrim = 0;
+var bwTrim = 0;
 
 var trackRecFile = "";
 var trackRecMode = false;
@@ -36,6 +45,7 @@ var dispMode = false;
 var ScalingFactor = [dispSize[0]/(dispBoundaries[1] - dispBoundaries[0]), dispSize[1]/(dispBoundaries[3] - dispBoundaries[2])];
 
 var	locoAddr = -1;
+var locoAddrValid = false;
 
 jsonFileVersion = "1.0.0";
 
@@ -62,14 +72,24 @@ function setButtonStatus()
 	setVisibility([6,12].indexOf(configData[nodeCfg].InterfaceIndex) >= 0, document.getElementById("dccstep").parentElement);
 	setVisibility([6,12].indexOf(configData[nodeCfg].InterfaceIndex) >= 0, document.getElementById("btnAssignsp"));
 	setVisibility([6,12].indexOf(configData[nodeCfg].InterfaceIndex) >= 0, document.getElementById("dccaddrsp").parentElement);
-	setVisibility([6,12].indexOf(configData[nodeCfg].InterfaceIndex) >= 0, document.getElementById("dccstepsp").parentElement);
-	setVisibility([6,12].indexOf(configData[nodeCfg].InterfaceIndex) >= 0, document.getElementById("cbsetup_2"));
+	setVisibility([6,12].indexOf(configData[nodeCfg].InterfaceIndex) >= 0, document.getElementById("dccaddrtbl").parentElement);
+
+//	setVisibility([6,12].indexOf(configData[nodeCfg].InterfaceIndex) >= 0, document.getElementById("dccstepsp"));//.parentElement);
+	setVisibility([6,12,13].indexOf(configData[nodeCfg].InterfaceIndex) >= 0, document.getElementById("cbsetup_2"));
 //	setVisibility([6,12].indexOf(configData[nodeCfg].InterfaceIndex) >= 0, document.getElementById("cbsetup_tx_2"));
 	
 	setVisibility(validLocoDef, document.getElementById("btnSaveDecoder"));
 	setVisibility(validThrottleDef, document.getElementById("btnSaveThrottle"));
+	setVisibility(validTableDef, document.getElementById("btnProg"));
 
+	setVisibility(!validLocoDef && [6,12].indexOf(configData[nodeCfg].InterfaceIndex) >= 0, cvTableNative);
+	setVisibility(validLocoDef, cvTableJMRI);
+	setVisibility([6,12].indexOf(configData[nodeCfg].InterfaceIndex) >= 0, tabProgrammer);
+
+	setVisibility(validLocoDef || [6,12].indexOf(configData[nodeCfg].InterfaceIndex) >= 0, techSpeedDiv);
+	setVisibility(validTechSpeedDef, speedTableDiv);
 	
+
 //	setVisibility((!trackRecMode && (trackRecFile != "")), document.getElementById("btnStartTrack"));
 //	setVisibility(trackRecMode, document.getElementById("btnEndTrack"));
 //	setVisibility(trackRecFile != "", document.getElementById("btnGetTrack"));
@@ -94,6 +114,9 @@ function constructPageContent(contentTab)
 		tempObj = createEmptyDiv(tabSetup, "div", "tile-1", "");
 			createDropdownselector(tempObj, "tile-1_4", "Scale:", ["1:22.5","1:29","1:87", "1:160"], "selectscale", "setScaleSettings(this)");
 			createDropdownselector(tempObj, "tile-1_4", "Display:", dimOptions, "selectdim", "setDimSettings(this)");
+		tempObj = createEmptyDiv(tabSetup, "div", "tile-1", "");
+			createDropdownselector(tempObj, "tile-1_4", "Orientation:", ["Flat","Upright"], "mountstyle", "setMountingStyle(this)");
+
 		tempObj = createEmptyDiv(tabSetup, "div", "tile-1", "");
 			createButton(tempObj, "", "Save & Restart", "btnSave", "saveSettings(this)");
 			createButton(tempObj, "", "Cancel", "btnCancel", "cancelSettings(this)");
@@ -175,17 +198,47 @@ function constructPageContent(contentTab)
 				createButton(dispObj, "", "Save JMRI File", "btnSaveDecoder", "saveJMRIDecoder(this)");
 				createDispText(dispObj, "tile-1_4", "File Name:","n/a","jmrifilename");
 
-				tempObj = createEmptyDiv(dispObj, "div", "tile-1", "");
-				createDispText(tempObj, "tile-1_4", "Locomotive:","n/a","dccloco");
-				createDispText(tempObj, "tile-1_4", "DCC Address:","n/a","jmriaddr");
+				cvTableJMRI = createEmptyDiv(dispObj, "div", "tile-1", "");
 
-				tempObj = createEmptyDiv(dispObj, "div", "tile-1", "");
-				createDispText(tempObj, "tile-1_4", "Decoder Brand:","n/a","decbrand");
-				createDispText(tempObj, "tile-1_4", "Model:","n/a","decmodel");
+					tempObj = createEmptyDiv(cvTableJMRI, "div", "tile-1", "");
+					createDispText(tempObj, "tile-1_4", "Locomotive:","n/a","dccloco");
+					createDispText(tempObj, "tile-1_4", "DCC Address:","n/a","jmriaddr");
+					createDispText(tempObj, "tile-1_4", "Vmax []:","n/a","jmrivmax");
 
-				tempObj = createEmptyDiv(dispObj, "div", "tile-1", "");
-				createRadiobox(dispObj, "tile-1_2", "Programming Method", ["Prog Track","Main Line", "Main Line with readback"], "rbprogmethod", "setProgMode(this)");
-				
+					tempObj = createEmptyDiv(cvTableJMRI, "div", "tile-1", "");
+					createDispText(tempObj, "tile-1_4", "Decoder Brand:","n/a","decbrand");
+					createDispText(tempObj, "tile-1_4", "Decoder Family:","n/a","decfamily");
+					createDispText(tempObj, "tile-1_4", "Model:","n/a","decmodel");
+
+					tempObj = createEmptyDiv(cvTableJMRI, "div", "tile-1", "");
+					createDispText(tempObj, "tile-1_4", "CV 2:","n/a","cv02");
+					createDispText(tempObj, "tile-1_4", "CV 5:","n/a","cv05");
+					createDispText(tempObj, "tile-1_4", "CV 6:","n/a","cv06");
+					tempObj = createEmptyDiv(cvTableJMRI, "div", "tile-1", "");
+					createDispText(tempObj, "tile-1_4", "CV 29:","n/a","cv29");
+
+
+				cvTableNative = createEmptyDiv(dispObj, "div", "tile-1", "");
+					tempObj = createEmptyDiv(cvTableNative, "div", "tile-1", "");
+					createTextInput(tempObj, "tile-1_4", "CV 2:", "0", "cvn02", "setCVVal(this)");
+					createTextInput(tempObj, "tile-1_4", "CV 5:", "0", "cvn05", "setCVVal(this)");
+					createTextInput(tempObj, "tile-1_4", "CV 6:", "0", "cvn06", "setCVVal(this)");
+					tempObj = createEmptyDiv(cvTableNative, "div", "tile-1", "");
+					createTextInput(tempObj, "tile-1_4", "CV 29:", "0", "cvn29", "setCVVal(this)");
+
+				tabProgrammer = createEmptyDiv(dispObj, "div", "tile-1", "");
+				tempObj = createEmptyDiv(tabProgrammer, "div", "tile-1", "");
+					createRadiobox(tempObj, "tile-1_2", "Programming Method", ["Prog Track","Main Line"], "rbprogmethod", "setProgMode(this)");
+					createDispText(tempObj, "tile-1_4", "Status:","","progstat");
+				tempObj = createEmptyDiv(tabProgrammer, "div", "tile-1", "");
+					createTextInput(tempObj, "tile-1_4", "Program CV:", "", "cvid", "setCV(this)");
+					createTextInput(tempObj, "tile-1_4", "CV Value:", "", "cvval", "setCV(this)");
+					createButton(tempObj, "", "Read CV", "btnReadCV", "readCV(this)");
+					createButton(tempObj, "", "Write CV", "btnWriteCV", "writeCV(this)");
+				setVisibility(false, tabProgrammer);
+				setVisibility(true, cvTableNative);
+				setVisibility(false, cvTableJMRI);
+
 			var dispObj = createEmptyDiv(tabSpeedMatch, "div", "tile-1", "Throttle Profile");
 				createPageTitle(dispObj, "div", "tile-1", "", "h2", "Throttle Profile");
 				createFileDlg(dispObj, "", "Load Profile", "btnLoadThrottle", "application/json", "loadThrottle(this)");
@@ -194,8 +247,10 @@ function constructPageContent(contentTab)
 
 				tempObj = createEmptyDiv(dispObj, "div", "tile-1", "");
 				createTextInput(tempObj, "tile-1_4", "Profile Name:", "n/a", "thprofilename", "setThrottleProfile(this)");
-				createTextInput(tempObj, "tile-1_4", "Max. Scale Speed:", "n/a", "thscalespeed", "setThrottleProfile(this)");
-				createTextInput(tempObj, "tile-1_4", "Throttle Steps:", "n/a", "thnumsteps", "setThrottleProfile(this)");
+				tempObj = createEmptyDiv(dispObj, "div", "tile-1", "");
+				createTextInput(tempObj, "tile-1_4", "Max. Scale:", "n/a", "thscalespeed", "setThrottleProfile(this)");
+				createTextInput(tempObj, "tile-1_4", "@ Throttle Step:", "n/a", "thvmax", "setThrottleProfile(this)");
+				createTextInput(tempObj, "tile-1_4", "of # Steps:", "n/a", "thnumsteps", "setThrottleProfile(this)");
 
 				tempObj = createEmptyDiv(dispObj, "div", "tile-1", "");
 				canvasElementThrottle = document.createElement("canvas");
@@ -203,13 +258,14 @@ function constructPageContent(contentTab)
 				canvasElementThrottle.setAttribute("id", "glCanvasThrottle");
 				setCanvasMouseEvents(canvasElementThrottle);
 
-
 			var dispObj = createEmptyDiv(tabSpeedMatch, "div", "tile-1", "Technical Speed Profile");
+				techSpeedDiv = dispObj;
 				createPageTitle(dispObj, "div", "tile-1", "", "h2", "Technical Speed Profile");
 				tempObj = createEmptyDiv(dispObj, "div", "tile-1", "");
 				createButton(tempObj, "", "Assign DCC Address", "btnAssignsp", "assignDCC(this)");
 				createDispText(tempObj, "tile-1_4", "DCC Address:","n/a","dccaddrsp");
-				createDispText(tempObj, "tile-1_4", "Speed Step:","n/a","dccstepsp");
+//				createDispText(tempObj, "tile-1_4", "Speed Step:","n/a","dccstepsp");
+				createRadiobox(tempObj, "tile-1_2", "Speed Steps:", ["28","128"], "dccstepsp", "setTestMode(this)");
 				tempObj = createEmptyDiv(dispObj, "div", "tile-1", "");
 				createButton(tempObj, "", "Start Test", "btnTrackLen", "startSpeedTest(this)");
 				createButton(tempObj, "", "Abort Test", "btnTrackLen", "abortSpeedTest(this)");
@@ -223,8 +279,18 @@ function constructPageContent(contentTab)
 				setCanvasMouseEvents(canvasElementTechSpeed);
 
 			var dispObj = createEmptyDiv(tabSpeedMatch, "div", "tile-1", "Speed Table Settings");
+				speedTableDiv = dispObj;
 				createPageTitle(dispObj, "div", "tile-1", "", "h2", "Speed Table Settings");
-				createRadiobox(dispObj, "tile-1_2", "Use", ["Speed Table","Min/Mid/Max only"], "rbtablemode", "setTableMode(this)");
+				tempObj = createEmptyDiv(dispObj, "div", "tile-1", "");
+				createButton(tempObj, "", "Recalculate", "btnRecalc", "calcTable(this)");
+				createButton(tempObj, "", "Write CV's", "btnProg", "progTable(this)");
+				createDispText(tempObj, "tile-1_4", "DCC Address:","n/a","dccaddrtbl");
+				tempObj = createEmptyDiv(dispObj, "div", "tile-1", "");
+				createRadiobox(tempObj, "tile-1_2", "Trim Range", ["0 - 200%", "0 - 100%"], "trimmode", "setTrimMode(this)");
+//				createRadiobox(tempObj, "tile-1_2", "Use", ["Speed Table","Min/Mid/Max only"], "rbtablemode", "setTableMode(this)");
+				tempObj = createEmptyDiv(dispObj, "div", "tile-1", "");
+				createTextInput(tempObj, "tile-1_4", "Forward Trim:", "n/a", "fwtrim", "setTrim(this)");
+				createTextInput(tempObj, "tile-1_4", "Backward Trim:", "n/a", "bwtrim", "setTrim(this)");
 		
 				tempObj = createEmptyDiv(dispObj, "div", "tile-1", "");
 				canvasElementSpeedTable = document.createElement("canvas");
@@ -302,6 +368,7 @@ function setPageMode(sender)
 	setVisibility(false, tabMeasurement);
 	setVisibility(false, tabSpeedMatch);
 	setVisibility(false, tabGPS);
+
 	switch (sender.id)
 	{
 		case "cbsetup_0":
@@ -382,7 +449,7 @@ function loadSettings(sender)
 	}
 	
 	var fileName = document.getElementById("btnLoad").files[0];
-	console.log("Load file ", fileName);
+//	console.log("Load file ", fileName);
 	var reader = new FileReader();
     reader.onload = function()
     {
@@ -408,6 +475,7 @@ function loadSettings(sender)
 function loadNodeDataFields(jsonData)
 {
 	setButtonStatus();
+	document.getElementById("btnProg").innerHTML = configData[nodeCfg].InterfaceIndex == 13 ? "Save JMRI File" : "Write CV's";
 }
 
 function loadDataFields(jsonData)
@@ -435,6 +503,7 @@ function loadDataFields(jsonData)
 	else
 		setDropdownValue("selectscale", 0);
 	setDropdownValue("selectdim", jsonData.Units); //most likely HO
+	setDropdownValue("mountstyle", jsonData.MountStyle); //flat or upright
 	var scaleStr = jsonData.ScaleList[jsonData.ScaleIndex].Name;
 	switch (jsonData.Units)
 	{
@@ -446,6 +515,8 @@ function loadDataFields(jsonData)
 			document.getElementById("thscalespeed_txt").innerHTML = "Max. Scale [km/h]";
 			document.getElementById("testtracklen_txt").innerHTML = "Track Length [cm]"; 
 			document.getElementById("testmaxspeed_txt").innerHTML = "Max Speed [km/h]"; 
+			document.getElementById("jmrivmax_txt").innerHTML = "Max Speed [km/h]:"; 
+			
 			break;
 		case 1: 
 			document.getElementById("scalespeed_txt").innerHTML = scaleStr + " Scale Speed [mph]";
@@ -455,10 +526,14 @@ function loadDataFields(jsonData)
 			document.getElementById("thscalespeed_txt").innerHTML = "Max. Scale [mph]";
 			document.getElementById("testtracklen_txt").innerHTML = "Track Length [in]";
 			document.getElementById("testmaxspeed_txt").innerHTML = "Max Speed [mph]"; 
+			document.getElementById("jmrivmax_txt").innerHTML = "Max Speed [mph]:"; 
 			break;
 	}
 	writeRBInputField("rbprogmethod", progMode);
-	writeRBInputField("rbtablemode", tableMode);
+//	writeRBInputField("rbtablemode", tableMode);
+	writeRBInputField("trimmode", trimMode);
+	writeRBInputField("dccstepsp", stepMode);
+
 	
 
 	loadSpeedGraphData();
@@ -485,6 +560,11 @@ function setScaleSettings(sender)
 function setDimSettings(sender)
 {
 	configData[workCfg].Units = sender.selectedIndex;
+}
+
+function setMountingStyle(sender)
+{
+	configData[workCfg].MountStyle = sender.selectedIndex;
 }
 
 function setDir(sender)
@@ -528,6 +608,44 @@ function clearPositions(sender)
 	graphicMain();
 }
 
+function readCV(sender)
+{
+	if ((progMode > 0) && (locoAddr <= 0))
+	{
+		alert("Invalid Loco Address. Please assign a DCC Address.");
+		return;
+	}
+	if (progMode == 0)
+		if (confirm("Place locomotive on programming track and click OK") == false)
+			return;
+	if ((cvId >= 0) && (cvId <= 255))
+	{
+		ws.send("{\"Cmd\":\"SetSensor\", \"SubCmd\":\"ReadCV\", \"Addr\":" + locoAddr.toString() + ",\"ProgMode\":" + progMode.toString() + ",\"CV\":" + cvId.toString() + "}");
+		writeTextField("progstat", "Read CV in progress");
+	}
+	else
+		alert("Invalid CV");
+}
+
+function writeCV(sender)
+{
+	if ((progMode > 0) && (locoAddr <= 0))
+	{
+		alert("Invalid Loco Address. Please assign a DCC Address.");
+		return;
+	}
+	if (progMode == 0)
+		if (confirm("Place locomotive on programming track and click OK") == false)
+			return;
+	if ((cvId >= 0) && (cvVal >= 0) && (cvId <= 255) && (cvVal <= 255))
+	{
+		ws.send("{\"Cmd\":\"SetSensor\", \"SubCmd\":\"WriteCV\",\"Addr\":" + locoAddr.toString() + ", \"ProgMode\":" + progMode.toString() + ",\"CV\":" + cvId.toString() + ",\"CVVal\":" + cvVal.toString() + "}");
+		writeTextField("progstat", "Write CV in progress");
+	}
+	else
+		alert("Invalid CV or Value");
+}
+
 function startMeasuring(sender)
 {
 	if (sender.innerHTML == "Start")
@@ -547,26 +665,59 @@ function startMeasuring(sender)
 
 function assignDCC(sender)
 {
-	ws.send("{\"Cmd\":\"SetSensor\", \"SubCmd\":\"SetDCC\"}");
+	locoAddr = -1;
 	writeTextField("dccaddr", "listening...");
 	writeTextField("dccaddrsp", "listening...");
+	reqDCCAssign(locoAddr);
+}
+
+function reqDCCAssign(forAddress)
+{
+	if (forAddress >= 0)
+		ws.send("{\"Cmd\":\"SetSensor\", \"SubCmd\":\"SetDCC\"," + " \"Addr\":" + forAddress.toString()+ " }");
+	else
+		ws.send("{\"Cmd\":\"SetSensor\", \"SubCmd\":\"SetDCC\"}");
 }
 
 function startSpeedTest(sender)
 {
 	if (locoAddr < 0)
-		alert("No DCC Address assigned!");
+		if (configData[nodeCfg].InterfaceIndex == 13) //WiThrottle
+		{
+			alert("No DCC Address assigned! Verify connection to WiThrottle Server and reload JMRI file");
+			document.getElementById("btnLoadDecoder").files = [];
+		}
+		else
+			alert("No DCC Address assigned! Verify LocoNet communication.");
 	else
 	{
-		var trkLen = configData[workCfg].TrackLen;
-		var techSpeed = (1000 * configData[workCfg].MaxTestSpeed / 3.6) / configData[workCfg].ScaleList[configData[workCfg].ScaleIndex].Scale;
-		if (configData[workCfg].Units == 1) //imperial
+
+		if ((cvVal_2 != 0) || (cvVal_5 != 0) || (cvVal_6 != 0) || ((cvVal_29 & 0x10) != 0))
 		{
+			var dispText = "Verify and confirm CV settings before running the speed test.\nCV 2 expected 0 is " + cvVal_2 + "\nCV 5 expected 0 is " + cvVal_5 + "\nCV 6 expected 0 is " + cvVal_5 + "\nCV 29 Bit 6 expected 0 is " + ((cvVal_29 & 0x10)>>4) +  "\nProceed anyway?";
+			if (confirm(dispText) == false)
+				return;
+		}
+
+
+		var trkLen = configData[workCfg].TrackLen;
+		if (isNaN(trkLen))
+		{
+			alert("No Test Track length specified");
+			return;
+		}
+		var techSpeed = (1000 * configData[workCfg].MaxTestSpeed / 3.6) / configData[workCfg].ScaleList[configData[workCfg].ScaleIndex].Scale;
+		if (isNaN(techSpeed))
+		{
+			alert("No maximum speed specified");
+			return;
+		}
+		if (configData[workCfg].Units == 1) //imperial
+	{
 			trkLen *=2.54;
 			techSpeed *= 1.6; 
 		}
-		console.log(trkLen, techSpeed);
-		ws.send("{\"Cmd\":\"SetSensor\", \"SubCmd\":\"RunTest\",\"TrackLen\":" + trkLen.toString() + ", \"VMax\":" + techSpeed.toString() + "}");
+		ws.send("{\"Cmd\":\"SetSensor\", \"SubCmd\":\"RunTest\",\"TrackLen\":" + trkLen.toString() + ", \"Addr\":" + locoAddr.toString()+ ", \"VMax\":" + techSpeed.toString() + ", \"Mode\":" + stepMode.toString() + "}");
 	}
 }
 
@@ -583,6 +734,18 @@ function setTrackLength(sender)
 function setTestSpeed(sender)
 {
 	configData[workCfg].MaxTestSpeed = verifyNumber(sender.value, configData[workCfg].MaxTestSpeed); 
+	var techSpeed = (1000 * configData[workCfg].MaxTestSpeed / 3.6) / configData[workCfg].ScaleList[configData[workCfg].ScaleIndex].Scale;
+	console.log(configData[workCfg].MaxTestSpeed, techSpeed, configData[workCfg].ScaleList[configData[workCfg].ScaleIndex].Scale);
+	if (!isNaN(techSpeed))
+	{
+		techSpeedProfileGraph.LineGraphs[0].DataElements[0].y = techSpeed;
+		techSpeedProfileGraph.LineGraphs[0].DataElements[1].y = techSpeed;
+		var yVal = 100 * (Math.trunc(1.2*techSpeed/100) + 1);
+		techSpeedProfileGraph.LineGraphs[0].ValsY[1] = yVal;
+		techSpeedProfileGraph.LineGraphs[1].ValsY[1] = yVal;
+		techSpeedProfileGraph.LineGraphs[2].ValsY[1] = yVal;
+		drawProfileBox(canvasElementTechSpeed, techSpeedProfileGraph);
+	}
 }
 
 function resetDistance(sender)
@@ -633,9 +796,294 @@ function addEntryToArray(thisGraph, xData, yData, maxXSpan, hideData)
 		thisGraph.DataElements.splice(0,1);
 }
 
+
+var testObj =
+{
+    "SlotNr": 3,
+    "NumSteps": 27,
+    "fw": [
+        0,
+        16.39818,
+        51.77051,
+        79.79408,
+        106.53,
+        128.8849,
+        164.6054,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+    ],
+    "bw": [
+        0,
+        12.62883,
+        50.51368,
+        82.94406,
+        112.7042,
+        131.0111,
+        154.6672,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+    ]
+}
+
+function addCV(cvNr, cvVal)
+{
+	var newVal = JSON.parse(JSON.stringify(DataElementTemplate));
+	newVal.x = cvNr;
+	newVal.y = cvVal;
+	cvArray.push(newVal);
+}
+
+function progTable(sender)
+{
+	if ((progMode > 0) && (locoAddr <= 0))
+	{
+		alert("Invalid Loco Address. Please assign a DCC Address.");
+		return;
+	}
+
+	if (validLocoDef)
+		storeToJMRI(locoDef);
+
+	if ((progMode == 0) && (configData[nodeCfg].InterfaceIndex != 13))
+		if (confirm("Place locomotive on programming track and click OK") == false)
+			return;
+
+	if (configData[nodeCfg].InterfaceIndex == 13)
+	{
+		if (validLocoDef)
+			saveJMRIDecoder(null);
+		else
+			alert("Invalid Loco Definition. Please load JMRI file.");
+	}
+	else
+		initProg();
+}
+
+function storeToJMRI(xmlNode)
+{
+	var decDef = xmlNode.getElementsByTagName("decoderDef");
+	var varVals = xmlNode.getElementsByTagName("varValue");
+	var attr = findXMLAttribute(varVals, "item", "Speed Table Definition");
+	if (attr)
+		attr.setAttribute("value", "1");
+	var attr = findXMLAttribute(varVals, "item", "Forward Trim");
+	if (attr)
+		attr.setAttribute("value", fwTrim.toString());
+	var attr = findXMLAttribute(varVals, "item", "Reverse Trim");
+	if (attr)
+		attr.setAttribute("value", bwTrim.toString());
+	
+	var hasSpeedTable = -1;
+	var	cvVal = xmlNode.getElementsByTagName("CVvalue");
+	{
+		var varValStr = "";
+		var cv = findXMLAttribute(cvVal, "name", (66).toString());
+		if (cv)
+			cv.setAttribute("value", fwTrim);
+		var cv = findXMLAttribute(cvVal, "name", (95).toString());
+		if (cv)
+			cv.setAttribute("value", bwTrim);
+		
+		for (var i = 1; i <= 28; i++) //28 table entries by definition
+		{
+			cv = findXMLAttribute(cvVal, "name", (i+66).toString());
+			if (cv)
+			{
+				cv.setAttribute("value", speedTableProfileGraph.LineGraphs[0].DataElements[i].y);
+			}
+			if (i > 1)
+				varValStr += ", ";
+			varValStr += speedTableProfileGraph.LineGraphs[0].DataElements[i].y.toString();
+			console.log(i, cv);
+		}
+		var attr = findXMLAttribute(varVals, "item", "Speed Table");
+		if (attr)
+			attr.setAttribute("value", varValStr);
+	}
+}
+
+function initProg()
+{
+	cvArray = [];
+	//program CVs 29 bit4, 67-94, 66, 95
+	//create CV Array
+	addCV(66, fwTrim); //set table use
+	addCV(95, bwTrim); //set table use
+	for (var i = 0; i < 28; i++)
+		addCV(i+67, speedTableProfileGraph.LineGraphs[0].DataElements[i].y);
+	addCV(29, findCVVal(locoDef, 29) | 0x10); //set table use
+	//write first CV 
+	cvId = cvArray[0].x;
+	cvVal = cvArray[0].y;
+	writeCV(null);
+	setTimeout(function(){progCVArray() }, 1000);
+}
+
+function progCVArray()
+{
+	//write rest of array 
+	cvArray.splice(0,1); //remove first element
+	if (cvArray.length > 0)
+	{
+		cvId = cvArray[0].x;
+		cvVal = cvArray[0].y;
+		writeCV(null);
+		console.log("write ", cvId, cvVal);
+		setTimeout(function(){progCVArray() }, 500);
+	}
+}
+
+function calcTable(sender)
+{
+	if (validTechSpeedDef)
+	{
+		var avgDev = 0; //avg deviation between forward and backward
+		var avgVal = 0;
+		var maxVal = 0;
+		speedTableProfileGraph.LineGraphs[0].DataElements = [];
+		var newElement = JSON.parse(JSON.stringify(DataElementTemplate)); // = {"x":0,"y":0,"m":0};
+		newElement.x = 0;
+		newElement.y = 0;
+		speedTableProfileGraph.LineGraphs[0].DataElements.push(newElement);
+		for (var j = 0; j < 28; j++)
+		{
+			var targetSpeed = getSpeedForThrottleStep(j);
+			var targetLevel = getMotorValueForSpeed(targetSpeed);
+//			console.log(targetLevel);
+			newElement = JSON.parse(JSON.stringify(DataElementTemplate)); // = {"x":0,"y":0,"m":0};
+			newElement.x = j+1;
+			newElement.y = Math.round((targetLevel[0] + targetLevel[1])/2);
+			avgVal += newElement.y;
+			if (newElement.y > maxVal)
+				maxVal = newElement.y;
+			avgDev += targetLevel[0] - targetLevel[1]; //add deviation between fw and bw for trim calculation
+//			console.log(targetLevel[0], targetLevel[1], newElement.y, targetLevel[0] - targetLevel[1], avgDev);
+			speedTableProfileGraph.LineGraphs[0].DataElements.push(newElement);
+		}
+		avgDev = Math.round(avgDev/28);
+		avgVal = Math.round(avgVal/28);
+		var trimRatio = (Math.abs(avgDev) + avgVal) / avgVal;
+		if (trimMode == 0) //0-200%
+		{
+			fwTrim = avgDev > 0 ? Math.round(128 * trimRatio) : 128;
+			bwTrim = avgDev < 0 ? Math.round(128 * trimRatio) : 128;
+		}
+		else //0-100%, disable Trim Values
+		{
+			if ((maxVal * trimRatio) <= 255)
+			{
+				for (var j = 0; j < 28; j++)
+					speedTableProfileGraph.LineGraphs[0].DataElements[j].y = Math.round(speedTableProfileGraph.LineGraphs[0].DataElements[j].y * trimRatio); //increase table values
+				fwTrim = avgDev > 0 ? 255 : Math.round(255 / trimRatio);
+				bwTrim = avgDev < 0 ? 255 : Math.round(255 / trimRatio);
+			}
+			else //don't change anything, spoeed scale is maxed out
+			{
+				fwTrim = 0;
+				bwTrim = 0;
+			}
+		}
+		writeInputField("fwtrim", fwTrim);
+		writeInputField("bwtrim", bwTrim);
+		drawProfileBox(canvasElementSpeedTable, speedTableProfileGraph);
+		validTableDef = true;
+	}
+	setButtonStatus();
+}
+
+function processProgrammerInput(jsonData)
+{
+	switch (jsonData.Status)
+	{
+		case 0:
+			writeTextField("progstat", "Success");
+			writeInputField("cvid", jsonData.CVNr);
+			writeInputField("cvval", jsonData.CVVal);
+			switch (jsonData.CVNr)
+			{
+				case 2:
+					writeInputField("cvn02", jsonData.CVVal);
+					writeTextField("cv02", jsonData.CVVal);
+					break;
+				case 5:
+					writeInputField("cvn05", jsonData.CVVal);
+					writeTextField("cv05", jsonData.CVVal);
+					break;
+				case 6:
+					writeInputField("cvn06", jsonData.CVVal);
+					writeTextField("cv06", jsonData.CVVal);
+					break;
+				case 29:
+					writeInputField("cvn29", jsonData.CVVal);
+					writeTextField("cv29", jsonData.CVVal);
+					break;
+			}
+			break;
+		default:
+			var msgStr;
+			if (jsonData.Status & 0x01)	msgStr += "Prog track empty. ";
+			if (jsonData.Status & 0x02)	msgStr += "No Ack. ";
+			if (jsonData.Status & 0x04)	msgStr += "Value not found. ";
+			if (jsonData.Status & 0x08)	msgStr += "User aborted.";
+			writeTextField("progstat", msgStr);
+			break;
+	}
+}
+
 function processSpeedTableInput(jsonData)
 {
-	console.log(jsonData);
+//	console.log(jsonData);
+	for (var j = 1; j < techSpeedProfileGraph.LineGraphs.length; j++)
+	{
+		techSpeedProfileGraph.LineGraphs[j].DataElements = [];
+		for (var i = 0; i < jsonData.bw.length; i++)
+		{
+			var newElement = JSON.parse(JSON.stringify(DataElementTemplate)); // = {"x":0,"y":0};
+			newElement.x = i;
+			newElement.y = j==1 ? jsonData.fw[i] : jsonData.bw[i];
+			techSpeedProfileGraph.LineGraphs[j].DataElements.push(newElement);
+		}
+	}
+	validTechSpeedDef = true;
+	drawProfileBox(canvasElementTechSpeed, techSpeedProfileGraph);
+	calcTable();
+//	console.log(speedTableProfileGraph);
 }
 
 function processSensorInput(jsonData)
@@ -663,8 +1111,6 @@ function processSensorInput(jsonData)
 	else
 		dirStr = " straight";
 
-
-
 	if (jsonData.EulerVect != undefined)
 	{
 		writeTextField("radius", dirStr);
@@ -684,31 +1130,40 @@ function processSensorInput(jsonData)
 	{
 		writeTextField("dccaddr", jsonData.DCCAddr);
 		writeTextField("dccaddrsp", jsonData.DCCAddr);
+		writeTextField("dccaddrtbl", jsonData.DCCAddr);
+		
 		locoAddr = jsonData.DCCAddr;
-		if ((jsonData.DCCAddr != undefined) && (jsonData.DirF != undefined))
+		if ((jsonData.DCCAddr != undefined) && (jsonData.DirF != undefined) && locoAddrValid)
 		{
+			if (locoAddr > 127)
+				cvVal_29 |= 0x20;
+			else
+				cvVal_29 &= ~0x20;
+			writeTextField("cv29", cvVal_29);
+			writeInputField("cvn29", cvVal_29);
 			var speedStr = jsonData.SpeedStep.toString();
 			var dirStr =((jsonData.DirF & 0x20) > 0) ? " forward" : " backward";
 			writeTextField("dccstep", speedStr + " " + dirStr);
-			writeTextField("dccstepsp", speedStr + " " + dirStr);
+//			writeTextField("dccstepsp", speedStr + " " + dirStr);
 			addEntryToArray(lineGraphSpeedStep, jsonData.TS , ((jsonData.DirF & 0x20) > 0) ? jsonData.SpeedStep : -1 * jsonData.SpeedStep, speedGraph.MaxXRange * 1000);
 		}
 		else
 		{
 			writeTextField("dccstep", "n/a");
-			writeTextField("dccstepsp", "n/a");
+//			writeTextField("dccstepsp", "n/a");
 		}
+		locoAddrValid = true;
 	}
 	else
 	{
 //		writeTextField("dccaddr", "n/a");
 		writeTextField("dccstep", "n/a");
-		writeTextField("dccstepsp", "n/a");
+//		writeTextField("dccstepsp", "n/a");
 		locoAddr -1;
+		locoAddrValid = false;
 	}
 
 	drawLineGraphs();
 	setButtonStatus();
-	
 }
 

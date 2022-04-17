@@ -53,7 +53,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #define txBufferSize 64
 #define verBufferSize 48
 #define maxSpeedSteps 128
-#define accel2Steps 1000 //start sampling
+#define accel2Steps 500 //start sampling
 #define maxSampleTime 8000000 //sampling complete after micros()
 #define minTestWheelTurns	6 //a successful sampling must last at least x wheel turns
 #define crawlTurns 3 //wheel turns per second for crawl speed
@@ -94,7 +94,7 @@ typedef struct
 	uint8_t testPhase = 0; //0: not started 1: increasing speeds 2: decreasing speeds 3: end test
     uint32_t sampleTime;
 	uint8_t lastSpeedStep = 0;
-	uint8_t crawlSpeedStep = 10;
+	uint8_t crawlSpeedStep = 1;
 	bool vMaxComplete = false;
 }dirData;
 
@@ -103,6 +103,7 @@ typedef struct
 	bool speedTestRunning = false; //test in progress
 	uint8_t masterPhase = 0; //0: test running 1: creep to end of track 2: reverse direction
 	float_t testTrackLen = 0; //available track len in mm
+	uint8_t testSteps = 0; // steps by default
 	float sampleMinDistance = 500; //mm, calculated based on wheel diameter and # of turns
 	bool upDir = true; //forward test
 	int8_t upDirPos = -1; //0 false 1 true means positive rel integrator 0xFF undefined
@@ -128,6 +129,8 @@ typedef struct
 	float_t bw[maxSpeedSteps];
 } speedTable;
 
+extern AsyncWebSocketClient * globalClient;
+
 class IoTT_TrainSensor
 {
 public:
@@ -142,11 +145,12 @@ public:
 	void loadLNCfgJSON(DynamicJsonDocument doc);
 	volatile void sensorTask(void * thisParam);
 	void setRepRate(AsyncWebSocketClient * newClient, int newRate);
-	void reqDCCAddrWatch(AsyncWebSocketClient * newClient);
-	void startTest(float_t trackLen, float_t vMax);
+	void reqDCCAddrWatch(AsyncWebSocketClient * newClient, int16_t dccAddr, bool simulOnly);
+	void startTest(float_t trackLen, float_t vMax, uint8_t pMode);
 	void stopTest();
 	void sendSpeedCommand(uint8_t newSpeed);
 	void toggleDirCommand();
+	void programmerReturn(uint8_t * programmerSlot);
    
 private:
 	void sendSpeedTableDataToWeb();
@@ -155,7 +159,6 @@ private:
 	void clrSpeedTable();
 	bool processTestStep(sensorData * sensStatus);
 	bool processSpeedTest(); //returns false if complete
-	void addSpeedTableVal(uint8_t step, float_t speed);
 	void displayIMUSensorDetails();
 	void displayIMUSensorStatus();
 	bool proceedToTrackEnd(bool origin);
@@ -184,12 +187,12 @@ private:
 	sensorData workData;
 	sensorData dispData;
 //	OneDimKalman * speedEstimate = NULL;
-	AsyncWebSocketClient * globalClient = NULL;
+//	AsyncWebSocketClient * globalClient = NULL;
 	uint16_t refreshRate = 0;
 	uint32_t lastWebRefresh = millis();
 	bool waitForNewDCCAddr = false; //flag to listen for a DCC address
 	bool reloadOffset = false; //flag the task to reset the IMU offsets
-
+	uint8_t mountStyle = 0; //flat mount
 	speedTable speedSample;
 	
    // Member functions

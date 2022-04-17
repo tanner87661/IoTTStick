@@ -2,7 +2,7 @@
 	"Pages":[
 		{"Menue":"Node Configuration", "ProdSel":[-1], "CommSel":[], "ALMSel":[], "WebPage": "index.htm", "ID":"pgNodeCfg", "FileName": "node"}, 
 		{"Menue":"MQTT Configuration", "ProdSel":[], "CommSel":[3,4,6,7,8,9,10,13,15], "ALMSel":[],  "WebPage": "MQTTCfg.htm", "ID":"pgMQTTCfg", "FileName": "mqtt"}, 
-		{"Menue":"LB Server", "ProdSel":[], "CommSel":[11,12,13,14,15], "ALMSel":[],  "WebPage": "LBServer.htm", "ID":"pgLBSCfg", "FileName": "lbserver"}, 
+		{"Menue":"TCP Server", "ProdSel":[], "CommSel":[11,12,13,14,15,17], "ALMSel":[],  "WebPage": "LBServer.htm", "ID":"pgLBSCfg", "FileName": "lbserver"}, 
 		{"Menue":"USB Serial", "ProdSel":[2], "CommSel":[], "ALMSel":[],  "WebPage": "USBSerial.htm", "ID":"pgUSBCfg", "FileName": "usb"}, 
 		{"Menue":"Event Handler Setup", "ProdSel":[], "CommSel":[], "ALMSel":[0],  "WebPage": "BtnHdlrCfg.htm", "ID":"pgBtnHdlrCfg", "FileName": "btnevt"}, 
 		{"Menue":"Security Elements Setup", "ProdSel":[], "CommSel":[], "ALMSel":[2],  "WebPage": "SecElCfg.htm", "ID":"pgSecElCfg", "FileName": "secel"},

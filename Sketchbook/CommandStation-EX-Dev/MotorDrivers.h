@@ -29,7 +29,7 @@
 // Arduino standard Motor Shield
 #define REDHAT_MOTOR_SHIELD F("STANDARD_MOTOR_SHIELD"),                                                 \
                          new MotorDriver(7, 4, 5, UNUSED_PIN, A1, 41.54, 5000, UNUSED_PIN), \
-                         new MotorDriver(6, 2, UNUSED_PIN, UNUSED_PIN, A5, 2.99, 2000, UNUSED_PIN)
+                         new MotorDriver(6, 2, UNUSED_PIN, UNUSED_PIN, A5, 30, 5000, UNUSED_PIN) //10,5000 for G
 
 #define STANDARD_MOTOR_SHIELD F("STANDARD_MOTOR_SHIELD"),                                                 \
                               new MotorDriver(3, 12, UNUSED_PIN, UNUSED_PIN, A0, 2.99, 2000, UNUSED_PIN), \

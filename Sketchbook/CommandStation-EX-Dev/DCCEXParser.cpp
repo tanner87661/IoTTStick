@@ -100,10 +100,11 @@ void DCCEXParser::loop(Stream &stream)
         else if (ch == '>')
         {
             buffer[bufferLength] = '\0';
-            uint8_t outStat = PORTB;
-            PORTB |= 0x01; //to keep the power relay going
+            uint8_t outStat = PORTB & 0x01;
+            PORTB |= 0x01; //to keep the power relay going. Reviewafter new board rev 3
             parse(&stream, buffer, NULL); // Parse this (No ringStream for serial)
-            PORTB = outStat;
+            if (outStat == 0)
+              PORTB &= 0xFE; //restore s0
             inCommandPayload = false;
             break;
         }
@@ -587,33 +588,49 @@ bool DCCEXParser::parseZ(Print *stream, int16_t params, int16_t p[])
 {
     switch (params)
     {
-    
-    case 2: // <Z ID ACTIVATE>
-    {
-      switch (p[0])
+      case 2: // <Z ID ACTIVATE>
       {
-        case 1025:
-          boardMgr->setDeviceMode(p[1]);
-          break;
-        case 1026:
-          boardMgr->setDeviceOutput(p[1], p[2]);
-          break;
-        case 1027:
-          boardMgr->setOutputCurrent(0, p[1]);
-          break;
-        case 1028:
-          boardMgr->setOutputCurrent(1, p[1]);
-          break;
-        case 1029:
-          boardMgr->setOutputCurrent(2, p[1]);
-          break;
-        case 1030:
-          boardMgr->setLEDBrightness(p[1]);
-          break;
+        switch (p[0])
+        {
+          case 1024:
+            boardMgr->setProgTrack(p[1]);
+            return true;
+            break;
+          case 1025:
+            boardMgr->setDeviceMode(p[1]);
+            return true;
+            break;
+          case 1027:
+            boardMgr->setOutputCurrent(0, p[1]);
+            return true;
+            break;
+          case 1028:
+            boardMgr->setOutputCurrent(1, p[1]);
+            return true;
+            break;
+          case 1029:
+            boardMgr->setOutputCurrent(2, p[1]);
+            return true;
+            break;
+          case 1030:
+            boardMgr->setLEDBrightness(p[1]);
+            return true;
+            break;
+        }
+      break;
       }
-        StringFormatter::send(stream, F("<Y %d %d>\n"), p[0], p[1]);
-    }
-    return true;
+      case 3: // <Z ID P1 P2>
+      {
+        switch (p[0])
+        {
+          case 1026:
+            boardMgr->setDeviceOutput(p[1], p[2]);
+            return true;
+            break;
+        }
+        break;
+      }
+      break;
 
 /*
  * RedHat setup Codes starting at 1025
@@ -894,8 +911,8 @@ void DCCEXParser::callback_W(int16_t result)
     StringFormatter::send(getAsyncReplyStream(),
           F("<r%d|%d|%d %d>\n"), stashP[2], stashP[3], stashP[0], result == 1 ? stashP[1] : -1);
     commitAsyncReplyStream();
-    if (thisBoard)
-      thisBoard->setProgTrack(false);
+//    if (thisBoard)
+//      thisBoard->setProgTrack(false);
 }
 
 void DCCEXParser::callback_B(int16_t result)
@@ -903,38 +920,38 @@ void DCCEXParser::callback_B(int16_t result)
     StringFormatter::send(getAsyncReplyStream(), 
           F("<r%d|%d|%d %d %d>\n"), stashP[3], stashP[4], stashP[0], stashP[1], result == 1 ? stashP[2] : -1);
     commitAsyncReplyStream();
-    if (thisBoard)
-      thisBoard->setProgTrack(false);
+//    if (thisBoard)
+//      thisBoard->setProgTrack(false);
 }
 void DCCEXParser::callback_Vbit(int16_t result)
 {
     StringFormatter::send(getAsyncReplyStream(), F("<v %d %d %d>\n"), stashP[0], stashP[1], result);
     commitAsyncReplyStream();
-    if (thisBoard)
-      thisBoard->setProgTrack(false);
+//    if (thisBoard)
+//      thisBoard->setProgTrack(false);
 }
 void DCCEXParser::callback_Vbyte(int16_t result)
 {
     StringFormatter::send(getAsyncReplyStream(), F("<v %d %d>\n"), stashP[0], result);
     commitAsyncReplyStream();
-    if (thisBoard)
-      thisBoard->setProgTrack(false);
+//    if (thisBoard)
+//      thisBoard->setProgTrack(false);
 }
 
 void DCCEXParser::callback_R(int16_t result)
 {
     StringFormatter::send(getAsyncReplyStream(), F("<r%d|%d|%d %d>\n"), stashP[1], stashP[2], stashP[0], result);
     commitAsyncReplyStream();
-    if (thisBoard)
-      thisBoard->setProgTrack(false);
+//    if (thisBoard)
+//      thisBoard->setProgTrack(false);
 }
 
 void DCCEXParser::callback_Rloco(int16_t result)
 {
     StringFormatter::send(getAsyncReplyStream(), F("<r %d>\n"), result);
     commitAsyncReplyStream();
-    if (thisBoard)
-      thisBoard->setProgTrack(false);
+//    if (thisBoard)
+//      thisBoard->setProgTrack(false);
 }
 
 void DCCEXParser::callback_Wloco(int16_t result)
@@ -942,6 +959,6 @@ void DCCEXParser::callback_Wloco(int16_t result)
     if (result==1) result=stashP[0]; // pick up original requested id from command
     StringFormatter::send(getAsyncReplyStream(), F("<w %d>\n"), result);
     commitAsyncReplyStream();
-    if (thisBoard)
-      thisBoard->setProgTrack(false);
+//    if (thisBoard)
+//      thisBoard->setProgTrack(false);
 }

@@ -523,14 +523,34 @@ void processWsMessage(char * newMsg, int msgLen, AsyncWebSocketClient * client)
             }
           if (subCmd == "SetDCC")
             if (trainSensor)
-              trainSensor->reqDCCAddrWatch(globalClient);
+            {
+              int16_t dccAddr = doc["Addr"];
+              Serial.println(dccAddr);
+              trainSensor->reqDCCAddrWatch(globalClient, dccAddr, useInterface.devId == 17);
+            }
           if (subCmd == "RunTest")
             if (trainSensor)
             {
               float tLen = doc["TrackLen"];
               float vMax = doc["VMax"];
-              trainSensor->startTest(tLen, vMax);
+              uint8_t pMode = doc["Mode"];
+              trainSensor->startTest(tLen, vMax, pMode);
             }
+          if (subCmd == "ReadCV")
+          {
+            uint16_t dccAddr = doc["Addr"]; 
+            uint8_t progMode = doc["ProgMode"];
+            uint8_t cvNr = doc["CV"];
+            digitraxBuffer->readProg(dccAddr, progMode, cvNr);
+          }
+          if (subCmd == "WriteCV")
+          {
+            uint16_t dccAddr = doc["Addr"]; 
+            uint8_t progMode = doc["ProgMode"];
+            uint8_t cvNr = doc["CV"];
+            uint8_t cvVal = doc["CVVal"];
+            digitraxBuffer->writeProg(dccAddr, progMode, cvNr, cvVal);
+          }
           if (subCmd == "StopTest")
             if (trainSensor)
               trainSensor->stopTest();

@@ -18,7 +18,7 @@ public:
   // Constructor
 	TMAG5273(TwoWire * newWire = NULL);
   //  device config
-	bool setDeviceConfig();
+	bool setDeviceConfig(uint8_t mountStyle);
 
 	float getTempData();
 	float getAngleData();

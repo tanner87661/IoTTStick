@@ -430,12 +430,12 @@ uint8_t LocoNetESPSerial::getXORCheck(uint8_t * msgData, uint8_t * msgLen)
 	return xorChk;
 }
 
-/*
+
 bool LocoNetESPSerial::carrierOK()
 {
 	return hybrid_carrierOK();
 }
-*/
+
 void LocoNetESPSerial::setBusyLED(int8_t ledNr, bool logLevel)
 {
 	if (ledNr >= 0)

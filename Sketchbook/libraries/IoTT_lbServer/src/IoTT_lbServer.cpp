@@ -34,6 +34,8 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 uint32_t nextPingPoint;
 uint16_t reconnectInterval = lbs_reconnectStartVal;  //if not connected, try to reconnect every 10 Secs initially, then increase if failed
 bool pingSent = false;
+bool isWiThrottle = false;
+int16_t currentWIDCC = 0;
 
 static std::vector<tcpDef> clients; // a list to hold all clients
 
@@ -84,7 +86,26 @@ void IoTT_LBServer::initLBServer(bool serverMode)
 		lntcpClient.thisClient = new AsyncClient();
 		lntcpClient.thisClient ->onData(handleDataFromClient, lntcpClient.thisClient );
 		lntcpClient.thisClient ->onConnect(onConnect, lntcpClient.thisClient );
-		lntcpClient.thisClient ->onPoll(handlePoll, lntcpClient.thisClient );
+		lntcpClient.thisClient ->onPoll(handleLNPoll, lntcpClient.thisClient );
+	}
+}
+
+void IoTT_LBServer::initWIServer(bool serverMode)
+{
+	isServer = serverMode;
+	isWiThrottle = true;
+	if (isServer) //add code here to support server mode
+	{
+//		lntcpServer = new AsyncServer(WiFi.localIP(), lbs_Port);
+//		lntcpServer->onClient(&handleNewClient, lntcpServer);
+	}
+	else //client mode
+	{
+//		Serial.println("Init WiThrottle");
+		lntcpClient.thisClient = new AsyncClient();
+		lntcpClient.thisClient ->onData(handleDataFromClient, lntcpClient.thisClient );
+		lntcpClient.thisClient ->onConnect(onConnect, lntcpClient.thisClient );
+		lntcpClient.thisClient ->onPoll(handleWIPoll, lntcpClient.thisClient );
 	}
 }
 
@@ -154,6 +175,17 @@ void IoTT_LBServer::loadLBServerCfgJSON(DynamicJsonDocument doc)
 		String thisIP = doc["ServerIP"];
 		lbs_IP.fromString(thisIP);
 	}
+}
+
+uint8_t IoTT_LBServer::getConnectionStatus()
+{
+	if (isServer)
+		return clients.size();
+	else
+		if (lntcpClient.thisClient->connected())
+			return 1;
+		else
+			return 0;
 }
 
 uint16_t IoTT_LBServer::lnWriteMsg(lnTransmitMsg txData)
@@ -255,6 +287,7 @@ void IoTT_LBServer::handleDataFromClient(void* arg, AsyncClient* client, void *d
 		Serial.println("Not for us");
 }
 
+
 //this is called when data is received, either in server or client mode
 void IoTT_LBServer::handleData(void* arg, AsyncClient* client, char *data, size_t len)
 {
@@ -264,28 +297,43 @@ void IoTT_LBServer::handleData(void* arg, AsyncClient* client, char *data, size_
     if (strchr(p, '\n') != NULL)
 		while ((subStr = strtok_r(p, "\n", &p)) != NULL) // delimiter is the new line
 		{
-			while((*subStr=='\n') || (*subStr=='\r') && (subStr < strEnd))
+			while(((*subStr=='\n') || (*subStr=='\r') || (*subStr=='\'')) && (subStr < strEnd))
 				subStr++;
 			if (subStr < strEnd)
-				processServerMessage(client, subStr);
+				if (isWiThrottle)
+					processWIServerMessage(client, subStr);
+				else
+					processLNServerMessage(client, subStr);
 		}
 	else
 		if (strchr(p, '\r') != NULL)
 			while ((subStr = strtok_r(p, "\r", &p)) != NULL) // delimiter is the carriage return
 			{
-				while((*subStr=='\n') || (*subStr=='\r') && (subStr < strEnd))
+				while(((*subStr=='\n') || (*subStr=='\r') || (*subStr=='\'')) && (subStr < strEnd))
 					subStr++;
 				if (subStr < strEnd)
-					processServerMessage(client, subStr);
+				if (isWiThrottle)
+					processWIServerMessage(client, subStr);
+				else
+					processLNServerMessage(client, subStr);
 			}
 		else
 			Serial.println("No delimiter");
 
 }
 
-void IoTT_LBServer::handlePoll(void *arg, AsyncClient *client)        //every 125ms when connected
+void IoTT_LBServer::handleLNPoll(void *arg, AsyncClient *client)        //every 125ms when connected
 {
 //	nextPingPoint = millis() + pingInterval;
+}
+
+void IoTT_LBServer::handleWIPoll(void *arg, AsyncClient *client)        //every 125ms when connected
+{
+//	nextPingPoint = millis() + pingInterval;
+}
+
+void IoTT_LBServer::strToWI(char * str, lnReceiveBuffer * recData)
+{
 }
 
 void IoTT_LBServer::tcpToLN(char * str, lnReceiveBuffer * thisData)
@@ -306,7 +354,192 @@ void IoTT_LBServer::tcpToLN(char * str, lnReceiveBuffer * thisData)
 	}
 }
 
-void IoTT_LBServer::processServerMessage(AsyncClient* client, char * data)
+//this is called when data is received, currently only client mode
+bool IoTT_LBServer::processWIServerMessage(AsyncClient* client, char * c)
+{
+//	while (c[0] == '\'')
+//		c++;
+	Serial.println(c);
+	uint16_t len = strlen(c);
+	if (len == 0) return false;
+
+	pingSent = false;
+	nextPingPoint = millis() + pingInterval + random(5000);
+	
+    if (len > 3 && c[0]=='P' && c[1]=='F' && c[2]=='T') {
+		Serial.println("Process FastTime");
+        return true;
+//        return processFastTime(c+3, len-3);
+    }
+    else if (len > 3 && c[0]=='P' && c[1]=='P' && c[2]=='A') {
+		Serial.println("Process TrackPower");
+//        processTrackPower(c+3, len-3);
+        return true;
+    }
+    else if (len > 3 && c[0]=='P' && c[1]=='R' && c[2]=='T') {
+		Serial.println("Process Route List");
+//        processTrackPower(c+3, len-3);
+        return true;
+    }
+    else if (len > 3 && c[0]=='P' && c[1]=='T' && c[2]=='L') {
+		Serial.println("Process defined Turnouts");
+//        processTrackPower(c+3, len-3);
+        return true;
+    }
+    else if (len > 3 && c[0]=='P' && c[1]=='T' && c[2]=='T') {
+		Serial.println("Process Turnout List");
+//        processTrackPower(c+3, len-3);
+        return true;
+    }
+    else if (len > 1 && c[0]=='*') {
+		Serial.println("Process HeartBeat");
+        return true;
+//        return processHeartbeat(c+1, len-1);
+    }
+    else if (len > 2 && c[0]=='V' && c[1]=='N') {
+		Serial.println("Process Protocl Version");
+//        processProtocolVersion(c+2, len-2);
+        return true;
+    }
+    else if (len > 2 && c[0]=='H' && c[1]=='T') {
+		Serial.println("Process Server Type");
+//        processServerType(c+2, len-2);
+        return true;
+    }
+    else if (len > 2 && c[0]=='H' && c[1]=='t') {
+		Serial.println("Process Server Description");
+//        processServerDescription(c+2, len-2);
+        return true;
+    }	
+    else if (len > 2 && c[0]=='P' && c[1]=='W') {
+		Serial.println("Process Web Port");
+//        processWebPort(c+2, len-2);
+        return true;
+    }
+    else if (len > 3 && c[0]=='R' && c[1]=='C' && c[2]=='C') {
+		Serial.println("Process Consist List");
+//        processConsitList(c+3, len-3);
+        return true;
+    }
+    else if (len > 2 && c[0]=='R' && c[1]=='L') {
+		Serial.println("Process Roster List");
+//        processRosterList(c+2, len-2);
+        return true;
+    }	
+    else if (len > 6 && c[0]=='M' && c[1]=='0' && c[2]=='S') {
+		Serial.println("Process Steal");
+		String outStr = String(c);
+		sendWIClientMessage(lntcpClient.thisClient, outStr);
+//        processStealNeeded(c+3, len-3);
+        return true;
+    }
+    else if (len > 6 && c[0]=='M' && c[1]=='0' && (c[2]=='+' || c[2]=='-')) {
+        // we want to make sure the + or - is passed in as part of the string to process
+		uint16_t dccAddr = 0;
+		uint8_t startPtr = 4;
+		while (c[startPtr] != '<')
+		{
+			dccAddr = (10 * dccAddr) + c[startPtr] - '0';
+			startPtr++;
+		}
+		
+		uint8_t slotNr = digitraxBuffer->getSlotOfAddr(dccAddr & 0x7F, (dccAddr >> 7 & 0x7F));
+		Serial.println(slotNr);
+		slotData * thisSlot = NULL;
+		if (slotNr != 0xFF)
+			thisSlot = digitraxBuffer->getSlotData(slotNr);
+		lnReceiveBuffer recBuffer;
+		lnTransmitMsg * txBuffer = (lnTransmitMsg*)&recBuffer;
+		if (c[2] == '+')
+		{
+			currentWIDCC = dccAddr;
+			if (thisSlot)
+				(*thisSlot)[0] = 0x33; //set slot status tin use, refreshed
+			Serial.printf("Process Add %i \n", dccAddr);
+		}
+		else
+		{
+			currentWIDCC = -1;
+			if (thisSlot)
+				(*thisSlot)[0] = 0x03; //set slot status to not in use, not refreshed
+			Serial.printf("Process Remove %i \n", dccAddr);
+		}
+		if (thisSlot)
+		{
+			prepSlotReadMsg(txBuffer, slotNr);
+			if (lbsCallback)
+				lbsCallback(&recBuffer);
+		}
+        return true;
+    }
+    else if (len > 8 && c[0]=='M' && c[1]=='0' && c[2]=='A') {
+		Serial.println("Process Loco Action");
+		uint16_t dccAddr = 0;
+		uint8_t startPtr = 4;
+		while (c[startPtr] != '<')
+		{
+			dccAddr = (10 * dccAddr) + c[startPtr] - '0';
+			startPtr++;
+		}
+		uint8_t slotNr = digitraxBuffer->getSlotOfAddr(dccAddr & 0x7F, (dccAddr >> 7 & 0x7F));
+		Serial.println(slotNr);
+		slotData * thisSlot = NULL;
+		if (slotNr != 0xFF)
+			thisSlot = digitraxBuffer->getSlotData(slotNr);
+		if (thisSlot)
+		{
+			while (c[startPtr] != '>')
+				startPtr++;
+			startPtr++;
+			char cmdCode = c[startPtr];
+			startPtr++;
+			uint cmdVal = 0;
+			while ((c[startPtr] >= '0') && (c[startPtr] <= '9')) 
+			{
+				cmdVal = (10 * cmdVal) + c[startPtr] - '0';
+				startPtr++;
+			}
+			switch (cmdCode)
+			{
+				case 'V':
+					(*thisSlot)[2] = cmdVal;
+					break;
+				case 'R':
+					(*thisSlot)[3] = cmdVal == 0 ? ((*thisSlot)[3] & 0xDF) : ((*thisSlot)[3] | 0x20);
+					break;
+				default: return true;
+			}
+			lnReceiveBuffer recBuffer;
+			lnTransmitMsg * txBuffer = (lnTransmitMsg*)&recBuffer;
+			if (thisSlot)
+			{
+				prepSlotReadMsg(txBuffer, slotNr);
+				if (lbsCallback)
+					lbsCallback(&recBuffer);
+			}
+		}
+        return true;
+	}
+    else if (len > 8 && c[0]=='M' && c[1]=='0' && c[2]=='L') {
+		Serial.println("Receive Loco Information");
+        return true;
+    }
+    else if (len > 3 && c[0]=='A' && c[1]=='T' && c[2]=='+') {
+		Serial.println("Process Ignore");
+        return true;
+        // this is an AT+.... command that the LnWi sometimes emits and we
+        // ignore these commands altogether
+    }
+    else {
+        Serial.printf("unknown command %s\n", c);
+        return true;
+        // all other commands are explicitly ignored
+    }
+    return true;
+
+}
+
+void IoTT_LBServer::processLNServerMessage(AsyncClient* client, char * data)
 {
 //	Serial.println("processServerMessage");
 //	Serial.write(data);
@@ -388,10 +621,76 @@ void IoTT_LBServer::onConnect(void *arg, AsyncClient *client)
 	nextPingPoint = millis() + pingInterval + random(5000);
 	reconnectInterval = lbs_reconnectStartVal;  //if not connected, try to reconnect every 10 Secs initially, then increase if failed
 	pingSent = false;
-	Serial.printf("LocoNet over TCP client is now connected to server %s on port %d \n", client->remoteIP().toString().c_str(), lbs_Port);
+	if (isWiThrottle)
+		Serial.printf("WiThrottle client is now connected to server %s on port %d \n", client->remoteIP().toString().c_str(), lbs_Port);
+	else
+		Serial.printf("LocoNet over TCP client is now connected to server %s on port %d \n", client->remoteIP().toString().c_str(), lbs_Port);
 }
 
-bool IoTT_LBServer::sendClientMessage(AsyncClient * thisClient, String cmdMsg, lnReceiveBuffer thisMsg)
+void IoTT_LBServer::clearWIThrottle(AsyncClient * thisClient)
+{
+	if (currentWIDCC > 0)
+	{
+		String outStr = "M0-*<;>r";
+		sendWIClientMessage(thisClient, outStr);
+		currentWIDCC = -1;
+	}
+}
+
+String IoTT_LBServer::getWIMessageString(AsyncClient * thisClient, lnReceiveBuffer thisMsg)
+{
+	String outStr = "";
+	switch (thisMsg.lnData[0])
+	{
+		case 0xBF : //request Loco Addr
+		{
+			uint16_t locoAddr =  (thisMsg.lnData[1] << 7) + thisMsg.lnData[2];
+			if (currentWIDCC > 0)
+				clearWIThrottle(thisClient);
+			String addrStr = String(locoAddr);
+			String hlpStr = (locoAddr > 127 ? "L" : "S") + addrStr;
+			outStr = "M0+" + hlpStr + "<;>" + hlpStr;
+		}
+		break;
+		case 0xA0 : //Set slot speed
+		{
+			String addrStr = (currentWIDCC > 127 ? "L" : "S") + String(currentWIDCC);
+			String hlpStr = String(thisMsg.lnData[2]);
+			outStr = "M0A" + addrStr + "<;>V" + hlpStr;
+		}
+		break;
+		case 0xA1 : //Set slot DIRF
+		{
+			String addrStr = (currentWIDCC > 127 ? "L" : "S") + String(currentWIDCC);
+			String hlpStr = String((thisMsg.lnData[2] & 0x20)>>5);
+			outStr = "M0A" + addrStr + "<;>R" + hlpStr;
+		}
+		break;
+	}
+	return outStr;
+}
+
+bool IoTT_LBServer::sendWIClientMessage(AsyncClient * thisClient, String cmdMsg)
+{
+	Serial.print("Out: ");
+	Serial.println(cmdMsg);
+	if (thisClient)
+		if (thisClient->canSend())
+		{
+			String lnStr = cmdMsg;
+			lnStr += '\r';
+			lnStr += '\n';
+			if (thisClient->space() > strlen(lnStr.c_str())+2)
+			{
+				thisClient->add(lnStr.c_str(), strlen(lnStr.c_str()));
+				nextPingPoint = millis() + pingInterval + random(5000);
+				return thisClient->send();
+			}
+		}
+		return false;
+}
+
+bool IoTT_LBServer::sendLNClientMessage(AsyncClient * thisClient, String cmdMsg, lnReceiveBuffer thisMsg)
 {
 	if (thisClient)
 		if (thisClient->canSend())
@@ -426,6 +725,68 @@ String IoTT_LBServer::getServerIP()
 
 void IoTT_LBServer::processLoop()
 {
+	if (isWiThrottle)
+		processLoopWI();
+	else
+		processLoopLN();
+}
+
+void IoTT_LBServer::processLoopWI() //process function for WiThrottle
+{
+	if (isServer)
+	{
+	}
+	else
+	{
+		if (!lntcpClient.thisClient->connected())
+		{
+			long now = millis();
+			if (now - lastReconnectAttempt > reconnectInterval) 
+			{
+				reconnectInterval = min(reconnectInterval+10000, 60000); //increae interval
+				lastReconnectAttempt = now;
+				Serial.print("Trying to connect to WiThrottle server at ");
+				Serial.println(lbs_IP);
+				lntcpClient.thisClient->connect(lbs_IP, lbs_Port);
+			}
+		}
+		else
+			if (que_wrPos != que_rdPos)
+			{
+				Serial.println("Send message to server");
+
+				if (lntcpClient.thisClient->canSend())
+				{
+					int hlpQuePtr = (que_rdPos + 1) % queBufferSize;
+					String msgStr = getWIMessageString(lntcpClient.thisClient, transmitQueue[hlpQuePtr]);
+					if (msgStr != "")
+						if (sendWIClientMessage(lntcpClient.thisClient, msgStr))
+							que_rdPos = hlpQuePtr; 
+						else
+							return; //if not successful, we try next time
+				}
+			}
+			else // periodic pinging of server
+			{
+				
+				if (millis() > nextPingPoint)
+				{
+					if (pingSent)
+						lntcpClient.thisClient->stop();
+					else
+					{
+						sendWIPing();
+						nextPingPoint += 2000; //2 secs ping timeout
+					}
+				}
+
+			}
+		
+	}
+}
+
+void IoTT_LBServer::processLoopLN() //process function for LN over TCP
+{
 	if (isServer)
 	{
 		if (clients.size() > 0)
@@ -438,14 +799,14 @@ void IoTT_LBServer::processLoop()
 				{
 					if (clientTxConfirmation)
 					{
-						if (sendClientMessage(clients[clientTxIndex].thisClient, "SENT OK", transmitQueue[hlpQuePtr]))
+						if (sendLNClientMessage(clients[clientTxIndex].thisClient, "SENT OK", transmitQueue[hlpQuePtr]))
 						{
 							clientTxConfirmation = false;
 							clientTxIndex++;
 						}
 					}
 					else
-						if (sendClientMessage(clients[clientTxIndex].thisClient, "RECEIVE", transmitQueue[hlpQuePtr]))
+						if (sendLNClientMessage(clients[clientTxIndex].thisClient, "RECEIVE", transmitQueue[hlpQuePtr]))
 						{
 							if ((lastTxClient == clients[clientTxIndex].thisClient) && ((lastTxData.reqID & 0x3FFF) == (transmitQueue[hlpQuePtr].reqID & 0x3FFF)) && ((transmitQueue[hlpQuePtr].errorFlags & msgEcho) > 0))
 								clientTxConfirmation = true;
@@ -485,7 +846,7 @@ void IoTT_LBServer::processLoop()
 				if (lntcpClient.thisClient->canSend())
 				{
 					int hlpQuePtr = (que_rdPos + 1) % queBufferSize;
-					if (sendClientMessage(lntcpClient.thisClient, "SEND", transmitQueue[hlpQuePtr]))
+					if (sendLNClientMessage(lntcpClient.thisClient, "SEND", transmitQueue[hlpQuePtr]))
 						que_rdPos = hlpQuePtr; 
 					else
 						return; //if not successful, we try next time
@@ -509,9 +870,16 @@ void IoTT_LBServer::processLoop()
 	yield();
 }
 
+void IoTT_LBServer::sendWIPing()
+{
+    String hlpStr = "IoTT_Stick_M5_" + String((uint32_t)ESP.getEfuseMac());
+	sendWIClientMessage(lntcpClient.thisClient, "H" + hlpStr + '\r' + '\n' + "N" + WiFi.localIP().toString());
+	pingSent = true;
+}
+
 void IoTT_LBServer::sendLNPing()
 {
-//	Serial.println("Ping request");
+	Serial.println("LN Ping request");
 	lnTransmitMsg txData;
 	txData.lnMsgSize = 2;
 	txData.lnData[0] = 0x81;

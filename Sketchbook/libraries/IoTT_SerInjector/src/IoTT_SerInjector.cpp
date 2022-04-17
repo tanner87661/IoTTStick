@@ -425,7 +425,7 @@ void IoTT_SerInjector::processDCCExReceive()
 	while (available()) //read GridConnect protocol and package by message
 	{
 		char inData = read();
-//		Serial.print(inData);
+		Serial.print(inData);
 		switch (inData)
 		{
 			case '<' : //start new message
@@ -500,7 +500,7 @@ void IoTT_SerInjector::processDCCExTransmit()
 				break;
 			case 1: //cab control
 			{
-				uint16_t cabAddr = (transmitQueue[hlpQuePtr].lnData[2] << 7) + (transmitQueue[hlpQuePtr].lnData[3] &0x7F);
+				uint16_t cabAddr = (transmitQueue[hlpQuePtr].lnData[2] << 7) + (transmitQueue[hlpQuePtr].lnData[3] & 0x7F);
 				switch (transmitQueue[hlpQuePtr].lnData[1])
 				{
 					case 0: //remove from refresh buffer
@@ -593,6 +593,7 @@ void IoTT_SerInjector::processDCCExTransmit()
 				uint16_t cfgId = (transmitQueue[hlpQuePtr].lnData[1] << 7) + (transmitQueue[hlpQuePtr].lnData[2] &0x7F);
 				uint16_t cfgVal = (transmitQueue[hlpQuePtr].lnData[3] << 7) + (transmitQueue[hlpQuePtr].lnData[4] &0x7F);
 				sprintf(txMsg, "<Z %i %i>", cfgId, cfgVal);
+				write(txMsg);
 				break;
 			}
 		}

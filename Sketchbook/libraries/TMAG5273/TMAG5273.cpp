@@ -5,7 +5,7 @@ TMAG5273::TMAG5273(TwoWire * newWire)
 	magWire = newWire;
 }
 
-bool TMAG5273::setDeviceConfig()
+bool TMAG5273::setDeviceConfig(uint8_t mountStyle)
 {
 	uint16_t devID = readI2CData(0x0E, 2);
 //	Serial.printf("ID %i\n", devID);
@@ -17,8 +17,13 @@ bool TMAG5273::setDeviceConfig()
 	writeI2CData(1, &data, 1); //device config 1 Continuous operating mode, 
 	data = 0x70;
 	writeI2CData(2, &data, 1); //0x70 XYZ channels active
-	data = 0x0C; //X,Z
-//	data = 0x04; //X,Y
+	switch (mountStyle)
+	{
+		case 0 : data = 0x0C; //X,Z flat
+			break;
+		case 1 : data = 0x04; //X,Y vertical
+			break;
+	}
 //	data = 0x08; //Y,Z
 	writeI2CData(3, &data, 1); //angle calculation on X,Z axis for PCB version
 	return true;

@@ -25,7 +25,7 @@ bool BoardManager::verifyPowerSignal()
     if (currSample < maxVal)
       maxVal = currSample;
   }
-  Serial.printf("Min: %i Max: %i Diff: %i\n", minVal, maxVal, maxVal - minVal);
+//  Serial.printf("Min: %i Max: %i Diff: %i\n", minVal, maxVal, maxVal - minVal);
   return ((minVal > minVoltage) && (maxVal < maxVoltage) && ((maxVal - minVal) <= diffVoltage));
 }
 
