@@ -109,7 +109,7 @@ void Sensor::checkAll(Print *stream)
     return;
   uint16_t portMask = PORTB & 0x0F;
   ctr++;
-  if ((portMask == 0) && (ctr >= 1000))
+  if ((portMask == 0))// && (ctr >= 1000))
   {
     ctr = 0;
     uint32_t compRes = ~(inpStatusABCD ^ verifyStatus); //flag unchanged bits

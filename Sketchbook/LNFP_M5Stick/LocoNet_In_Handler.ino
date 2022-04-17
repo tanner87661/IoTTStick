@@ -126,3 +126,9 @@ void handleButtonValue(uint16_t btnAddr, uint8_t inputValue)
   if (eventHandler) eventHandler->processBtnEvent(evt_button, btnAddr, inputValue);
   if (mySwitchList) mySwitchList->processBtnEvent(evt_button, btnAddr, inputValue);
 }
+
+void handleProgrammerEvent(uint8_t *  programmerSlot)
+{
+//  Serial.printf("Prog Stat: %i CV: %i Val: %i\n", programmerSlot[1], (programmerSlot[5]<<7) + (programmerSlot[6] & 0x7F), programmerSlot[7]);
+  if (trainSensor) trainSensor->programmerReturn(programmerSlot);
+}

@@ -525,6 +525,7 @@ void setStatusPage()
     case 14: drawText("using LN Loopback/TCP(Server)", 5, lineY[1], 2); break;
     case 15: drawText("using LN-LB/MQTT/TCP(Server)", 5, lineY[1], 2); break;
     case 16: drawText("using LN Loopback", 5, lineY[1], 2); break;
+    case 17: drawText("using WiThrottle", 5, lineY[1], 2); break;
     default: drawText("unknown", 5, lineY[1], 2); break;
   }
   if ((useInterface.devId == 4) || (useInterface.devId == 7))
@@ -685,7 +686,7 @@ void sensorViewerPage()
   if (trainSensor)
   {
     sensorData currData = trainSensor->getSensorData();
-    char outText[50];
+    char outText[75];
     M5.Lcd.fillScreen(TFT_LIGHTGREY);
     M5.Lcd.setTextColor(TFT_BLACK, TFT_LIGHTGREY);
     switch (screenDef)

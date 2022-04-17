@@ -76,9 +76,9 @@ void setup()
   thisBoard = new BoardManager;
   thisBoard->intializeBoard();
 
-  thisBoard->setLED(0, CHSV(0,255,255));
-  thisBoard->setLED(1, CHSV(85,255,255));
-  thisBoard->setLED(2, CHSV(170,255,255));
+  thisBoard->setLED(0, CHSV(0,255,100));
+  thisBoard->setLED(1, CHSV(85,255,100));
+  thisBoard->setLED(2, CHSV(170,255,100));
   FastLED.show();
 
   while (!thisBoard->verifyPowerSignal())
@@ -87,7 +87,9 @@ void setup()
     DIAG(F("Waiting for Power Supply"));
     delay(1000);
   }
-  
+
+  DIAG(F("External Power Supply confirmed"));
+
   serialParser.setLinks(thisBoard);
   thisBoard->setLEDDispStatus();
          

@@ -22,7 +22,7 @@ class BoardManager
     bool verifyPowerSignal();
     
   private:
-    bool verifyPowerSignal();
+//    bool verifyPowerSignal();
     void setBoosterMode(bool useLoconet);
     void setCmdStationMode();
   

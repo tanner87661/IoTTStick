@@ -14,10 +14,7 @@ void BoardManager::intializeBoard()
   RHSensorBlock->begin();
   initPins();
   DCC::begin(MOTOR_SHIELD_TYPE); 
-  setIBT2Enable(false);
-  setProgOutputEnable(false);
-  setRailSyncEnable(false);
-  setDCCSource(true); //internal
+  setBoardModeOff();
 }
 
 void BoardManager::processLoop()
@@ -31,10 +28,27 @@ void BoardManager::processLoop()
 
 void BoardManager::setDeviceMode(uint8_t newMode) //0: Off 1: Cmd Stn 2: Booster with LN 3: Booster no LN 65535: Reboot 328P
 {
+  Serial.println(newMode);
+  switch (newMode)
+  {
+    case 0: //OFF
+      setBoardModeOff();
+      break;
+    case 1: // Cmd Stn
+      setBoardModeCmdStn();
+      break;
+    case 2: //booster with LN
+      setBoardModeBooster(true);
+      break;
+    case 3: //booster no LN
+      setBoardModeBooster(false);
+      break;
+  }
 }
 
 void BoardManager::setDeviceOutput(uint8_t flagNr, uint8_t flagStatus)
 {
+  StringFormatter::send(Serial, F("Set device output %i %i\n"), flagNr, flagStatus);
   switch (flagNr)
   {
     case 0:
@@ -54,6 +68,7 @@ void BoardManager::setDeviceOutput(uint8_t flagNr, uint8_t flagStatus)
 
 void BoardManager::setOutputCurrent(uint8_t outMod, uint16_t newCurrent)
 {
+  StringFormatter::send(Serial, F("Set output current %i %i\n"), outMod, newCurrent);
   switch (outMod)
   {
     case 0: //IBT2
@@ -87,7 +102,9 @@ Sensor * BoardManager::getSensor()
 
 void BoardManager::checkAllSensors(Print *stream)
 {
-  RHSensorBlock->checkAll(stream);
+  if ((powerStatus & 0xFC00) == 0)
+    if (!digitalRead(pinProgTrackActive))
+      RHSensorBlock->checkAll(stream);
 }
 
 void BoardManager::printAllSensors(Print *stream)
@@ -110,7 +127,6 @@ void BoardManager::setLEDBrightness(uint8_t percentLevel)
   RHCtrlLEDs->setLEDBrightness(percentLevel);
 }
 
-
 void BoardManager::setIBT2Enable(bool setEnable)
 {
   setProgTrack(true);
@@ -127,6 +143,7 @@ void BoardManager::setIBT2Enable(bool setEnable)
 
 void BoardManager::setProgTrack(bool setOn)
 {
+  Serial.println("Set prog Track");
   digitalWrite(pinProgTrackActive, setOn);
 }
 
@@ -165,10 +182,15 @@ bool BoardManager::verifyPowerSignal(uint16_t numChecks)
   }
   powerStatus = (maxVal + minVal) >> 1; //average value
   if ((maxVal - minVal) > diffVoltage)
-    powerStatus |= 0x1000; //invalid polarity 
+    powerStatus |= 0x1000; //invalid polarity or AC
   if ((minVal < minVoltage) || (maxVal > maxVoltage))
     powerStatus |= 0x2000; //invalid voltage range
   return ((powerStatus & 0xFC00) == 0);
+}
+
+uint16_t BoardManager::getExtPwrStatus()
+{
+  return powerStatus;
 }
 
 void BoardManager::setLEDDispStatus()
@@ -188,22 +210,30 @@ void BoardManager::setLEDDispStatus()
 
 void BoardManager::setProgOutputEnable(bool setEnable)
 {
+  Serial.println("Set prog Track Disable");
   digitalWrite(pinProgTrackActive, 0);
   RHCtrlLEDs->setLED(2, CHSV(setEnable ? 85 : 0,255,255));
 }
 
 void BoardManager::setRailSyncEnable(bool setEnable)
 {
+  Serial.println(setEnable ? "Enable RailSync" : "Disable RailSync");
   digitalWrite(pinLowPwrDCC, setEnable);
 }
 
 void BoardManager::setDCCSource(bool setInternal)
 {
-  digitalWrite(pinCmdStationMode, setInternal); //also ac tivates Loconet master
+  digitalWrite(pinCmdStationMode, setInternal); //also activates Loconet master
+}
+
+void BoardManager::setPowerRelay(bool newStat)
+{
+  digitalWrite(pinSetSupplyPwr, newStat);
 }
 
 void BoardManager::setBoardModeOff()
 {
+  DIAG(F("Off Mode"));
   RHSensorBlock->setEnable(false);  
   setIBT2Enable(false);
   setProgTrack(false);
@@ -215,6 +245,7 @@ void BoardManager::setBoardModeOff()
 
 void BoardManager::setBoardModeCmdStn()
 {
+  DIAG(F("Cmd Stn Mode"));
   RHSensorBlock->setEnable(true);  
   setIBT2Enable(true);
   setProgOutputEnable(false);
@@ -225,6 +256,7 @@ void BoardManager::setBoardModeCmdStn()
 
 void BoardManager::setBoardModeBooster(bool useLN = true)
 {
+  DIAG(F("Booster Mode"));
   RHSensorBlock->setEnable(useLN ? true : false);  
   setIBT2Enable(true);
   setProgOutputEnable(false);

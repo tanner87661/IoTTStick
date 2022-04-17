@@ -235,7 +235,7 @@ void IoTT_TrainSensor::begin()
 	{
 		Serial.println("Initialize TMAG5273");
 		magSensor = new TMAG5273(sensorWire);
-		if (!magSensor->setDeviceConfig())
+		if (!magSensor->setDeviceConfig(mountStyle))
 		{
 			/* There was a problem detecting the BNO055 ... check your connections */
 			Serial.println("Ooops, no TMAG5273 detected ... Check your hardware!");
@@ -338,6 +338,8 @@ void IoTT_TrainSensor::loadLNCfgJSON(DynamicJsonDocument doc)
 		wheelDia = doc["WheelDia"];
 	if (doc.containsKey("ReverseDir"))
 		reverseDir = doc["ReverseDir"];
+	if (doc.containsKey("MountStyle"))
+		mountStyle = doc["MountStyle"];
 	if ((doc.containsKey("ScaleList")) && (doc.containsKey("ScaleIndex")))
 	{
 		uint8_t scaleIndex = doc["ScaleIndex"];
@@ -393,6 +395,14 @@ sensorData IoTT_TrainSensor::getSensorData()
 	{
 		sensorData cpyData = dispData;
 		xSemaphoreGive(sensorSemaphore);
+		if (!imuSensor)
+		{
+			cpyData.currRadiusTech = 0;
+			for (uint8_t i = 0; i < 3; i++)
+				cpyData.posVector_mm[i] = 0;
+			for (uint8_t i = 0; i < 4; i++)
+				cpyData.eulerVectorRad[i] = 0;
+		}
 		return cpyData;
 	}
 }
@@ -402,14 +412,14 @@ void IoTT_TrainSensor::setRepRate(AsyncWebSocketClient * newClient, int newRate)
 //	Serial.println("setRepRate");
 	refreshRate = newRate;
 	lastWebRefresh = millis();
-	globalClient = newClient;
+//	globalClient = newClient;
 }
 
-void IoTT_TrainSensor::reqDCCAddrWatch(AsyncWebSocketClient * newClient)
+void IoTT_TrainSensor::reqDCCAddrWatch(AsyncWebSocketClient * newClient, int16_t dccAddr, bool simulOnly)
 {
-	Serial.println("reqDCCAddrWatch");
-	globalClient = newClient;
-	digitraxBuffer->awaitFocusSlot(); //set DigitraxBuffers to watch for next speed or fct command and memorize loco
+//	Serial.println("reqDCCAddrWatch");
+//	globalClient = newClient;
+	digitraxBuffer->awaitFocusSlot(dccAddr, simulOnly); //set DigitraxBuffers to watch for next speed or fct command and memorize loco
 	waitForNewDCCAddr = true;
 	clrSpeedTable();
 }
@@ -426,24 +436,27 @@ bool IoTT_TrainSensor::reverseTestDir()
 	return true;
 }
 
-void IoTT_TrainSensor::startTest(float_t trackLen, float_t vMax)
+void IoTT_TrainSensor::startTest(float_t trackLen, float_t vMax, uint8_t pMode)
 {
 	if (speedSample.adminData.speedTestRunning) return; //do not restart
 	//verify that focusSlot is defined
 	int8_t currSlot = digitraxBuffer->getFocusSlotNr();
-	if (currSlot > 0)
+	if ((currSlot > 0) || (digitraxBuffer->getLocoNetMode() == false))
 	{
 		speedSample.adminData.testTrackLen = 10 * trackLen; //comes in cmor inches. Change web page
 		speedSample.adminData.sampleMinDistance = wheelDia * PI * minTestWheelTurns;
 		speedSample.adminData.crawlSpeedMax = wheelDia * PI * crawlTurns; //mm/s
+		Serial.printf("%.2f \n", speedSample.adminData.crawlSpeedMax);
+		speedSample.adminData.testSteps = pMode == 0 ? 28 : 127;
+//		Serial.printf("%i %i\n", speedSample.adminData.testSteps, pMode);
 		speedSample.adminData.upDir = true;
 		speedSample.adminData.testState[0].testPhase = 0; //start test
 		speedSample.adminData.testState[1].testPhase = 0; 
 		speedSample.adminData.masterPhase = 0; //run test
 		speedSample.adminData.testState[0].lastSpeedStep = 0;
 		speedSample.adminData.testState[1].lastSpeedStep = 0;
-		speedSample.adminData.testState[0].crawlSpeedStep = 10;
-		speedSample.adminData.testState[1].crawlSpeedStep = 10;
+		speedSample.adminData.testState[0].crawlSpeedStep = 1;
+		speedSample.adminData.testState[1].crawlSpeedStep = 1;
 		speedSample.adminData.testState[0].vMaxComplete = false;
 		speedSample.adminData.testState[1].vMaxComplete = false;
 		speedSample.adminData.vMaxTest = vMax;
@@ -457,18 +470,20 @@ void IoTT_TrainSensor::startTest(float_t trackLen, float_t vMax)
 		speedSample.adminData.validSample = false;
 		speedSample.adminData.speedTestRunning = true;
 	}
+	else
+		Serial.println("No focus slot assigned");
 }
 
 void IoTT_TrainSensor::sendSpeedCommand(uint8_t newSpeed)
 {
 	int8_t currSlot = digitraxBuffer->getFocusSlotNr();
-	if (currSlot >= 0)
+	if ((currSlot > 0) || (digitraxBuffer->getLocoNetMode() == false))
 	{
 		Serial.printf("Set Speed Slot %i to %i\n", currSlot, newSpeed);
 		lnTransmitMsg txBuffer;
 		txBuffer.lnData[0] = 0xA0; //OPC_LOCO_SPD 
 		txBuffer.lnData[1] = currSlot;
-		txBuffer.lnData[2] = newSpeed;
+		txBuffer.lnData[2] = map(newSpeed, 0, speedSample.adminData.testSteps, 0, maxSpeedSteps-1);
 		txBuffer.lnMsgSize = 4;
 		setXORByte(&txBuffer.lnData[0]);
 		sensorCallback(txBuffer);
@@ -478,7 +493,7 @@ void IoTT_TrainSensor::sendSpeedCommand(uint8_t newSpeed)
 void IoTT_TrainSensor::toggleDirCommand()
 {
 	int8_t currSlot = digitraxBuffer->getFocusSlotNr();
-	if (currSlot >= 0)
+	if ((currSlot > 0) || (digitraxBuffer->getLocoNetMode() == false))
 	{
 		slotData * focusSlot = digitraxBuffer->getSlotData(currSlot);
 		lnTransmitMsg txBuffer;
@@ -526,7 +541,7 @@ bool IoTT_TrainSensor::processTestStep(sensorData * sensStatus)
 		timeSince = micros() - speedSample.adminData.measureStartTime;
 		if ((timeSince > (uint32_t)maxSampleTime) || (abs(sensStatus->relIntegrator - speedSample.adminData.testStartLinIntegrator) > speedSample.adminData.sampleMinDistance))
 		{
-			Serial.println("s cmpl");
+//			Serial.println("s cmpl");
 			return true;
 		}
 	}
@@ -535,7 +550,7 @@ bool IoTT_TrainSensor::processTestStep(sensorData * sensStatus)
 		timeSince = millis() - speedSample.adminData.testStartTime;
 		if (timeSince > speedSample.adminData.accelTime) //(uint32_t)accel2Steps)
 		{
-			Serial.println("s start");
+//			Serial.println("s start");
 			speedSample.adminData.testStartLinIntegrator = sensStatus->relIntegrator;
 			speedSample.adminData.lastLinIntegrator = speedSample.adminData.testStartLinIntegrator;
 			speedSample.adminData.measureStartTime = micros();
@@ -549,10 +564,10 @@ bool IoTT_TrainSensor::processSpeedTest() //returns false if complete
 {
 	//get distance data
 	int8_t currSlot = digitraxBuffer->getFocusSlotNr();
-	if (currSlot >= 0)
+	if ((currSlot > 0) || (digitraxBuffer->getLocoNetMode() == false))
 	{
 		slotData * focusSlot = digitraxBuffer->getSlotData(currSlot);
-		bool forwardDir = ((*focusSlot)[3] & 0x20) == 0;
+		bool forwardDir = ((*focusSlot)[3] & 0x20) == 0; //forward = bit cleared
 		sensorData cpyData = getSensorData();
 		uint8_t upDirIndex = speedSample.adminData.upDir ? 1 : 0;
 		bool recordData = true;
@@ -563,7 +578,7 @@ bool IoTT_TrainSensor::processSpeedTest() //returns false if complete
 			{
 				//verify there is enough room more next step, otherwise change direction
 				float_t remDist = speedSample.adminData.upDir ? speedSample.adminData.testTrackLen - abs(cpyData.relIntegrator) : abs(cpyData.relIntegrator);
-				float_t brakeDist = sq(cpyData.currSpeedTech) / 500;
+				float_t brakeDist = sq(cpyData.currSpeedTech) / 300;
 				if (remDist < brakeDist)
 				{
 					speedSample.adminData.masterPhase = 1;
@@ -575,11 +590,11 @@ bool IoTT_TrainSensor::processSpeedTest() //returns false if complete
 				{
 					case 0: //set initial speed
 					{
-						Serial.printf("Start Meas %i %i\n", upDirIndex, speedSample.adminData.testState[upDirIndex].lastSpeedStep);
-						uint8_t oldSpeed = speedSample.adminData.testState[upDirIndex].lastSpeedStep;
+//						Serial.printf("Start Meas %i %i\n", upDirIndex, speedSample.adminData.testState[upDirIndex].lastSpeedStep);
+						uint8_t oldSpeed = speedSample.adminData.currSpeedStep; 
 						if (speedSample.adminData.testState[upDirIndex].lastSpeedStep == 0)
 						{
-							speedSample.adminData.currSpeedStep = 2;
+							speedSample.adminData.currSpeedStep = speedSample.adminData.testSteps > 28 ? 2 : 1;
 							speedSample.adminData.testState[upDirIndex].testPhase++; //this is a valid test, so set testPhase to 2 be incrementing twice
 						}
 						else
@@ -597,17 +612,18 @@ bool IoTT_TrainSensor::processSpeedTest() //returns false if complete
 					case 2: //increase speed and measure up to about 30mm/s, then determine direction and speed step for test direction, then move on
 						if (processTestStep(&cpyData))
 						{
-							Serial.printf("Dist: %.2f\n", cpyData.relIntegrator);
+//							Serial.printf("Dist: %.2f\n", cpyData.relIntegrator);
 							uint32_t timeSince = micros() - speedSample.adminData.measureStartTime;
 							float_t distSince = cpyData.relIntegrator - speedSample.adminData.testStartLinIntegrator;
-							if (speedSample.adminData.upDirPos == -1)
+							if ((speedSample.adminData.upDirPos == -1) && (abs(distSince) > 5))
 							{
 								speedSample.adminData.upDirPos = (distSince > 0) ^ (!speedSample.adminData.upDir);
-								Serial.printf("UpDirPos: %i\n", speedSample.adminData.upDirPos);
+//								Serial.printf("UpDirPos: %i\n", speedSample.adminData.upDirPos);
 							}
 							float_t * dataEntry = forwardDir ? &speedSample.fw[speedSample.adminData.currSpeedStep] : &speedSample.bw[speedSample.adminData.currSpeedStep];
 							(*dataEntry) = abs(1000000 * distSince / timeSince);
 							
+//							Serial.printf("spd: %.2f %.2f %i %i\n", (*dataEntry), speedSample.adminData.crawlSpeedMax, speedSample.adminData.testState[upDirIndex].crawlSpeedStep, speedSample.adminData.currSpeedStep);
 							if (((*dataEntry) < speedSample.adminData.crawlSpeedMax) && (speedSample.adminData.testState[upDirIndex].crawlSpeedStep < speedSample.adminData.currSpeedStep))
 							{
 								speedSample.adminData.testState[upDirIndex].crawlSpeedStep = speedSample.adminData.currSpeedStep;
@@ -615,7 +631,8 @@ bool IoTT_TrainSensor::processSpeedTest() //returns false if complete
 							}
 							speedSample.adminData.testState[upDirIndex].lastSpeedStep = speedSample.adminData.currSpeedStep;
 
-							if ((speedSample.adminData.currSpeedStep < maxSpeedSteps) && ((*dataEntry) < (1.1 * speedSample.adminData.vMaxTest)))
+//							if ((speedSample.adminData.currSpeedStep < maxSpeedSteps) && ((*dataEntry) < (1.1 * speedSample.adminData.vMaxTest)))
+							if ((speedSample.adminData.currSpeedStep < speedSample.adminData.testSteps) && ((*dataEntry) < (1.1 * speedSample.adminData.vMaxTest)))
 							{
 								speedSample.adminData.currSpeedStep++;
 								speedSample.adminData.validSample = false;
@@ -631,14 +648,6 @@ bool IoTT_TrainSensor::processSpeedTest() //returns false if complete
 							Serial.println(speedSample.adminData.testState[upDirIndex].testPhase);
 						}
 					break;
-					case 4: //test complete, move to end of track for other test until both diorections are in phase 2
-					{
-					}	
-					break;
-					case 5: //end test
-					Serial.println("Return test end");
-					return false;
-					break;
 				}
 				return true;
 			}
@@ -647,7 +656,7 @@ bool IoTT_TrainSensor::processSpeedTest() //returns false if complete
 			{
 				uint8_t newSpeed = 0;
 				float_t distFromOrigin = speedSample.adminData.upDir ? speedSample.adminData.testTrackLen - abs(cpyData.relIntegrator) : speedSample.adminData.upDirPos == 1 ? cpyData.relIntegrator : -cpyData.relIntegrator; //negative if overshooting
-				Serial.printf("Dist: %0.2f %i %i \n", distFromOrigin, speedSample.adminData.upDir, speedSample.adminData.upDirPos);
+//				Serial.printf("Dist: %0.2f %i %i \n", distFromOrigin, speedSample.adminData.upDir, speedSample.adminData.upDirPos);
 				if (distFromOrigin < 0)
 				{
 					newSpeed = 0;
@@ -680,23 +689,28 @@ bool IoTT_TrainSensor::processSpeedTest() //returns false if complete
 	return true;
 }
 
-void IoTT_TrainSensor::addSpeedTableVal(uint8_t step, float_t speed) //called from sensor task
+void IoTT_TrainSensor::programmerReturn(uint8_t * programmerSlot)
 {
-/*	
-	//table entry bytes: fwMin, fwMax, bwMin, bwMax, avgFwUp, avgFwDn, avgBwUp, avgBwDn 
-	uint8_t tblStep = map(step & 0x7F, 0, 127, 0, 27); //map 128 speed steps to 28 array, ignore direction bit
-	uint8_t fwIndex = (step & 0x80) >> 6; //adto byte index if direction bit is set
-	uint16_t speedVal = round(speed);
-	if (speedTable[tblStep].speedVal[4 + fwIndex + speedDecel] == 0)
-		speedTable[tblStep].speedVal[4 + fwIndex + speedDecel] = speedVal;
+	uint16_t opsAddr = (programmerSlot[2]<<7) + (programmerSlot[3] & 0x7F);
+	uint16_t cvNr = ((programmerSlot[5] & 0x30)<<4) + ((programmerSlot[5] & 0x01)<<7) + (programmerSlot[6] & 0x7F) + 1;
+	uint8_t cvVal = (programmerSlot[7] & 0x7F) + ((programmerSlot[5] & 0x02)<<6);
+	Serial.printf("Prog Stat: %i ps: %i CV: %i Val: %i\n", programmerSlot[1], opsAddr, cvNr, cvVal);
+	if (globalClient)
+	{
+		DynamicJsonDocument doc(200);
+		char myMqttMsg[200];
+		doc["Cmd"] = "ProgReturn";
+		JsonObject Data = doc.createNestedObject("Data");
+		Data["Status"] = programmerSlot[1];
+		Data["OpsAddr"] = opsAddr;
+		Data["CVNr"] = cvNr;
+		Data["CVVal"]= cvVal;
+		serializeJson(doc, myMqttMsg);
+		Serial.println(myMqttMsg);
+		globalClient->text(myMqttMsg);
+	}
 	else
-		speedTable[tblStep].speedVal[4 + fwIndex + speedDecel] = round((0.9 * speedTable[tblStep].speedVal[4 + fwIndex + speedDecel]) + (0.1 * speedVal));
-	if (speedVal < speedTable[tblStep].speedVal[0 + fwIndex])
-		speedTable[tblStep].speedVal[0 + fwIndex] = speedVal;
-	else
-		if (speedVal > speedTable[tblStep].speedVal[1 + fwIndex])
-			speedTable[tblStep].speedVal[1 + fwIndex] = speedVal;
-*/
+		Serial.println("No global");
 }
 
 void IoTT_TrainSensor::sendSpeedTableDataToWeb()
@@ -708,9 +722,10 @@ void IoTT_TrainSensor::sendSpeedTableDataToWeb()
 		doc["Cmd"] = "SpeedTableData";
 		JsonObject Data = doc.createNestedObject("Data");
 		Data["SlotNr"] = digitraxBuffer->getFocusSlotNr();
+		Data["NumSteps"] = speedSample.adminData.testSteps;
 		JsonArray fwArray = Data.createNestedArray("fw");
 		JsonArray bwArray = Data.createNestedArray("bw");
-		for (uint8_t i = 0; i < maxSpeedSteps; i++)
+		for (uint8_t i = 0; i < speedSample.adminData.testSteps; i++)
 		{
 			fwArray.add(speedSample.fw[i]);
 			bwArray.add(speedSample.bw[i]);
@@ -734,7 +749,7 @@ void IoTT_TrainSensor::sendSensorDataToWeb()
 		Data["AbsDist"] = cpyData.absIntegrator;
 		Data["RelDist"] = cpyData.relIntegrator;
 		Data["AxisAngle"] = cpyData.axisAngle;
-		if (imuSensor)
+//		if (imuSensor)
 		{
 			Data["Radius"] = cpyData.currRadiusTech;
 			for (uint8_t i = 0; i < 3; i++)

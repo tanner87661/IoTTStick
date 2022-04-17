@@ -266,7 +266,7 @@ function createFileDlg(parentObj, divclass, labelText, btnObjID, acceptfiles, on
 	elementButton.style.display = 'initial';
 	var elementInput = document.createElement("input");
 	elementInput.setAttribute("type", "file");
-	elementInput.setAttribute('accept', 'acceptfiles');
+	elementInput.setAttribute('accept', acceptfiles);
 	elementInput.setAttribute("id", btnObjID); //this is the ID for the file input. We keep it the same 
 	elementInput.setAttribute("onchange", onclick);
 	elementInput.style.display = 'none';

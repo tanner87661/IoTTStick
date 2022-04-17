@@ -19,8 +19,8 @@
 #ifndef DCC_h
 #define DCC_h
 #include <Arduino.h>
-//#include "MotorDriver.h"
-//#include "MotorDrivers.h"
+#include "MotorDriver.h"
+#include "MotorDrivers.h"
 #include "FSH.h"
 
 typedef void (*ACK_CALLBACK)(int16_t result);

@@ -23,7 +23,7 @@
 #define fcRefreshInterval 1000
 #define purgeInterval 65000
 
-typedef void (*dccFct) (lnTransmitMsg *, uint8_t, uint8_t); //slot nr, fct depending value
+typedef void (*dccFct) (uint8_t, uint8_t *); //slot nr, fct depending value array
 
 typedef uint8_t blockDetBuffer[numBDs]; //4096 input bits, 8 per byte, lsb is lowest number
 typedef uint8_t switchBuffer[numSwis]; //current status of switches, 4 per byte. First bit indicates coil state, second is position
@@ -63,11 +63,14 @@ class IoTT_DigitraxBuffers
 		~IoTT_DigitraxBuffers();
 		void loadRHCfgJSON(DynamicJsonDocument doc);
 		void setRedHatMode(txFct lnReply, DynamicJsonDocument doc);
+		void setLocoNetMode(bool newMode);
+		bool getLocoNetMode();
 		bool saveToFile(String fileName);
 		void loadFromFile(String fileName);
 		void processLoop(); //run loop to see if something needs to be sent out
 		void processLocoNetMsg(lnReceiveBuffer * newData); //process incoming Loconet messages
-
+		void writeProg(uint16_t dccAddr, uint8_t progMode, uint16_t cvNr, uint8_t cvVal);
+		void readProg(uint16_t dccAddr, uint8_t progMode, uint16_t cvNr);
 		//read and write buffer values
 		uint8_t getPowerStatus();
 		uint8_t getButtonValue(uint16_t buttonNum);
@@ -87,10 +90,11 @@ class IoTT_DigitraxBuffers
 		//LocoNet Management functions mainly for Command Station mode
 		//from incoming DCC command
 		//sensor slot finding functions
-		void awaitFocusSlot();
+		void awaitFocusSlot(int16_t dccAddr, bool simulOnly);
 //		slotData * getFocusSlotData();
 		slotData * getSlotData(uint8_t slotNum);
 		int8_t getFocusSlotNr();
+		uint8_t getSlotOfAddr(uint8_t locoAddrLo, uint8_t locoAddrHi);
 
 	private: //functions
 		//write buffer values
@@ -106,7 +110,6 @@ class IoTT_DigitraxBuffers
 		uint8_t getBushbyStatus(); //read from config slot
 		uint8_t getSlotStatus(uint8_t slotNr);
 		void updateSlotStatus(uint8_t slotNr, uint8_t newStatus);
-		uint8_t getSlotOfAddr(uint8_t locoAddrLo, uint8_t locoAddrHi);
 		uint16_t getAddrOfSlot(uint8_t slotNr);
 		uint8_t getTopSlot(uint8_t masterSlot);
 
@@ -118,10 +121,10 @@ class IoTT_DigitraxBuffers
 		//DCC Generator functions
 		bool processDCCGenerator(lnReceiveBuffer * newData);
 //		void processDCCGeneratorFeedback(lnTransmitMsg txData);
-		void iterateMULinks(lnTransmitMsg * txBuffer, uint8_t thisSlot, uint8_t templData, dccFct procFunc);
+		void iterateMULinks(uint8_t thisSlot, uint8_t * templData, dccFct updateFunc, dccFct procFunc);
 		void setSlotDirfSpeed(lnReceiveBuffer * newData, bool sendDCC);
-		void generateSpeedCmd(lnTransmitMsg * txBuffer, uint8_t thisSlot, uint8_t topSpeed);
-		void generateFunctionCmd(lnTransmitMsg * txBuffer, lnReceiveBuffer * newData);
+//		void generateSpeedCmd(lnTransmitMsg * txBuffer, uint8_t thisSlot, uint8_t topSpeed);
+//		void generateFunctionCmd(lnTransmitMsg * txBuffer, lnReceiveBuffer * newData);
 		void purgeUnusedSlots();
 
 	private: //variables
@@ -129,6 +132,7 @@ class IoTT_DigitraxBuffers
 		IoTT_Mux64Buttons * rhButtons = NULL;
 		bool isCommandStation = false;
 		bool isRedHat = false;
+		bool isLocoNet = true;
 //		bool useLocoNet = true;
 		bool bushbyWatch = false;
 		int8_t focusSlot = -1; //used by purple hat to identify slot to be monitored
@@ -145,7 +149,8 @@ class IoTT_DigitraxBuffers
 		slotData progSlot;
 		uint8_t rxPin = 36;
 		uint8_t txPin = 26; 
-		
+		bool progBusy = false;
+		uint8_t progCV = 0;
 		//RedHat                  
 		uint8_t ledLevel = 15; //0-100%
 };
@@ -162,3 +167,4 @@ extern void handleSignalEvent(uint16_t sigAddr, uint8_t sigAspect) __attribute__
 extern void handleAnalogValue(uint16_t analogAddr, uint16_t inputValue) __attribute__ ((weak));
 extern void handleButtonValue(uint16_t btnAddr, uint8_t inputValue) __attribute__ ((weak));
 extern void handleTranspondingEvent(uint16_t zoneAddr, uint16_t locoAddr, uint8_t eventVal) __attribute__ ((weak));
+extern void handleProgrammerEvent(uint8_t * programmerSlot) __attribute__ ((weak));

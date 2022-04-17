@@ -492,6 +492,8 @@ function startWebsockets()
 			processSensorInput(myArr.Data);
   		if ((myArr.Cmd == "SpeedTableData") && (scriptList.Pages[currentPage].ID == "pgPrplHatCfg"))
 			processSpeedTableInput(myArr.Data);
+  		if ((myArr.Cmd == "ProgReturn") && (scriptList.Pages[currentPage].ID == "pgPrplHatCfg"))
+			processProgrammerInput(myArr.Data);
   		if ((myArr.Cmd == "HWBtn") && (scriptList.Pages[currentPage].ID == "pgHWBtnCfg"))
 			processLocoNetInput(myArr.Data);
   		if ((myArr.Cmd == "HWBtn") && (scriptList.Pages[currentPage].ID == "pgThrottleCfg"))

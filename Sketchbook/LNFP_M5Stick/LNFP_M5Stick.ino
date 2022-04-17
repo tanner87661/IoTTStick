@@ -206,6 +206,9 @@ uint16_t sendMsg(lnTransmitMsg txData)
     case 13: if (commGateway) //LocoNet w/ Gateway lbServer and MQTT
               return commGateway->lnWriteMsg(txData); 
             break;
+    case 17: if (lbServer) //WiThrottle
+                lbServer->lnWriteMsg(txData); //this is simul message to WiThrottle
+            break;
 /*            
     case 5: //OpenLCB
             if (olcbSerial) olcbSerial->lnWriteMsg(txData);
@@ -405,6 +408,7 @@ void setup() {
     if ((useInterface.devId == 1) || (useInterface.devId == 9)) //DCC Interface or DCC to MQTT
     {
       Serial.println("Load DCC Interface");  
+      digitraxBuffer->setLocoNetMode(false);
       myDcc = new NmraDcc();
       pinMode(groveTxD, OUTPUT);
       // Setup which External Interrupt, the Pin it's associated with that we're using and enable the Pull-Up 
@@ -422,7 +426,11 @@ void setup() {
       Serial.println("Init LocoNet");  
       lnSerial = new LocoNetESPSerial(); //UART2 by default
       if ((useInterface.devId == 14) || (useInterface.devId == 15) || (useInterface.devId == 16))
+      {
         lnSerial->begin(); //Initialize as Loopback
+        digitraxBuffer->setLocoNetMode(false); //switch off Slot query
+
+      }
       else
       {
         lnSerial->begin(groveRxD, groveTxD, true, true); //true is inverted signals on Rx, Tx
@@ -499,6 +507,29 @@ void setup() {
     }
     else 
       Serial.println("LocoNet over TCP / lbServer not activated");
+
+    if (useInterface.devId == 17) // WiThrottle, client only
+    {
+      Serial.println("Load WiThrottle Client");  
+      jsonDataObj = getDocPtr("/configdata/lbserver.cfg", false);
+      if (jsonDataObj != NULL)
+      {
+        lbServer = new IoTT_LBServer();
+        lbServer->loadLBServerCfgJSON(*jsonDataObj);
+        switch (useInterface.devId)
+        {
+          case 17: //LocoNet over TCP client mode
+            lbServer->initWIServer(false);
+            lbServer->setLNCallback(callbackLocoNetMessage);
+            break; 
+        }
+        digitraxBuffer->setLocoNetMode(false);
+        wifiAlwaysOn = true;
+        delete(jsonDataObj);
+      }
+    }
+    else 
+      Serial.println("WiThrottle not activated");
 
     if ((useInterface.devId == 4) || (useInterface.devId == 7) || (useInterface.devId == 13) || (useInterface.devId == 11) || (useInterface.devId == 14) || (useInterface.devId == 15)) // && (modMode == 1))) //LocoNet or Loopback or OpenLCB Gateway/ALM or lbServer
     {

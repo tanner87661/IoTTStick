@@ -64,7 +64,7 @@ public:
 	uint16_t lnWriteReply(lnTransmitMsg txData);
 	void setLNCallback(cbFct newCB);
 //	int cdBackoff();
-//	bool carrierOK();
+	bool carrierOK();
 	bool hasMsgSpace();
 	void loadLNCfgJSON(DynamicJsonDocument doc);
    

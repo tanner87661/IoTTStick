@@ -53,6 +53,7 @@ class BoardManager
     void setLED(uint8_t ledNr, CHSV ledColor);
     void setLEDBrightness(uint8_t percentLevel);
     void setLEDDispStatus();
+    uint16_t getExtPwrStatus();
 
   private:
     uint8_t  deviceConfig = 0; //config byte to set all operations modes 0 : Cmd Station 1: Booster with LocoNet support 2: Booster without LocoNet
@@ -71,7 +72,7 @@ class BoardManager
     void setProgOutputEnable(bool setEnable);
     void setRailSyncEnable(bool setEnable);
     void setDCCSource(bool setInternal);
-
+    void setPowerRelay(bool newStat);
     void setBoardModeOff();
     void setBoardModeCmdStn();
     void setBoardModeBooster(bool useLN = true);

@@ -1,8 +1,10 @@
-var locoDef;
-var validLocoDef = false;
+var locoDef; //parsed JMRI XML data
+var validLocoDef = false; //true if JMRI file is loaded
 var fileName = "";
-var throttleDef = {"DataType" : "ThrottleDef", "Version" : "1.0", "ProfName":"new profile", "VMax":80, "SpeedSteps":100, "GraphData" : {}, "FileName":""};
+var throttleDef = {"DataType" : "ThrottleDef", "Version" : "1.0", "ProfName":"new profile", "VMax":80, "AtStep":90, "SpeedSteps":100, "GraphData" : {}, "FileName":""};
 var validThrottleDef = true;
+var validTechSpeedDef = false; //true after speed analysis
+var validTableDef = false; //true after table caclulation
 
 var throttleProfileGraph;
 var techSpeedProfileGraph;
@@ -24,21 +26,39 @@ var graphBoxThrottle = "rgb(255,50,50)";
 var graphBoxTechSpeed = "rgb(30,128,30)";
 var graphBoxSpeedTable = "rgb(50,50,255)";
 
-var graphColorThrottle = "rgb(255,50,50)";
-var graphColorTechProfileSpeed = "rgb(30,128,30)";
-var graphColorSpeedTable = "rgb(50,50,255)";
+var graphColorThrottle = "rgb(150,150,250)";
+var graphLineThrottle = 3;
+var graphColorTechProfileSpeedBw = "rgb(30,128,30)";
+var graphColorTechProfileSpeedFw = "rgb(128,128,30)";
+var graphColorTechProfileSpeedLimit = "rgb(128,128,128)";
+var graphLineTechSpeed = 1;
+var graphColorSpeedTable = "rgb(255,50,255)";
 var graphHLColorThrottle = "rgb(255,150,150)";
 var graphHLColorTechProfileSpeed = "rgb(130,128,130)";
 var graphHLColorSpeedTable = "rgb(150,150,255)";
+var graphLineSpeedTable = 2;
 
-var profileGraphTemplate = {"DimX":"%", "DimY":"km/h", "mouseOverLine" : -1, "Color":"blue", "HLColor":"green", "ValsX":[0,100,10], "ValsY":[0,160,10], "Show" : true,  "DataElements":[]};
-var DataElementTemplate = {"x":0,"y":0};
+var profileGraphTemplate = {"DimX":"%", "DimY":"km/h", "mouseOverLine" : -1, "Color":"blue", "Width": 1, "HLColor":"green", "ValsX":[0,100,10], "ValsY":[0,160,10], "Show" : true,  "DataElements":[]};
+var DataElementTemplate = {"x":0,"y":0, "m":0};
 var profileTemplate = {"Title":"title", "DispDim":[0,0], "FieldCol": "rgb(100,100,100)", "BoxCol": "rgb(100,100,100)", "LineGraphs":[]};
 
+var xmlFile = "";
+var jsonFile = "";
 
 var progMode = 1; //main line
-var tableMode = 0; //table mode
+var cvId = -1;
+var cvVal = -1;
+var cvArray = [];
 
+var cvVal_2 = 0;
+var cvVal_5 = 0;
+var cvVal_6 = 0;
+var cvVal_29 = 0;
+
+//var tableMode = 0; //table mode
+var trimMode = 0; //trim mode 0-200 vs 0-100
+var stepMode = 0;
+var moveNode = -1; //selected node for dragging
 //--------------------------------------------------------------JMRI Decoder functions
 function loadJMRIDecoder(sender)
 {
@@ -61,13 +81,14 @@ function loadJMRIDecoder(sender)
         validLocoDef = displayDecoder(locoDef);
 		setButtonStatus();
     };
+    xmlFile = fileName;
     reader.readAsText(fileName);	
 }
 
 function saveJMRIDecoder(sender)
 {
 	if (validLocoDef)
-		writeDiskFile(new Blob([xml2Str(locoDef)], {type: "text/xml"}), fileName.name);
+		writeDiskFile(new Blob([xml2Str(locoDef)], {type: "text/xml"}), xmlFile.name);
 }
 
 function xml2Str(xmlNode) {
@@ -102,26 +123,32 @@ function findXMLAttribute(inCollection, thisAttr, attrVal)
 function displayDecoder(xmlNode)
 {
 	var isLoco = xmlNode.getElementsByTagName("locomotive-config").length > 0;
-	var varVal = xmlNode.getElementsByTagName("varValue");
+	var varVals = xmlNode.getElementsByTagName("varValue");
 	var hasSpeedTable = -1;
 	var cvVal = [];
-	if (varVal.length > 0)
+	if (varVals.length > 0)
 	{
-		var attr = findXMLAttribute(varVal, "item", "Speed Table Definition");
+		console.log(varVals.length);
+		var attr = findXMLAttribute(varVals, "item", "Speed Table Definition");
+		console.log(attr);
 		if (attr)
 			hasSpeedTable = attr.getAttribute("value");
 		if (hasSpeedTable == 1)
 		{
 			cvVal = xmlNode.getElementsByTagName("CVvalue");
 			speedTableProfileGraph.LineGraphs[0].DataElements.length = 0;//delete old data
+			var newEl = JSON.parse(JSON.stringify(DataElementTemplate));
+			newEl.x = 0;
+			newEl.y = 0;
+			speedTableProfileGraph.LineGraphs[0].DataElements.push(newEl);
 			console.log(xmlNode);
 			for (var i = 0; i < 28; i++) //28 table entries by definition
 			{
 				var cv = findXMLAttribute(cvVal, "name", (i+67).toString());
 				if (cv)
 				{
-					var newEl = JSON.parse(JSON.stringify(DataElementTemplate));
-					newEl.x = i;
+					newEl = JSON.parse(JSON.stringify(DataElementTemplate));
+					newEl.x = i+1;
 					newEl.y = cv.getAttribute("value");
 					speedTableProfileGraph.LineGraphs[0].DataElements.push(newEl);
 				}
@@ -134,46 +161,185 @@ function displayDecoder(xmlNode)
 		document.getElementById("jmrifilename").innerHTML = xmlNode.getElementsByTagName("locomotive")[0].getAttribute("fileName");
 		document.getElementById("dccloco").innerHTML = xmlNode.getElementsByTagName("locomotive")[0].getAttribute("id");
 		document.getElementById("jmriaddr").innerHTML = xmlNode.getElementsByTagName("locomotive")[0].getAttribute("dccAddress");
-		document.getElementById("decbrand").innerHTML = xmlNode.getElementsByTagName("decoder")[0].getAttribute("family");
+		document.getElementById("decbrand").innerHTML = findCVVal(xmlNode, 8);
+		document.getElementById("decfamily").innerHTML = xmlNode.getElementsByTagName("decoder")[0].getAttribute("family");
 		document.getElementById("decmodel").innerHTML = xmlNode.getElementsByTagName("decoder")[0].getAttribute("model");
+		writeTextField("cv02", findCVVal(xmlNode, 2));
+		writeTextField("cv05", findCVVal(xmlNode, 5));
+		writeTextField("cv06", findCVVal(xmlNode, 6));
+		writeTextField("cv29", findCVVal(xmlNode, 29));
+		writeInputField("cvn02", findCVVal(xmlNode, 2));
+		writeInputField("cvn05", findCVVal(xmlNode, 5));
+		writeInputField("cvn06", findCVVal(xmlNode, 6));
+		writeInputField("cvn29", findCVVal(xmlNode, 29));
+		cvVal_2 = findCVVal(xmlNode, 2);
+		cvVal_5 = findCVVal(xmlNode, 5);
+		cvVal_6 = findCVVal(xmlNode, 6);
+		cvVal_29 = findCVVal(xmlNode, 29);
 		
+		var vMax = xmlNode.getElementsByTagName("locomotive")[0].getAttribute("maxSpeed");
+		writeInputField("thscalespeed", vMax);
+		document.getElementById("jmrivmax").innerHTML = vMax;
+		setThrottleProfile(document.getElementById("thscalespeed"));
+		var newAddr = xmlNode.getElementsByTagName("locomotive")[0].getAttribute("dccAddress");
+		locoAddr = -1;
+		reqDCCAssign(newAddr);
 	}
 	else
 		console.log("Not Locomotive data");
 	return isLoco;
 }
 
+function findCVVal(xmlNode, cvNr)
+{
+	var cvVals = xmlNode.getElementsByTagName("CVvalue");
+	for (var i = 0; i < cvVals.length; i++)
+		if (cvVals[i].getAttribute("name") == cvNr) 
+			return cvVals[i].getAttribute("value");
+	return -1;
+}
+
+function setCV(sender)
+{
+	switch (sender.id)
+	{
+		case "cvid":
+			cvId = verifyNumber(sender.value, cvId);
+			break;
+		case "cvval":
+			cvVal = verifyNumber(sender.value, cvVal);
+			break;
+	}
+}
+
+function setCVVal(sender)
+{
+	switch (sender.id)
+	{
+		case "cvn02":
+			cvVal_2 = verifyNumber(sender.value, cvVal_2);
+			break;
+		case "cvn05":
+			cvVal_5 = verifyNumber(sender.value, cvVal_5);
+			break;
+		case "cvn06":
+			cvVal_6 = verifyNumber(sender.value, cvVal_6);
+			break;
+		case "cvn29":
+			cvVal_29 = verifyNumber(sender.value, cvVal_29);
+			break;
+	}
+}
+
 //--------------------------------------------------------------Throttle Profile functions
+function getMotorValueForSpeed(thisSpeed)
+{
+	var motorValue = [0,0];
+	for (var j = 1; j <= 2; j++) //techSpeedProfileGraph.LineGraphs
+	{
+	//find speedstep that has desired speed
+		for (var i = 0; i < techSpeedProfileGraph.LineGraphs[j].DataElements.length-1; i++)
+			if ((thisSpeed >= techSpeedProfileGraph.LineGraphs[j].DataElements[i].y) && ( thisSpeed <= techSpeedProfileGraph.LineGraphs[j].DataElements[i+1].y))
+			{
+//				console.log(thisSpeed, i);
+				var y1 = techSpeedProfileGraph.LineGraphs[j].DataElements[i].y
+				var y2 = techSpeedProfileGraph.LineGraphs[j].DataElements[i+1].y
+				var dy = y2 - y1;
+				var dx = 127 / 27; 
+				//for 27 step mode, interpolate to 127 step
+				if (techSpeedProfileGraph.LineGraphs[j].DataElements.length < 30)
+				{
+					if ((i == 0) || (dy == 0))
+						motorValue[j-1] = 0;
+					else
+						motorValue[j-1] = Math.round((i * dx) + (((thisSpeed - y1) / dy) * dx));
+				}
+				else
+					if ((i == 0) || (dy == 0))
+						motorValue[j-1] = 0;
+					else
+						motorValue[j-1] = thisSpeed > (y1 + (dy / 2)) ? i + 1 : i;
+				//times 2 for motor value
+				motorValue[j-1] *= 2; //adjust from 127 to 255 max value
+				break;
+			}
+	}
+	return motorValue;
+}
+
+function getSpeedForThrottleStep(thisStep)
+{
+	var tStep = Math.round((thisStep / 27) * throttleProfileGraph.LineGraphs[0].ValsX[1]);
+	var lineSegment = 0;
+	for (var i = 0; i < throttleProfileGraph.LineGraphs[0].DataElements.length-1; i++)
+		if ((tStep >= throttleProfileGraph.LineGraphs[0].DataElements[i].x) && ( tStep <= throttleProfileGraph.LineGraphs[0].DataElements[i+1].x))
+		{
+			lineSegment = i;
+			break;
+		}
+	var x1 = throttleProfileGraph.LineGraphs[0].DataElements[lineSegment].x;
+	var y1 = throttleProfileGraph.LineGraphs[0].DataElements[lineSegment].y;
+	var dx = throttleProfileGraph.LineGraphs[0].DataElements[lineSegment+1].x - throttleProfileGraph.LineGraphs[0].DataElements[lineSegment].x;
+	var dy = throttleProfileGraph.LineGraphs[0].DataElements[lineSegment+1].y - throttleProfileGraph.LineGraphs[0].DataElements[lineSegment].y;
+	var scaleSpeed = y1 + ((tStep - x1) * dy/dx);
+//	console.log(thisStep, tStep, lineSegment, x1, y1, dx, dy);
+    if (configData[workCfg].Units == 1) //imperial
+		scaleSpeed *= 1.6;
+	scaleSpeed /= configData[workCfg].ScaleList[configData[workCfg].ScaleIndex].Scale;
+	scaleSpeed = Math.round((scaleSpeed * 10000) / 36); //[mm/s]
+	return scaleSpeed;
+}
+
+function createThrottleGraph(throttleDef, throttleGraph)
+{
+	
+	throttleGraph.LineGraphs[0].ValsY[1] = 50 * (Math.trunc(throttleDef.VMax/50) + 1); 
+	throttleGraph.LineGraphs[0].ValsX[1] = throttleDef.SpeedSteps;
+//	console.log(throttleGraph.LineGraphs[0].DataElements.length);
+	while (throttleGraph.LineGraphs[0].DataElements.length < 3)
+	{
+		var newEl = JSON.parse(JSON.stringify(DataElementTemplate));
+		throttleGraph.LineGraphs[0].DataElements.push(newEl); //add elements to minimum length
+	}
+	var currEl = throttleGraph.LineGraphs[0].DataElements[0];
+	currEl.x = 0;
+	currEl.y = 0;
+	currEl = throttleGraph.LineGraphs[0].DataElements[throttleGraph.LineGraphs[0].DataElements.length-2];
+	currEl.x = throttleDef.AtStep;
+	currEl.y = throttleDef.VMax;
+	currEl.m = 2;
+	currEl = throttleGraph.LineGraphs[0].DataElements[throttleGraph.LineGraphs[0].DataElements.length-1];
+	currEl.x = throttleGraph.LineGraphs[0].ValsX[1];
+	currEl.y = throttleDef.VMax;
+}
+
 function setThrottleProfile(sender)
 {
 	if (sender.id == "thprofilename")
 	{
 		throttleDef.ProfName = sender.value;
-
 	}
 	if (sender.id == "thscalespeed")
 	{
 		throttleDef.VMax = verifyNumber(sender.value, throttleDef.VMax);
-		throttleProfileGraph.LineGraphs[0].ValsY[1] = throttleDef.VMax;
-		for (var i = 0; i < throttleProfileGraph.LineGraphs[0].DataElements.length; i++)
-			if (throttleProfileGraph.LineGraphs[0].DataElements[i].y > throttleDef.VMax)
-				throttleProfileGraph.LineGraphs[0].DataElements[i].y = throttleDef.VMax;
+		createThrottleGraph(throttleDef, throttleProfileGraph);
+		drawProfileBox(canvasElementThrottle, throttleProfileGraph);
+		document.getElementById("testmaxspeed").value = throttleDef.VMax;
+		setTestSpeed(document.getElementById("testmaxspeed"));
+	}
+	if (sender.id == "thvmax")
+	{
+		throttleDef.AtStep = Math.trunc(verifyNumber(sender.value, throttleDef.AtStep));
+		if (throttleDef.AtStep > throttleDef.SpeedSteps)
+			throttleDef.AtStep = throttleDef.SpeedSteps;
+		createThrottleGraph(throttleDef, throttleProfileGraph);
 		drawProfileBox(canvasElementThrottle, throttleProfileGraph);
 	}
 	if (sender.id == "thnumsteps")
 	{
 		throttleDef.SpeedSteps = verifyNumber(sender.value, throttleDef.SpeedSteps);
 		throttleProfileGraph.LineGraphs[0].ValsX[1] = throttleDef.SpeedSteps;
-
-		throttleProfileGraph.LineGraphs[0].DataElements.length = 0;
-		var startEl = JSON.parse(JSON.stringify(DataElementTemplate));
-		startEl.x = throttleProfileGraph.LineGraphs[0].ValsX[0];
-		startEl.y = throttleProfileGraph.LineGraphs[0].ValsY[0];
-		throttleProfileGraph.LineGraphs[0].DataElements.push(startEl);
-		var endEl = JSON.parse(JSON.stringify(DataElementTemplate));
-		endEl.x = throttleProfileGraph.LineGraphs[0].ValsX[1];
-		endEl.y = throttleProfileGraph.LineGraphs[0].ValsY[1];
-		throttleProfileGraph.LineGraphs[0].DataElements.push(endEl);
+		createThrottleGraph(throttleDef, throttleProfileGraph);
 		drawProfileBox(canvasElementThrottle, throttleProfileGraph);
 	}
 }
@@ -183,7 +349,8 @@ function saveThrottle(sender)
 	if (validThrottleDef)
 	{
 		fileName.name = throttleDef.FileName;
-		writeDiskFile(new Blob([JSON.stringify(throttleDef)], {type: "application/json"}), fileName.name);
+		throttleDef.GraphData = JSON.parse(JSON.stringify(throttleProfileGraph.LineGraphs[0]));
+		writeDiskFile(new Blob([JSON.stringify(throttleDef)], {type: "application/json"}), jsonFile.name);
 	}
 }
 
@@ -213,13 +380,15 @@ function loadThrottle(sender)
 			alert("Not a valid throttle profile");
 			return;
 		}
-//		console.log(throttleDef);
+		throttleProfileGraph.LineGraphs[0] = JSON.parse(JSON.stringify(throttleDef.GraphData));
+		throttleProfileGraph.LineGraphs[0].Color = JSON.parse(JSON.stringify(graphColorThrottle));
+		throttleProfileGraph.LineGraphs[0].Width = JSON.parse(JSON.stringify(graphLineThrottle));
+		createThrottleGraph(throttleDef, throttleProfileGraph);
         displayThrottleDef(throttleDef);
-		throttleProfileGraph = throttleDef.GraphData;
-//		console.log(throttleProfileGraph);
 		drawProfileBox(canvasElementThrottle, throttleProfileGraph);
 		setButtonStatus();
     };
+    jsonFile = fileName;
     reader.readAsText(fileName);	
 }
 
@@ -228,7 +397,13 @@ function displayThrottleDef(jsonNode)
 	writeTextField("throttlefilename", jsonNode.FileName);
 	writeInputField("thprofilename", jsonNode.ProfName);
 	writeInputField("thscalespeed", jsonNode.VMax);
+	
+	writeInputField("thvmax", jsonNode.AtStep);
 	writeInputField("thnumsteps", jsonNode.SpeedSteps);
+
+	writeInputField("testmaxspeed", jsonNode.VMax);
+	setTestSpeed(document.getElementById("testmaxspeed"));
+	
 }
 
 //--------------------------------------------------------------Graph Data
@@ -243,30 +418,44 @@ function loadSpeedMagicGraphData()
 	var profileBox = JSON.parse(JSON.stringify(profileGraphTemplate));
 	profileBox.DimX = "Speed Step";
 	profileBox.DimY = (configData[workCfg].Units == 0) ? "km/h" : "mph";
+	profileBox.Width = graphLineThrottle;
 	profileBox.Color = graphColorThrottle;
 	profileBox.HLColor = graphHLColorThrottle;
 	profileBox.ValsX = [0,throttleDef.SpeedSteps,10];
-	profileBox.ValsY = [0,throttleDef.VMax,10];
-	var startEl = JSON.parse(JSON.stringify(DataElementTemplate));
-	startEl.x = profileBox.ValsX[0];
-	startEl.y = profileBox.ValsY[0];
-	profileBox.DataElements.push(startEl);
-	var endEl = JSON.parse(JSON.stringify(DataElementTemplate));
-	endEl.x = profileBox.ValsX[1];
-	endEl.y = profileBox.ValsY[1];
-	profileBox.DataElements.push(endEl);
+	profileBox.ValsY = [0,50 * (Math.trunc(throttleDef.VMax/50) + 1),10];
 	throttleProfileGraph.LineGraphs.push(profileBox);
-	throttleDef.GraphData = throttleProfileGraph;
+
+
+	createThrottleGraph(throttleDef, throttleProfileGraph);
 
 	techSpeedProfileGraph = JSON.parse(JSON.stringify(profileTemplate));
 	techSpeedProfileGraph.Title = "Technical Speed Profile";
 	techSpeedProfileGraph.DispDim = canvasSizeTechSpeed;
 	techSpeedProfileGraph.BoxCol = graphBoxTechSpeed;
 	techSpeedProfileGraph.FieldCol = graphBackgroundTechSpeed;
+
+	profileBox = JSON.parse(JSON.stringify(profileGraphTemplate));
+	profileBox.DimX = "Speed Limit";
+	profileBox.DimY = "mm/s";
+	profileBox.ValsX = [0,28,13];
+	profileBox.ValsY = [0,500,10];
+	var startEl = JSON.parse(JSON.stringify(DataElementTemplate));
+	startEl.x = profileBox.ValsX[0];
+	startEl.y = 0;
+	profileBox.DataElements.push(startEl);
+	var endEl = JSON.parse(JSON.stringify(DataElementTemplate));
+	endEl.x = profileBox.ValsX[1];
+	endEl.y = 0;
+	profileBox.DataElements.push(endEl);
+	profileBox.Width = graphLineTechSpeed;
+	profileBox.Color = graphColorTechProfileSpeedLimit;
+	profileBox.HLColor = graphHLColorTechProfileSpeed;
+	techSpeedProfileGraph.LineGraphs.push(profileBox);
+
 	profileBox = JSON.parse(JSON.stringify(profileGraphTemplate));
 	profileBox.DimX = "Speed Step fw";
 	profileBox.DimY = "mm/s";
-	profileBox.ValsX = [0,127,13];
+	profileBox.ValsX = [0,28,13];
 	profileBox.ValsY = [0,500,10];
 	var startEl = JSON.parse(JSON.stringify(DataElementTemplate));
 	startEl.x = profileBox.ValsX[0];
@@ -274,16 +463,16 @@ function loadSpeedMagicGraphData()
 	profileBox.DataElements.push(startEl);
 	var endEl = JSON.parse(JSON.stringify(DataElementTemplate));
 	endEl.x = profileBox.ValsX[1];
-	endEl.y = profileBox.ValsY[1];
+	endEl.y = 0;
 	profileBox.DataElements.push(endEl);
-	profileBox.Color = graphColorTechProfileSpeed;
+	profileBox.Color = graphColorTechProfileSpeedFw;
 	profileBox.HLColor = graphHLColorTechProfileSpeed;
 	techSpeedProfileGraph.LineGraphs.push(profileBox);
 
 	profileBox = JSON.parse(JSON.stringify(profileGraphTemplate));
 	profileBox.DimX = "Speed Step bw";
 	profileBox.DimY = "mm/s";
-	profileBox.ValsX = [0,127,13];
+	profileBox.ValsX = [0,28,13];
 	profileBox.ValsY = [0,500,10];
 	var startEl = JSON.parse(JSON.stringify(DataElementTemplate));
 	startEl.x = profileBox.ValsX[0];
@@ -291,9 +480,9 @@ function loadSpeedMagicGraphData()
 	profileBox.DataElements.push(startEl);
 	var endEl = JSON.parse(JSON.stringify(DataElementTemplate));
 	endEl.x = profileBox.ValsX[1];
-	endEl.y = 1.5 * profileBox.ValsY[1];
+	endEl.y = 0;
 	profileBox.DataElements.push(endEl);
-	profileBox.Color = graphColorTechProfileSpeed;
+	profileBox.Color = graphColorTechProfileSpeedBw;
 	profileBox.HLColor = graphHLColorTechProfileSpeed;
 	techSpeedProfileGraph.LineGraphs.push(profileBox);
 
@@ -305,7 +494,7 @@ function loadSpeedMagicGraphData()
 	profileBox = JSON.parse(JSON.stringify(profileGraphTemplate));
 	profileBox.DimX = "Speed Step";
 	profileBox.DimY = "Pwr. Incr.";
-	profileBox.ValsX = [0,27,27];
+	profileBox.ValsX = [0,28,28];
 	profileBox.ValsY = [0,255,10];
 	var startEl = JSON.parse(JSON.stringify(DataElementTemplate));
 	startEl.x = profileBox.ValsX[0];
@@ -315,6 +504,7 @@ function loadSpeedMagicGraphData()
 	endEl.x = profileBox.ValsX[1];
 	endEl.y = profileBox.ValsY[1];
 	profileBox.DataElements.push(endEl);
+	profileBox.Width = graphLineSpeedTable;
 	profileBox.Color = graphColorSpeedTable;
 	profileBox.HLColor = graphHLColorSpeedTable;
 	speedTableProfileGraph.LineGraphs.push(profileBox);
@@ -371,7 +561,7 @@ function drawProfileBox(ofCanvas, dispObj)
 	context.fillText( dispObj.Title, Math.round((GRAPH_RIGHT + GRAPH_LEFT) / 2), 30);  
 
 	context.textAlign = "right";
-//	for (var j = 0; j < dispObj.LineGraphs.Length; j++)
+//	for (var j = 0; j < dispObj.LineGraphs.length; j++)
 	{
 		var j = 0;
 		for (var i = 0; i <= dispObj.LineGraphs[j].ValsY[2]; i++)
@@ -396,29 +586,48 @@ function drawProfileBox(ofCanvas, dispObj)
 	}
 	context.stroke();  
 	//draw line
-	if (dispObj.LineGraphs[0].DataElements.length > 1)
+	for (var j = 0; j < dispObj.LineGraphs.length; j++)
 	{
-		var xPos = GRAPH_LEFT + (dispObj.LineGraphs[0].DataElements[0].x * (GRAPH_WIDTH/(dispObj.LineGraphs[0].ValsX[1] - dispObj.LineGraphs[0].ValsX[0])));
-		var yPos = GRAPH_BOTTOM - (dispObj.LineGraphs[0].DataElements[0].y * (GRAPH_HEIGHT/(dispObj.LineGraphs[0].ValsY[1] - dispObj.LineGraphs[0].ValsY[0])));
-//		console.log(xPos, yPos, dispObj.LineGraphs[0].DataElements[0].x, dispObj.LineGraphs[0].DataElements[0].y);
-		context.moveTo(xPos, yPos);
-		context.strokeStyle = dispObj.LineGraphs[0].mouseOverLine >= 0 ? dispObj.LineGraphs[0].HLColor : dispObj.LineGraphs[0].Color;
-		context.fillStyle = dispObj.LineGraphs[0].mouseOverLine >= 0 ? dispObj.LineGraphs[0].HLColor : dispObj.LineGraphs[0].Color;
-		context.beginPath();
-		context.arc(xPos, yPos, 5, 0, 2 * Math.PI);
-		for (var i = 1; i < dispObj.LineGraphs[0].DataElements.length; i++)
+		if (dispObj.LineGraphs[j].DataElements.length > 1)
 		{
-			xPos = GRAPH_LEFT + (dispObj.LineGraphs[0].DataElements[i].x * (GRAPH_WIDTH/(dispObj.LineGraphs[0].ValsX[1] - dispObj.LineGraphs[0].ValsX[0])));
-			yPos = GRAPH_BOTTOM - (dispObj.LineGraphs[0].DataElements[i].y * (GRAPH_HEIGHT/(dispObj.LineGraphs[0].ValsY[1] - dispObj.LineGraphs[0].ValsY[0])));
-//			console.log(xPos, yPos, dispObj.LineGraphs[0].DataElements[i].x, dispObj.LineGraphs[0].DataElements[i].y);
-			context.arc(xPos, yPos, 5, 0, 2 * Math.PI);
-			context.lineTo(xPos, yPos);  
+			var xPos = GRAPH_LEFT + (dispObj.LineGraphs[j].DataElements[0].x * (GRAPH_WIDTH/(dispObj.LineGraphs[j].ValsX[1] - dispObj.LineGraphs[j].ValsX[0])));
+			var yPos = GRAPH_BOTTOM - (dispObj.LineGraphs[j].DataElements[0].y * (GRAPH_HEIGHT/(dispObj.LineGraphs[j].ValsY[1] - dispObj.LineGraphs[j].ValsY[0])));
+//			console.log(xPos, yPos, dispObj.LineGraphs[j].DataElements[0].x, dispObj.LineGraphs[j].DataElements[j].y);
+			context.strokeStyle = dispObj.LineGraphs[j].mouseOverLine >= 0 ? dispObj.LineGraphs[j].HLColor : dispObj.LineGraphs[j].Color;
+			context.fillStyle = dispObj.LineGraphs[j].mouseOverLine >= 0 ? dispObj.LineGraphs[j].HLColor : dispObj.LineGraphs[j].Color;
+			context.lineWidth = dispObj.LineGraphs[j].Width;
+			context.beginPath();
+			context.moveTo(xPos, yPos);
+//			context.arc(xPos, yPos, 5, 0, 2 * Math.PI);
+			for (var i = 1; i < dispObj.LineGraphs[j].DataElements.length; i++)
+			{
+				xPos = GRAPH_LEFT + (dispObj.LineGraphs[j].DataElements[i].x * (GRAPH_WIDTH/(dispObj.LineGraphs[j].ValsX[1] - dispObj.LineGraphs[j].ValsX[0])));
+				yPos = GRAPH_BOTTOM - (dispObj.LineGraphs[j].DataElements[i].y * (GRAPH_HEIGHT/(dispObj.LineGraphs[j].ValsY[1] - dispObj.LineGraphs[j].ValsY[0])));
+//				console.log(xPos, yPos, dispObj.LineGraphs[j].DataElements[i].x, dispObj.LineGraphs[j].DataElements[i].y);
+//				context.stroke(); 
+				context.lineTo(xPos, yPos);  
+				context.stroke(); 
+				context.beginPath();
+				switch (dispObj.LineGraphs[j].DataElements[i].m)
+				{
+					case 1: 
+//						context.beginPath();
+						context.arc(xPos, yPos, 3, 0, 2 * Math.PI);
+						context.fill(); 
+						break;
+					case 2:
+//						context.beginPath();
+						context.rect(xPos-2, yPos-2, 4, 4);
+						context.fill(); 
+						break;
+				}
+				context.moveTo(xPos, yPos);  
+				context.stroke(); 
+			}
 		}
-		context.stroke(); 
-		context.fill(); 
+		else
+			console.log("No data");
 	}
-	else
-		console.log("No data");
 	context.stroke();  
 	
 	
@@ -437,16 +646,16 @@ function getDataPtr(forCanvas)
 
 function setCanvasMouseEvents(canvasElement)
 {
-	canvasElement.setAttribute("onclick", "canvasMouseClick(this)");
-	canvasElement.setAttribute("ondblclick", "canvasMouseDblClick(this)");
+	canvasElement.setAttribute("onclick", "canvasMouseClick(this, event)");
+	canvasElement.setAttribute("ondblclick", "canvasMouseDblClick(this, event)");
 	canvasElement.setAttribute("oncontextmenu", "canvasMouseRightClick(this)");
 	canvasElement.setAttribute("onmousemove", "canvasMouseMove(this, event)");
-	canvasElement.setAttribute("onmousedown", "canvasMouseDown(this)");
-	canvasElement.setAttribute("onmouseup", "canvasMouseUp(this)");
- 	canvasElement.setAttribute("onmouseleave", "canvasMouseLeave(this)");
-	canvasElement.setAttribute("onmouseout", "canvasMouseOut(this)");
-	canvasElement.setAttribute("onmouseenter", "canvasMouseEnter(this)");
-	canvasElement.setAttribute("onmouseover", "canvasMouseOver(this)");
+	canvasElement.setAttribute("onmousedown", "canvasMouseDown(this, event)");
+	canvasElement.setAttribute("onmouseup", "canvasMouseUp(this, event)");
+ 	canvasElement.setAttribute("onmouseleave", "canvasMouseLeave(this, event)");
+	canvasElement.setAttribute("onmouseout", "canvasMouseOut(this, event)");
+	canvasElement.setAttribute("onmouseenter", "canvasMouseEnter(this, event)");
+	canvasElement.setAttribute("onmouseover", "canvasMouseOver(this, event)");
 }
 
 function getMousePos(canvas, evt) 
@@ -463,8 +672,8 @@ function getMouseVal(graphData, graphPoint)
 	var dispWidth = graphData.DispDim[0] - graphData.DispDim[4] - graphData.DispDim[5];
 	var dispHeight = graphData.DispDim[1] - graphData.DispDim[2] - graphData.DispDim[3];
 	var retVal = {"x":0,"y":0};
-	retVal.x = graphPoint.x * (graphData.LineGraphs[0].ValsX[1] - graphData.LineGraphs[0].ValsX[0]) / dispWidth;
-	retVal.y = graphPoint.y * (graphData.LineGraphs[0].ValsY[1] - graphData.LineGraphs[0].ValsY[0]) / dispHeight;
+	retVal.x = Math.round(graphPoint.x * (graphData.LineGraphs[0].ValsX[1] - graphData.LineGraphs[0].ValsX[0]) / dispWidth);
+	retVal.y = Math.round(graphPoint.y * (graphData.LineGraphs[0].ValsY[1] - graphData.LineGraphs[0].ValsY[0]) / dispHeight);
 	return retVal;
 }
  
@@ -484,9 +693,54 @@ function isMouseOver(dataPoint, dataLine)
 	return -1;
 }
  
-function canvasMouseClick(sender)
+function mouseOverPoint(graphData, posVal)
+{
+	for (var i = 1; i < (graphData.LineGraphs[0].DataElements.length - 1); i++)
+	{
+		var dtVal = graphData.LineGraphs[0].DataElements[i];
+//		console.log(dtVal, posVal);
+		if ((posVal.x >= (dtVal.x - 2)) && (posVal.x <= (dtVal.x + 2)) && (posVal.y >= (dtVal.y - 2)) && (posVal.y <= (dtVal.y + 2)))
+		{
+//			console.log(i);
+			return i;
+		}
+	}
+	return -1; 
+}
+ 
+function canvasMouseClick(sender, e)
 {
 	var graphData = getDataPtr(sender);
+	var mousePos = getMousePos(sender, e);
+	var mouseVal = getMouseVal(graphData, mousePos);
+	if ((graphData == throttleProfileGraph) && (mouseVal.x > 0) && (mouseVal.y > 0) && (mouseVal.x < graphData.LineGraphs[0].ValsX[1]) && (mouseVal.y < graphData.LineGraphs[0].ValsY[1]))
+	{
+		var selLeg = mouseOverPoint(graphData, mouseVal);
+		if (e.ctrlKey && selLeg > 0 && (selLeg < (graphData.LineGraphs[0].DataElements.length - 2)))
+		{
+			graphData.LineGraphs[0].DataElements.splice(selLeg, 1);
+			createThrottleGraph(throttleDef, graphData);
+			drawProfileBox(canvasElementThrottle, throttleProfileGraph);
+			return;
+		}
+		else
+		{
+			for (var i = 1; i < (graphData.LineGraphs[0].DataElements.length - 1); i++)
+			{
+				if ((mouseVal.x > graphData.LineGraphs[0].DataElements[i-1].x) && (mouseVal.x < graphData.LineGraphs[0].DataElements[i].x))
+				{
+					var newEl = JSON.parse(JSON.stringify(DataElementTemplate));
+					graphData.LineGraphs[0].DataElements.splice(i, 0, newEl); //add elements to minimum length
+					newEl.x = mouseVal.x;
+					newEl.y = Math.max(0, Math.min(mouseVal.y, throttleDef.VMax));
+					newEl.m = 1;
+					createThrottleGraph(throttleDef, graphData);
+					drawProfileBox(canvasElementThrottle, throttleProfileGraph);
+					return;
+				}
+			}
+		}
+	}
 }
 
 function canvasMouseRightClick(sender)
@@ -499,17 +753,34 @@ function isMouseOverLine(thisPt, thisLine)
 }
 
 function canvasMouseMove(sender, e)
-{
+{-1
 	var graphData = getDataPtr(sender);
-	var oldVal = graphData.LineGraphs[0].mouseOverLine;
 	var mousePos = getMousePos(sender, e);
 	var mouseVal = getMouseVal(graphData, mousePos);
-//	console.log(mouseVal);
-	
-	graphData.LineGraphs[0].mouseOverLine = isMouseOver(mouseVal, graphData.LineGraphs[0].DataElements);
+	if (graphData == throttleProfileGraph)
+		if (moveNode > 0)
+		{
+			if ((mouseVal.x > graphData.LineGraphs[0].DataElements[moveNode-1].x) && (mouseVal.y > graphData.LineGraphs[0].DataElements[moveNode-1].y) && (mouseVal.x < graphData.LineGraphs[0].DataElements[moveNode+1].x) && (mouseVal.y < (1.1 * graphData.LineGraphs[0].ValsY[1])))
+			{
+				if (moveNode == graphData.LineGraphs[0].DataElements.length - 2)
+				{
+					throttleDef.VMax = Math.max(0, Math.min(mouseVal.y, Math.round(1.1 * graphData.LineGraphs[0].ValsY[1])));
+					throttleDef.AtStep = Math.max(graphData.LineGraphs[0].DataElements[moveNode-1].x + 1, Math.min(mouseVal.x, graphData.LineGraphs[0].ValsX[1]-1));
+					writeInputField("thscalespeed", throttleDef.VMax);
+					writeInputField("thvmax", throttleDef.AtStep);
+				}
+				graphData.LineGraphs[0].DataElements[moveNode].x = mouseVal.x;
+				graphData.LineGraphs[0].DataElements[moveNode].y = Math.max(0, Math.min(mouseVal.y, throttleDef.VMax));
+				if (moveNode == graphData.LineGraphs[0].DataElements.length - 2)
+					graphData.LineGraphs[0].DataElements[moveNode+1].y = graphData.LineGraphs[0].DataElements[moveNode].y;
+				createThrottleGraph(throttleDef, graphData);
+				drawProfileBox(canvasElementThrottle, throttleProfileGraph);
+			}
+		}
+//	graphData.LineGraphs[0].mouseOverLine = isMouseOver(mouseVal, graphData.LineGraphs[0].DataElements);
 
-	if (oldVal != graphData.LineGraphs[0].mouseOverLine)
-		drawProfileBox(sender, graphData);
+//	if (oldVal != graphData.LineGraphs[0].mouseOverLine)
+//		drawProfileBox(sender, graphData);
 }
 
 function canvasMouseDblClick(sender)
@@ -518,14 +789,23 @@ function canvasMouseDblClick(sender)
 	
 }
 
-function canvasMouseDown(sender)
+function canvasMouseDown(sender, e)
 {
 	var graphData = getDataPtr(sender);
+	var mousePos = getMousePos(sender, e);
+	var mouseVal = getMouseVal(graphData, mousePos);
+	if ((graphData == throttleProfileGraph) && (mouseVal.x > 0) && (mouseVal.y > 0) && (mouseVal.x < graphData.LineGraphs[0].ValsX[1]) && (mouseVal.y < graphData.LineGraphs[0].ValsY[1]))
+	{
+		var selLeg = mouseOverPoint(graphData, mouseVal);
+		if (selLeg > 0 && (selLeg < (graphData.LineGraphs[0].DataElements.length - 1)))
+			moveNode = selLeg;
+	}
 }
 
-function canvasMouseUp(sender)
+function canvasMouseUp(sender, e)
 {
 	var graphData = getDataPtr(sender);
+	moveNode = -1;
 }
 
 function canvasMouseLeave(sender)
@@ -551,11 +831,42 @@ function canvasMouseOver(sender)
 function setProgMode(sender)
 {
 	progMode = parseInt(sender.id[sender.id.length - 1]);
-	console.log(progMode);
+//	console.log(progMode);
+}
+
+function setTestMode(sender)
+{
+	var newMode = parseInt(sender.id[sender.id.length - 1]);
+	if (newMode != stepMode)
+	{
+		stepMode = newMode;
+		for (var i = 0; i < 3; i++)
+		{
+			techSpeedProfileGraph.LineGraphs[i].ValsX[1] = stepMode == 0 ? 28 :127;
+			if (techSpeedProfileGraph.LineGraphs[i].DataElements.length > 2)
+				techSpeedProfileGraph.LineGraphs[i].DataElements.slice(1, techSpeedProfileGraph.LineGraphs[i].DataElements.length-2);
+			techSpeedProfileGraph.LineGraphs[i].DataElements[1].x = techSpeedProfileGraph.LineGraphs[i].ValsX[1];
+		}
+//		console.log(techSpeedProfileGraph.LineGraphs);
+		drawProfileBox(canvasElementTechSpeed, techSpeedProfileGraph);
+	}
+}
+
+function setTrimMode(sender)
+{
+	trimMode = parseInt(sender.id[sender.id.length - 1]);
 }
 
 function setTableMode(sender)
 {
-	tableMode = parseInt(sender.id[sender.id.length - 1]);
-	console.log(tableMode);
+//	tableMode = parseInt(sender.id[sender.id.length - 1]);
+//	console.log(tableMode);
+}
+
+function setTrim(sender)
+{
+	if (sender.id == "fwtrim")
+		fwTrim = verifyNumber(sender.value, fwTrim);
+	if (sender.id == "bwtrim")
+		bwTrim = verifyNumber(sender.value, bwTrim);
 }
