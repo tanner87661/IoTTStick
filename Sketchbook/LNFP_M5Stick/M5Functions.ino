@@ -576,7 +576,7 @@ void setPwrStatusPage()
       drawLogo(210, 0, 0);
       break;
   }
-  sprintf(outText, "IoTT Stick V. %c.%c.%c", BBVersion[0], BBVersion[1], BBVersion[2]);
+  sprintf(outText, "IoTT Stick V. %s", BBVersion.c_str());
   drawText(outText, 5, 3, 2);
   sprintf(outText, "Stick Temp: %.1f C \n", M5.Axp.GetTempInAXP192());
   drawText(outText, 5, 20, 1);

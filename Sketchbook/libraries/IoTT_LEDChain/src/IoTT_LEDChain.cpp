@@ -916,9 +916,10 @@ void IoTT_ledChain::loadLEDChainJSONObj(JsonObject doc, bool resetList)
 			if (chainLength > i2cMaxChainLength)
 				chainLength = i2cMaxChainLength; //for safety. Value limited in config alreadyhtness: %i\n",
         currentBrightness = doc["ChainParams"]["Brightness"]["InitLevel"];
+        Serial.printf("JSON Brightness: %f\n", currentBrightness);
         if (currentBrightness > 1 || (currentBrightness < 0))
 			currentBrightness = 0.8;
-//        Serial.printf("JSON Brightness: %f\n", currentBrightness);
+        Serial.printf("JSON Brightness: %f\n", currentBrightness);
         if (doc.containsKey("MQTT"))
         {
 			JsonObject myMQTT = doc["MQTT"];
@@ -1034,7 +1035,7 @@ float_t IoTT_ledChain::getBrightness()
 void IoTT_ledChain::setBrightness(float_t newVal)
 {
 	currentBrightness = newVal;
-//    Serial.printf("Set new Brightness: %f\n", currentBrightness);
+ //   Serial.printf("Set new Brightness: %f\n", currentBrightness);
  }
 
 sourceType IoTT_ledChain::getBrightnessControlType()

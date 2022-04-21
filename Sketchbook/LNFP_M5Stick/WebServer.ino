@@ -157,9 +157,7 @@ void processStatustoWebClient()
   Data["totaldisk"] = String(SPIFFS.totalBytes());
   Data["useddisk"] = String(SPIFFS.usedBytes());
   Data["freedisk"] = String(SPIFFS.totalBytes() - SPIFFS.usedBytes());
-//  char buff[10];
-  sprintf(myStatusMsg, "%c.%c.%c", BBVersion[0], BBVersion[1], BBVersion[2]);
-//  sprintf(buff, "%u.%u.%u", BBVersion[0], BBVersion[1], BBVersion[2]);
+  sprintf(myStatusMsg, "%s", BBVersion.c_str());
   Data["version"] = myStatusMsg;
   Data["ipaddress"] = WiFi.localIP().toString();
   Data["sigstrength"] = WiFi.RSSI();
@@ -314,6 +312,8 @@ String createCfgEntry(String cmdType)
     fileNameStr = configDir + "/usb" + configDotExt;
   if (cmdType == "pgLBSCfg")
     fileNameStr = configDir + "/lbserver" + configDotExt;
+  if (cmdType == "pgWiCfg")
+    fileNameStr = configDir + "/wiclient" + configDotExt;
   if (cmdType == "pgThrottleCfg")
     fileNameStr = configDir + "/throttle" + configDotExt;
   fileStr += readFile(fileNameStr);
@@ -431,6 +431,8 @@ void processWsMessage(char * newMsg, int msgLen, AsyncWebSocketClient * client)
           addFileToTx("rhcfg", 0, "pgRedHatCfg", 1);
         if (fileSelector & 0x2000)  
           addFileToTx("rhcfg", 0, "pgPrplHatCfg", 1);
+        if (fileSelector & 0x4000)  
+          addFileToTx("wiclient", 0, "pgWiCfg", 1);
         fileCtr = 0;
         if (fileSelector & 0x0020)  
           while (addFileToTx("led", fileCtr, "pgLEDCfg", 1))
@@ -482,21 +484,21 @@ void processWsMessage(char * newMsg, int msgLen, AsyncWebSocketClient * client)
         writeJSONFile(configDir + "/" + fileName, fileStr);
         if (!doc.containsKey("Restart")) //if old format (before multi file), then restart
         {
-          Serial.println("Restart ESP");
-//          saveToFile(bufferFileName);
-          sendCTS();
           prepareShutDown();
           delay(500);
+          Serial.println("Restart ESP");
+          sendCTS();
+          delay(100);
           ESP.restart(); //configuration update requires restart to be sure dynamic allocation of objects is not messed up
         }
         else
           if (doc["Restart"])
           {
-            Serial.println("Reboot ESP");
-//            saveToFile(bufferFileName);
-            sendCTS();
             prepareShutDown();
             delay(500);
+            Serial.println("Reboot ESP");
+            sendCTS();
+            delay(100);
             ESP.restart(); //configuration update requires restart to be sure dynamic allocation of objects is not messed up
           }
 //          else

@@ -349,7 +349,7 @@ void IoTT_LBServer::tcpToLN(char * str, lnReceiveBuffer * thisData)
 	}
 	if (xorCheckByte != 0xFF)
 	{
-		Serial.println(p);
+//		Serial.println(p);
 		thisData->errorFlags = msgXORCheck;
 	}
 }
@@ -359,7 +359,7 @@ bool IoTT_LBServer::processWIServerMessage(AsyncClient* client, char * c)
 {
 //	while (c[0] == '\'')
 //		c++;
-	Serial.println(c);
+//	Serial.println(c);
 	uint16_t len = strlen(c);
 	if (len == 0) return false;
 
@@ -367,67 +367,67 @@ bool IoTT_LBServer::processWIServerMessage(AsyncClient* client, char * c)
 	nextPingPoint = millis() + pingInterval + random(5000);
 	
     if (len > 3 && c[0]=='P' && c[1]=='F' && c[2]=='T') {
-		Serial.println("Process FastTime");
+//		Serial.println("Process FastTime");
         return true;
 //        return processFastTime(c+3, len-3);
     }
     else if (len > 3 && c[0]=='P' && c[1]=='P' && c[2]=='A') {
-		Serial.println("Process TrackPower");
+//		Serial.println("Process TrackPower");
 //        processTrackPower(c+3, len-3);
         return true;
     }
     else if (len > 3 && c[0]=='P' && c[1]=='R' && c[2]=='T') {
-		Serial.println("Process Route List");
+//		Serial.println("Process Route List");
 //        processTrackPower(c+3, len-3);
         return true;
     }
     else if (len > 3 && c[0]=='P' && c[1]=='T' && c[2]=='L') {
-		Serial.println("Process defined Turnouts");
+//		Serial.println("Process defined Turnouts");
 //        processTrackPower(c+3, len-3);
         return true;
     }
     else if (len > 3 && c[0]=='P' && c[1]=='T' && c[2]=='T') {
-		Serial.println("Process Turnout List");
+//		Serial.println("Process Turnout List");
 //        processTrackPower(c+3, len-3);
         return true;
     }
     else if (len > 1 && c[0]=='*') {
-		Serial.println("Process HeartBeat");
+//		Serial.println("Process HeartBeat");
         return true;
 //        return processHeartbeat(c+1, len-1);
     }
     else if (len > 2 && c[0]=='V' && c[1]=='N') {
-		Serial.println("Process Protocl Version");
+//		Serial.println("Process Protocl Version");
 //        processProtocolVersion(c+2, len-2);
         return true;
     }
     else if (len > 2 && c[0]=='H' && c[1]=='T') {
-		Serial.println("Process Server Type");
+//		Serial.println("Process Server Type");
 //        processServerType(c+2, len-2);
         return true;
     }
     else if (len > 2 && c[0]=='H' && c[1]=='t') {
-		Serial.println("Process Server Description");
+//		Serial.println("Process Server Description");
 //        processServerDescription(c+2, len-2);
         return true;
     }	
     else if (len > 2 && c[0]=='P' && c[1]=='W') {
-		Serial.println("Process Web Port");
+//		Serial.println("Process Web Port");
 //        processWebPort(c+2, len-2);
         return true;
     }
     else if (len > 3 && c[0]=='R' && c[1]=='C' && c[2]=='C') {
-		Serial.println("Process Consist List");
+//		Serial.println("Process Consist List");
 //        processConsitList(c+3, len-3);
         return true;
     }
     else if (len > 2 && c[0]=='R' && c[1]=='L') {
-		Serial.println("Process Roster List");
+//		Serial.println("Process Roster List");
 //        processRosterList(c+2, len-2);
         return true;
     }	
     else if (len > 6 && c[0]=='M' && c[1]=='0' && c[2]=='S') {
-		Serial.println("Process Steal");
+//		Serial.println("Process Steal");
 		String outStr = String(c);
 		sendWIClientMessage(lntcpClient.thisClient, outStr);
 //        processStealNeeded(c+3, len-3);
@@ -444,7 +444,7 @@ bool IoTT_LBServer::processWIServerMessage(AsyncClient* client, char * c)
 		}
 		
 		uint8_t slotNr = digitraxBuffer->getSlotOfAddr(dccAddr & 0x7F, (dccAddr >> 7 & 0x7F));
-		Serial.println(slotNr);
+//		Serial.println(slotNr);
 		slotData * thisSlot = NULL;
 		if (slotNr != 0xFF)
 			thisSlot = digitraxBuffer->getSlotData(slotNr);
@@ -455,14 +455,14 @@ bool IoTT_LBServer::processWIServerMessage(AsyncClient* client, char * c)
 			currentWIDCC = dccAddr;
 			if (thisSlot)
 				(*thisSlot)[0] = 0x33; //set slot status tin use, refreshed
-			Serial.printf("Process Add %i \n", dccAddr);
+//			Serial.printf("Process Add %i \n", dccAddr);
 		}
 		else
 		{
 			currentWIDCC = -1;
 			if (thisSlot)
 				(*thisSlot)[0] = 0x03; //set slot status to not in use, not refreshed
-			Serial.printf("Process Remove %i \n", dccAddr);
+//			Serial.printf("Process Remove %i \n", dccAddr);
 		}
 		if (thisSlot)
 		{
@@ -473,7 +473,7 @@ bool IoTT_LBServer::processWIServerMessage(AsyncClient* client, char * c)
         return true;
     }
     else if (len > 8 && c[0]=='M' && c[1]=='0' && c[2]=='A') {
-		Serial.println("Process Loco Action");
+//		Serial.println("Process Loco Action");
 		uint16_t dccAddr = 0;
 		uint8_t startPtr = 4;
 		while (c[startPtr] != '<')
@@ -482,7 +482,7 @@ bool IoTT_LBServer::processWIServerMessage(AsyncClient* client, char * c)
 			startPtr++;
 		}
 		uint8_t slotNr = digitraxBuffer->getSlotOfAddr(dccAddr & 0x7F, (dccAddr >> 7 & 0x7F));
-		Serial.println(slotNr);
+//		Serial.println(slotNr);
 		slotData * thisSlot = NULL;
 		if (slotNr != 0xFF)
 			thisSlot = digitraxBuffer->getSlotData(slotNr);
@@ -521,11 +521,11 @@ bool IoTT_LBServer::processWIServerMessage(AsyncClient* client, char * c)
         return true;
 	}
     else if (len > 8 && c[0]=='M' && c[1]=='0' && c[2]=='L') {
-		Serial.println("Receive Loco Information");
+//		Serial.println("Receive Loco Information");
         return true;
     }
     else if (len > 3 && c[0]=='A' && c[1]=='T' && c[2]=='+') {
-		Serial.println("Process Ignore");
+//		Serial.println("Process Ignore");
         return true;
         // this is an AT+.... command that the LnWi sometimes emits and we
         // ignore these commands altogether
@@ -672,8 +672,8 @@ String IoTT_LBServer::getWIMessageString(AsyncClient * thisClient, lnReceiveBuff
 
 bool IoTT_LBServer::sendWIClientMessage(AsyncClient * thisClient, String cmdMsg)
 {
-	Serial.print("Out: ");
-	Serial.println(cmdMsg);
+//	Serial.print("Out: ");
+//	Serial.println(cmdMsg);
 	if (thisClient)
 		if (thisClient->canSend())
 		{
@@ -753,7 +753,7 @@ void IoTT_LBServer::processLoopWI() //process function for WiThrottle
 		else
 			if (que_wrPos != que_rdPos)
 			{
-				Serial.println("Send message to server");
+//				Serial.println("Send message to server");
 
 				if (lntcpClient.thisClient->canSend())
 				{
@@ -879,7 +879,7 @@ void IoTT_LBServer::sendWIPing()
 
 void IoTT_LBServer::sendLNPing()
 {
-	Serial.println("LN Ping request");
+//	Serial.println("LN Ping request");
 	lnTransmitMsg txData;
 	txData.lnMsgSize = 2;
 	txData.lnData[0] = 0x81;

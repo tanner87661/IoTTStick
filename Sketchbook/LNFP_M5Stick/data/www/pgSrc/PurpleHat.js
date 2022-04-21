@@ -89,6 +89,8 @@ function setButtonStatus()
 	setVisibility(validLocoDef || [6,12].indexOf(configData[nodeCfg].InterfaceIndex) >= 0, techSpeedDiv);
 	setVisibility(validTechSpeedDef, speedTableDiv);
 	
+	setVisibility(false, document.getElementById("cbsetup_3")); //do not show Layout TPS tab right now
+	
 
 //	setVisibility((!trackRecMode && (trackRecFile != "")), document.getElementById("btnStartTrack"));
 //	setVisibility(trackRecMode, document.getElementById("btnEndTrack"));
@@ -154,19 +156,19 @@ function constructPageContent(contentTab)
 				createCheckbox(tempObj, "tile-1_4", "Scale Speed", "cbScaleSpeed", "setTracker(this)");
 				createCheckbox(tempObj, "tile-1_4", "Speed Step", "cbSpeedStep", "setTracker(this)");
 
-				tempObj = createEmptyDiv(dispObj, "div", "tile-1", "");
-				createCheckbox(tempObj, "tile-1_4", "Track Radius", "cbRadius", "setTracker(this)");
-				createCheckbox(tempObj, "tile-1_4", "Heading", "cbHeading", "setTracker(this)");
+//				tempObj = createEmptyDiv(dispObj, "div", "tile-1", "");
+//				createCheckbox(tempObj, "tile-1_4", "Track Radius", "cbRadius", "setTracker(this)");
+//				createCheckbox(tempObj, "tile-1_4", "Heading", "cbHeading", "setTracker(this)");
 
-				tempObj = createEmptyDiv(dispObj, "div", "tile-1", "");
-				createCheckbox(tempObj, "tile-1_4", "Grade", "cbGrade", "setTracker(this)");
-				createCheckbox(tempObj, "tile-1_4", "Superelevation", "cbSElevation", "setTracker(this)");
+//				tempObj = createEmptyDiv(dispObj, "div", "tile-1", "");
+//				createCheckbox(tempObj, "tile-1_4", "Grade", "cbGrade", "setTracker(this)");
+//				createCheckbox(tempObj, "tile-1_4", "Superelevation", "cbSElevation", "setTracker(this)");
 
 			tempObj = createEmptyDiv(tabMeasurement, "div", "tile-1", "");
 				createPageTitle(tempObj, "div", "tile-1", "", "h2", "Measurement Data");
-				var dispObj = createEmptyDiv(tempObj, "div", "tile-1", "");
-				createRadiobox(dispObj, "tile-1_2", "Use X Axis for", ["Time","Distance"], "rbxbase", "setBaseLine(this)");
-				writeRBInputField("rbxbase", 0);
+//				var dispObj = createEmptyDiv(tempObj, "div", "tile-1", "");
+//				createRadiobox(dispObj, "tile-1_2", "Use X Axis for", ["Time","Distance"], "rbxbase", "setBaseLine(this)");
+//				writeRBInputField("rbxbase", 0);
 				var dispObj = createEmptyDiv(tempObj, "div", "tile-1", "");
 				createButton(dispObj, "", "Start", "btnStartLow", "startMeasuring(this)");
 				canvasElementSpeed = document.createElement("canvas");
@@ -239,6 +241,10 @@ function constructPageContent(contentTab)
 				setVisibility(true, cvTableNative);
 				setVisibility(false, cvTableJMRI);
 
+				setVisibility(false, canvasElementGrade);
+				setVisibility(false, canvasElementRadius);
+
+
 			var dispObj = createEmptyDiv(tabSpeedMatch, "div", "tile-1", "Throttle Profile");
 				createPageTitle(dispObj, "div", "tile-1", "", "h2", "Throttle Profile");
 				createFileDlg(dispObj, "", "Load Profile", "btnLoadThrottle", "application/json", "loadThrottle(this)");
@@ -298,9 +304,9 @@ function constructPageContent(contentTab)
 				canvasElementSpeedTable.setAttribute("id", "glCanvasSpeedTable");
 				setCanvasMouseEvents(canvasElementSpeedTable);
 
-		tabGPS = createEmptyDiv(mainScrollBox, "div", "tile-1", "");
-			setVisibility(false, tabGPS);
-			createPageTitle(tabGPS, "div", "tile-1", "", "h1", "Layout TPS");
+				tabGPS = createEmptyDiv(mainScrollBox, "div", "tile-1", "");
+				createPageTitle(tabGPS, "div", "tile-1", "", "h1", "Layout TPS");
+				setVisibility(false, tabGPS);
 /*
 			var dispObj = createEmptyDiv(tempObj, "div", "tile-1", "Layout Position");
 				createPageTitle(dispObj, "div", "tile-1", "", "h2", "Layout Position");
@@ -396,10 +402,10 @@ function setTrackerDisplay()
 	document.getElementById("cbSpeedStep").checked = (trackerDisp & 0x01) > 0;
 	document.getElementById("cbTechSpeed").checked = (trackerDisp & 0x02) > 0;
 	document.getElementById("cbScaleSpeed").checked = (trackerDisp & 0x04) > 0;
-	document.getElementById("cbRadius").checked = (trackerDisp & 0x08) > 0;
-	document.getElementById("cbHeading").checked = (trackerDisp & 0x10) > 0;
-	document.getElementById("cbGrade").checked = (trackerDisp & 0x20) > 0;
-	document.getElementById("cbSElevation").checked = (trackerDisp & 0x40) > 0;
+//	document.getElementById("cbRadius").checked = (trackerDisp & 0x08) > 0;
+//	document.getElementById("cbHeading").checked = (trackerDisp & 0x10) > 0;
+//	document.getElementById("cbGrade").checked = (trackerDisp & 0x20) > 0;
+//	document.getElementById("cbSElevation").checked = (trackerDisp & 0x40) > 0;
 	
 }
 
@@ -456,7 +462,7 @@ function loadSettings(sender)
         try 
         {
 			var configArray = JSON.parse(reader.result);
-			console.log(configArray.TrackPoints.length);
+//			console.log(configArray.TrackPoints.length);
 		}
 		catch(err) 
 		{
@@ -681,6 +687,9 @@ function reqDCCAssign(forAddress)
 
 function startSpeedTest(sender)
 {
+//	processSpeedTableInput(testObj);
+//	return;
+	
 	if (locoAddr < 0)
 		if (configData[nodeCfg].InterfaceIndex == 13) //WiThrottle
 		{
@@ -735,7 +744,7 @@ function setTestSpeed(sender)
 {
 	configData[workCfg].MaxTestSpeed = verifyNumber(sender.value, configData[workCfg].MaxTestSpeed); 
 	var techSpeed = (1000 * configData[workCfg].MaxTestSpeed / 3.6) / configData[workCfg].ScaleList[configData[workCfg].ScaleIndex].Scale;
-	console.log(configData[workCfg].MaxTestSpeed, techSpeed, configData[workCfg].ScaleList[configData[workCfg].ScaleIndex].Scale);
+//	console.log(configData[workCfg].MaxTestSpeed, techSpeed, configData[workCfg].ScaleList[configData[workCfg].ScaleIndex].Scale);
 	if (!isNaN(techSpeed))
 	{
 		techSpeedProfileGraph.LineGraphs[0].DataElements[0].y = techSpeed;
@@ -930,7 +939,7 @@ function storeToJMRI(xmlNode)
 			if (i > 1)
 				varValStr += ", ";
 			varValStr += speedTableProfileGraph.LineGraphs[0].DataElements[i].y.toString();
-			console.log(i, cv);
+//			console.log(i, cv);
 		}
 		var attr = findXMLAttribute(varVals, "item", "Speed Table");
 		if (attr)
@@ -964,7 +973,7 @@ function progCVArray()
 		cvId = cvArray[0].x;
 		cvVal = cvArray[0].y;
 		writeCV(null);
-		console.log("write ", cvId, cvVal);
+//		console.log("write ", cvId, cvVal);
 		setTimeout(function(){progCVArray() }, 500);
 	}
 }
@@ -1088,7 +1097,7 @@ function processSpeedTableInput(jsonData)
 
 function processSensorInput(jsonData)
 {
-//	console.log(jsonData.Radius);
+//	console.log(jsonData);
 
 	var dirStr = jsonData.Speed > 0 ? " Forward" : jsonData.Speed < 0 ? " Backward" : "";
 	writeTextField("speed", Math.abs(jsonData.Speed).toFixed(2) + dirStr);

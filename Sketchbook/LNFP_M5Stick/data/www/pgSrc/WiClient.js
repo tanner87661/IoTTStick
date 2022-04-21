@@ -14,7 +14,7 @@ function saveConfigFileSettings()
 
 function downloadSettings(sender)
 {
-	downloadConfig(0x4000); //send just this
+	downloadConfig(0x0400); //send just this
 }
 
 function setLbServer(sender)
@@ -30,18 +30,12 @@ function constructPageContent(contentTab)
 {
 	var tempObj;
 	mainScrollBox = createEmptyDiv(contentTab, "div", "pagetopicboxscroll-y", "nodeconfigdiv");
-		tempObj = createPageTitle(mainScrollBox, "div", "tile-1", "BasicCfg_Title", "h1", "LocoNet over TCP Server Configuration");
-		tempObj.setAttribute("id", "ServerTitle");
-		setVisibility(false, tempObj);
-		tempObj = createPageTitle(mainScrollBox, "div", "tile-1", "BasicCfg_Title", "h1", "LocoNet over TCP Client Configuration");
-		tempObj.setAttribute("id", "ClientTitle");
-		setVisibility(false, tempObj);
-
-//		createPageTitle(mainScrollBox, "div", "tile-1", "", "h2", "Basic Settings");
+		tempObj = createPageTitle(mainScrollBox, "div", "tile-1", "BasicCfg_Title", "h1", "WiThrottle Configuration");
+		tempObj.setAttribute("id", "WiClientTitle");
 
 		tempObj = createEmptyDiv(mainScrollBox, "div", "tile-1", "");
 		tempObj.setAttribute("id", "ServerIPDiv");
-		setVisibility(false, tempObj);
+//		setVisibility(false, tempObj);
 			createTextInput(tempObj, "tile-1_4", "Server IP/Name:", "n/a", "serverip", "setLbServer(this)");
 		tempObj = createEmptyDiv(mainScrollBox, "div", "tile-1", "");
 		tempObj.setAttribute("id", "ServerPortDiv");
@@ -63,12 +57,8 @@ function loadNodeDataFields(jsonData)
 function loadDataFields(jsonData)
 {
 	configData[workCfg] = upgradeJSONVersion(jsonData);
-//	console.log(jsonData);
+	console.log(jsonData);
 //	console.log(configData[nodeCfg]);
 	writeInputField("serverport", jsonData.PortNr);
 	writeInputField("serverip", jsonData.ServerIP);
-	setVisibility([8,9,10,11].indexOf(configData[nodeCfg].InterfaceIndex) >= 0, document.getElementById("ServerTitle"));
-	setVisibility([12,13].indexOf(configData[nodeCfg].InterfaceIndex) >= 0, document.getElementById("ServerIPDiv"));
-	setVisibility([12].indexOf(configData[nodeCfg].InterfaceIndex) >= 0, document.getElementById("ClientTitle"));
-//	setVisibility([13].indexOf(configData[nodeCfg].InterfaceIndex) >= 0, document.getElementById("WiClientTitle"));
 }

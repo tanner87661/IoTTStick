@@ -64,6 +64,7 @@ class IoTT_DigitraxBuffers
 		void loadRHCfgJSON(DynamicJsonDocument doc);
 		void setRedHatMode(txFct lnReply, DynamicJsonDocument doc);
 		void setLocoNetMode(bool newMode);
+		void clearSlotBuffer();
 		bool getLocoNetMode();
 		bool saveToFile(String fileName);
 		void loadFromFile(String fileName);
