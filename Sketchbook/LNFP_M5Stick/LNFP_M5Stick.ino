@@ -1,4 +1,5 @@
-char BBVersion[] = {'1','5','9'};
+//char BBVersion[] = {'1','5','10'};
+String BBVersion = "1.5.10";
 
 //#define measurePerformance //uncomment this to display the number of loop cycles per second
 #define useM5Lite
@@ -267,6 +268,8 @@ void setup() {
   SPIFFS.begin(); //File System. Size is set to 1 MB during compile time and loaded with configuration data and web pages
   UniqueIDdump(Serial);
   digitraxBuffer = new IoTT_DigitraxBuffers(sendMsg); //initialization with standard LocoNet communication function
+  //load switch status data from file. If not Cmd Stn mode, slot buffer is cleared, otherwise, load slot buffer from previous session
+  digitraxBuffer->loadFromFile(bufferFileName); //load previous dataset
   myWebServer = new AsyncWebServer(80);
   dnsServer = new DNSServer();
   wifiClient = new WiFiClient();
@@ -511,7 +514,7 @@ void setup() {
     if (useInterface.devId == 17) // WiThrottle, client only
     {
       Serial.println("Load WiThrottle Client");  
-      jsonDataObj = getDocPtr("/configdata/lbserver.cfg", false);
+      jsonDataObj = getDocPtr("/configdata/wiclient.cfg", false);
       if (jsonDataObj != NULL)
       {
         lbServer = new IoTT_LBServer();
@@ -823,8 +826,7 @@ void setup() {
     else
       Serial.println("Purple Sensor not activated");
 
-  //load switch status data from file. If not Cmd Stn mode, slot buffer is cleared, otherwise, load slot buffer from previous session
-  digitraxBuffer->loadFromFile(bufferFileName); //load previous dataset
+  digitraxBuffer->clearSlotBuffer(); //if not command station mode, clear all slots to trigger reload
 
 //Load ALM list
     if (jsonConfigObj->containsKey("ALMTypeList") && jsonConfigObj->containsKey("ALMIndex"))

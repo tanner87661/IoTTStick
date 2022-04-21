@@ -43,7 +43,7 @@ void prepSlotRequestMsg(lnTransmitMsg * msgData, uint8_t slotNr)
 
 void prepLocoAddrReqMsg(lnTransmitMsg * msgData, uint16_t dccAddr)
 {
-	Serial.println(dccAddr);
+//	Serial.println(dccAddr);
 	msgData->lnData[0] = 0xBF; //OPC_LOCO_ADR
 	msgData->lnData[1] = ((dccAddr >> 7) & 0x7F); //Addr Hi
 	msgData->lnData[2] = dccAddr & 0x7F; //Addr Lo
@@ -185,6 +185,13 @@ void IoTT_DigitraxBuffers::setLocoNetMode(bool newMode)
 	isLocoNet = newMode;
 }
 
+void IoTT_DigitraxBuffers::clearSlotBuffer()
+{
+	if (!isCommandStation)
+		for (int i = 0; i < numSlots; i++)
+			memcpy(&slotBuffer[i], &stdSlot[0], 10);
+}
+
 void IoTT_DigitraxBuffers::setRedHatMode(txFct lnReply, DynamicJsonDocument doc)
 {
 	lnReplyFct = lnReply;
@@ -280,7 +287,8 @@ void IoTT_DigitraxBuffers::loadFromFile(String fileName)
 			for (int i = 0; i < numAnalogVals; i++)
 			{
 				dataFile.read(buf,2);
-				analogValueBuffer[i] = (buf[0]<<8) + buf[1];
+//				analogValueBuffer[i] = (buf[0]<<8) + buf[1];
+				memcpy(&analogValueBuffer[i], &buf, 2);
 			}
 		minSize += numButtons;
 		if (fileSize >= minSize) 
@@ -289,7 +297,8 @@ void IoTT_DigitraxBuffers::loadFromFile(String fileName)
 		if (fileSize >= minSize) 
 			dataFile.read(&sysPowerStatus, 1);
 		minSize += (numSlots * 10);
-		if ((fileSize >= minSize) && isCommandStation) 
+		if (fileSize >= minSize)
+//		if ((fileSize >= minSize) && isCommandStation) 
 		{
 			Serial.println("Load Slot buffer from file");
 			for (int i = 0; i < numSlots; i++)
@@ -299,12 +308,14 @@ void IoTT_DigitraxBuffers::loadFromFile(String fileName)
 			}
 			setPowerStatus(0x83); //track power on after startup
 		}
+/*		
 		else
 		{
 			Serial.println("Reset Slot buffer");
 			for (int i = 0; i < numSlots; i++)
 				memcpy(&slotBuffer[i], &stdSlot[0], 10);
 		}
+*/
 		dataFile.close();
 		for (int i = 1; i < maxSlots; i++)
 			slotBuffer[i][4] = 0x04 + sysPowerStatus;
@@ -331,7 +342,8 @@ void IoTT_DigitraxBuffers::processLoop()
 		if ((!isCommandStation) && isLocoNet)
 		{
 //			Serial.println("request slot");
-			requestNextSlotUpdate();
+//			if (!focusNextAddr) //pause process if waiting for a focus slot for purplehat
+//				requestNextSlotUpdate();
 		}
 		nextSlotUpdate += slotRequestInterval + random(500);
 	}
@@ -499,11 +511,13 @@ void IoTT_DigitraxBuffers::setSignalAspect(uint16_t sigNum, uint8_t sigAspect)
 
 uint16_t IoTT_DigitraxBuffers::getAnalogValue(uint16_t analogNum)
 {
+//	Serial.printf("Get analog %i %i\n", analogNum, analogValueBuffer[analogNum]);
 	return analogValueBuffer[analogNum];
 }
 
 void IoTT_DigitraxBuffers::setAnalogValue(uint16_t analogNum, uint16_t analogValue)
 {
+//	Serial.printf("Set Analog %i %i \n", analogNum, analogValue);
 	analogValueBuffer[analogNum] = analogValue;
 }
 
@@ -514,7 +528,7 @@ bool IoTT_DigitraxBuffers::getBushbyWatch()
 
 uint16_t IoTT_DigitraxBuffers::receiveDCCGeneratorFeedback(lnTransmitMsg txData)
 {
-	Serial.printf("receiveDCCGeneratorFeedback %i\n", txData.lnData[0]);
+//	Serial.printf("receiveDCCGeneratorFeedback %i\n", txData.lnData[0]);
 	switch (txData.lnData[0])
 	{
 		case 5: //prog Answer
@@ -536,7 +550,7 @@ uint16_t IoTT_DigitraxBuffers::receiveDCCGeneratorFeedback(lnTransmitMsg txData)
 		}
 		break;
 		case 11: //ssnsor input
-			Serial.println("sensor input");
+//			Serial.println("sensor input");
 			rhButtons->processDigitalInputBuffer(txData.lnData[1], txData.lnData[2]);
 		break;
 	}
@@ -642,7 +656,7 @@ void IoTT_DigitraxBuffers::processBufferUpdates(lnReceiveBuffer * newData) //pro
         {
 			uint16_t swiAddr = ((newData->lnData[1] & 0x7F)) + ((newData->lnData[2] & 0x0F)<<7);
 			uint8_t inpPosStat = (newData->lnData[2] & 0x30)>>4; //Direction and ON Status
-            Serial.printf("Set Switch %i to %i\n", swiAddr, inpPosStat);
+ //           Serial.printf("Set Switch %i to %i\n", swiAddr, inpPosStat);
 			setSwiStatus(swiAddr, (inpPosStat & 0x02)>>1, (inpPosStat & 0x01));
 			if (handleSwiEvent) //app callback
 				handleSwiEvent(swiAddr, (inpPosStat & 0x02)>>1, (inpPosStat & 0x01));
@@ -832,17 +846,17 @@ void IoTT_DigitraxBuffers::processBufferUpdates(lnReceiveBuffer * newData) //pro
 										handleProgrammerEvent(newSlot[0]);
 								break;
 							case 0x7F: //System Configuration
-								Serial.printf("Bushby Bit is %i \n", getBushbyStatus());
+//								Serial.printf("Bushby Bit is %i \n", getBushbyStatus());
 								break;
 							default:
 								if (slotNr < maxSlots) //regular slot
 								{
-									Serial.printf("Msg Slot %i %i %i %i\n", slotNr, (*newSlot)[0],(*newSlot)[2],(*newSlot)[3]);
+//									Serial.printf("Msg Slot %i %i %i %i\n", slotNr, (*newSlot)[0],(*newSlot)[2],(*newSlot)[3]);
 									if (focusNextAddr)
 									{
 										focusSlot = newData->lnData[2];
 										focusNextAddr = false;
-										Serial.printf("Set focus Slot %i\n", focusSlot);
+//										Serial.printf("Set focus Slot %i\n", focusSlot);
 									}
 								}
 						} 
@@ -996,7 +1010,7 @@ void IoTT_DigitraxBuffers::updateTrackByte(bool setOp, uint8_t trackBits)
 
 void IoTT_DigitraxBuffers::processSlotManager(lnReceiveBuffer * newData) //process incoming Loconet messages to the buffer
 {
-	Serial.println("processSlotManager");
+//	Serial.println("processSlotManager");
 	bool procLNSuccess = false;
 	lnTransmitMsg txBuffer;
 	switch (newData->lnData[0])
@@ -1152,13 +1166,13 @@ void IoTT_DigitraxBuffers::processSlotManager(lnReceiveBuffer * newData) //proce
 						uint8_t PCMD = newData->lnData[3];
 						if (((PCMD & 0x20) == 0) || ((PCMD & 0x0C) == 0x0C) || ((PCMD & 0x10) > 0)) //Bit Mode or OpsMode with feedback or register mode
 						{
-							Serial.println("not supported");
+//							Serial.println("not supported");
 							prepLACKMsg(&txBuffer, 0x6F, 0x7F); //mode not supported
 							break;
 						}
 						if (progMode && ((PCMD & 0x04) > 0))
 						{
-							Serial.println("prog busy");
+//							Serial.println("prog busy");
 							prepLACKMsg(&txBuffer, 0x6F, 0x00); //programmer busy
 							break;
 						}
@@ -1172,17 +1186,17 @@ void IoTT_DigitraxBuffers::processSlotManager(lnReceiveBuffer * newData) //proce
 							prepLACKMsg(&txBuffer, 0x6F, 0x40); //task accepted blind
 						else
 							prepLACKMsg(&txBuffer, 0x6F, 0x01); //task accepted
-						Serial.println("task accepted");
+//						Serial.println("task accepted");
 						procLNSuccess = true;
 					}
 					break;
 					default:
-						Serial.println("default");
+//						Serial.println("default");
 						prepLACKMsg(&txBuffer, 0x6F, 0x7F); //no free slot
 						break;
 				}
 				lnReplyFct(txBuffer);
-				Serial.println("WR_SL reply");
+//				Serial.println("WR_SL reply");
 				
 			}
 		}
@@ -1204,7 +1218,7 @@ bool IoTT_DigitraxBuffers::processDCCGenerator(lnReceiveBuffer * newData)
 //	function creates the DCC commands body sent to ser_injector
 //	at this time, all slot data updated
 //	This interface is using the LN data structure but with a different coding.
-	Serial.println("processDCCGenerator");
+//	Serial.println("processDCCGenerator");
 	lnTransmitMsg txBuffer;
 	switch (newData->lnData[0])
 	{
@@ -1328,7 +1342,7 @@ void IoTT_DigitraxBuffers::iterateMULinks(uint8_t thisSlot, uint8_t * templData,
 	for (uint8_t i = 1; i < maxSlots; i++)
 		if ((slotBuffer[i][0] & 0x40) && (slotBuffer[i][2] == thisSlot) && (i != thisSlot))
 		{
-			Serial.printf("Clear purge bit slot %i\n", i);
+//			Serial.printf("Clear purge bit slot %i\n", i);
 			slotBuffer[i][0] &= 0x7F; //slot is active, clear purge bit
 			if (procFunc)
 				procFunc(i, templData);
@@ -1349,7 +1363,7 @@ void IoTT_DigitraxBuffers::setSlotDirfSpeed(lnReceiveBuffer * newData, bool send
 			{
 				focusSlot = newData->lnData[1];
 				focusNextAddr = false;
-				Serial.printf("Set focus Slot %i\n", focusSlot);
+//				Serial.printf("Set focus Slot %i\n", focusSlot);
 			}
 			else
 				Serial.printf("Slot %i not initialized\n", focusSlot);
@@ -1446,13 +1460,13 @@ void IoTT_DigitraxBuffers::purgeUnusedSlots()
 		if ((slotBuffer[i][0] & 0x80) > 0) //bit not cleared, so free slot
 		{
 			slotBuffer[i][0] &= (~0x90);
-			Serial.printf("Purge slot %i\n", i);
+//			Serial.printf("Purge slot %i\n", i);
 //			setDCCSpeedCmd(&txBuffer, i, 0);
 		}
 		else
 			if ((slotBuffer[i][0] & 0x30) == 0x30)
 			{
-				Serial.printf("Set Purge bit slot %i\n", i);
+//				Serial.printf("Set Purge bit slot %i\n", i);
 				slotBuffer[i][0] |= 0x80; //set purge bit. If not cleared next time, slot will be freed up
 			}
 	}

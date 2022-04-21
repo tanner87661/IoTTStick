@@ -14,7 +14,7 @@ function saveConfigFileSettings()
 
 function downloadSettings(sender)
 {
-	downloadConfig(0x0400); //send just this
+	downloadConfig(0x4000); //send just this
 }
 
 function setLbServer(sender)
@@ -35,9 +35,6 @@ function constructPageContent(contentTab)
 		setVisibility(false, tempObj);
 		tempObj = createPageTitle(mainScrollBox, "div", "tile-1", "BasicCfg_Title", "h1", "LocoNet over TCP Client Configuration");
 		tempObj.setAttribute("id", "ClientTitle");
-		setVisibility(false, tempObj);
-		tempObj = createPageTitle(mainScrollBox, "div", "tile-1", "BasicCfg_Title", "h1", "WiThrottle Configuration");
-		tempObj.setAttribute("id", "WiClientTitle");
 		setVisibility(false, tempObj);
 
 //		createPageTitle(mainScrollBox, "div", "tile-1", "", "h2", "Basic Settings");
@@ -73,5 +70,5 @@ function loadDataFields(jsonData)
 	setVisibility([8,9,10,11].indexOf(configData[nodeCfg].InterfaceIndex) >= 0, document.getElementById("ServerTitle"));
 	setVisibility([12,13].indexOf(configData[nodeCfg].InterfaceIndex) >= 0, document.getElementById("ServerIPDiv"));
 	setVisibility([12].indexOf(configData[nodeCfg].InterfaceIndex) >= 0, document.getElementById("ClientTitle"));
-	setVisibility([13].indexOf(configData[nodeCfg].InterfaceIndex) >= 0, document.getElementById("WiClientTitle"));
+//	setVisibility([13].indexOf(configData[nodeCfg].InterfaceIndex) >= 0, document.getElementById("WiClientTitle"));
 }
