@@ -549,6 +549,38 @@ void IoTT_Mux64Buttons::processButtons()
 			}
 			break;
 		}
+
+		uint8_t updateReq = digitraxBuffer->getUpdateReqStatus();
+		if (updateReq)
+		{
+			uint8_t flagMask = 0x01;
+			while  (flagMask)
+			{
+				if (updateReq & flagMask)
+				{
+					digitraxBuffer->clearUpdateReqFlag(flagMask);
+					uint8_t btnOffset = 0;
+					while (flagMask)
+					{
+						btnOffset++;
+						flagMask >>= 1;
+					}
+					btnOffset--;
+					for (int i = 0; i < numTouchButtons; i++)
+					{
+						if ((i % 8) == btnOffset)
+						{
+							IoTT_ButtonConfig * myTouch = &touchArray[i];
+							if ((myTouch->btnTypeDetected == sensor) || (myTouch->btnTypeDetected == swireport))
+								myTouch->btnSentStatus = !myTouch->btnStatus;
+						}
+					}
+					return;
+				}
+				flagMask <<= 1;
+			}
+		}
+
 	}
 }
 

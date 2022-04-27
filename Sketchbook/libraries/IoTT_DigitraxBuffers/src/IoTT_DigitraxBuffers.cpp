@@ -380,6 +380,13 @@ void IoTT_DigitraxBuffers::processLoop()
 	{
 		nextBufferUpdate += bufferUpdateInterval;
 	}
+	if (initPhase) 
+		if (millis() > 20000)
+		{
+			initPhase = false;
+//			Serial.println("Init report");
+			requestInpStatusUpdate = 0xFF;
+		}
 
 }
 //all incoming Loconet messages, update buffers and handle if command station mode
@@ -556,6 +563,16 @@ uint16_t IoTT_DigitraxBuffers::receiveDCCGeneratorFeedback(lnTransmitMsg txData)
 	}
 }
 
+uint8_t IoTT_DigitraxBuffers::getUpdateReqStatus()
+{
+	return requestInpStatusUpdate;
+}
+
+void IoTT_DigitraxBuffers::clearUpdateReqFlag(uint8_t clrFlagMask)
+{
+	requestInpStatusUpdate &= (~clrFlagMask);
+}
+
 void IoTT_DigitraxBuffers::enableBushbyWatch(bool enableBushby)
 {
 	bushbyWatch = enableBushby;
@@ -649,9 +666,18 @@ void IoTT_DigitraxBuffers::processBufferUpdates(lnReceiveBuffer * newData) //pro
 			break;
 		}
         case 0xB0: //OPC_SW_REQ
+        {
 			if (bushbyWatch) 
 				if (getBushbyStatus() > 0) 
 					break; //ignore if Bushby bit set and Watch active
+			uint16_t swiAddr = ((newData->lnData[1] & 0x7F)) + ((newData->lnData[2] & 0x0F)<<7);
+//			Serial.println(swiAddr & 0x3FFC, 16);
+			if (((swiAddr & 0x3FFC) == 0x03F8) && ((newData->lnData[2] & 0x10) == 0))
+			{
+				requestInpStatusUpdate |= 0x01 << ((2 * (swiAddr & 0x0003)) + ((newData->lnData[2] & 0x20) >> 5));
+//				Serial.println(requestInpStatusUpdate, 16);
+			}
+		}
         case 0xBD:  //OPC_SW_ACK
         {
 			uint16_t swiAddr = ((newData->lnData[1] & 0x7F)) + ((newData->lnData[2] & 0x0F)<<7);

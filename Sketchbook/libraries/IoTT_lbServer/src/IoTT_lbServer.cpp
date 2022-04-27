@@ -857,7 +857,10 @@ void IoTT_LBServer::processLoopLN() //process function for LN over TCP
 				if (millis() > nextPingPoint)
 				{
 					if (pingSent)
+					{
+						Serial.println("Ping Timeout");
 						lntcpClient.thisClient->stop();
+					}
 					else
 					{
 						sendLNPing();

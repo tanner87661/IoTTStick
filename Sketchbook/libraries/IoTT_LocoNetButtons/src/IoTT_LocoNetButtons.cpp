@@ -729,6 +729,7 @@ void IoTT_LocoNetButtonList::loadButtonCfgJSONObj(JsonObject doc, bool resetList
 //expects execution time and tbd flag set
 void IoTT_LocoNetButtonList::processButtonHandler()
 {
+	Serial.print('.');
 	int16_t execThis = -1;
 	uint32_t lowestExecTime = millis() + 10000; //start with 10 secs time window
 	for (int i = 0; i < cmdBufferLen; i++)

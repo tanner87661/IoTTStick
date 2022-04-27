@@ -87,6 +87,8 @@ class IoTT_DigitraxBuffers
 		void setAnalogValue(uint16_t analogNum, uint16_t analogValue);
 		bool getBushbyWatch();
 		void enableBushbyWatch(bool enableBushby);
+		uint8_t getUpdateReqStatus();
+		void clearUpdateReqFlag(uint8_t clrFlagMask);
 		uint16_t receiveDCCGeneratorFeedback(lnTransmitMsg txData);
 		//LocoNet Management functions mainly for Command Station mode
 		//from incoming DCC command
@@ -134,11 +136,13 @@ class IoTT_DigitraxBuffers
 		bool isCommandStation = false;
 		bool isRedHat = false;
 		bool isLocoNet = true;
+		bool initPhase = true;
 //		bool useLocoNet = true;
 		bool bushbyWatch = false;
 		int8_t focusSlot = -1; //used by purple hat to identify slot to be monitored
 		bool   focusNextAddr = false;
 		uint8_t swWrPtr = 0;
+		uint8_t requestInpStatusUpdate = 0x00; //flags for resending input button information
 		uint16_t lastSwiAddr = 0xFFFF;
 		uint32_t nextBufferUpdate = millis();
 		uint32_t nextSlotUpdate = millis();

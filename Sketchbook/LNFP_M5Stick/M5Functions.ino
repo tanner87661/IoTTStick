@@ -284,11 +284,11 @@ void processDisplay()
         {
           if (wifiCfgMode == 1)  //STA mode is used, so reset credentials
           {
-            if ((wifiResetCtr == 0 ) || millis() < (wifiResetLastClick + wifiResetMaxDelay))
+            if ((wifiResetCtr == 0 ) || (millis() < (wifiResetLastClick + wifiResetMaxDelay)))
             {
               wifiResetCtr++;
               wifiResetLastClick = millis();
-//              Serial.println("up");
+              Serial.println("up");
               if (wifiResetCtr == wifiResetReqCount)
               {
                 
