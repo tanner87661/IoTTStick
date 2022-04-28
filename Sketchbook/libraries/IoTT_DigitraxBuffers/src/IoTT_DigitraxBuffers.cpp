@@ -75,6 +75,32 @@ void prepSlotWriteMsg(lnTransmitMsg * msgData, uint8_t slotNr)
 	setXORByte(&msgData->lnData[0]);
 }
 
+void prepLissyMsg(lnReceiveBuffer * srcData, lnTransmitMsg * msgData)
+{
+	msgData->lnData[0] = 0xE4; //OPC_LISSY_REP
+	msgData->lnData[1] = 0x08;
+	msgData->lnData[2] = 0x00; //Lissy IR Report
+
+    uint16_t zoneAddr = (((srcData->lnData[1] & 0x1F) << 7) + (srcData->lnData[2] & 0x7F)) + 1;
+    uint16_t locoAddr;
+    if (srcData->lnData[3] == 0x7E)
+		locoAddr = srcData->lnData[4] & 0x7F;
+    else
+		locoAddr = (srcData->lnData[3] << 7) + (srcData->lnData[4] & 0x7F);
+	uint8_t occStatus = (srcData->lnData[1] &0x20) >> 5;
+
+	msgData->lnData[3] = zoneAddr >> 7;
+	msgData->lnData[4] = zoneAddr & 0x7F;
+	
+	if (occStatus == 0)
+		msgData->lnData[3] |= 0x20; //North: enter South: leave
+		
+	msgData->lnData[5] = locoAddr >> 7;
+	msgData->lnData[6] = locoAddr & 0x7F;
+	msgData->lnMsgSize = 8;
+	setXORByte(&msgData->lnData[0]);
+}
+
 //DCC functions for command station mode DCC cmd generation
 
 void setDCCSpeedCmd(uint8_t slotNr, uint8_t * unused)
@@ -578,6 +604,11 @@ void IoTT_DigitraxBuffers::enableBushbyWatch(bool enableBushby)
 	bushbyWatch = enableBushby;
 }
 
+void IoTT_DigitraxBuffers::enableLissyMod(bool enableLissy)
+{
+	translateLissy = enableLissy;
+}
+
 void IoTT_DigitraxBuffers::awaitFocusSlot(int16_t dccAddr, bool simulOnly)
 {
 	focusNextAddr = true;
@@ -752,7 +783,7 @@ void IoTT_DigitraxBuffers::processBufferUpdates(lnReceiveBuffer * newData) //pro
 				case 0x00:
 				case 0x20: 
 				{
-					uint16_t zoneAddr = (((newData->lnData[1] & 0x1F) << 7) + (newData->lnData[2] & 0x7F))>>1;
+					uint16_t zoneAddr = (((newData->lnData[1] & 0x1F) << 7) + (newData->lnData[2] & 0x7F));
 					uint16_t locoAddr;
 					if (newData->lnData[3] == 0x7E)
 						locoAddr = newData->lnData[4] & 0x7F;
@@ -760,6 +791,13 @@ void IoTT_DigitraxBuffers::processBufferUpdates(lnReceiveBuffer * newData) //pro
 						locoAddr = (newData->lnData[3] << 7) + (newData->lnData[4] & 0x7F);
 					if (handleTranspondingEvent)
 						handleTranspondingEvent(zoneAddr, locoAddr, (newData->lnData[1] & 0x20)>>5);
+					if (translateLissy)
+					{
+						lnTransmitMsg thisBuffer;
+						prepLissyMsg(newData, &thisBuffer);
+						lnOutFct(thisBuffer);
+					}
+					
 					break;
 				}
 				case 0x60:

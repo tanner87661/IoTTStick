@@ -1,5 +1,5 @@
 //char BBVersion[] = {'1','5','D'};
-String BBVersion = "1.5.11D01";
+String BBVersion = "1.5.11D02";
 
 //#define measurePerformance //uncomment this to display the number of loop cycles per second
 #define useM5Lite
@@ -554,6 +554,11 @@ void setup() {
         digitraxBuffer->enableBushbyWatch(true); //defined in IoTT_DigitraxBuffers.h
       else
         digitraxBuffer->enableBushbyWatch(false);
+    if (jsonConfigObj->containsKey("useLissy"))
+      if ((bool)(*jsonConfigObj)["useLissy"])
+        digitraxBuffer->enableLissyMod(true); //defined in IoTT_DigitraxBuffers.h
+      else
+        digitraxBuffer->enableLissyMod(false);
         
     if (useHat.devId == 1) //BlueHat or CTC Hat
     {

@@ -87,6 +87,7 @@ class IoTT_DigitraxBuffers
 		void setAnalogValue(uint16_t analogNum, uint16_t analogValue);
 		bool getBushbyWatch();
 		void enableBushbyWatch(bool enableBushby);
+		void enableLissyMod(bool enableLissy);
 		uint8_t getUpdateReqStatus();
 		void clearUpdateReqFlag(uint8_t clrFlagMask);
 		uint16_t receiveDCCGeneratorFeedback(lnTransmitMsg txData);
@@ -139,6 +140,7 @@ class IoTT_DigitraxBuffers
 		bool initPhase = true;
 //		bool useLocoNet = true;
 		bool bushbyWatch = false;
+		bool translateLissy = true;
 		int8_t focusSlot = -1; //used by purple hat to identify slot to be monitored
 		bool   focusNextAddr = false;
 		uint8_t swWrPtr = 0;
