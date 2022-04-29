@@ -1,5 +1,5 @@
 //char BBVersion[] = {'1','5','D'};
-String BBVersion = "1.5.11D02";
+String BBVersion = "1.5.11D03";
 
 //#define measurePerformance //uncomment this to display the number of loop cycles per second
 #define useM5Lite

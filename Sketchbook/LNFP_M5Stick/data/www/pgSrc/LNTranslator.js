@@ -121,7 +121,21 @@ function getPlainMsgText(lnData)
         case 0xD4 : retMsg = "OPC_UHLI-FUN"; break;
         case 0xD7 : retMsg = "OPC_PANEL_RESPONSE"; break;
         case 0xDF : retMsg = "OPC_PANEL_QUERY"; break;
-        case 0xE4 : retMsg = "OPC_LISSY_REP"; break;
+        case 0xE4 : p1 = ((lnData[4] & 0x7F) + ((lnData[3] & 0x1F)<<7)); //sensor id
+					p2 = ((lnData[6] & 0x7F) + ((lnData[5] & 0x7F)<<7)); //loco address
+					p3 = (lnData[3] & 0x20) ? "south" : "north";
+					switch (lnData[2])
+                    {
+						case 0x00: retMsg = "Lissy IR Report for Sensor " + p1.toString() + " - Loco " + p2.toString() + " going " + p3; 
+							break;
+						case 0x40: retMsg = "Lissy Wheel Count Report for Sensor " + p1.toString() + " - " + p2.toString() + " axles going " + ((lnData[3] & 0x20) > 0) ? "north" : "south"; 
+							break;
+						case 0x41: retMsg = "Lissy RFID x Report for Sensor " + p1.toString(); 
+							break;
+						default: "Unknown Lissy Sensor Report " + lnData;
+							break;
+					}
+					break;
         case 0xE5 : retMsg = decodePeerMsg(lnData); break;
         case 0xE6 : retMsg = "OPC_ALM_READ"; break;
         case 0xE7 : switch (lnData[2])

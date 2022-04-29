@@ -35,7 +35,6 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
 
 #define lbs_reconnectStartVal 10000
-#define pingInterval 10000 //ping every 10 secs if there is no other traffic
 #define queBufferSize 50 //messages that can be written in one burst before buffer overflow
 
 extern IoTT_DigitraxBuffers * digitraxBuffer;

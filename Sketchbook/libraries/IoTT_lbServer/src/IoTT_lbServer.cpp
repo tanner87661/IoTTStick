@@ -34,8 +34,10 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 uint32_t nextPingPoint;
 uint16_t reconnectInterval = lbs_reconnectStartVal;  //if not connected, try to reconnect every 10 Secs initially, then increase if failed
 bool pingSent = false;
+bool sendID = false;
 bool isWiThrottle = false;
 int16_t currentWIDCC = 0;
+uint16_t pingInterval = 10000; //ping every 5-10 secs if there is no other traffic
 
 static std::vector<tcpDef> clients; // a list to hold all clients
 
@@ -58,7 +60,7 @@ uint8_t lbsMode = 0; //0: LN;
 IoTT_LBServer::IoTT_LBServer()
 {
 //	setCallback(psc_callback);
-	nextPingPoint = millis() + pingInterval + random(5000);
+	nextPingPoint = millis() + pingInterval + random(4500);
 }
 
 IoTT_LBServer::~IoTT_LBServer()
@@ -70,7 +72,7 @@ IoTT_LBServer::~IoTT_LBServer()
 IoTT_LBServer::IoTT_LBServer(Client& client)
 {
 //	setCallback(psc_callback);
-	nextPingPoint = millis() + pingInterval + random(5000);
+	nextPingPoint = millis() + pingInterval + random(4500);
 }
 
 void IoTT_LBServer::initLBServer(bool serverMode)
@@ -364,7 +366,23 @@ bool IoTT_LBServer::processWIServerMessage(AsyncClient* client, char * c)
 	if (len == 0) return false;
 
 	pingSent = false;
-	nextPingPoint = millis() + pingInterval + random(5000);
+	nextPingPoint = millis() + pingInterval + random(4500);
+
+	if (c[0] == '*') //heartbeat interval
+	{
+		uint16_t hbInt = 0;
+		uint8_t startPtr = 1;
+		while ((c[startPtr] >= '0') && (c[startPtr] <= '9'))
+		{
+			hbInt = (10 * hbInt) + (c[startPtr] - '0');
+			startPtr++;
+		}
+		if (hbInt > 5)
+			pingInterval = 1000 * (hbInt - 5);
+		else
+			pingInterval = 5000;
+        return true;
+	}
 	
     if (len > 3 && c[0]=='P' && c[1]=='F' && c[2]=='T') {
 //		Serial.println("Process FastTime");
@@ -569,7 +587,7 @@ void IoTT_LBServer::processLNServerMessage(AsyncClient* client, char * data)
 				Serial.printf("Cancel Sending %i bytes because of error flags %i\n", recData.lnMsgSize, recData.errorFlags);
 			return;
 		} //everything below means we are in client mode because only a server is sending these messages
-		nextPingPoint = millis() + pingInterval + random(5000);
+		nextPingPoint = millis() + pingInterval + random(4500);
 //		Serial.println("Ping reset");
 		pingSent = false;
 		if (strcmp(str,"VERSION") == 0)
@@ -618,13 +636,20 @@ void IoTT_LBServer::processLNServerMessage(AsyncClient* client, char * data)
 
 void IoTT_LBServer::onConnect(void *arg, AsyncClient *client)
 {
-	nextPingPoint = millis() + pingInterval + random(5000);
+	nextPingPoint = millis() + pingInterval + random(4500);
 	reconnectInterval = lbs_reconnectStartVal;  //if not connected, try to reconnect every 10 Secs initially, then increase if failed
 	pingSent = false;
+	sendID = true;
 	if (isWiThrottle)
+	{
 		Serial.printf("WiThrottle client is now connected to server %s on port %d \n", client->remoteIP().toString().c_str(), lbs_Port);
+		pingInterval = 5000;
+	}
 	else
+	{
 		Serial.printf("LocoNet over TCP client is now connected to server %s on port %d \n", client->remoteIP().toString().c_str(), lbs_Port);
+		pingInterval = 10000;
+	}
 }
 
 void IoTT_LBServer::clearWIThrottle(AsyncClient * thisClient)
@@ -683,7 +708,7 @@ bool IoTT_LBServer::sendWIClientMessage(AsyncClient * thisClient, String cmdMsg)
 			if (thisClient->space() > strlen(lnStr.c_str())+2)
 			{
 				thisClient->add(lnStr.c_str(), strlen(lnStr.c_str()));
-				nextPingPoint = millis() + pingInterval + random(5000);
+				nextPingPoint = millis() + pingInterval + random(4500);
 				return thisClient->send();
 			}
 		}
@@ -709,7 +734,7 @@ bool IoTT_LBServer::sendLNClientMessage(AsyncClient * thisClient, String cmdMsg,
 			if (thisClient->space() > strlen(lnStr.c_str())+2)
 			{
 				thisClient->add(lnStr.c_str(), strlen(lnStr.c_str()));
-				nextPingPoint = millis() + pingInterval + random(5000);
+				nextPingPoint = millis() + pingInterval + random(4500);
 //			Serial.println(" done");
 				return thisClient->send();
 			}
@@ -769,7 +794,7 @@ void IoTT_LBServer::processLoopWI() //process function for WiThrottle
 			else // periodic pinging of server
 			{
 				
-				if (millis() > nextPingPoint)
+				if ((millis() > nextPingPoint) || sendID)
 				{
 					if (pingSent)
 						lntcpClient.thisClient->stop();
@@ -876,7 +901,13 @@ void IoTT_LBServer::processLoopLN() //process function for LN over TCP
 void IoTT_LBServer::sendWIPing()
 {
     String hlpStr = "IoTT_Stick_M5_" + String((uint32_t)ESP.getEfuseMac());
-	sendWIClientMessage(lntcpClient.thisClient, "H" + hlpStr + '\r' + '\n' + "N" + WiFi.localIP().toString());
+    if (sendID)
+    {
+		sendID = false;
+		sendWIClientMessage(lntcpClient.thisClient, "N" + WiFi.localIP().toString() + '\r' + '\n' + "HU" + hlpStr);
+	}
+	else
+		sendWIClientMessage(lntcpClient.thisClient, "N" + WiFi.localIP().toString());
 	pingSent = true;
 }
 
