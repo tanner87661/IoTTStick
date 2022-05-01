@@ -85,7 +85,7 @@ function getPlainMsgText(lnData)
                                 retMsg = "Confirm FastClock (Rate " + lastLACKMsg[3].toString() + ") to " + ("00" + (24 - 128 + lastLACKMsg[8]).toString()).slice(-2) + ":" + ("00" + (60 - 128 + lastLACKMsg[6]).toString()).slice(-2); 
                                 break;
                             default:
-                                retMsg = "Acknowledge of message " + ((lnData[1] === 0) ? "failed" : getOpCodeText(lnData[1] | 0x80) + " with response 0x" + ("00" + lnData[2].toString(16).toUpperCase()).slice(-2)); 
+                                retMsg = "Acknowledge of message " + ((lnData[1] === 0) ? "failed" : getOpCodeStr(lnData[1] | 0x80) + " with response 0x" + ("00" + lnData[2].toString(16).toUpperCase()).slice(-2)); 
                                 break;
                         }
                         break;

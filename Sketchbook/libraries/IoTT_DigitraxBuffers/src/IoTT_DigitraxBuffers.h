@@ -72,6 +72,8 @@ class IoTT_DigitraxBuffers
 		void processLocoNetMsg(lnReceiveBuffer * newData); //process incoming Loconet messages
 		void writeProg(uint16_t dccAddr, uint8_t progMode, uint16_t cvNr, uint8_t cvVal);
 		void readProg(uint16_t dccAddr, uint8_t progMode, uint16_t cvNr);
+		void setPowerStatus(uint8_t newStatus);
+
 		//read and write buffer values
 		uint8_t getPowerStatus();
 		uint8_t getButtonValue(uint16_t buttonNum);
@@ -103,7 +105,6 @@ class IoTT_DigitraxBuffers
 	private: //functions
 		//write buffer values
 		void processBufferUpdates(lnReceiveBuffer * newData); //process incoming Loconet messages to the buffer
-		void setPowerStatus(uint8_t newStatus);
 		void setButtonValue(uint16_t buttonNum, uint8_t buttonValue);
 		void setBDStatus(uint16_t bdNum, bool bdStatus);
 		void setProgStatus(bool progBusy);

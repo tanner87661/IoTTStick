@@ -916,7 +916,6 @@ void IoTT_ledChain::loadLEDChainJSONObj(JsonObject doc, bool resetList)
 			if (chainLength > i2cMaxChainLength)
 				chainLength = i2cMaxChainLength; //for safety. Value limited in config alreadyhtness: %i\n",
         currentBrightness = doc["ChainParams"]["Brightness"]["InitLevel"];
-        Serial.printf("JSON Brightness: %f\n", currentBrightness);
         if (currentBrightness > 1 || (currentBrightness < 0))
 			currentBrightness = 0.8;
         Serial.printf("JSON Brightness: %f\n", currentBrightness);
