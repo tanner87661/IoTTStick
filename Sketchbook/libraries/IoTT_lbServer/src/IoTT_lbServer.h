@@ -31,6 +31,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #include <IoTT_DigitraxBuffers.h>
 #include <ArduinoJSON.h>
 #include <AsyncTCP.h>
+#include <IoTT_wiProcessor.h>
 #include <vector>
 
 
@@ -39,12 +40,14 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
 extern IoTT_DigitraxBuffers * digitraxBuffer;
 extern void prepSlotReadMsg(lnTransmitMsg * msgData, uint8_t slotNr);
+//extern void callbackLocoNetMessage(lnReceiveBuffer * newData);
 
 typedef struct
 {
-	AsyncClient * thisClient;
-//	char rxBuffer[200];
-//	uint8_t rxPtr = 0;
+	AsyncClient * thisClient = NULL;
+	char * wiHWIdentifier = NULL;
+	char * wiDeviceName = NULL;
+	uint32_t nextPing = millis();
 } tcpDef;
 
 
@@ -90,7 +93,9 @@ private:
 	void processLoopWI(); //process function for WiThrottle
    // Member variables
     AsyncServer * lntcpServer = NULL;
+    tcpDef lntcpClient;
     bool isServer = true;
+    IoTT_wiProcessor * wiHandler = NULL;
 	
 	uint32_t lastReconnectAttempt = millis();
 	lnReceiveBuffer transmitQueue[queBufferSize];
@@ -102,6 +107,8 @@ private:
 	void sendWIPing();
 	void clearWIThrottle(AsyncClient * thisClient);
 	void processLNServerMessage(AsyncClient* client, char * data);
+	bool processWIMessage(AsyncClient* client, char * data);
+	bool processWIClientMessage(AsyncClient* client, char * data);
 	bool processWIServerMessage(AsyncClient* client, char * data);
 	uint8_t numWrite, numRead;
    
@@ -119,16 +126,18 @@ private:
 	int16_t currentWIDCC = 0;
 	uint16_t pingInterval = 10000; //ping every 5-10 secs if there is no other traffic
 
-	std::vector<tcpDef> clients; // a list to hold all clients
+	std::vector<tcpDef> clients; // a list to hold all clients when in server mode
 
 	IPAddress lbs_IP;
 	uint16_t lbs_Port = 1234; // = LocoNet over TCP port number, must be set the same in JMRI or other programs
 
 	uint16_t wiVersion = 0;
+	char * wiServerType = NULL;
+	char * wiServerMessage = NULL;
+	char * wiServerDescription = NULL;
 	
 	AsyncClient * lastTxClient = NULL; 
 	lnReceiveBuffer lastTxData;
-	tcpDef lntcpClient;
 };
 
 #endif

@@ -33,6 +33,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
 #define ESP_getChipId()   ((uint32_t)ESP.getEfuseMac())
 
+cbFct lbsCallback = NULL;
 
 void handleTopNewClient(void* arg, AsyncClient* client)
 {
@@ -87,9 +88,6 @@ void handleTopWIPoll(void *arg, AsyncClient *client)        //every 125ms when c
 	IoTT_LBServer * thisServer = (IoTT_LBServer*)arg;
 	thisServer->handleWIPoll(client);
 }
-
-cbFct lbsCallback = NULL;
-//cbFct mqttappCallback = NULL;
 
 uint8_t lbsMode = 0; //0: LN; 
 
@@ -188,6 +186,10 @@ void IoTT_LBServer::handleDisconnect(AsyncClient* client)
 	{
 		if (clients[i].thisClient == client)
 		{
+			if (clients[i].wiHWIdentifier)
+				free(clients[i].wiHWIdentifier);
+			if (clients[i].wiDeviceName)
+				free(clients[i].wiDeviceName);
 			clients.erase(clients.begin() + i);
 			break;
 		}
@@ -336,12 +338,11 @@ void IoTT_LBServer::handleData(AsyncClient* client, char *data, size_t len)
     char *strEnd = data + len - 1;
     if (strchr(p, '\n') != NULL)
 		while ((subStr = strtok_r(p, "\n", &p)) != NULL) // delimiter is the new line
-		{
-			while(((*subStr=='\n') || (*subStr=='\r') || (*subStr=='\'')) && (subStr < strEnd))
+		{			while(((*subStr=='\n') || (*subStr=='\r') || (*subStr=='\'')) && (subStr < strEnd))
 				subStr++;
 			if (subStr < strEnd)
 				if (isWiThrottle)
-					processWIServerMessage(client, subStr);
+					processWIMessage(client, subStr);
 				else
 					processLNServerMessage(client, subStr);
 		}
@@ -353,7 +354,7 @@ void IoTT_LBServer::handleData(AsyncClient* client, char *data, size_t len)
 					subStr++;
 				if (subStr < strEnd)
 				if (isWiThrottle)
-					processWIServerMessage(client, subStr);
+					processWIMessage(client, subStr);
 				else
 					processLNServerMessage(client, subStr);
 			}
@@ -394,15 +395,69 @@ void IoTT_LBServer::tcpToLN(char * str, lnReceiveBuffer * thisData)
 	}
 }
 
-//this is called when data is received, currently only client mode
-bool IoTT_LBServer::processWIServerMessage(AsyncClient* client, char * c)
+bool IoTT_LBServer::processWIMessage(AsyncClient* client, char * c)
 {
 	while (c[0] == '\'')
 		c++;
-//	Serial.println(c);
+	Serial.println(c);
 	uint16_t len = strlen(c);
 	if (len == 0) return false;
 
+	if (isServer) //Server Mode, handle incoming commands from client
+		return processWIServerMessage(client, c);
+	else //client mode, handle incoming commands from server
+		return processWIClientMessage(client, c);
+}
+
+//this is called when data is received in server mode
+bool IoTT_LBServer::processWIServerMessage(AsyncClient* client, char * c)
+{
+	uint16_t len = strlen(c);
+	tcpDef * currClient = NULL;
+	for (int i = 0; i < clients.size(); i++)
+	{
+		if (clients[i].thisClient == client)
+		{
+			currClient = &clients[i];
+			break;
+		}
+	}
+	if (currClient)
+	{
+		if (len > 1 && c[0]=='*') //heartbeat interval
+		{
+			if (c[1] == '+')
+				currClient->nextPing = 0; //do not request pings
+			else
+				currClient->nextPing = millis() + pingInterval;
+			return true;
+		}
+		if (len > 2 && c[0]=='H' && c[1]=='U') 
+		{
+			c[len-1] = '\0';
+			currClient->wiHWIdentifier = (char*) realloc(currClient->wiHWIdentifier, len - 2);
+			strcpy(&currClient->wiHWIdentifier[0], &c[2]);
+			Serial.println("Hardware Identifier");
+			return true;
+		}
+		else if (len > 1 && c[0]=='N') 
+		{
+			c[len-1] = '\0';
+			currClient->wiDeviceName = (char*) realloc(currClient->wiDeviceName, len - 2);
+			strcpy(&currClient->wiDeviceName[0], &c[2]);
+			Serial.println("Device Name");
+			//send wiReply *HeartBeatInterval
+			return true;
+		}
+	}
+	else
+		return false;
+}
+
+//this is called when data is received in client mode
+bool IoTT_LBServer::processWIClientMessage(AsyncClient* client, char * c)
+{
+	uint16_t len = strlen(c);
 	if (lntcpClient.thisClient == client)  //client mode, handle message from server
 	{
 		pingSent = false;
@@ -456,34 +511,46 @@ bool IoTT_LBServer::processWIServerMessage(AsyncClient* client, char * c)
 		else if (len > 2 && c[0]=='V' && c[1]=='N') 
 		{
 			uint8_t rdBuf = 0;
-			uint8_t startPtr = 1;
+			uint8_t startPtr = 2;
 			while ((c[startPtr] >= '0') && (c[startPtr] <= '9') && (startPtr < len))
 			{
 				rdBuf = (10 * rdBuf) + (c[startPtr] - '0');
 				startPtr++;
 			}
-			wiVersion = rdBuf << 8;
+			wiVersion = (rdBuf << 8);
 			rdBuf = 0;
-			startPtr++;
+			startPtr +=2;
 			while ((c[startPtr] >= '0') && (c[startPtr] <= '9') && (startPtr < len))
 			{
 				rdBuf = (10 * rdBuf) + (c[startPtr] - '0');
 				startPtr++;
 			}
 			wiVersion += rdBuf;
-			Serial.println(wiVersion, 16);
+			Serial.printf("WiThrottle Version %i.%i\n", (wiVersion & 0xFF00)>>8, wiVersion & 0x00FF);
 			return true;
 		}
 		else if (len > 2 && c[0]=='H' && c[1]=='T') 
 		{
-//		Serial.println("Process Server Type");
-//        processServerType(c+2, len-2);
+			c[len-1] = '\0';
+			wiServerType = (char*) realloc(wiServerType, len - 2);
+			strcpy(&wiServerType[0], &c[2]);
+			Serial.println(wiServerType);
 			return true;
 		}
 		else if (len > 2 && c[0]=='H' && c[1]=='t') 
 		{
-//		Serial.println("Process Server Description");
-//        processServerDescription(c+2, len-2);
+			c[len-1] = '\0';
+			wiServerDescription = (char*) realloc(wiServerDescription, len - 2);
+			strcpy(&wiServerDescription[0], &c[2]);
+			Serial.println(wiServerDescription);
+			return true;
+		}	
+		else if (len > 2 && c[0]=='H' && ((c[1]=='M') || (c[1]=='m'))) 
+		{
+			c[len-1] = '\0';
+			wiServerMessage = (char*) realloc(wiServerMessage, len - 2);
+			strcpy(&wiServerMessage[0], &c[2]);
+			Serial.println(wiServerMessage);
 			return true;
 		}	
 		else if (len > 2 && c[0]=='P' && c[1]=='W') 
@@ -597,7 +664,7 @@ bool IoTT_LBServer::processWIServerMessage(AsyncClient* client, char * c)
 					prepSlotReadMsg(txBuffer, slotNr);
 					if (lbsCallback)
 						lbsCallback(&recBuffer);
-				}
+				}	
 			}
 			return true;
 		}
@@ -621,11 +688,8 @@ bool IoTT_LBServer::processWIServerMessage(AsyncClient* client, char * c)
 		}
 		return true;
 	}
-	else //Server Mode, handle incoming commands from client
-	{
-		return true;
-	}
-
+	else
+		return false;
 }
 
 void IoTT_LBServer::processLNServerMessage(AsyncClient* client, char * data)

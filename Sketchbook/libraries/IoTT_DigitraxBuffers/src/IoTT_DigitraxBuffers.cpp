@@ -93,7 +93,7 @@ void prepLissyMsg(lnReceiveBuffer * srcData, lnTransmitMsg * msgData)
 	msgData->lnData[4] = zoneAddr & 0x7F;
 	
 	if (occStatus == 0)
-		msgData->lnData[3] |= 0x20; //North: enter South: leave
+		msgData->lnData[3] |= 0xC0; //North: enter South: leave
 		
 	msgData->lnData[5] = locoAddr >> 7;
 	msgData->lnData[6] = locoAddr & 0x7F;
