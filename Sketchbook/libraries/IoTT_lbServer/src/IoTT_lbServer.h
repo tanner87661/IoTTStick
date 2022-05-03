@@ -31,7 +31,6 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #include <IoTT_DigitraxBuffers.h>
 #include <ArduinoJSON.h>
 #include <AsyncTCP.h>
-#include <IoTT_wiProcessor.h>
 #include <vector>
 
 
@@ -95,7 +94,6 @@ private:
     AsyncServer * lntcpServer = NULL;
     tcpDef lntcpClient;
     bool isServer = true;
-    IoTT_wiProcessor * wiHandler = NULL;
 	
 	uint32_t lastReconnectAttempt = millis();
 	lnReceiveBuffer transmitQueue[queBufferSize];

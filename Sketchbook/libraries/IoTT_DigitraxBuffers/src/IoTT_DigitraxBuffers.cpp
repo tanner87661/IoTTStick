@@ -75,6 +75,8 @@ void prepSlotWriteMsg(lnTransmitMsg * msgData, uint8_t slotNr)
 	setXORByte(&msgData->lnData[0]);
 }
 
+//version meeting https://wiki.rocrail.net/doku.php?id=loconet:ln-pe-en
+
 void prepLissyMsg(lnReceiveBuffer * srcData, lnTransmitMsg * msgData)
 {
 	msgData->lnData[0] = 0xE4; //OPC_LISSY_REP
@@ -93,13 +95,50 @@ void prepLissyMsg(lnReceiveBuffer * srcData, lnTransmitMsg * msgData)
 	msgData->lnData[4] = zoneAddr & 0x7F;
 	
 	if (occStatus == 0)
-		msgData->lnData[3] |= 0xC0; //North: enter South: leave
+		msgData->lnData[3] |= 0x40; //North: enter South: leave
 		
 	msgData->lnData[5] = locoAddr >> 7;
 	msgData->lnData[6] = locoAddr & 0x7F;
 	msgData->lnMsgSize = 8;
 	setXORByte(&msgData->lnData[0]);
 }
+
+/*
+//version meeting https://zajdlerhome-my.sharepoint.com/personal/johnny_zajdlerhome_onmicrosoft_com/_layouts/15/onedrive.aspx?id=%2Fpersonal%2Fjohnny%5Fzajdlerhome%5Fonmicrosoft%5Fcom%2FDocuments%2FDocuments%2FUhlenbrock%20Track%20Control%2Epdf&parent=%2Fpersonal%2Fjohnny%5Fzajdlerhome%5Fonmicrosoft%5Fcom%2FDocuments%2FDocuments&ga=1
+void prepLissyMsg(lnReceiveBuffer * srcData, lnTransmitMsg * msgData)
+{
+	msgData->lnData[0] = 0xE4;
+	msgData->lnData[1] = 0x08;
+
+	msgData->lnData[3] = srcData->lnData[1];
+	msgData->lnData[3] &= ~(1 << 5); //~0x20
+	if (srcData->lnData[2] == 0x7F)
+	{
+		msgData->lnData[4]=0;
+		msgData->lnData[3]++;
+	}
+	else 
+		msgData->lnData[4] = srcData->lnData[2] + 1;
+
+	if (srcData->lnData[1] & (1<<5)) //0x20
+	{
+		msgData->lnData[2]=0x0f;
+		msgData->lnData[5]=srcData->lnData[3];
+		msgData->lnData[6]=srcData->lnData[4];
+//		Serial.println("belegt");
+	}
+	else 
+	{
+		msgData->lnData[2]=0x01;
+		msgData->lnData[3]|=(1<<5);
+		msgData->lnData[5]=0x00;
+		msgData->lnData[6]=0x02;
+//		Serial.println("frei");
+	}
+	msgData->lnMsgSize = 8;
+	setXORByte(&msgData->lnData[0]);
+}
+*/
 
 //DCC functions for command station mode DCC cmd generation
 
