@@ -76,7 +76,7 @@ void prepSlotWriteMsg(lnTransmitMsg * msgData, uint8_t slotNr)
 }
 
 //version meeting https://wiki.rocrail.net/doku.php?id=loconet:ln-pe-en
-
+/*
 void prepLissyMsg(lnReceiveBuffer * srcData, lnTransmitMsg * msgData)
 {
 	msgData->lnData[0] = 0xE4; //OPC_LISSY_REP
@@ -102,8 +102,8 @@ void prepLissyMsg(lnReceiveBuffer * srcData, lnTransmitMsg * msgData)
 	msgData->lnMsgSize = 8;
 	setXORByte(&msgData->lnData[0]);
 }
+*/
 
-/*
 //version meeting https://zajdlerhome-my.sharepoint.com/personal/johnny_zajdlerhome_onmicrosoft_com/_layouts/15/onedrive.aspx?id=%2Fpersonal%2Fjohnny%5Fzajdlerhome%5Fonmicrosoft%5Fcom%2FDocuments%2FDocuments%2FUhlenbrock%20Track%20Control%2Epdf&parent=%2Fpersonal%2Fjohnny%5Fzajdlerhome%5Fonmicrosoft%5Fcom%2FDocuments%2FDocuments&ga=1
 void prepLissyMsg(lnReceiveBuffer * srcData, lnTransmitMsg * msgData)
 {
@@ -138,7 +138,7 @@ void prepLissyMsg(lnReceiveBuffer * srcData, lnTransmitMsg * msgData)
 	msgData->lnMsgSize = 8;
 	setXORByte(&msgData->lnData[0]);
 }
-*/
+
 
 //DCC functions for command station mode DCC cmd generation
 
