@@ -296,7 +296,7 @@ function constructPageContent(contentTab)
 			createCheckbox(tempObj, "tile-1_4", "LocoNet Subnet", "cbUseSubnet", "setSubnet(this)");
 		tempObj = createEmptyDiv(mainScrollBox, "div", "tile-1", "configLNOptBox");
 			createCheckbox(tempObj, "tile-1_4", "respect Bushby Bit", "cbUseBushbyBit", "setUseBushbyBit(this)");
-			createCheckbox(tempObj, "tile-1_4", "Add Transponding to Lissy", "cbUseLissyBit", "setUseLissyBit(this)");
+			createCheckbox(tempObj, "tile-1_4", "Support Uhlenbrock Track display commands", "cbUseLissyBit", "setUseLissyBit(this)");
 		
 		createPageTitle(mainScrollBox, "div", "tile-1", "", "h2", "Embedded Logic Modules Activation");
 		tempObj = createEmptyDiv(mainScrollBox, "div", "tile-1", "ALMBox");

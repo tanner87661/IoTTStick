@@ -110,7 +110,7 @@ void prepLissyMsg(lnReceiveBuffer * srcData, lnTransmitMsg * msgData)
 	msgData->lnData[0] = 0xE4;
 	msgData->lnData[1] = 0x08;
 
-	msgData->lnData[3] = srcData->lnData[1];
+	msgData->lnData[3] = srcData->lnData[1] & 0xEF;
 	msgData->lnData[3] &= ~(1 << 5); //~0x20
 	if (srcData->lnData[2] == 0x7F)
 	{
