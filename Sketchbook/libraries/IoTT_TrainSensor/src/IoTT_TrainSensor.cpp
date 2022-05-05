@@ -264,7 +264,7 @@ void IoTT_TrainSensor::begin()
 	sensorSemaphore = xSemaphoreCreateMutex();
 	if (magSensor || imuSensor)
 	{
-		Serial.println("Start Sensor Task");
+//		Serial.println("Start Sensor Task");
 
 		if (taskHandleSensor == NULL)
 			xTaskCreate(myTask,        ///* Task function. 
@@ -446,7 +446,7 @@ void IoTT_TrainSensor::startTest(float_t trackLen, float_t vMax, uint8_t pMode)
 		speedSample.adminData.testTrackLen = 10 * trackLen; //comes in cmor inches. Change web page
 		speedSample.adminData.sampleMinDistance = wheelDia * PI * minTestWheelTurns;
 		speedSample.adminData.crawlSpeedMax = wheelDia * PI * crawlTurns; //mm/s
-		Serial.printf("%.2f \n", speedSample.adminData.crawlSpeedMax);
+//		Serial.printf("%.2f \n", speedSample.adminData.crawlSpeedMax);
 		speedSample.adminData.testSteps = pMode == 0 ? 28 : 127;
 //		Serial.printf("%i %i\n", speedSample.adminData.testSteps, pMode);
 		speedSample.adminData.upDir = true;
@@ -479,7 +479,7 @@ void IoTT_TrainSensor::sendSpeedCommand(uint8_t newSpeed)
 	int8_t currSlot = digitraxBuffer->getFocusSlotNr();
 	if ((currSlot > 0) || (digitraxBuffer->getLocoNetMode() == false))
 	{
-		Serial.printf("Set Speed Slot %i to %i\n", currSlot, newSpeed);
+//		Serial.printf("Set Speed Slot %i to %i\n", currSlot, newSpeed);
 		lnTransmitMsg txBuffer;
 		txBuffer.lnData[0] = 0xA0; //OPC_LOCO_SPD 
 		txBuffer.lnData[1] = currSlot;
@@ -500,7 +500,7 @@ void IoTT_TrainSensor::toggleDirCommand()
 		txBuffer.lnData[0] = 0xA1; //OPC_LOCO_DIRF 
 		txBuffer.lnData[1] = currSlot;
 		txBuffer.lnData[2] = ((*focusSlot)[3] ^ 0x20);
-		Serial.printf("Slot %2X Sent %2X\n", (*focusSlot)[3], txBuffer.lnData[2]);
+//		Serial.printf("Slot %2X Sent %2X\n", (*focusSlot)[3], txBuffer.lnData[2]);
 		txBuffer.lnMsgSize = 4;
 		setXORByte(&txBuffer.lnData[0]);
 		sensorCallback(txBuffer);
@@ -627,7 +627,7 @@ bool IoTT_TrainSensor::processSpeedTest() //returns false if complete
 							if (((*dataEntry) < speedSample.adminData.crawlSpeedMax) && (speedSample.adminData.testState[upDirIndex].crawlSpeedStep < speedSample.adminData.currSpeedStep))
 							{
 								speedSample.adminData.testState[upDirIndex].crawlSpeedStep = speedSample.adminData.currSpeedStep;
-								Serial.printf("set crawl speed %i\n", speedSample.adminData.currSpeedStep);
+//								Serial.printf("set crawl speed %i\n", speedSample.adminData.currSpeedStep);
 							}
 							speedSample.adminData.testState[upDirIndex].lastSpeedStep = speedSample.adminData.currSpeedStep;
 
@@ -645,7 +645,7 @@ bool IoTT_TrainSensor::processSpeedTest() //returns false if complete
 								speedSample.adminData.testState[upDirIndex].testPhase = 0;
 								speedSample.adminData.masterPhase = 1;
 							}
-							Serial.println(speedSample.adminData.testState[upDirIndex].testPhase);
+//							Serial.println(speedSample.adminData.testState[upDirIndex].testPhase);
 						}
 					break;
 				}
@@ -694,7 +694,7 @@ void IoTT_TrainSensor::programmerReturn(uint8_t * programmerSlot)
 	uint16_t opsAddr = (programmerSlot[2]<<7) + (programmerSlot[3] & 0x7F);
 	uint16_t cvNr = ((programmerSlot[5] & 0x30)<<4) + ((programmerSlot[5] & 0x01)<<7) + (programmerSlot[6] & 0x7F) + 1;
 	uint8_t cvVal = (programmerSlot[7] & 0x7F) + ((programmerSlot[5] & 0x02)<<6);
-	Serial.printf("Prog Stat: %i ps: %i CV: %i Val: %i\n", programmerSlot[1], opsAddr, cvNr, cvVal);
+//	Serial.printf("Prog Stat: %i ps: %i CV: %i Val: %i\n", programmerSlot[1], opsAddr, cvNr, cvVal);
 	if (globalClient)
 	{
 		DynamicJsonDocument doc(200);
@@ -706,7 +706,7 @@ void IoTT_TrainSensor::programmerReturn(uint8_t * programmerSlot)
 		Data["CVNr"] = cvNr;
 		Data["CVVal"]= cvVal;
 		serializeJson(doc, myMqttMsg);
-		Serial.println(myMqttMsg);
+//		Serial.println(myMqttMsg);
 		globalClient->text(myMqttMsg);
 	}
 	else
@@ -731,7 +731,7 @@ void IoTT_TrainSensor::sendSpeedTableDataToWeb()
 			bwArray.add(speedSample.bw[i]);
 		}
 		serializeJson(doc, myMqttMsg);
-		Serial.println(myMqttMsg);
+//		Serial.println(myMqttMsg);
 		globalClient->text(myMqttMsg);
 	}	
 }	
@@ -810,7 +810,7 @@ void IoTT_TrainSensor::processLoop()
 			if (!speedSample.adminData.speedTestRunning)
 			{
 				//process data and send to web client
-				Serial.println("Test complete");
+//				Serial.println("Test complete");
 				speedSample.adminData.validSample = false;
 				stopTest();
 			}

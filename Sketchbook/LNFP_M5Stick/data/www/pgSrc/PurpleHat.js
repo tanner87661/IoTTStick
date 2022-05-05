@@ -1077,7 +1077,7 @@ function processProgrammerInput(jsonData)
 
 function processSpeedTableInput(jsonData)
 {
-//	console.log(jsonData);
+	console.log(jsonData);
 	for (var j = 1; j < techSpeedProfileGraph.LineGraphs.length; j++)
 	{
 		techSpeedProfileGraph.LineGraphs[j].DataElements = [];
