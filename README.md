@@ -4,6 +4,7 @@ This is the code repository for the IoTT Stick, port modules and hat devices wit
 2022/05/05
 - Version 1.5.11 
 - bug fixes for automated speed matching function of PurpleHat
+- fixed a bug with upgrading the node configuration to the latest version
 - added Plain English translation to LocoNet viewer
 - corrected a mistake in the assignment of BDL16 zones
 
