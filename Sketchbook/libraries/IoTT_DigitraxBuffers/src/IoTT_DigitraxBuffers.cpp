@@ -75,6 +75,119 @@ void prepSlotWriteMsg(lnTransmitMsg * msgData, uint8_t slotNr)
 	setXORByte(&msgData->lnData[0]);
 }
 
+//version meeting https://wiki.rocrail.net/doku.php?id=loconet:ln-pe-en
+/*
+void prepLissyMsg(lnReceiveBuffer * srcData, lnTransmitMsg * msgData)
+{
+	msgData->lnData[0] = 0xE4; //OPC_LISSY_REP
+	msgData->lnData[1] = 0x08;
+	msgData->lnData[2] = 0x00; //Lissy IR Report
+
+    uint16_t zoneAddr = (((srcData->lnData[1] & 0x1F) << 7) + (srcData->lnData[2] & 0x7F)) + 1;
+    uint16_t locoAddr;
+    if (srcData->lnData[3] == 0x7E)
+		locoAddr = srcData->lnData[4] & 0x7F;
+    else
+		locoAddr = (srcData->lnData[3] << 7) + (srcData->lnData[4] & 0x7F);
+	uint8_t occStatus = (srcData->lnData[1] &0x20) >> 5;
+
+	msgData->lnData[3] = zoneAddr >> 7;
+	msgData->lnData[4] = zoneAddr & 0x7F;
+	
+	if (occStatus == 0)
+		msgData->lnData[3] |= 0x40; //North: enter South: leave
+		
+	msgData->lnData[5] = locoAddr >> 7;
+	msgData->lnData[6] = locoAddr & 0x7F;
+	msgData->lnMsgSize = 8;
+	setXORByte(&msgData->lnData[0]);
+}
+*/
+
+/*
+//version meeting https://zajdlerhome-my.sharepoint.com/personal/johnny_zajdlerhome_onmicrosoft_com/_layouts/15/onedrive.aspx?id=%2Fpersonal%2Fjohnny%5Fzajdlerhome%5Fonmicrosoft%5Fcom%2FDocuments%2FDocuments%2FUhlenbrock%20Track%20Control%2Epdf&parent=%2Fpersonal%2Fjohnny%5Fzajdlerhome%5Fonmicrosoft%5Fcom%2FDocuments%2FDocuments&ga=1
+void prepLissyMsg(lnReceiveBuffer * srcData, lnTransmitMsg * msgData)
+{
+	msgData->lnData[0] = 0xE4;
+	msgData->lnData[1] = 0x08;
+
+	uint8_t zoneAddr[2] = {0,0};
+	uint8_t locoAddr[2] = {0,0};
+
+	zoneAddr[0] = srcData->lnData[2]
+
+	msgData->lnData[3] = srcData->lnData[1] & 0x2F;
+	msgData->lnData[3] &= ~(1 << 5); //~0x20
+	if (srcData->lnData[2] == 0x7F)
+	{
+		msgData->lnData[4]=0;
+		msgData->lnData[3]++;
+	}
+	
+	else 
+		msgData->lnData[4] = srcData->lnData[2] + 1;
+
+	if (srcData->lnData[1] & (1<<5)) //0x20
+	{
+		msgData->lnData[2]=0x0f;
+		msgData->lnData[5]=srcData->lnData[3];
+		msgData->lnData[6]=srcData->lnData[4];
+//		Serial.println("belegt");
+	}
+	else 
+	{
+		msgData->lnData[2]=0x01;
+		msgData->lnData[3]|=(1<<5);
+		msgData->lnData[5]=0x00;
+		msgData->lnData[6]=0x02;
+//		Serial.println("frei");
+	}
+	msgData->lnMsgSize = 8;
+	setXORByte(&msgData->lnData[0]);
+}
+*/
+//this version based on OPC_MULTI_SENSE_LONG
+void prepLissyMsg(lnReceiveBuffer * srcData, lnTransmitMsg * msgData)
+{
+	msgData->lnData[0] = 0xE4;
+	msgData->lnData[1] = 0x08;
+
+	uint8_t zoneAddr[2] = {0,0};
+	uint8_t locoAddr[2] = {0,0};
+
+	zoneAddr[0] = srcData->lnData[2] & 0x1F;
+	zoneAddr[1] = srcData->lnData[3];
+	
+	bool locoDetect = (srcData->lnData[2] & 0x20);
+	
+    if (srcData->lnData[3] == 0x7E)
+		locoAddr[1] = srcData->lnData[4];
+    else
+    {
+		locoAddr[0] = srcData->lnData[4];
+		locoAddr[1] = srcData->lnData[5];
+	}
+	bool trackDir = (srcData->lnData[6] & 0x40);
+	
+	if (locoDetect)
+	{
+		msgData->lnData[2]=0x0f;
+		msgData->lnData[5]= locoAddr[0];
+		msgData->lnData[6]= locoAddr[0];
+//		Serial.println("belegt");
+	}
+	else 
+	{
+		msgData->lnData[2]=0x01;
+		msgData->lnData[3]|= 0x20;
+		msgData->lnData[5]=0x00;
+		msgData->lnData[6]=0x02;
+//		Serial.println("frei");
+	}
+	msgData->lnMsgSize = 8;
+	setXORByte(&msgData->lnData[0]);
+}
+
 //DCC functions for command station mode DCC cmd generation
 
 void setDCCSpeedCmd(uint8_t slotNr, uint8_t * unused)
@@ -339,6 +452,7 @@ void IoTT_DigitraxBuffers::processLoop()
 		
 	if (millis() > nextSlotUpdate)
 	{
+
 		if ((!isCommandStation) && isLocoNet)
 		{
 //			Serial.println("request slot");
@@ -380,6 +494,13 @@ void IoTT_DigitraxBuffers::processLoop()
 	{
 		nextBufferUpdate += bufferUpdateInterval;
 	}
+	if (initPhase) 
+		if (millis() > 20000)
+		{
+			initPhase = false;
+//			Serial.println("Init report");
+			requestInpStatusUpdate = 0xFF;
+		}
 
 }
 //all incoming Loconet messages, update buffers and handle if command station mode
@@ -556,9 +677,24 @@ uint16_t IoTT_DigitraxBuffers::receiveDCCGeneratorFeedback(lnTransmitMsg txData)
 	}
 }
 
+uint8_t IoTT_DigitraxBuffers::getUpdateReqStatus()
+{
+	return requestInpStatusUpdate;
+}
+
+void IoTT_DigitraxBuffers::clearUpdateReqFlag(uint8_t clrFlagMask)
+{
+	requestInpStatusUpdate &= (~clrFlagMask);
+}
+
 void IoTT_DigitraxBuffers::enableBushbyWatch(bool enableBushby)
 {
 	bushbyWatch = enableBushby;
+}
+
+void IoTT_DigitraxBuffers::enableLissyMod(bool enableLissy)
+{
+	translateLissy = enableLissy;
 }
 
 void IoTT_DigitraxBuffers::awaitFocusSlot(int16_t dccAddr, bool simulOnly)
@@ -649,9 +785,18 @@ void IoTT_DigitraxBuffers::processBufferUpdates(lnReceiveBuffer * newData) //pro
 			break;
 		}
         case 0xB0: //OPC_SW_REQ
+        {
 			if (bushbyWatch) 
 				if (getBushbyStatus() > 0) 
 					break; //ignore if Bushby bit set and Watch active
+			uint16_t swiAddr = ((newData->lnData[1] & 0x7F)) + ((newData->lnData[2] & 0x0F)<<7);
+//			Serial.println(swiAddr & 0x3FFC, 16);
+			if (((swiAddr & 0x3FFC) == 0x03F8) && ((newData->lnData[2] & 0x10) == 0))
+			{
+				requestInpStatusUpdate |= 0x01 << ((2 * (swiAddr & 0x0003)) + ((newData->lnData[2] & 0x20) >> 5));
+//				Serial.println(requestInpStatusUpdate, 16);
+			}
+		}
         case 0xBD:  //OPC_SW_ACK
         {
 			uint16_t swiAddr = ((newData->lnData[1] & 0x7F)) + ((newData->lnData[2] & 0x0F)<<7);
@@ -726,7 +871,7 @@ void IoTT_DigitraxBuffers::processBufferUpdates(lnReceiveBuffer * newData) //pro
 				case 0x00:
 				case 0x20: 
 				{
-					uint16_t zoneAddr = (((newData->lnData[1] & 0x1F) << 7) + (newData->lnData[2] & 0x7F))>>1;
+					uint16_t zoneAddr = (((newData->lnData[1] & 0x1F) << 7) + (newData->lnData[2] & 0x7F));
 					uint16_t locoAddr;
 					if (newData->lnData[3] == 0x7E)
 						locoAddr = newData->lnData[4] & 0x7F;
@@ -767,6 +912,14 @@ void IoTT_DigitraxBuffers::processBufferUpdates(lnReceiveBuffer * newData) //pro
 			}
 			break;
 		}
+		case 0xE0: //OPC_MULTI_SENSE_LONG as used by Digikeijs railcom detector
+			if ((translateLissy) & (newData->lnData[1] == 0x09))
+			{
+				lnTransmitMsg thisBuffer;
+//				prepLissyMsg(newData, &thisBuffer);
+//				lnOutFct(thisBuffer);
+			}
+			break;
         case 0xED: //OPC_IMM_PACKET
         {
 			//add DCC decoder from switch and locos
@@ -1372,7 +1525,7 @@ void IoTT_DigitraxBuffers::setSlotDirfSpeed(lnReceiveBuffer * newData, bool send
 		{
 			case 0xA0://OPC_LOCO_SPD
 			    (*thisSlot)[2] = newData->lnData[2]; //set speed in top slot
-			    if (sendDCC) 
+//			    if (sendDCC) 
 				break; 
 			case 0xA1: //OPC_LOCO_DIRF
 			{

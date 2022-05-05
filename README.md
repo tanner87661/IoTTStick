@@ -15,6 +15,13 @@ This is the code repository for the IoTT Stick, port modules and hat devices wit
 - Version 1.5.8 Experimental with VoiceWatcher Support
 - Watch Video#80 for more information https://youtu.be/dP01Lq9poZw
 
+2022/04/09
+
+Version 1.5.11 with support for PurpleHat and automated speed matching
+added WiThrottle client
+improved LocoNet library
+minor bug fixes
+
 2021/10/09
 - Version 1.5.8 with support for RedHat++
 - improved lbServer/lbClient

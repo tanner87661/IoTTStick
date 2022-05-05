@@ -35,17 +35,18 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
 
 #define lbs_reconnectStartVal 10000
-#define pingInterval 10000 //ping every 10 secs if there is no other traffic
 #define queBufferSize 50 //messages that can be written in one burst before buffer overflow
 
 extern IoTT_DigitraxBuffers * digitraxBuffer;
 extern void prepSlotReadMsg(lnTransmitMsg * msgData, uint8_t slotNr);
+//extern void callbackLocoNetMessage(lnReceiveBuffer * newData);
 
 typedef struct
 {
-	AsyncClient * thisClient;
-//	char rxBuffer[200];
-//	uint8_t rxPtr = 0;
+	AsyncClient * thisClient = NULL;
+	char * wiHWIdentifier = NULL;
+	char * wiDeviceName = NULL;
+	uint32_t nextPing = millis();
 } tcpDef;
 
 
@@ -65,30 +66,33 @@ public:
 	void loadLBServerCfgJSON(DynamicJsonDocument doc);
 	String getServerIP();
 	uint8_t getConnectionStatus();
+
+	void handleError(AsyncClient* client, int8_t error);
+	void handleNewClient(AsyncClient* client);
+	void handleDataFromClient(AsyncClient* client, void *data, size_t len);
+	void handleConnect(AsyncClient *client);
+
+	void handleDataFromServer(AsyncClient* client, void *data, size_t len);
+	void handleTimeOut(AsyncClient* client, uint32_t time);
+    void handleLNPoll(AsyncClient *client);        //every 125ms when connected
+    void handleWIPoll(AsyncClient *client);        //every 125ms when connected
+	void handleDisconnect(AsyncClient* client);
   
 private:
    // Member functions
 	bool sendLNMessage(lnReceiveBuffer txData);
 
-	static void onConnect(void *arg, AsyncClient *client);
-	static void handleNewClient(void* arg, AsyncClient* client);
+	void handleData(AsyncClient* client, char *data, size_t len);
 	/* clients events */
-	static void handleError(void* arg, AsyncClient* client, int8_t error);
-	static void handleDataFromServer(void* arg, AsyncClient* client, void *data, size_t len);
-	static void handleDataFromClient(void* arg, AsyncClient* client, void *data, size_t len);
-	static void handleData(void* arg, AsyncClient* client, char *data, size_t len);
-	static void handleDisconnect(void* arg, AsyncClient* client);
-	static void handleTimeOut(void* arg, AsyncClient* client, uint32_t time);
-    static void handleLNPoll(void *arg, AsyncClient *client);        //every 125ms when connected
-    static void handleWIPoll(void *arg, AsyncClient *client);        //every 125ms when connected
 
-	static void tcpToLN(char * str, lnReceiveBuffer * recData);
+	void tcpToLN(char * str, lnReceiveBuffer * recData);
 	void strToWI(char * str, lnReceiveBuffer * recData);
 
 	void processLoopLN(); //process function for LN over TCP
 	void processLoopWI(); //process function for WiThrottle
    // Member variables
     AsyncServer * lntcpServer = NULL;
+    tcpDef lntcpClient;
     bool isServer = true;
 	
 	uint32_t lastReconnectAttempt = millis();
@@ -96,12 +100,14 @@ private:
 	uint8_t que_rdPos = 0, que_wrPos = 0;
     bool sendLNClientMessage(AsyncClient * thisClient, String cmdMsg, lnReceiveBuffer thisMsg);
 	String getWIMessageString(AsyncClient * thisClient, lnReceiveBuffer thisMsg);
-    static bool sendWIClientMessage(AsyncClient * thisClient, String cmdMsg);
+    bool sendWIClientMessage(AsyncClient * thisClient, String cmdMsg);
     void sendLNPing();
 	void sendWIPing();
 	void clearWIThrottle(AsyncClient * thisClient);
-	static void processLNServerMessage(AsyncClient* client, char * data);
-	static bool processWIServerMessage(AsyncClient* client, char * data);
+	void processLNServerMessage(AsyncClient* client, char * data);
+	bool processWIMessage(AsyncClient* client, char * data);
+	bool processWIClientMessage(AsyncClient* client, char * data);
+	bool processWIServerMessage(AsyncClient* client, char * data);
 	uint8_t numWrite, numRead;
    
 	uint32_t respTime;
@@ -110,6 +116,26 @@ private:
 	
 	uint16_t clientTxIndex = 0;
 	bool clientTxConfirmation = false;
+	uint32_t nextPingPoint;
+	uint16_t reconnectInterval = lbs_reconnectStartVal;  //if not connected, try to reconnect every 10 Secs initially, then increase if failed
+	bool pingSent = false;
+	bool sendID = false;
+	bool isWiThrottle = false;
+	int16_t currentWIDCC = 0;
+	uint16_t pingInterval = 10000; //ping every 5-10 secs if there is no other traffic
+
+	std::vector<tcpDef> clients; // a list to hold all clients when in server mode
+
+	IPAddress lbs_IP;
+	uint16_t lbs_Port = 1234; // = LocoNet over TCP port number, must be set the same in JMRI or other programs
+
+	uint16_t wiVersion = 0;
+	char * wiServerType = NULL;
+	char * wiServerMessage = NULL;
+	char * wiServerDescription = NULL;
+	
+	AsyncClient * lastTxClient = NULL; 
+	lnReceiveBuffer lastTxData;
 };
 
 #endif

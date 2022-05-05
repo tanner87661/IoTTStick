@@ -92,7 +92,7 @@ function setDisplayOptions()
 	setVisibility(configData[2].useNTP, configNTPBox);
 	setVisibility((configData[2].wifiMode & 0x01) > 0, configDHCPSection);
 	setVisibility(configData[2].useStaticIP, configDHCPBox);
-	setVisibility([4,5,6,7,8,9,10,11,12].indexOf(configData[2].InterfaceIndex) >= 0, configBushbyBox);
+	setVisibility([4,5,6,7,8,9,10,11,12].indexOf(configData[2].InterfaceIndex) >= 0, configLNOptBox);
 	setVisibility([4,7,8,9].indexOf(configData[2].InterfaceIndex) >= 0, configSubnetBox);
 
 	if (document.getElementById("cbUseALM_0"))
@@ -267,6 +267,11 @@ function setUseBushbyBit(sender)
 	configData[2].useBushby = sender.checked ? 1:0;
 }
 
+function setUseLissyBit(sender)
+{
+	configData[2].useLissy = sender.checked ? 1:0;
+}
+
 function setSubnet(sender)
 {
 	configData[2].subnetMode = sender.checked ? 1:0;
@@ -289,8 +294,9 @@ function constructPageContent(contentTab)
 		tempObj = createEmptyDiv(mainScrollBox, "div", "tile-1", "configSubnetBox");
 		tempObj.style.display = "none";
 			createCheckbox(tempObj, "tile-1_4", "LocoNet Subnet", "cbUseSubnet", "setSubnet(this)");
-		tempObj = createEmptyDiv(mainScrollBox, "div", "tile-1", "configBushbyBox");
+		tempObj = createEmptyDiv(mainScrollBox, "div", "tile-1", "configLNOptBox");
 			createCheckbox(tempObj, "tile-1_4", "respect Bushby Bit", "cbUseBushbyBit", "setUseBushbyBit(this)");
+//			createCheckbox(tempObj, "tile-1_4", "Support Uhlenbrock Track display commands", "cbUseLissyBit", "setUseLissyBit(this)");
 		
 		createPageTitle(mainScrollBox, "div", "tile-1", "", "h2", "Embedded Logic Modules Activation");
 		tempObj = createEmptyDiv(mainScrollBox, "div", "tile-1", "ALMBox");
@@ -411,6 +417,8 @@ function loadDataFields(jsonData)
 
 	writeCBInputField("cbUseSubnet", jsonData.subnetMode);
 	writeCBInputField("cbUseBushbyBit", jsonData.useBushby);
+//	if (typeof jsonData.useLissy !== 'undefined')
+//		writeCBInputField("cbUseLissyBit", jsonData.useLissy);
 	
 	writeCBInputField("cbUseNTP", jsonData.useNTP);
 	setVisibility(jsonData.useNTP, configNTPBox);

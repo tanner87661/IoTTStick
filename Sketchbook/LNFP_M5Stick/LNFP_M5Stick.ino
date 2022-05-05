@@ -1,5 +1,4 @@
-//char BBVersion[] = {'1','5','10'};
-String BBVersion = "1.5.10";
+String BBVersion = "1.5.11";
 
 //#define measurePerformance //uncomment this to display the number of loop cycles per second
 #define useM5Lite
@@ -245,7 +244,8 @@ void resetPin(uint8_t pinNr)
   pinMode(pinNr, INPUT);
 }
 
-void setup() {
+void setup() 
+{
   // put your setup code here, to run once:
 //  resetPin(0);
 //  resetPin(26);
@@ -264,6 +264,7 @@ void setup() {
   char time_output[30];
   strftime(time_output, 30, "%a  %d-%m-%y %T", localtime(&now));
   Serial.println(time_output);
+  Serial.println("IoTT Stick Version " + BBVersion);
   Serial.println("Init SPIFFS");
   SPIFFS.begin(); //File System. Size is set to 1 MB during compile time and loaded with configuration data and web pages
   UniqueIDdump(Serial);
@@ -503,6 +504,9 @@ void setup() {
             lbServer->initLBServer(false);
             lbServer->setLNCallback(callbackLocoNetMessage);
             break; 
+          default:
+            Serial.printf("Unknown config option %i\n", useInterface.devId); 
+            break; 
         }
         wifiAlwaysOn = true;
         delete(jsonDataObj);
@@ -521,7 +525,7 @@ void setup() {
         lbServer->loadLBServerCfgJSON(*jsonDataObj);
         switch (useInterface.devId)
         {
-          case 17: //LocoNet over TCP client mode
+          case 17: //WiThrottle over TCP client mode
             lbServer->initWIServer(false);
             lbServer->setLNCallback(callbackLocoNetMessage);
             break; 
@@ -554,6 +558,11 @@ void setup() {
         digitraxBuffer->enableBushbyWatch(true); //defined in IoTT_DigitraxBuffers.h
       else
         digitraxBuffer->enableBushbyWatch(false);
+    if (jsonConfigObj->containsKey("useLissy"))
+      if ((bool)(*jsonConfigObj)["useLissy"])
+        digitraxBuffer->enableLissyMod(true); //defined in IoTT_DigitraxBuffers.h
+      else
+        digitraxBuffer->enableLissyMod(false);
         
     if (useHat.devId == 1) //BlueHat or CTC Hat
     {
