@@ -61,7 +61,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #define queBufferSize 50 //messages that can be written in one burst before buffer overflow
 #define measuringInterval 5 //ms 200 samples per second
 #define speedTestInterval 200 //ms call test function 5 times per second
-#define magOverflow 360
+#define magOverflow 360.0
 #define speedChangeTimeout 500 //ms
 
 typedef struct 
@@ -87,6 +87,9 @@ typedef struct
     char scaleName[5];
 	float_t eulerVectorRad[4] = {0,0,0,0}; //0: yaw rad  1: roll rad 2: pitch rad 3: distance
 	float_t posVector_mm[3] = {0,0,0};	//0 dimX 1: dimY 2: dimZ
+//	uint8_t Error = 0;
+	float_t avgMove = 0;
+	float_t avgDir = 0;
 }sensorData;
 
 typedef struct
@@ -187,6 +190,7 @@ private:
 	sensorData workData;
 	sensorData dispData;
 //	OneDimKalman * speedEstimate = NULL;
+	OneDimKalman * relMoveEstimate = NULL;
 //	AsyncWebSocketClient * globalClient = NULL;
 	uint16_t refreshRate = 0;
 	uint32_t lastWebRefresh = millis();

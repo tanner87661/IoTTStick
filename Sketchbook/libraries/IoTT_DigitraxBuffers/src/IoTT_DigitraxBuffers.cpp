@@ -160,13 +160,13 @@ void prepLissyMsg(lnReceiveBuffer * srcData, lnTransmitMsg * msgData)
 	
 	bool locoDetect = (srcData->lnData[2] & 0x20);
 	
-    if (srcData->lnData[3] == 0x7E)
-		locoAddr[1] = srcData->lnData[4];
-    else
-    {
+//    if (srcData->lnData[3] == 0x7E)
+//		locoAddr[1] = srcData->lnData[4];
+//   else
+//    {
 		locoAddr[0] = srcData->lnData[4];
 		locoAddr[1] = srcData->lnData[5];
-	}
+//	}
 	bool trackDir = (srcData->lnData[6] & 0x40);
 	
 	if (locoDetect)
@@ -184,6 +184,7 @@ void prepLissyMsg(lnReceiveBuffer * srcData, lnTransmitMsg * msgData)
 		msgData->lnData[6]=0x02;
 //		Serial.println("frei");
 	}
+	msgData->lnData[7] = 0;
 	msgData->lnMsgSize = 8;
 	setXORByte(&msgData->lnData[0]);
 }
@@ -916,8 +917,8 @@ void IoTT_DigitraxBuffers::processBufferUpdates(lnReceiveBuffer * newData) //pro
 			if ((translateLissy) & (newData->lnData[1] == 0x09))
 			{
 				lnTransmitMsg thisBuffer;
-//				prepLissyMsg(newData, &thisBuffer);
-//				lnOutFct(thisBuffer);
+				prepLissyMsg(newData, &thisBuffer);
+				lnOutFct(thisBuffer);
 			}
 			break;
         case 0xED: //OPC_IMM_PACKET
