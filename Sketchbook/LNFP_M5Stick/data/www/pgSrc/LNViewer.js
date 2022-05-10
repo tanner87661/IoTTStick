@@ -118,6 +118,7 @@ function getOpCodeStr(OpCodeVal)
         case 0xD4 : OpCode = "OPC_UHLI-FUN"; break;
         case 0xD7 : OpCode = "OPC_PANEL_RESPONSE"; break;
         case 0xDF : OpCode = "OPC_PANEL_QUERY"; break;
+        case 0xE0 : OpCode = "OPC_MULTI_SENSE_LONG"; break;
         case 0xE4 : OpCode = "OPC_LISSY_REP"; break;
         case 0xE5 : OpCode = "OPC_PEER_XFER"; break;
         case 0xE6 : OpCode = "OPC_ALM_READ"; break;

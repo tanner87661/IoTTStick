@@ -52,6 +52,10 @@ volatile void IoTT_TrainSensor::sensorTask(void * thisParam)
 	float rotAngle = -1;
 	if ((millis() - lastSampleCtrl) > measuringInterval)
 	{
+
+		uint32_t currTime = micros();
+		lastSampleCtrl += measuringInterval;
+
 		if (magSensor)
 		{
 
@@ -71,84 +75,56 @@ volatile void IoTT_TrainSensor::sensorTask(void * thisParam)
 				rotAngle = 360 - magSensor->getAngleData();
 		}
 		else
-			rotAngle = 0;
+			return; //no sensor, so don't do anything
 
-//speed linearization
-		for (uint8_t i = 0; i < corrLen; i++)
-		{
-			if (rotAngle < linCorr[i+1].x)
-			{
-				rotAngle = linCorr[i].y + (rotAngle - linCorr[i].x) * (linCorr[i+1].y - linCorr[i].y) / (linCorr[i+1].x - linCorr[i].x);
-				break;
-			}
-		}
-		
 		int8_t overFlow = 0;
-		float_t relMove = 0;
+		float_t relMove = rotAngle - workData.axisAngle;
+
 		if (abs(rotAngle - workData.axisAngle) > 180)
 		{
 			overFlow = rotAngle > workData.axisAngle ? overFlow = -1 : overFlow = 1;
-			relMove = overFlow > 0 ? rotAngle + magOverflow - workData.axisAngle : rotAngle - magOverflow - workData.axisAngle;
+			if (overFlow > 0)
+				relMove += (float_t)magOverflow;
+			else
+				relMove -= (float_t)magOverflow;
 		}
 		else
 			relMove = (rotAngle  - workData.axisAngle);
+
+
 		bool dirFwd = relMove >= 0;
 
+		workData.avgMove = (0.995 * workData.avgMove) + (0.005 * relMove); //used to detect standstill
+
+		bool isMoving = (abs(workData.avgMove) > 0.25);
+//		Serial.printf("%.2f %.2f %.2f \n", rotAngle/100, relMove, workData.avgMove);
 		revCtr += overFlow;     
 		
 		float_t linDistance = 0;
-//		float_t overflowSpeed = 0;
+		float_t avgDistance = 0; //used for speed calculation
 		
-		if ((dirFwd == workData.currDirFwd) || (abs(relMove) > magThreshold))
-		{
-			//calculate time since last speed calculation
-			uint32_t currTime = micros();
-//			uint32_t overFlowDiff = currTime - lastOverFlow;
-			uint32_t speedDiff = currTime - lastSpeedTime;
-			workData.currDirFwd = dirFwd;
-			workData.axisAngle = rotAngle;
+		//calculate time since last speed calculation
+		uint32_t speedDiff = currTime - lastSpeedTime;
+		workData.currDirFwd = dirFwd;
+		workData.axisAngle = rotAngle;
 
-			//calculate travelled distance
-			linDistance = (float)relMove * wheelDia * PI / 360;
-//			overflowDistance += linDistance;
-
-			//caluclate speed
-//			workData.currSpeedTech = speedEstimate->getEstimate((double)linDistance * 1000000 / (double)speedDiff);
-			workData.currSpeedTech = 0.99 * workData.currSpeedTech + 0.01 * linDistance * 1000000 / speedDiff;
-			lastSpeedTime = currTime;
-//			if (overFlow)
-//			{
-//				overflowSpeed = overflowDistance * 1000000 / overFlowDiff;
-//				lastOverFlow = currTime;
-//				overflowDistance = 0;
-//			}
-
-			//calculate location
-//			linDistance = relMove * wheelDia * PI / 360;
-			workData.absIntegrator += abs(linDistance);
-			workData.relIntegrator += linDistance;
-//			Serial.printf("%.2f %.2f\n", workData.currSpeedTech, overflowSpeed);
-//			Serial.printf("%.2f %.2f %.2f %6ld %.2f\n", rotAngle, relMove, linDistance, overFlowDiff, workData.currSpeedTech);
-
-/*
-			if (runSpeedTest && validSample) //implies defined focus slot
-			{
-				slotData* currSlot = digitraxBuffer->getSlotData(digitraxBuffer->getFocusSlotNr());
-				uint8_t currSpeedStep = (*currSlot)[2] + (((*currSlot)[3] & 0x20)<<2); //direction in bit 7
-					addSpeedTableVal(currSpeedStep, abs(workData.currSpeedTech));
-			}
-*/
-		}
+		//calculate travelled distance
+		linDistance = (float)relMove * wheelDia * PI / 360;
+		avgDistance = workData.avgMove * wheelDia * PI / 360;
+		if (isMoving)
+			workData.currSpeedTech = 0.995 * workData.currSpeedTech + 0.005 * avgDistance * 1000000 / speedDiff;
 		else
-		{
-//			if ((abs(relMove) < magThreshold) && ((micros() - lastOverFlow) > 1000000))
-			workData.currSpeedTech *= 0.99; // speedEstimate->getEstimate(0); //speedAvg->getEstimate(0);
-			if (workData.currSpeedTech < 10)
-				workData.currSpeedTech = 0;
-			linDistance = 0;
-		}
+			workData.currSpeedTech = 0;
+				
+		lastSpeedTime = currTime;
+		if (isMoving)
+			if (workData.avgMove > 0)
+				workData.absIntegrator += linDistance;
+			else
+				workData.absIntegrator -= linDistance;
+		workData.relIntegrator += linDistance;
+
 		//here we know travel distance and speed, so we can now read IMU and calculate vector and position, but only if distance > 0
-			
 		if (imuSensor)
 		{
 			if (!imuSensor->getEvent(&orientationData, Adafruit_BNO055::VECTOR_EULER)) //get euler vector m IMU
@@ -216,21 +192,19 @@ volatile void IoTT_TrainSensor::sensorTask(void * thisParam)
 			}
 
 		}
-
-		lastSampleCtrl += measuringInterval;
-	}
-	if (xSemaphoreTake(sensorSemaphore, portMAX_DELAY) == pdPASS) 
-	{
-		workData.timeStamp = millis();
-		dispData = workData;
-		xSemaphoreGive(sensorSemaphore);
+		if (xSemaphoreTake(sensorSemaphore, portMAX_DELAY) == pdPASS) 
+		{
+			workData.timeStamp = millis();
+			dispData = workData;
+			xSemaphoreGive(sensorSemaphore);
+		}
 	}
 }
-
 
 void IoTT_TrainSensor::begin() 
 {
 //	speedEstimate = new OneDimKalman(8,10,10,10);
+	relMoveEstimate = new OneDimKalman(8,10,10,10);
 	if (magType == 1)
 	{
 		Serial.println("Initialize TMAG5273");
@@ -264,8 +238,6 @@ void IoTT_TrainSensor::begin()
 	sensorSemaphore = xSemaphoreCreateMutex();
 	if (magSensor || imuSensor)
 	{
-//		Serial.println("Start Sensor Task");
-
 		if (taskHandleSensor == NULL)
 			xTaskCreate(myTask,        ///* Task function. 
 					"SensorTask",      //* String with name of task. 
@@ -738,6 +710,10 @@ void IoTT_TrainSensor::sendSpeedTableDataToWeb()
 
 void IoTT_TrainSensor::sendSensorDataToWeb()
 {
+//	sensorData cpyData = getSensorData();
+//	for (uint8_t i = 0; i < 50; i++)
+//		Serial.println(cpyData.avgMove[i]);
+//	Serial.println();
 	if (globalClient)
 	{
 		sensorData cpyData = getSensorData();
@@ -749,6 +725,9 @@ void IoTT_TrainSensor::sendSensorDataToWeb()
 		Data["AbsDist"] = cpyData.absIntegrator;
 		Data["RelDist"] = cpyData.relIntegrator;
 		Data["AxisAngle"] = cpyData.axisAngle;
+
+//	Serial.println(cpyData.axisAngle);
+
 //		if (imuSensor)
 		{
 			Data["Radius"] = cpyData.currRadiusTech;

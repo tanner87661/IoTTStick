@@ -15,16 +15,33 @@ bool TMAG5273::setDeviceConfig(uint8_t mountStyle)
 	writeI2CData(0, &data, 1); //32x average, 0.4ksamples 
 	data = 0x02;
 	writeI2CData(1, &data, 1); //device config 1 Continuous operating mode, 
-	data = 0x70;
+
+/*
+ * Vert Mount Settings: 2:0x30   x,y
+ * 						3:0x04
+ * Horz Mount Settings: 2:0x50   x,z
+ * 						3:0x0C
+*/	
+	switch (mountStyle)
+	{
+		case 0 : data = 0x50; //X,Z flat
+			break;
+		case 1 : data = 0x30; //X,Y vertical
+			break;
+		case 2 : data = 0x70; //X,Y,Z not used
+			break;
+	}
 	writeI2CData(2, &data, 1); //0x70 XYZ channels active
+	
 	switch (mountStyle)
 	{
 		case 0 : data = 0x0C; //X,Z flat
 			break;
 		case 1 : data = 0x04; //X,Y vertical
 			break;
+		case 2 : data = 0x08; //Y,Z not used
+			break;
 	}
-//	data = 0x08; //Y,Z
 	writeI2CData(3, &data, 1); //angle calculation on X,Z axis for PCB version
 	return true;
 }
@@ -87,6 +104,9 @@ float TMAG5273::getTempData()
 float TMAG5273::getAngleData()
 {
 	uint16_t rotVal = readI2CData(0x19, 2);
+	float retVal = (float)(rotVal>> 4);
+//	Serial.println(retVal);
+	return retVal;
 	return (float)((rotVal & 0x1FF0) >> 4) + ((float)(rotVal & 0x000F)/16); //formula from data sheet page 23
 	
 }

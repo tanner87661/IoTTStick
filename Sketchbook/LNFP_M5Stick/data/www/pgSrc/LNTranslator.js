@@ -121,6 +121,13 @@ function getPlainMsgText(lnData)
         case 0xD4 : retMsg = "OPC_UHLI-FUN"; break;
         case 0xD7 : retMsg = "OPC_PANEL_RESPONSE"; break;
         case 0xDF : retMsg = "OPC_PANEL_QUERY"; break;
+        case 0xE0 : switch (lnData[1])
+					{
+						case 0x09: retMsg = decodeMultiSenseLongMsg(lnData); break; //long
+						default: "Unknown message: " + lnData;
+							break;
+					} 
+					break;
         case 0xE4 : p1 = ((lnData[4] & 0x7F) + ((lnData[3] & 0x1F)<<7)); //sensor id
 					p2 = ((lnData[6] & 0x7F) + ((lnData[5] & 0x7F)<<7)); //loco address
 					p3 = (lnData[3] & 0x20) ? "south" : "north";
@@ -267,6 +274,22 @@ function decodePeerMsg(msgData)
     }
     else
         return "Peer to peer message. Meaning depending on device";
+}
+
+function decodeMultiSenseLongMsg(sensData)
+{
+	var zoneAddr = 0;
+	var locoAddr = 0;
+	
+	zoneAddr = ((sensData[2] & 0x1F) << 7) + sensData[3];
+	var locoDetect = (sensData[2] & 0x20);
+	locoAddr = (sensData[4] << 7) + sensData[5];
+	var trackDir = (sensData[6] & 0x40);
+	var thisDir = trackDir ? " forward" : " backward";
+	if (locoDetect)
+		return "Detected locomotive " + locoAddr.toString() + " in block " + zoneAddr.toString() + thisDir;
+	else
+        return "Release locomotive " + locoAddr.toString() + " from block " + zoneAddr.toString() + thisDir;
 }
 
 function decodeMultiSenseMsg(sensData)
