@@ -558,6 +558,24 @@ void processWsMessage(char * newMsg, int msgLen, AsyncWebSocketClient * client)
               trainSensor->stopTest();
         }
       }
+      if (thisCmd == "SetDCCPP")  
+      {
+        if (doc.containsKey("SubCmd"))
+        {
+          String subCmd = doc["SubCmd"];
+          if (subCmd == "SendCmd")
+          {
+              String cmdStr = doc["OpCode"];
+              digitraxBuffer->sendRedHatCmd(&cmdStr[0]);
+          }
+          if (subCmd == "GetConfig")
+            if (digitraxBuffer) 
+            {
+              uint16_t cFlags = doc["Filter"];
+              digitraxBuffer->getRedHatConfig(cFlags);
+            }
+        }
+      }
     }
   } 
   else

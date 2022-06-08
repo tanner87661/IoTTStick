@@ -75,7 +75,8 @@ private:
 	void processLCBTransmit();
 	void processDCCExReceive();
 	void processDCCExTransmit();
-	int parseDCCExNumVal(char** startAt, uint8_t* cntVal);
+//	void processDCCExTransmit2();
+	int parseDCCExParam(char** startAt, uint8_t ppNum, ppElement * outBuffer);
 	bool parseDCCEx(lnTransmitMsg* thisEntry, lnTransmitMsg* txBuffer);
 	
    // Member variables

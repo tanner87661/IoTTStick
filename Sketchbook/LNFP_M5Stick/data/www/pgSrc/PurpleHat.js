@@ -307,41 +307,8 @@ function constructPageContent(contentTab)
 				tabGPS = createEmptyDiv(mainScrollBox, "div", "tile-1", "");
 				createPageTitle(tabGPS, "div", "tile-1", "", "h1", "Layout TPS");
 				setVisibility(false, tabGPS);
-/*
-			var dispObj = createEmptyDiv(tempObj, "div", "tile-1", "Layout Position");
-				createPageTitle(dispObj, "div", "tile-1", "", "h2", "Layout Position");
-				createDispText(dispObj, "", "Pos x [mm]:", "n/a", "locx");
-				createDispText(dispObj, "", "Pos y [mm]:", "n/a", "locy");
-				createDispText(dispObj, "", "Pos z [mm]:", "n/a", "locz");
-				createDispText(dispObj, "", "Altitude [m]:", "n/a", "altitude");
-*/
-//		var thisObj = createEmptyDiv(mainScrollBox, "div", "tile-1", "");
-//			createButton(thisObj, "tile-1_4", "Reset Distance", "btnClearDist", "clearDistCtr(this)");
-//			createButton(thisObj, "tile-1_4", "Reset Position", "btnClearPos", "clearPositions(this)");
-//			createButton(thisObj, "tile-1_4", "Reset Ofsets", "btnClearOfs", "clearOfsets(this)");
-/*
-		tempObj = createEmptyDiv(mainScrollBox, "div", "tile-1", "");
-			createPageTitle(tempObj, "div", "tile-1", "", "h1", "Track Map");
-			var canvasElement = document.createElement("canvas");
-			tempObj.append(canvasElement);
-			canvasElement.setAttribute("id", "glCanvas");
-			canvasElement.setAttribute("width", canvasSize[0]);
-			canvasElement.setAttribute("height", canvasSize[1]);
-
-		var thisObj = createEmptyDiv(mainScrollBox, "div", "tile-1", "");
-			createButton(thisObj, "tile-1_4", "Start Recording", "btnStartTrack", "startRecording(this)");
-			createTextInput(tempObj, "tile-1_4", "File:", "", "txtFileName", "setFileName(this)");
-			createButton(thisObj, "tile-1_4", "End Recording", "btnEndTrack", "endRecording(this)");
-			createButton(thisObj, "tile-1_4", "Download Recording", "btnGetTrack", "downloadTrack(this)");
-		var thisObj = createEmptyDiv(mainScrollBox, "div", "tile-1", "");
-			createFileDlg(thisObj, "", "Load from File", "btnLoad", ".json", "loadSettings(this)");
-
-*/
-//		tempObj = createEmptyDiv(mainScrollBox, "div", "tile-1", "");
 
 		setTrackerDisplay();
-//		drawLineGraphs();
-//		graphicMain();
 }
 
 function drawLineGraphs()
@@ -703,7 +670,7 @@ function startSpeedTest(sender)
 
 		if ((cvVal_2 != 0) || (cvVal_5 != 0) || (cvVal_6 != 0) || ((cvVal_29 & 0x10) != 0))
 		{
-			var dispText = "Verify and confirm CV settings before running the speed test.\nCV 2 expected 0 is " + cvVal_2 + "\nCV 5 expected 0 is " + cvVal_5 + "\nCV 6 expected 0 is " + cvVal_5 + "\nCV 29 Bit 6 expected 0 is " + ((cvVal_29 & 0x10)>>4) +  "\nProceed anyway?";
+			var dispText = "Verify and confirm CV settings before running the speed test.\nCV 2 expected 0 is " + cvVal_2 + "\nCV 5 expected 0 is " + cvVal_5 + "\nCV 6 expected 0 is " + cvVal_5 + "\nCV 29 Bit 4 expected 0 is " + ((cvVal_29 & 0x10)>>4) +  "\nProceed anyway?";
 			if (confirm(dispText) == false)
 				return;
 		}

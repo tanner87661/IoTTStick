@@ -14,10 +14,11 @@ void callbackLocoNetMessage(lnReceiveBuffer * newData) //this is the landing poi
 
 void processLNError(lnReceiveBuffer * newData)
 {
-//   Serial.printf("LN Msg %i ReqID %i with %i bytes requested %i: ", newData->errorFlags, newData->reqID, newData->lnMsgSize, newData->reqRecTime); 
-//   for (int i=0; i<newData->lnMsgSize; i++)
-//     Serial.printf("0x%02X ", newData->lnData[i]);
-//   Serial.println();
+   Serial.printf("LN Msg %i ReqID %i with %i bytes requested %i: ", newData->errorFlags, newData->reqID, newData->lnMsgSize, newData->reqRecTime); 
+   for (int i=0; i<newData->lnMsgSize; i++)
+     Serial.printf("0x%02X ", newData->lnData[i]);
+   Serial.println();
+
   if ((newData->errorFlags & errorCollision) > 0)
     Serial.println("LocoNet Error: LocoNet Collision detected");
   if ((newData->errorFlags & errorFrame) > 0)

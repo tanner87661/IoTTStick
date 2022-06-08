@@ -44,7 +44,7 @@ float axpInVoltage = 0;
 uint8_t wifiResetCtr = 0;
 uint32_t wifiResetLastClick = 0;
 #define wifiResetMaxDelay 2000
-#define wifiResetReqCount 3
+#define wifiResetReqCount 2
 
 char dispBuffer[oneShotBufferSize][dccStrLen];
 
@@ -71,8 +71,243 @@ void getRTCTime()
   settimeofday(&thisTimeVal, NULL);  
 }
 
+void setButtonLinks()
+{
+//  M5.BtnA.onBtnDown = &btnADown;
+//  M5.BtnA.onBtnUp = &btnAUp;
+  M5.BtnA.onBtnClick = &btnAClick;
+//  M5.BtnA.onBtnDblClick = &btnADblClick;
+//  M5.BtnA.onBtnHold = &btnAOnHold;
+//  M5.BtnB.onBtnDown = &btnBDown;
+//  M5.BtnB.onBtnUp = &btnBUp;
+  M5.BtnB.onBtnClick = &btnBClick;
+  M5.BtnB.onBtnDblClick = &btnBDblClick;
+  M5.BtnB.onBtnHold = &btnBOnHold;
+  M5.BtnC.onBtnClick = &btnCClick;
+  M5.BtnC.onBtnDblClick = &btnCDblClick;
+  M5.BtnC.onBtnHold = &btnCOnHold;
+}
+
+void btnADown()
+{
+  Serial.println("Button A Down");
+}
+
+void btnAUp()
+{
+  Serial.println("Button A Up");
+}
+
+void btnAClick()
+{
+//  Serial.println("Button A Clicked");
+  pwrOffTimer = millis();
+  if (darkScreen)
+  {
+    M5.Axp.ScreenBreath(15);//7-15
+    darkScreen = false;
+  }
+  else
+  {
+    if (m5CurrentPage != 5)
+      useM5Viewer = 0;
+    if (m5CurrentPage == 7)
+      m5CurrentPage = 3;
+    else
+      m5CurrentPage++;
+  }
+  switch (m5CurrentPage)
+  {
+    case 0:
+      setOpeningPage();
+      break;
+    case 1:
+      setWifiConnectPage();
+      break;
+    case 2:
+      m5CurrentPage++;
+      useM5Viewer = 0;
+    case 3:
+      oldWifiStatus = 0xFFFF; //impossible mode, requires update
+      break;
+    case 4:
+      setStatusPage();
+      break;
+    case 5:
+      pwrDispTimer = millis() + pwrDispInterval;
+      setPwrStatusPage();
+      break;
+    case 6:
+      if (useHat.devId == 7)
+      {
+        pwrDispTimer = millis() + speedDispInterval;
+        sensorViewerPage();
+        break;
+      } //else go to 7
+      else
+        m5CurrentPage = 7;
+    case 7:
+      switch (useInterface.devId)
+      {
+        case 1:;
+        case 9:;
+        case 10: dccViewerPage(); break;
+        
+        case 2:;
+        case 3:;
+        case 4:;
+        case 11:;
+        case 12:;
+        case 13:;
+        case 14:;
+        case 15:;
+        case 16: lnViewerPage(); break;
+         
+        case 5:;
+        case 6:;
+        case 7: olcbViewerPage(); break;
+        case 8: mqttViewerPage(); break;
+      }
+      clearDisplay();
+      m5DispLine = 0;
+      break;
+  }
+}
+
+void btnADblClick(uint8_t evtCtr)
+{
+  Serial.printf("Button A %i Double Clicked\n", evtCtr);
+}
+
+void btnAOnHold(uint8_t evtCtr)
+{
+  Serial.printf("Button A %i Hold\n", evtCtr);
+}
+
+void btnBDown()
+{
+  Serial.println("Button B Down");
+}
+
+void btnBUp()
+{
+  Serial.println("Button B Up");
+}
+
+void btnBClick()
+{
+//  Serial.printf("Button B Clicked Page %i\n", m5CurrentPage);
+  pwrOffTimer = millis();
+  switch (useHat.devId)
+  {
+    case 6:
+    {
+      if (m5CurrentPage == 3)
+        if (WiFi.getMode() == 0)
+        {
+          Serial.println("Connect WiFi");  
+          establishWifiConnection(myWebServer,dnsServer);
+          return;
+        }
+      Serial.println("Set Power Mode");
+      uint8_t currPwr = digitraxBuffer->getPowerStatus();
+      switch (currPwr)
+      {
+        case 0: //off
+          currPwr = 0x83;
+          break;
+        case 1: //on
+          currPwr = 0x85;
+          break;
+        case 2: //idle
+          currPwr = 0x83;
+          break;
+        default: Serial.println("Invalid Power Status. Set to Idle.");
+          currPwr = 0x83;
+          break;
+      }
+      digitraxBuffer->localPowerStatusChange(currPwr);
+      return;
+    }
+    case 7: //PurpleHat
+      if (trainSensor) trainSensor->resetDistance();
+      return;
+    }
+  switch (m5CurrentPage)
+  {
+    case 7: //DCC Viewer active, toggle status
+      if (useM5Viewer == 2) //DCC, so toggle mode
+      {
+        dccOneTimeDisp = !dccOneTimeDisp;
+        dccViewerPage();
+      }
+      if (useM5Viewer == 4) //MQTT, so toggle mode
+      {
+        dccOneTimeDisp = !dccOneTimeDisp;
+        clearDisplay();
+        mqttViewerPage();
+      }
+      break;
+    case 3: //Wifi Status page active
+      if (WiFi.getMode() == 0)
+      {
+        Serial.println("Connect WiFi");  
+        establishWifiConnection(myWebServer,dnsServer);
+      }
+      break;
+  }
+}
+
+void btnBDblClick(uint8_t evtCtr)
+{
+  Serial.printf("Button B %i Double Clicked\n", evtCtr);
+  if (useHat.devId == 6) //RedHat Shield
+//    if(evtCtr == 2) 
+        if (digitraxBuffer->getPowerStatus() != 0)
+          digitraxBuffer->localPowerStatusChange(0x82);
+}
+
+void btnBOnHold(uint8_t evtCtr)
+{
+  Serial.printf("Button B %i Hold\n", evtCtr);
+}
+
+void btnCClick()
+{
+  Serial.println("Button C Clicked");
+}
+
+void btnCDblClick(uint8_t evtCtr)
+{
+  Serial.printf("Button C %i Double Clicked\n", evtCtr);
+  pwrOffTimer = millis();
+  if (evtCtr >= wifiResetReqCount)
+  {
+    if (WiFi.status() == WL_CONNECTED)
+      WiFi.disconnect();
+    WiFi.begin("0","0");
+    delay(100);
+    WiFi.disconnect();
+    WiFi.mode(WIFI_OFF);
+    Serial.println("Wifi Credentials deleted, Restart IoTT Stick");  
+    delay(100);
+    ESP.restart();
+  }
+}
+
+void btnCOnHold(uint8_t evtCtr)
+{
+  Serial.println("Button C Hold");
+  pwrOffTimer = millis();
+  prepareShutDown(); //could be on the way to power off, so we save the data to SPIFFS
+}
+
 void processDisplay()
 {
+  M5.BtnA.processEvents();
+  M5.BtnB.processEvents();
+  M5.BtnC.processEvents();
+
   axpBusVoltage = M5.Axp.GetVBusVoltage();
   axpInVoltage = M5.Axp.GetVinVoltage();
   hatPresent = axpInVoltage > 0.5;
@@ -152,170 +387,6 @@ void processDisplay()
       pwrDispTimer = millis() + speedDispInterval;
     }
   }
-  if(M5.BtnA.wasPressed()) //the big one
-  {
-//    Serial.println("Button A");
-  
-    pwrOffTimer = millis();
-    if (darkScreen)
-    {
-      M5.Axp.ScreenBreath(15);//7-15
-      darkScreen = false;
-    }
-    else
-      {
-      if (m5CurrentPage != 5)
-        useM5Viewer = 0;
-      if (m5CurrentPage == 7)
-        m5CurrentPage = 3;
-      else
-        m5CurrentPage++;
-      }
-    switch (m5CurrentPage)
-    {
-      case 0:
-        setOpeningPage();
-        break;
-      case 1:
-        setWifiConnectPage();
-        break;
-      case 2:
-        m5CurrentPage++;
-        useM5Viewer = 0;
-      case 3:
-//        Serial.print(oldWifiStatus);
-        oldWifiStatus = 0xFFFF; //impossible mode, requires update
-//        Serial.println(" Set Wifi page");
-        break;
-      case 4:
-        setStatusPage();
-        break;
-      case 5:
-        pwrDispTimer = millis() + pwrDispInterval;
-        setPwrStatusPage();
-        break;
-      case 6:
-        if (useHat.devId == 7)
-        {
-          pwrDispTimer = millis() + speedDispInterval;
-          sensorViewerPage();
-          break;
-        } //else go to 7
-        else
-          m5CurrentPage = 7;
-      case 7:
-//        Serial.println(useInterface.devId);
-        switch (useInterface.devId)
-        {
-          case 1:;
-          case 9:;
-          case 10: dccViewerPage(); break;
-          
-          case 2:;
-          case 3:;
-          case 4:;
-          case 11:;
-          case 12:;
-          case 13:;
-          case 14:;
-          case 15:;
-          case 16: lnViewerPage(); break;
-          
-          case 5:;
-          case 6:;
-          case 7: olcbViewerPage(); break;
-          case 8: mqttViewerPage(); break;
-        }
-        clearDisplay();
-        m5DispLine = 0;
-        break;
-    }
-  }
-  if(M5.BtnB.wasPressed()) //the one below
-  {
-//    Serial.printf("Button B Page %i Viewer %i\n", m5CurrentPage, useM5Viewer);
-    pwrOffTimer = millis();
-    switch (m5CurrentPage)
-    {
-      case 6:
-         if ((useHat.devId == 7) && trainSensor)
-          trainSensor->resetDistance();
-
-      case 7: //DCC Viewer active, toggle status
-        if (useM5Viewer == 2) //DCC, so toggle mode
-        {
-//          Serial.println("Switch Mode");
-          dccOneTimeDisp = !dccOneTimeDisp;
-          dccViewerPage();
-        }
-        if (useM5Viewer == 4) //MQTT, so toggle mode
-        {
-//          Serial.println("Switch Mode");
-          dccOneTimeDisp = !dccOneTimeDisp;
-          clearDisplay();
-          mqttViewerPage();
-        }
-        break;
-      case 3: //Wifi Status page active
-        if (WiFi.getMode() == 0)
-        {
-          Serial.println("Connect WiFi");  
-          establishWifiConnection(myWebServer,dnsServer);
-        }
-        break;
-    }
-  }
-  #ifdef useM5Lite
-    uint8_t pwrBtn = M5.BtnC.getPwrPin();
-  #else
-    uint8_t pwrBtn = M5.Axp.GetBtnPress(); //the power button, 1 for long, 2 for short
-  #endif
-  
-  if(pwrBtn) 
-  {
-//    Serial.printf("Power Button %i\n", pwrBtn);
-    pwrOffTimer = millis();
-    if (pwrBtn == 1) //long press
-      prepareShutDown(); //could be on the way to power off, so we save the data to SPIFFS
-    switch (m5CurrentPage)
-    {
-      case 3: //Wifi Status page active
-        if (pwrBtn == 2) //short press
-        {
-          if (wifiCfgMode == 1)  //STA mode is used, so reset credentials
-          {
-            if ((wifiResetCtr == 0 ) || (millis() < (wifiResetLastClick + wifiResetMaxDelay)))
-            {
-              wifiResetCtr++;
-              wifiResetLastClick = millis();
-              Serial.println("up");
-              if (wifiResetCtr == wifiResetReqCount)
-              {
-                
-                if (WiFi.status() == WL_CONNECTED)
-                  WiFi.disconnect();
-                WiFi.begin("0","0");
-                delay(100);
-                WiFi.disconnect();
-                WiFi.mode(WIFI_OFF);
-                Serial.println("Wifi Credentials deleted, Restart IoTT Stick");  
-                delay(100);
-                ESP.restart();
-              }
-            }
-            else
-              wifiResetCtr = 0;
-            
-          }
-        }
-        else
-          wifiResetCtr = 0;
-        break;
-      default:
-        wifiResetCtr = 0;
-        break;
-    }
-  }
 }
 
 void initDisplay()
@@ -326,6 +397,7 @@ void initDisplay()
   else
     screenDef = 1;
   setOpeningPage();
+  setButtonLinks();
 }
 
 void drawLogo(int x, int y, int logoSize)

@@ -15,10 +15,14 @@
 // #else
 // #include <WProgram.h>
 // #endif
+
+typedef void (*btnEvt) (uint8_t, uint8_t);
+
 class Button {
   public:
     Button(uint8_t pin, uint8_t invert, uint32_t dbTime);
     uint8_t read();
+//    bool    processEvents();
     uint8_t isPressed();
     uint8_t isReleased();
     uint8_t wasPressed();
@@ -27,6 +31,10 @@ class Button {
     uint8_t releasedFor(uint32_t ms);
     uint8_t wasReleasefor(uint32_t ms);
     uint32_t lastChange();
+//    btnEvt onBtnDown = NULL;
+//    btnEvt onBtnUp = NULL;
+//    btnEvt onBtnClick = NULL;
+//    btnEvt onBtnDblClick = NULL;
 
   private:
     uint8_t _pin;           //arduino pin number

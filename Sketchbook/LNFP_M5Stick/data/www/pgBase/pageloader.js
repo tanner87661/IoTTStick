@@ -506,6 +506,8 @@ function startWebsockets()
 			processDCCInput(myArr.Data);
   		if ((String(myArr.Cmd).indexOf("MQTT") >= 0) && (scriptList.Pages[currentPage].ID == "pgMQTTViewer"))
 			processMQTTInput(myArr);
+  		if ((myArr.Cmd == "DCCPP") && (scriptList.Pages[currentPage].ID == "pgRedHatCfg"))
+ 			processDCCPPInput(myArr);
 
   		if (myArr.Cmd == "CfgFiles")
   		{

@@ -79,6 +79,11 @@ uint8_t Button::read(void) {
   }
 }
 
+//bool Button::processEvents()
+//{
+//	read();
+//}
+
 /*----------------------------------------------------------------------*
  * isPressed() and isReleased() check the button state when it was last *
  * read, and return false (0) or true (!=0) accordingly.                *

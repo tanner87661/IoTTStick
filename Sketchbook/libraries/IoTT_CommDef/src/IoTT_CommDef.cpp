@@ -26,3 +26,21 @@ bool getXORCheck(uint8_t * msgData, uint8_t targetLen)
 	return ((xorResult ^ msgData[msgLen]) == 0xFF);
 }
 
+void dispMsg(uint8_t * msgData, uint8_t targetLen)
+{
+	uint8_t msgLen = ((msgData[0] & 0x60) >> 4) + 2;
+	if (msgLen == 8)
+		msgLen = (msgData[1] & 0x7F); 
+	Serial.printf("Msg Len %i %i\n", targetLen, msgLen+1);
+	for (uint8_t i = 0; i < msgLen; i++)
+		Serial.printf("%2X ", msgData[i]);
+	Serial.println();
+}
+
+void dispSlot(uint8_t * slotBytes)
+{
+	
+	for (uint8_t i = 0; i < 10; i++)
+		Serial.printf("%2X ", slotBytes[i]);
+	Serial.println();
+}

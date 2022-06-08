@@ -3,9 +3,13 @@
 #define IoTT_DigitraxBuffers_h
 
 #include <Arduino.h>
+#include <WiFi.h>
+#include <AsyncTCP.h>
+#include <ESPAsyncWebServer.h>
 #include <IoTT_CommDef.h>
 #include <IoTT_SerInjector.h>
 #include <IoTT_RemoteButtons.h>
+#include <IoTT_ButtonTypeDef.h>
 #include <SPIFFS.h>
 
 #define numSigs 2048
@@ -21,7 +25,52 @@
 #define switchProtLen 20
 #define progTimeout 10000
 #define fcRefreshInterval 1000
-#define purgeInterval 65000
+#define purgeLimitShort 30 //count for 300 s purge time
+#define purgeLimitLong 60 // and for 60 sec
+#define purgeInterval 10000 //run purge timer every 10 seconds
+#define queryInterval 1000
+
+//Digitrax CS
+#define opSwPurgeTimeExt 12
+#define opSwDisablePurging 13
+#define opSwPurgeForce0 14
+#define opSwSpeedStepDefault 20
+#define opSwForceSwiAck 26
+#define opSwDisableInterrogate 27
+#define opSwTrackPwrRestore 32
+#define opSwDisablePwrUpdate 42
+#define opSwDisableSwiStateReply 44
+#define opSwProgIsMain 46
+//IoTT opSw
+#define opSwSuperSlotRefresh 48
+#define opEchoSwi 56
+#define opEchoInp 57
+#define opEchoLoco 58
+
+//slot bytes
+#define STAT 0
+#define ADR 1
+#define SPD 2
+#define DIRF 3
+#define TRK 4 //this is used as purge counter
+#define SS2 5
+#define ADR2 6
+#define SND 7
+#define ID1 8
+#define ID2 9
+
+//refresh status defines
+#define slotFree 0
+#define slotCommon 1
+#define slotIdle 2
+#define slotActive 3
+
+//consist status defines
+#define cnFree 0
+#define cnUplink 1
+#define cnDownlink 2
+#define cnMiddle 3
+
 
 typedef void (*dccFct) (uint8_t, uint8_t *); //slot nr, fct depending value array
 
@@ -42,16 +91,41 @@ typedef struct
 	uint16_t devAddr;
 }protocolEntry;
 
+/*
+typedef struct
+{
+	uint16_t lnAddr;
+	outputType lnType;
+	uint8_t lnMsg;
+} activatorMsg;
+*/
+
+typedef struct
+{
+	uint16_t ardID = 0;
+	uint8_t ardPin = 0;
+	uint8_t ardType;
+	uint16_t lnAddr;
+	uint8_t posLogic;
+	uint16_t numPar1;
+	uint16_t numPar2;
+	bool confOK = false;
+	outputType lnType;
+} arduinoPins;
+
+
 uint32_t millisElapsed(uint32_t since);
 uint32_t microsElapsed(uint32_t since);
 
 class IoTT_SerInjector;
 
+/*
 typedef struct
 {
 	uint8_t sensStatType; //Bit 7 1=reversed 0: not used; 1: block detector; 2: switch report 3: button
 	uint16_t sensAddr;
 }sensorEntry;
+*/
 
 class IoTT_Mux64Buttons;
 
@@ -65,6 +139,12 @@ class IoTT_DigitraxBuffers
 		void setRedHatMode(txFct lnReply, DynamicJsonDocument doc);
 		void setLocoNetMode(bool newMode);
 		void clearSlotBuffer();
+		bool cnTreeValid(uint8_t thisSlot, uint8_t cnLevel);
+		uint8_t getConsistStatus(uint8_t ofSlot);
+		uint8_t getRefreshStatus(uint8_t ofSlot);
+		uint8_t getConsistTopSlot(uint8_t ofSlot);
+		void setConsistStatus(uint8_t forSlot, uint8_t newStatus);
+		void setRefreshStatus(uint8_t forSlot, uint8_t newStatus);
 		bool getLocoNetMode();
 		bool saveToFile(String fileName);
 		void loadFromFile(String fileName);
@@ -73,7 +153,12 @@ class IoTT_DigitraxBuffers
 		void writeProg(uint16_t dccAddr, uint8_t progMode, uint16_t cvNr, uint8_t cvVal);
 		void readProg(uint16_t dccAddr, uint8_t progMode, uint16_t cvNr);
 		void setPowerStatus(uint8_t newStatus);
-
+		void localPowerStatusChange(uint8_t newStatus);
+//		void sendSwiReq(bool useAck, uint16_t swiAddr, uint8_t newPos);
+		uint8_t getOpSw(uint8_t opSwNr, uint8_t numBits);
+		void setOpSw(uint8_t opSwNr, uint8_t numBits, uint8_t newVal);
+		void getRedHatConfig(uint16_t filterMask);
+		void sendRedHatCmd(char * cmdStr);
 		//read and write buffer values
 		uint8_t getPowerStatus();
 		uint8_t getButtonValue(uint16_t buttonNum);
@@ -92,6 +177,8 @@ class IoTT_DigitraxBuffers
 		void enableLissyMod(bool enableLissy);
 		uint8_t getUpdateReqStatus();
 		void clearUpdateReqFlag(uint8_t clrFlagMask);
+		void addActor(uint16_t Id, uint8_t pinType, uint8_t pinNr, uint8_t flags);
+		void sendDCCCmdToWeb(ppElement * myParams);
 		uint16_t receiveDCCGeneratorFeedback(lnTransmitMsg txData);
 		//LocoNet Management functions mainly for Command Station mode
 		//from incoming DCC command
@@ -108,7 +195,10 @@ class IoTT_DigitraxBuffers
 		void setButtonValue(uint16_t buttonNum, uint8_t buttonValue);
 		void setBDStatus(uint16_t bdNum, bool bdStatus);
 		void setProgStatus(bool progBusy);
+		void processDCCSwitch(uint16_t swiAddr, uint8_t swiPos, uint8_t coilStatus);
+		arduinoPins* findPeripherialItemById(arduinoPins * itemList, uint16_t listLen, uint8_t devType, uint16_t itemID);
 
+		void processDCCInput(uint16_t sensID, bool sensStatus);
 		//LocoNet functions for Cmd Stn Client mode
 		void requestNextSlotUpdate();
 		//LocoNet Management functions mainly for Command Station mode
@@ -119,24 +209,39 @@ class IoTT_DigitraxBuffers
 		uint8_t getTopSlot(uint8_t masterSlot);
 
 		uint8_t getFirstSlave(uint8_t masterSlot);
-		void updateTrackByte(bool setOp, uint8_t trackBits);
+//		void updateTrackByte(bool setOp, uint8_t trackBits);
 
 		void processSlotManager(lnReceiveBuffer * newData); //process incoming Loconet messages to the buffer
-
+		void initArduinoBoard();
+		
 		//DCC Generator functions
 		bool processDCCGenerator(lnReceiveBuffer * newData);
 //		void processDCCGeneratorFeedback(lnTransmitMsg txData);
-		void iterateMULinks(uint8_t thisSlot, uint8_t * templData, dccFct updateFunc, dccFct procFunc);
+		void iterateMULinks(uint8_t thisSlot, uint8_t dirSpeedData);
 		void setSlotDirfSpeed(lnReceiveBuffer * newData, bool sendDCC);
 //		void generateSpeedCmd(lnTransmitMsg * txBuffer, uint8_t thisSlot, uint8_t topSpeed);
 //		void generateFunctionCmd(lnTransmitMsg * txBuffer, lnReceiveBuffer * newData);
 		void purgeUnusedSlots();
 
+	public:
+		slotDataBuffer slotBuffer;
+		powerStatusBuffer trackByte = 1; //OPC_IDLE, Em. Stop, Power ON
+
 	private: //variables
-		sensorEntry sensorTable[32];
-		IoTT_Mux64Buttons * rhButtons = NULL;
+		blockDetBuffer blockDetectorBuffer;
+		analogValBuffer analogValueBuffer;
+		switchBuffer switchPositionBuffer;
+		signalBuffer signalAspectBuffer;
+		buttonValBuffer buttonValueBuffer;
+		uint8_t dispatchSlot = 0x00;
+		uint8_t inpQuery = 0xFF; //used to send out query swi cmds after power on
+		uint32_t queryDelay = millis(); 
+		slotData stdSlot = {0x03, 0x80, 0x00, 0x00, 0x07, 0x00, 0x00, 0x00, 0x00, 0x00}; //Byte 1 0x80 for unused, newly initialized slot
+		uint32_t purgeLimit = 30;  //standard purge counter limit
+//		sensorEntry sensorTable[32];
+//		IoTT_Mux64Buttons * rhButtons = NULL;
 		bool isCommandStation = false;
-		bool isRedHat = false;
+//		bool isRedHat = false;
 		bool isLocoNet = true;
 		bool initPhase = true;
 //		bool useLocoNet = true;
@@ -161,9 +266,23 @@ class IoTT_DigitraxBuffers
 		uint8_t progCV = 0;
 		//RedHat                  
 		uint8_t ledLevel = 15; //0-100%
+		arduinoPins * sensorInputs = NULL;
+		uint16_t sensorInputLen = 0;
+		arduinoPins * turnoutOutputs = NULL;
+		uint16_t turnoutOutputLen = 0;
+		uint8_t DCCActiveSlots = 20; //number of active slots on the DCC++EX
+		uint16_t progLimit = 50;
+		uint16_t progPulseMin = 200;
+		uint16_t progPulseMax = 20000;
+		uint8_t progNumTry = 3;
+		bool    progBoost = false;
+		bool    configSensorPwrUp = true;
+		bool    configTurnoutPwrUp = true;
+		uint32_t webTimeout = millis();
 };
 
 extern IoTT_DigitraxBuffers* digitraxBuffer; //pointer to DigitraxBuffers
+extern AsyncWebSocketClient * globalClient;
 
 #endif
 
@@ -176,3 +295,14 @@ extern void handleAnalogValue(uint16_t analogAddr, uint16_t inputValue) __attrib
 extern void handleButtonValue(uint16_t btnAddr, uint8_t inputValue) __attribute__ ((weak));
 extern void handleTranspondingEvent(uint16_t zoneAddr, uint16_t locoAddr, uint8_t eventVal) __attribute__ ((weak));
 extern void handleProgrammerEvent(uint8_t * programmerSlot) __attribute__ ((weak));
+
+
+//these are the execute functions. Provide a function with this name and parameter in your application and it will be called when a command must be sent to LocoNet
+extern void sendSwitchCommand(uint8_t opCode, uint16_t swiNr, uint8_t swiTargetPos, uint8_t coilStatus) __attribute__ ((weak)); //switch
+extern void sendSignalCommand(uint16_t signalNr, uint8_t signalAspect) __attribute__ ((weak)); //signal
+extern void sendPowerCommand(uint8_t cmdType, uint8_t pwrStatus) __attribute__ ((weak)); //power
+extern void sendBlockDetectorCommand(uint16_t bdNr, uint8_t bdStatus) __attribute__ ((weak)); //block detector
+extern void sendAnalogCommand(uint16_t btnNr, uint16_t analogVal) __attribute__ ((weak)); //analog value
+extern void sendButtonCommand(uint16_t btnNr, uint8_t  btnEvent) __attribute__ ((weak)); //button command
+extern void sendSwiReportMessage(uint16_t inpAddr, uint8_t newPos) __attribute__ ((weak)); //switch report command
+

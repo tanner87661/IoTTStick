@@ -1,4 +1,4 @@
-String BBVersion = "1.5.12";
+String BBVersion = "1.5.13D02";
 
 //#define measurePerformance //uncomment this to display the number of loop cycles per second
 #define useM5Lite
@@ -30,6 +30,7 @@ String BBVersion = "1.5.12";
 #include <ArduinoJson.h> //standard JSON library, can be installed in the Arduino IDE. Make sure to use version 6.x
 
 //following libraries can be downloaded from https://github.com/tanner87661?tab=repositories
+#include <IoTT_CommDef.h>
 #include <IoTT_DigitraxBuffers.h> //as introduced in video # 30
 #include <IoTT_LocoNetHBESP32.h> //this is a hybrid library introduced in video #29
 #include <IoTT_MQTTESP32.h> //as introduced in video # 29
@@ -564,19 +565,22 @@ void setup()
       else
         digitraxBuffer->enableLissyMod(false);
         
-    if (useHat.devId == 1) //BlueHat or CTC Hat
+    if ((useHat.devId == 1) || (useHat.devId == 3) || (useHat.devId == 6)) //BlueHat or YellowHat or RedHat
     {
       {
-        Serial.println("Load BlueHat Data"); 
+        Serial.printf("Load LED Chain Data Hat Id: %i\n", useHat.devId); 
 
-        Serial.println(String(ESP.getFreeHeap()));
-        Serial.println("Create JSON Doc"); 
+//        Serial.println(String(ESP.getFreeHeap()));
+//        Serial.println("Create JSON Doc"); 
 
         jsonDataObj = getDocPtr("/configdata/led.cfg", false);
         if (jsonDataObj != NULL)
         {
         Serial.println("Create LED Chain"); 
-          myChain = new IoTT_ledChain(); // ... construct now, and call setup later
+          if (useHat.devId == 3) //YellowHat
+            myChain = new IoTT_ledChain(&Wire, yellowWireAddr); // set for using I2C Bus address 0x18
+          else
+            myChain = new IoTT_ledChain(); // ... construct now, and call setup later
           myChain->loadLEDChainJSON(*jsonDataObj);
           delete(jsonDataObj);
           uint16_t subFileCtr = 1;
@@ -593,20 +597,27 @@ void setup()
           if (useInterface.devCommMode == 3)
             myChain->setMQTTMode(mqttTransmit);
 //          Serial.printf("Init LED Chain on Pin %i, %i LEDs long\n", hatDataPin, myChain->getChainLength());
+
+//            const uint8_t pinNr = useHat.devId == 1 ? hatDataPin : rhDataPin;
           if (myChain->colTypeNum == 0x66)
           {
-            FastLED.addLeds<WS2811, hatDataPin, GRB>(myChain->getChain(), myChain->getChainLength()); 
+            if (useHat.devId == 1) //BlueHat
+              FastLED.addLeds<WS2811, hatDataPin, GRB>(myChain->getChain(), myChain->getChainLength()); 
+            else
+              FastLED.addLeds<WS2811, rhDataPin, GRB>(myChain->getChain(), myChain->getChainLength()); 
           }
           if (myChain->colTypeNum == 0x0C)
           {
-            FastLED.addLeds<WS2811, hatDataPin, RGB>(myChain->getChain(), myChain->getChainLength()); 
+            if (useHat.devId == 1) //BlueHat
+              FastLED.addLeds<WS2811, hatDataPin, RGB>(myChain->getChain(), myChain->getChainLength()); 
+            else
+              FastLED.addLeds<WS2811, rhDataPin, RGB>(myChain->getChain(), myChain->getChainLength()); 
           }
         }
       }
     }
     else 
-      Serial.println("BlueHat not activated");
-
+      Serial.println("LED Chain not activated");
     if (useHat.devId == 2) //USB Serial Injector
     {
       jsonDataObj = getDocPtr("/configdata/usb.cfg", false);
@@ -637,6 +648,7 @@ void setup()
     {
         Serial.println("Init YellowHat");  
         Wire.begin(hatSDA, hatSCL, 400000); //initialize the I2C interface 400kHz
+/*
         jsonDataObj = getDocPtr("/configdata/led.cfg", false);
         if (jsonDataObj != NULL)
         {
@@ -662,7 +674,7 @@ void setup()
         }
         else
           Serial.println("Yellow Hat no led chain defined");
-
+*/
         jsonDataObj = getDocPtr("/configdata/btn.cfg", false);
         if (jsonDataObj != NULL)
         {
@@ -765,59 +777,6 @@ void setup()
     else 
       Serial.println("BlackHat not activated");
 
-    if ((useHat.devId == 6) || (useHat.devId == 8)) //RedHat Serial Injector in Cmd Stn or Booster mode
-    {
-      jsonDataObj = getDocPtr("/configdata/rhcfg.cfg", false);
-      if (jsonDataObj != NULL)
-      {
-        Serial.println("Load DCC++Ex communication interface"); 
-        if (useHat.devId == 6) //Cmd Stn mode
-        {
-          subnetMode = fullMaster;
-          digitraxBuffer->setRedHatMode(sendLocoNetReply, *jsonDataObj); //function hooks in DigitraxBuffers
-          if (lnSerial)
-            lnSerial->setNetworkType(subnetMode); 
-        }
-        else
-        {
-          digitraxBuffer->setRedHatMode(NULL, *jsonDataObj); //function hooks in DigitraxBuffers
-        }
-        delete(jsonDataObj); 
-
-        jsonDataObj = getDocPtr("/configdata/led.cfg", false);
-        if (jsonDataObj != NULL)
-        {
-          myChain = new IoTT_ledChain(); // ... construct now, and call setup later
-          myChain->loadLEDChainJSON(*jsonDataObj);
-          delete(jsonDataObj);
-          uint16_t subFileCtr = 1;
-          while (SPIFFS.exists("/configdata/led" + String(subFileCtr) + ".cfg"))
-          {
-            jsonDataObj = getDocPtr("/configdata/led" + String(subFileCtr) + ".cfg", false);
-            if (jsonDataObj)
-            {
-              myChain->loadLEDChainJSON(*jsonDataObj, false);
-              delete(jsonDataObj);
-            }
-            subFileCtr++;
-          }
-          if (useInterface.devCommMode == 3)
-            myChain->setMQTTMode(mqttTransmit);
-          if (myChain->colTypeNum == 0x66)
-          {
-            FastLED.addLeds<WS2811, rhDataPin, GRB>(myChain->getChain(), myChain->getChainLength()); 
-          }
-          if (myChain->colTypeNum == 0x0C)
-          {
-            FastLED.addLeds<WS2811, rhDataPin, RGB>(myChain->getChain(), myChain->getChainLength()); 
-          }
-        }
-        Serial.println("DCC++Ex loaded"); 
-      }
-    }
-    else
-      Serial.println("DCC++Ex not activated");
-
     if (useHat.devId == 7) //PurpleHat Trainside sensor
     {
       jsonDataObj = getDocPtr("/configdata/phcfg.cfg", false);
@@ -835,7 +794,33 @@ void setup()
     else
       Serial.println("Purple Sensor not activated");
 
-  digitraxBuffer->clearSlotBuffer(); //if not command station mode, clear all slots to trigger reload
+    digitraxBuffer->clearSlotBuffer(); //if not command station mode, clear all slots to trigger reload
+
+    if (useHat.devId == 6) // || (useHat.devId == 8)) //RedHat Serial Injector in Cmd Stn or Booster mode
+    {
+      jsonDataObj = getDocPtr("/configdata/rhcfg.cfg", false);
+      if (jsonDataObj != NULL)
+      {
+        Serial.println("Load DCC++Ex communication interface"); 
+//        if (useHat.devId == 6) //Cmd Stn mode
+//        {
+          subnetMode = fullMaster;
+          digitraxBuffer->setRedHatMode(sendLocoNetReply, *jsonDataObj); //function hooks in DigitraxBuffers
+          if (lnSerial)
+            lnSerial->setNetworkType(subnetMode); 
+//        }
+//        else
+//        {
+//          digitraxBuffer->setRedHatMode(NULL, *jsonDataObj); //function hooks in DigitraxBuffers
+//        }
+        delete(jsonDataObj); 
+        Serial.println("DCC++Ex loaded"); 
+      }
+    }
+    else
+      Serial.println("DCC++Ex not activated");
+
+
 
 //Load ALM list
     if (jsonConfigObj->containsKey("ALMTypeList") && jsonConfigObj->containsKey("ALMIndex"))

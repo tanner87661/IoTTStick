@@ -55,6 +55,13 @@ function createEmptyDiv(parentObj, objType, className, objID)
 	return docElement;
 }
 
+function createSimpleText(parentObj, divclass, dispText, dispObjID)
+{
+	var textDiv = document.createElement("div");
+	textDiv.setAttribute('class', divclass);
+	textDiv.innerHTML = dispText;
+	parentObj.append(textDiv);
+}
 function createDispText(parentObj, divclass, labelText, dispText, dispObjID)
 {
 	var textDiv = document.createElement("div");

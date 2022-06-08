@@ -65,6 +65,23 @@ typedef struct
 	bool inclAddr;
 } topicStruct;
 
+typedef union 
+{
+	int 	 longVal;
+	float_t  floatVal;
+	char     strVal[4];	
+} ppParam;
+
+typedef struct
+{
+	uint8_t paramNr = 0; //unused
+	uint8_t numParams = 0; //unused
+	uint8_t dataType = 0xFF; //unused
+	ppParam payload;
+} ppElement;
+
+//typedef ppElement paramArray[sizeof(ppElement)]; 
+
 typedef uint16_t (*txFct) (lnTransmitMsg);
 typedef void (*cbFct) (lnReceiveBuffer *);
 typedef void (*mqttFct) (char*, byte*, unsigned int);
@@ -72,5 +89,6 @@ typedef void (*mqttTxFct) (byte, char*, char*); //mode (0:send, 1:subscribe), to
 
 void setXORByte(uint8_t * msgData);
 bool getXORCheck(uint8_t * msgData, uint8_t targetLen = 0);
-
+void dispMsg(uint8_t * msgData, uint8_t targetLen = 0);
+void dispSlot(uint8_t * slotBytes);
 #endif
