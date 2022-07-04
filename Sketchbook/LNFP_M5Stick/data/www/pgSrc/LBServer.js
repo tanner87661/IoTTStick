@@ -70,6 +70,7 @@ function constructPageContent(contentTab)
 
 function loadNodeDataFields(jsonData)
 {
+	console.log(jsonData);
 }
 
 function loadDataFields(jsonData)

@@ -25,7 +25,10 @@ void establishWifiConnection(AsyncWebServer * webServer,DNSServer * dnsServer)
           wifiCfgMode  = 2;        //set AP Mode
         }
         else
+        {
+          WiFi.setHostname(deviceName.c_str());
           Serial.println(WiFi.localIP());
+        }
     }
     //AP Mode is fallback position 
     if (wifiCfgMode == 2) //if AP is needed, define the AP settings

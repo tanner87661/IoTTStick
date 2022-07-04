@@ -461,6 +461,19 @@ void IoTT_LBServer::initLBServer(bool serverMode)
 	}
 }
 
+void IoTT_LBServer::initMDNS()
+{
+	if (MDNS.begin(WiFi.getHostname())) 
+	{
+		Serial.println("mDNS responder started");
+		// Add service to MDNS-SD
+        MDNS.addService("withrottle", "tcp", lbs_Port);
+        Serial.println("mDNS WiThrottle Service added");
+	}
+	else
+		Serial.println("Error setting up MDNS responder");
+}
+
 void IoTT_LBServer::initWIServer(bool serverMode)
 {
 	isServer = serverMode;
@@ -484,7 +497,11 @@ void IoTT_LBServer::initWIServer(bool serverMode)
 void IoTT_LBServer::startServer()
 {
 	if (isServer && lntcpServer)
+	{
 		lntcpServer->begin();
+		if (isWiThrottle)
+			initMDNS();
+	}
 }
 
 void IoTT_LBServer::handleNewClient(AsyncClient* client)

@@ -6,9 +6,24 @@ function upgradeJSONVersionNode(jsonData)
 //	var InterfaceList = [{"Name":"none","IntfId":0,"Type":0,"ReqSTA":0},{"Name":"DCC Interface","IntfId":1,"Type":0,"ReqSTA":0},{"Name":"DCC to MQTT","IntfId":9,"Type":0,"ReqSTA":1},{"Name":"DCC from MQTT","IntfId":10,"Type":0,"ReqSTA":1},{"Name":"LocoNet Interface","IntfId":2,"Type":1,"ReqSTA":0},{"Name":"LocoNet Loopback","IntfId":16,"Type":1,"ReqSTA":0},{"Name":"LocoNet over MQTT","IntfId":3,"Type":1,"ReqSTA":1},{"Name":"LocoNet MQTT Gateway","IntfId":4,"Type":2,"ReqSTA":1},{"Name":"LocoNet lbServer","IntfId":11,"Type":2,"ReqSTA":0},{"Name":"LocoNet lbServer / MQTT Gateway","IntfId":13,"Type":2,"ReqSTA":1},{"Name":"LocoNet Loopback lbServer","IntfId":14,"Type":2,"ReqSTA":0},{"Name":"LocoNet Loopback lbServer / MQTT Gateway","IntfId":15,"Type":2,"ReqSTA":1},{"Name":"LocoNet lbServer Client","IntfId":12,"Type":2,"ReqSTA":1},{"Name":"WiThrottle Client","IntfId":17,"Type":2,"ReqSTA":1},{"Name":"MQTT with Topics","IntfId":8,"Type":3,"ReqSTA":1}];
 //	var HatList = [{"Name":"none","HatId":0,"Type":0,"InterfaceList":[0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16]},{"Name":"Blue Hat","HatId":1,"Type":0,"InterfaceList":[0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16]},{"Name":"Brown Hat","HatId":2,"Type":0,"InterfaceList":[0,2,3,4]},{"Name":"Yellow Hat","HatId":3,"Type":0,"InterfaceList":[0,1,2,3,4,5,6,7,8,11,12,13,14,15,16]},{"Name":"Green Hat","HatId":4,"Type":0,"InterfaceList":[0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16]},{"Name":"Red Hat++ CS","HatId":6,"Type":0,"InterfaceList":[2,4,11,13]},{"Name":"Red Hat++ B","HatId":8,"Type":0,"InterfaceList":[2,4,11,13]},{"Name":"Black Hat","HatId":5,"Type":0,"InterfaceList":[0,2,3,4,5,6,7,8]},{"Name":"Purple Hat","HatId":7,"Type":0,"InterfaceList":[0,3,12,16,17]}]
 
+var InterfaceList = [{"Name":"none","IntfId":0,"Type":0,"ReqSTA":0},{"Name":"DCC Interface","IntfId":1,"Type":0,"ReqSTA":0},{"Name":"DCC from MQTT","IntfId":10,"Type":0,"ReqSTA":1},{"Name":"LocoNet Loopback","IntfId":16,"Type":1,"ReqSTA":0},{"Name":"LocoNet Interface","IntfId":2,"Type":1,"ReqSTA":0},{"Name":"LocoNet lbServer Client","IntfId":12,"Type":2,"ReqSTA":1},{"Name":"LocoNet from MQTT","IntfId":3,"Type":1,"ReqSTA":1},{"Name":"WiThrottle Client","IntfId":17,"Type":2,"ReqSTA":1},{"Name":"MQTT with Topics","IntfId":8,"Type":3,"ReqSTA":1}];
+var HatList = [{"Name":"none","HatId":0,"Type":0,"InterfaceList":[0,1,2,3,8,10,12,16,17]},{"Name":"Blue Hat","HatId":1,"Type":0,"InterfaceList":[0,1,2,3,8,10,12,16]},{"Name":"Brown Hat","HatId":2,"Type":0,"InterfaceList":[0,2,3,12]},{"Name":"Yellow Hat","HatId":3,"Type":0,"InterfaceList":[0,1,2,3,8,10,12,16]},{"Name":"Green Hat","HatId":4,"Type":0,"InterfaceList":[0,1,2,3,8,10,12,16]},{"Name":"Red Hat++","HatId":6,"Type":0,"InterfaceList":[2,16]},{"Name":"Black Hat","HatId":5,"Type":0,"InterfaceList":[0,2,3,12,16]},{"Name":"Purple Hat","HatId":7,"Type":0,"InterfaceList":[0,3,12,16,17]}];
+var ALMList = [{"Name": "Event Handler", "ALMId": 0, "Type": 1},{"Name": "Voice Watcher","ALMId": 1,"Type": 1}];
+var ServerList = [{"Name":"MQTT Broker Gateway","ServerId":0,"InterfaceList":[1,2,3,10,12,16],"Type":1},{"Name":"Loconet lbServer","ServerId":1,"InterfaceList":[2,3,12,16],"Type":1},{"Name":"WiThrottle Server","ServerId":2,"InterfaceList":[2,3,12,16],"Type":1}];
 
-
-	jsonFileVersion = "1.0.2";
+/* Available command sources: 
+ * 0: none
+ * 1: DCC Interface
+ * 2: Loconet interface
+ * 3: Loconet from MQTT
+ * 8: MQTT with topics
+ * 10: DCC from MQTT
+ * 12: lbServer client
+ * 16: Loconet Loopback
+ * 17: WiThrottle client
+ * 
+*/
+	jsonFileVersion = "1.0.3";
 	var thisVersion = jsonData.Version;
 //	console.log(thisVersion);
 	if (thisVersion == jsonFileVersion)
@@ -26,7 +41,6 @@ function upgradeJSONVersionNode(jsonData)
 
 	if (jsonData.Version == "1.0.0")
 	{
-		var ALMList = [{"Name": "Event Handler", "ALMId": 0, "Type": 1},{"Name": "Voice Watcher","ALMId": 1,"Type": 1}];
 		jsonData.ALMTypeList = JSON.parse(JSON.stringify(ALMList));
 		jsonData.HatTypeList = JSON.parse(JSON.stringify(HatList));
 		jsonData.Version = "1.0.1";
@@ -40,7 +54,15 @@ function upgradeJSONVersionNode(jsonData)
 		jsonData.Version = "1.0.2";
 		console.log("upgrade Node Config from version 1.0.1 to 1.0.2");
 	}
-
+	if (jsonData.Version == "1.0.2")
+	{
+		jsonData.InterfaceTypeList = JSON.parse(JSON.stringify(InterfaceList));
+		jsonData.HatTypeList = JSON.parse(JSON.stringify(HatList));
+		jsonData.ALMTypeList = JSON.parse(JSON.stringify(ALMList));
+		jsonData.ServerTypeList = JSON.parse(JSON.stringify(ServerList));
+		jsonData.Version = "1.0.3";
+		console.log("upgrade Node Config from version 1.0.2 to 1.0.3");
+	}
 	return jsonData;
 }
 

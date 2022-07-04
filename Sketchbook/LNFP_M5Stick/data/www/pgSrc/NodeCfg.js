@@ -47,8 +47,6 @@ function loadSettings(sender)
 		return pageEntry.ID == fileIDName;
 	}
 	
-	
-	
 	var fileName = document.getElementById("btnLoad").files[0];
 //	console.log("Load file ", fileName);
 	var reader = new FileReader();

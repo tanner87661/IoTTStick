@@ -31,6 +31,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #include <IoTT_DigitraxBuffers.h>
 #include <ArduinoJSON.h>
 #include <AsyncTCP.h>
+#include <ESPmDNS.h>
 #include <vector>
 
 
@@ -75,7 +76,6 @@ public:
 	locoDef* getLocoByAddr(uint16_t locoAddr, char thID);
 	locoDef* getLocoBySlot(uint8_t slotAddr, char thID);
 	void setLocoAction(uint16_t locoAddr, char thID, char* ActionCode);
-
 public:
 	AsyncClient * thisClient = NULL;
 	char * wiHWIdentifier = NULL;
@@ -98,6 +98,7 @@ public:
 	void initWIServer(bool serverMode = false); //server mode not supported at this time
 	void startServer();
 	void processLoop();
+	void initMDNS();
 	uint16_t lnWriteMsg(lnTransmitMsg* txData);
 	uint16_t lnWriteMsg(lnReceiveBuffer* txData);
 //	void setLNCallback(cbFct newCB);
