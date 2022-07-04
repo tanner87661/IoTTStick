@@ -135,6 +135,13 @@ void prepSlotMoveMsg(lnTransmitMsg * msgData, uint8_t slotSRC, uint8_t slotDEST)
 	setXORByte(&msgData->lnData[0]);
 }
 
+void prepTrackPowerMsg(lnTransmitMsg * msgData, uint8_t pwrStatus)
+{
+	msgData->lnData[0] = pwrStatus; //OPC_ON, OFF, IDLE
+	msgData->lnMsgSize = 2;
+	setXORByte(&msgData->lnData[0]);
+}
+
 //version meeting https://wiki.rocrail.net/doku.php?id=loconet:ln-pe-en
 //this version based on OPC_MULTI_SENSE_LONG
 void prepLissyMsg(lnReceiveBuffer * srcData, lnTransmitMsg * msgData)

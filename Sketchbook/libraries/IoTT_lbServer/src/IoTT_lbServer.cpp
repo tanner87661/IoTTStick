@@ -398,6 +398,14 @@ void tcpDef::setLocoAction(uint16_t locoAddr, char thID, char* ActionCode)
 	}
 
 }
+
+void tcpDef::setTrackPowerStatus(uint8_t newStatus)
+{
+	lnTransmitMsg txData;
+	prepTrackPowerMsg(&txData, newStatus);
+	sendMsg(txData);
+}
+
 /*
 'C' consist
 'c' consist lead from roster entry
@@ -578,6 +586,8 @@ void IoTT_LBServer::loadLBServerCfgJSON(DynamicJsonDocument doc)
 		String thisIP = doc["ServerIP"];
 		lbs_IP.fromString(thisIP);
 	}
+	if (doc.containsKey("PowerMode"))
+		allowPwrChg = doc["PowerMode"];
 }
 
 uint8_t IoTT_LBServer::getConnectionStatus()
@@ -783,7 +793,7 @@ bool IoTT_LBServer::processWIServerMessage(AsyncClient* client, char * c)
 			break;
 		}
 	}
-//	Serial.printf("WiClient message %i bytes: %s\n", len, c);
+	Serial.printf("WiClient message %i bytes: %s\n", len, c);
 	if (currClient)
 	{
 		currClient->nextPing = millis() + pingInterval + random(500);
@@ -892,6 +902,15 @@ bool IoTT_LBServer::processWIServerMessage(AsyncClient* client, char * c)
 							switch (c[2])
 							{
 								case 'A': //Power On/Off
+									Serial.println(allowPwrChg);
+									if (allowPwrChg > 0)
+										if (c[3] == '1')
+											currClient->setTrackPowerStatus(0x83); //ON
+										else
+											if (allowPwrChg == 2) //on-off
+												currClient->setTrackPowerStatus(0x82); //ON
+											else
+												currClient->setTrackPowerStatus(0x85); //Idle
 									sendWIServerMessageString(currClient->thisClient, 2); //power status
 									return true;
 							}

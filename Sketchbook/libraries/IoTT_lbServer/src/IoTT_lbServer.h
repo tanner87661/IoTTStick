@@ -47,6 +47,7 @@ extern void prepSlotSpeedMsg(lnTransmitMsg * msgData, uint8_t slotNr, uint8_t sp
 extern void prepSlotDirFMsg(lnTransmitMsg * msgData, uint8_t slotNr, uint8_t dirfdata);
 extern void prepSlotSndMsg(lnTransmitMsg * msgData, uint8_t slotNr, uint8_t snddata);
 extern void prepTurnoutMsg(lnTransmitMsg * msgData, bool useACK, uint16_t swiAddr, uint8_t swiPos);
+extern void prepTrackPowerMsg(lnTransmitMsg * msgData, uint8_t pwrStatus);
 
 extern void callbackLocoNetMessage(lnReceiveBuffer * newData);
 extern uint16_t sendMsg(lnTransmitMsg txData);
@@ -76,6 +77,7 @@ public:
 	locoDef* getLocoByAddr(uint16_t locoAddr, char thID);
 	locoDef* getLocoBySlot(uint8_t slotAddr, char thID);
 	void setLocoAction(uint16_t locoAddr, char thID, char* ActionCode);
+	void setTrackPowerStatus(uint8_t newStatus);
 public:
 	AsyncClient * thisClient = NULL;
 	char * wiHWIdentifier = NULL;
@@ -174,7 +176,7 @@ private:
 	char * wiServerType = NULL;
 	char * wiServerMessage = NULL;
 	char * wiServerDescription = NULL;
-	
+	uint8_t allowPwrChg = 0;
 	AsyncClient * lastTxClient = NULL; 
 	lnReceiveBuffer lastTxData;
 };
