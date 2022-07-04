@@ -8,7 +8,7 @@
 #endif
 
 TEST_CASE("string_view") {
-  StaticJsonDocument<128> doc;
+  StaticJsonDocument<256> doc;
   JsonVariant variant = doc.to<JsonVariant>();
 
   SECTION("deserializeJson()") {
@@ -57,6 +57,12 @@ TEST_CASE("string_view") {
 
     doc.add(std::string_view("example two", 7));
     REQUIRE(doc.memoryUsage() == JSON_ARRAY_SIZE(2) + 8);
+
+    doc.add(std::string_view("example\0tree", 12));
+    REQUIRE(doc.memoryUsage() == JSON_ARRAY_SIZE(3) + 21);
+
+    doc.add(std::string_view("example\0tree and a half", 12));
+    REQUIRE(doc.memoryUsage() == JSON_ARRAY_SIZE(4) + 21);
   }
 
   SECTION("as<std::string_view>()") {
@@ -72,6 +78,12 @@ TEST_CASE("string_view") {
     REQUIRE(doc["s"].is<std::string_view>() == true);
     REQUIRE(doc["i"].is<std::string_view>() == false);
   }
+
+  SECTION("String containing NUL") {
+    doc.set(std::string("hello\0world", 11));
+    REQUIRE(doc.as<std::string_view>().size() == 11);
+    REQUIRE(doc.as<std::string_view>() == std::string_view("hello\0world", 11));
+  }
 }
 
 using ARDUINOJSON_NAMESPACE::adaptString;
@@ -80,10 +92,9 @@ TEST_CASE("StringViewAdapter") {
   std::string_view str("bravoXXX", 5);
   auto adapter = adaptString(str);
 
-  CHECK(adapter.compare(NULL) > 0);
-  CHECK(adapter.compare("alpha") > 0);
-  CHECK(adapter.compare("bravo") == 0);
-  CHECK(adapter.compare("charlie") < 0);
+  CHECK(stringCompare(adapter, adaptString("alpha", 5)) > 0);
+  CHECK(stringCompare(adapter, adaptString("bravo", 5)) == 0);
+  CHECK(stringCompare(adapter, adaptString("charlie", 7)) < 0);
 
   CHECK(adapter.size() == 5);
 }

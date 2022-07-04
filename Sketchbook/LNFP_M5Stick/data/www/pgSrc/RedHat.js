@@ -65,14 +65,14 @@ function constructPageContent(contentTab)
 					createCheckbox(tempObj, "tile-1_4", "Disable Switch State Report", "OpSw_44", "setOpSwCB(this)");
 //					createCheckbox(tempObj, "tile-1_4", "Disable Standard Switch Command", "OpSw_25", "setOpSwCB(this)");
 
-				 tempObj= createEmptyDiv(ConfigOptionPanel, "div", "tile-1", "");
-					createPageTitle(tempObj, "div", "tile-1", "BasicCfg_Title", "h2", "Communication Options");
-				 tempObj= createEmptyDiv(ConfigOptionPanel, "div", "tile-1", "");
-					createCheckbox(tempObj, "tile-1_4", "Provide Loconet TCP Server", "lbserver", "setServerOptions(this)");
-					createTextInput(tempObj, "tile-1_4", "on port:", "n/a", "lbserverport", "setServerOptions(this)");
-				 tempObj= createEmptyDiv(ConfigOptionPanel, "div", "tile-1", "");
-					createCheckbox(tempObj, "tile-1_4", "Provide WiThrottle Server", "withrottle", "setServerOptions(this)");
-					createTextInput(tempObj, "tile-1_4", "on port:", "n/a", "withrottleport", "setServerOptions(this)");
+//				 tempObj= createEmptyDiv(ConfigOptionPanel, "div", "tile-1", "");
+//					createPageTitle(tempObj, "div", "tile-1", "BasicCfg_Title", "h2", "Communication Options");
+//				 tempObj= createEmptyDiv(ConfigOptionPanel, "div", "tile-1", "");
+//					createCheckbox(tempObj, "tile-1_4", "Provide Loconet TCP Server", "lbserver", "setServerOptions(this)");
+//					createTextInput(tempObj, "tile-1_4", "on port:", "n/a", "lbserverport", "setServerOptions(this)");
+//				 tempObj= createEmptyDiv(ConfigOptionPanel, "div", "tile-1", "");
+//					createCheckbox(tempObj, "tile-1_4", "Provide WiThrottle Server", "withrottle", "setServerOptions(this)");
+//					createTextInput(tempObj, "tile-1_4", "on port:", "n/a", "withrottleport", "setServerOptions(this)");
 
 				 tempObj= createEmptyDiv(ConfigOptionPanel, "div", "tile-1", "");
 					createPageTitle(tempObj, "div", "tile-1", "BasicCfg_Title", "h2", "DCC Generator Options");
@@ -156,17 +156,17 @@ function progDefault(sender)
 	loadProgOptions(configData[workCfg]);
 }
 
-function setServerOptions(sender)
-{
-	if (sender.id == "lbserver")
-		configData[workCfg].ServerSettings.LbServer.Active = sender.checked;
-	if (sender.id == "lbserverport")
-		configData[workCfg].ServerSettings.LbServer.Port = verifyNumber(sender.value, configData[workCfg].ServerSettings.LbServer.Port); 
-	if (sender.id == "withrottle")
-		configData[workCfg].ServerSettings.wiThrottle.Active = sender.checked;
-	if (sender.id == "withrottleport")
-		configData[workCfg].ServerSettings.wiThrottle.Port = verifyNumber(sender.value, configData[workCfg].ServerSettings.wiThrottle.Port); 
-}
+//function setServerOptions(sender)
+//{
+//	if (sender.id == "lbserver")
+//		configData[workCfg].ServerSettings.LbServer.Active = sender.checked;
+//	if (sender.id == "lbserverport")
+//		configData[workCfg].ServerSettings.LbServer.Port = verifyNumber(sender.value, configData[workCfg].ServerSettings.LbServer.Port); 
+//	if (sender.id == "withrottle")
+//		configData[workCfg].ServerSettings.wiThrottle.Active = sender.checked;
+//	if (sender.id == "withrottleport")
+//		configData[workCfg].ServerSettings.wiThrottle.Port = verifyNumber(sender.value, configData[workCfg].ServerSettings.wiThrottle.Port); 
+//}
 
 function setProgOptions(sender)
 {
@@ -339,7 +339,7 @@ function writeSensorToDCC(sensorNr)
 	ws.send(cmdStr);
 }
 
-function loadSensorTable(thisTable, thisData)
+function loadSensorTable(thisTable, thisData, clrConf)
 {
 	var th = document.getElementById(thisTable.id + "_head");
 	var tb = document.getElementById(thisTable.id + "_body");
@@ -351,7 +351,9 @@ function loadSensorTable(thisTable, thisData)
 		var e = document.getElementById(thisTable.id + "_" + i.toString() + "_" + "2");
 		e.childNodes[0].value = thisData[i].Id;
 		var e = document.getElementById(thisTable.id + "_" + i.toString() + "_" + "3");
-		e.childNodes[0].innerHTML = "not set";
+		if (clrConf)
+			thisData[i].confirmed = false;
+		e.childNodes[0].innerHTML = thisData[i].confirmed ? "ok" : "not set";
 		var e = document.getElementById(thisTable.id + "_" + i.toString() + "_" + "4");
 		e.childNodes[0].value = thisData[i].PinNr;
 		var e = document.getElementById(thisTable.id + "_" + i.toString() + "_" + "5");
@@ -368,7 +370,7 @@ function loadSensorTable(thisTable, thisData)
 	}
 }
 
-function loadTurnoutTable(thisTable, thisData)
+function loadTurnoutTable(thisTable, thisData, clrConf)
 {
 	var th = document.getElementById(thisTable.id + "_head");
 	var tb = document.getElementById(thisTable.id + "_body");
@@ -380,7 +382,9 @@ function loadTurnoutTable(thisTable, thisData)
 		var e = document.getElementById(thisTable.id + "_" + i.toString() + "_" + "2");
 		e.childNodes[0].value = thisData[i].Id;
 		var e = document.getElementById(thisTable.id + "_" + i.toString() + "_" + "3");
-		e.childNodes[0].innerHTML = "not set";
+		if (clrConf)
+			thisData[i].confirmed = false;
+		e.childNodes[0].innerHTML = thisData[i].confirmed ? "ok" : "not set";
 		var e = document.getElementById(thisTable.id + "_" + i.toString() + "_" + "4");
 		e.childNodes[0].value = thisData[i].LNAddr;
 		var e = document.getElementById(thisTable.id + "_" + i.toString() + "_" + "5");
@@ -398,6 +402,7 @@ function loadTurnoutTable(thisTable, thisData)
 	}
 }
 
+/*
 function loadPinTable(thisTable, thisData)
 {
 	var th = document.getElementById(thisTable.id + "_head");
@@ -427,6 +432,36 @@ function loadPinTable(thisTable, thisData)
 			e.childNodes[0].value = thisData[i].Par1;
 		}
 }
+*/
+
+function confirmSensorPin(jsonData)
+{
+	var sensorId = jsonData.Data.Msg[1].d;
+	var pinNr = jsonData.Data.Msg[2].d;
+	var pinLogic = jsonData.Data.Msg[3].d;
+	var sensorPos = configData[workCfg].InputSettings.InpPins.findIndex(element => element.Id == sensorId);
+	
+//	console.log(sensorPos);
+	if (sensorPos >= 0)
+	{
+		configData[workCfg].InputSettings.InpPins[sensorPos].confirmed = true;
+		loadSensorTable(sensorTable, configData[workCfg].InputSettings.InpPins);
+	}
+}
+
+function confirmTurnoutPin(jsonData)
+{
+//	console.log(jsonData);
+	var turnoutId = jsonData.Data.Msg[1].d;
+	var pinNr = jsonData.Data.Msg[2].d;
+	var pinLogic = jsonData.Data.Msg[3].d;
+	var turnoutPos = configData[workCfg].TurnoutSettings.OutPins.findIndex(element => element.Id == turnoutId);
+	if (turnoutPos >= 0)
+	{
+		configData[workCfg].TurnoutSettings.OutPins[turnoutPos].confirmed = true;
+		loadTurnoutTable(turnoutTable, configData[workCfg].TurnoutSettings.OutPins);
+	}
+}
 
 function loadNodeDataFields(jsonData)
 {
@@ -450,10 +485,6 @@ function loadDataFields(jsonData)
 	loadProgOptions(jsonData);
 	writeCBInputField("sensoreeprom", jsonData.DevSettings.ConfigSensorIO);
 	writeCBInputField("turnouteeprom", jsonData.DevSettings.ConfigTurnoutIO);
-	writeCBInputField("lbserver", jsonData.ServerSettings.LbServer.Active);
-	writeInputField("lbserverport", jsonData.ServerSettings.LbServer.Port);
-	writeCBInputField("withrottle", jsonData.ServerSettings.wiThrottle.Active);
-	writeInputField("withrottleport", jsonData.ServerSettings.wiThrottle.Port);
 
 	if (jsonData.DevSettings.CfgSlot != undefined)
 		for (var i = 0; i < jsonData.DevSettings.CfgSlot.length; i++)
@@ -481,8 +512,8 @@ function loadDataFields(jsonData)
 								break;
 						}
 				}
-	loadSensorTable(sensorTable, jsonData.InputSettings.InpPins);
-	loadTurnoutTable(turnoutTable, jsonData.TurnoutSettings.OutPins);
+	loadSensorTable(sensorTable, jsonData.InputSettings.InpPins, true);
+	loadTurnoutTable(turnoutTable, jsonData.TurnoutSettings.OutPins, true);
 	setPanelVisibility();
 //	ws.send("{\"Cmd\":\"SetDCCPP\", \"SubCmd\":\"GetConfig\",\"Filter\": 255}");
 	ws.send("{\"Cmd\":\"SetDCCPP\", \"SubCmd\":\"SendCmd\",\"OpCode\": \"T\"}");
@@ -494,11 +525,24 @@ function loadDataFields(jsonData)
 
 function processDCCPPInput(jsonData)
 {
-	console.log(jsonData);
-	if (jsonData.Data.Msg[0].t == 1)
+//	console.log(jsonData);
+	if (jsonData.Data.Msg[0].t == 1) //opCode
 	{
 		var opCode = jsonData.Data.Msg[0].d;
 		if ((opCode == '#') && (jsonData.Data.Msg.length == 2))
 			writeTextField("refreshslots", jsonData.Data.Msg[1].d); //refresh slot update
+		if (opCode == 'H') //VPin
+		{
+			confirmTurnoutPin(jsonData);
+		}
+		if (opCode == 'Q') //Input
+		{
+			confirmSensorPin(jsonData);
+		}
+		if (opCode == 'Y') //ZPin
+		{
+			confirmTurnoutPin(jsonData);
+		}
+		
 	}
 }

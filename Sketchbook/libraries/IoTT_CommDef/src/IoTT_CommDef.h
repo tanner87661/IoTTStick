@@ -91,4 +91,6 @@ void setXORByte(uint8_t * msgData);
 bool getXORCheck(uint8_t * msgData, uint8_t targetLen = 0);
 void dispMsg(uint8_t * msgData, uint8_t targetLen = 0);
 void dispSlot(uint8_t * slotBytes);
+
+void untokstr(char* strList[], uint8_t listLen, char* inpStr, const char* token); 
 #endif

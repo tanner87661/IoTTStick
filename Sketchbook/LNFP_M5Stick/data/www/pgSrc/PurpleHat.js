@@ -67,26 +67,26 @@ function loadTableData(thisTable, thisData)
 function setButtonStatus()
 {
 //	console.log(configData[nodeCfg].InterfaceIndex, configData[work].InterfaceIndex);
-	setVisibility([6,12].indexOf(configData[nodeCfg].InterfaceIndex) >= 0, document.getElementById("btnAssign"));
-	setVisibility([6,12].indexOf(configData[nodeCfg].InterfaceIndex) >= 0, document.getElementById("dccaddr").parentElement);
-	setVisibility([6,12].indexOf(configData[nodeCfg].InterfaceIndex) >= 0, document.getElementById("dccstep").parentElement);
-	setVisibility([6,12].indexOf(configData[nodeCfg].InterfaceIndex) >= 0, document.getElementById("btnAssignsp"));
-	setVisibility([6,12].indexOf(configData[nodeCfg].InterfaceIndex) >= 0, document.getElementById("dccaddrsp").parentElement);
-	setVisibility([6,12].indexOf(configData[nodeCfg].InterfaceIndex) >= 0, document.getElementById("dccaddrtbl").parentElement);
+	setVisibility([12,17].indexOf(thisIntfID) >= 0, document.getElementById("btnAssign"));
+	setVisibility([17,12].indexOf(thisIntfID) >= 0, document.getElementById("dccaddr").parentElement);
+	setVisibility([17,12].indexOf(thisIntfID) >= 0, document.getElementById("dccstep").parentElement);
+	setVisibility([17,12].indexOf(thisIntfID) >= 0, document.getElementById("btnAssignsp"));
+	setVisibility([17,12].indexOf(thisIntfID) >= 0, document.getElementById("dccaddrsp").parentElement);
+	setVisibility([17,12].indexOf(thisIntfID) >= 0, document.getElementById("dccaddrtbl").parentElement);
 
 //	setVisibility([6,12].indexOf(configData[nodeCfg].InterfaceIndex) >= 0, document.getElementById("dccstepsp"));//.parentElement);
-	setVisibility([6,12,13].indexOf(configData[nodeCfg].InterfaceIndex) >= 0, document.getElementById("cbsetup_2"));
+	setVisibility([17,12].indexOf(thisIntfID) >= 0, document.getElementById("cbsetup_2"));
 //	setVisibility([6,12].indexOf(configData[nodeCfg].InterfaceIndex) >= 0, document.getElementById("cbsetup_tx_2"));
 	
 	setVisibility(validLocoDef, document.getElementById("btnSaveDecoder"));
 	setVisibility(validThrottleDef, document.getElementById("btnSaveThrottle"));
 	setVisibility(validTableDef, document.getElementById("btnProg"));
 
-	setVisibility(!validLocoDef && [6,12].indexOf(configData[nodeCfg].InterfaceIndex) >= 0, cvTableNative);
+	setVisibility(!validLocoDef && [17,12].indexOf(thisIntfID) >= 0, cvTableNative);
 	setVisibility(validLocoDef, cvTableJMRI);
-	setVisibility([6,12].indexOf(configData[nodeCfg].InterfaceIndex) >= 0, tabProgrammer);
+	setVisibility([17,12].indexOf(thisIntfID) >= 0, tabProgrammer);
 
-	setVisibility(validLocoDef || [6,12].indexOf(configData[nodeCfg].InterfaceIndex) >= 0, techSpeedDiv);
+	setVisibility(validLocoDef || [17,12].indexOf(thisIntfID) >= 0, techSpeedDiv);
 	setVisibility(validTechSpeedDef, speedTableDiv);
 	
 	setVisibility(false, document.getElementById("cbsetup_3")); //do not show Layout TPS tab right now
@@ -447,13 +447,16 @@ function loadSettings(sender)
 
 function loadNodeDataFields(jsonData)
 {
+//	console.log(jsonData);
+//	console.log(thisIntfID);
 	setButtonStatus();
-	document.getElementById("btnProg").innerHTML = configData[nodeCfg].InterfaceIndex == 13 ? "Save JMRI File" : "Write CV's";
+	document.getElementById("btnProg").innerHTML = thisIntfID == 17 ? "Save JMRI File" : "Write CV's";
 }
 
 function loadDataFields(jsonData)
 {
 //	console.log(jsonData);
+//	console.log(thisIntfID);
 	writeInputField("wheelsize", jsonData.WheelDia);
 	writeInputField("magincr", jsonData.MagThreshold);
 	writeInputField("testtracklen", jsonData.TrackLen);
@@ -658,7 +661,7 @@ function startSpeedTest(sender)
 //	return;
 	
 	if (locoAddr < 0)
-		if (configData[nodeCfg].InterfaceIndex == 13) //WiThrottle
+		if (thisIntfID == 17) //WiThrottle
 		{
 			alert("No DCC Address assigned! Verify connection to WiThrottle Server and reload JMRI file");
 			document.getElementById("btnLoadDecoder").files = [];
@@ -856,11 +859,11 @@ function progTable(sender)
 	if (validLocoDef)
 		storeToJMRI(locoDef);
 
-	if ((progMode == 0) && (configData[nodeCfg].InterfaceIndex != 13))
+	if ((progMode == 0) && (thisIntfID != 17))
 		if (confirm("Place locomotive on programming track and click OK") == false)
 			return;
 
-	if (configData[nodeCfg].InterfaceIndex == 13)
+	if (thisIntfID == 17)
 	{
 		if (validLocoDef)
 			saveJMRIDecoder(null);

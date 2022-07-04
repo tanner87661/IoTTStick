@@ -138,9 +138,9 @@ void handleUpload(AsyncWebServerRequest *request, String filename, size_t index,
 
 void processStatustoWebClient()
 {
-  //  Serial.println("Keep alive");
-  DynamicJsonDocument doc(512);
-  char myStatusMsg[350];
+//    Serial.println("Keep alive");
+  DynamicJsonDocument doc(640);
+  char myStatusMsg[600];
   doc["Cmd"] = "STATS";
   JsonObject Data = doc.createNestedObject("Data");
   float float1 = (millisRollOver * 4294967296) + millis(); //calculate millis including rollovers
@@ -178,7 +178,7 @@ void processStatustoWebClient()
 //  Serial.println(myStatusMsg);
   globalClient->text(myStatusMsg);
   lastWifiUse = millis();
-  //  Serial.println("Keep alive done");
+//    Serial.println("Keep alive done");
 }
 
 void sendKeepAlive()
@@ -604,6 +604,7 @@ void onWsEvent(AsyncWebSocket * server, AsyncWebSocketClient * client, AwsEventT
       }
     case WS_EVT_DATA:
       {
+//        Serial.println("WS Data");
         AwsFrameInfo * info = (AwsFrameInfo*)arg;
         //      String msg = "";
         if (info->final && info->index == 0 && info->len == len)
@@ -685,6 +686,7 @@ void onWsEvent(AsyncWebSocket * server, AsyncWebSocketClient * client, AwsEventT
       }
     case WS_EVT_ERROR:
       {
+        Serial.println("WS Error");
         break;
       }
   }

@@ -180,12 +180,12 @@ void sendPowerCommand(uint8_t cmdType, uint8_t pwrStatus)
 
 uint16_t sendLocoNetReply(lnTransmitMsg txData)
 {
-//  Serial.printf("Send reply: %2X", txData.lnData[0]);
-//  for (uint8_t i = 1; i < txData.lnMsgSize; i ++)
-//    Serial.printf(" %2X ", txData.lnData[i]);
+//  Serial.printf("Send reply: %2X", txData->lnData[0]);
+//  for (uint8_t i = 1; i < txData->lnMsgSize; i ++)
+//    Serial.printf(" %2X ", txData->lnData[i]);
 //  Serial.println();
   if (lnSerial)
-    lnSerial->lnWriteReply(txData);
+    lnSerial->lnWriteReply(&txData);
 }
 /*
 uint16_t sendDCCCmdGen(lnTransmitMsg txData)

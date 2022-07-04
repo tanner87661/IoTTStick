@@ -90,17 +90,18 @@ void setButtonLinks()
 
 void btnADown()
 {
-  Serial.println("Button A Down");
+//  Serial.println("Button A Down");
 }
 
 void btnAUp()
 {
-  Serial.println("Button A Up");
+//  Serial.println("Button A Up");
 }
 
 void btnAClick()
 {
 //  Serial.println("Button A Clicked");
+//  Serial.println(m5CurrentPage);
   pwrOffTimer = millis();
   if (darkScreen)
   {
@@ -145,12 +146,12 @@ void btnAClick()
         break;
       } //else go to 7
       else
-        m5CurrentPage = 7;
+        m5CurrentPage = 7; //keep going, no break
     case 7:
       switch (useInterface.devId)
       {
+        case 0: useM5Viewer = 0; m5CurrentPage = 3; oldWifiStatus = 0xFFFF; break;
         case 1:;
-        case 9:;
         case 10: dccViewerPage(); break;
         
         case 2:;
@@ -176,22 +177,22 @@ void btnAClick()
 
 void btnADblClick(uint8_t evtCtr)
 {
-  Serial.printf("Button A %i Double Clicked\n", evtCtr);
+//  Serial.printf("Button A %i Double Clicked\n", evtCtr);
 }
 
 void btnAOnHold(uint8_t evtCtr)
 {
-  Serial.printf("Button A %i Hold\n", evtCtr);
+//  Serial.printf("Button A %i Hold\n", evtCtr);
 }
 
 void btnBDown()
 {
-  Serial.println("Button B Down");
+//  Serial.println("Button B Down");
 }
 
 void btnBUp()
 {
-  Serial.println("Button B Up");
+//  Serial.println("Button B Up");
 }
 
 void btnBClick()
@@ -200,16 +201,16 @@ void btnBClick()
   pwrOffTimer = millis();
   switch (useHat.devId)
   {
-    case 6:
+    case 6://RedHat
     {
       if (m5CurrentPage == 3)
         if (WiFi.getMode() == 0)
         {
-          Serial.println("Connect WiFi");  
+//          Serial.println("Connect WiFi");  
           establishWifiConnection(myWebServer,dnsServer);
           return;
         }
-      Serial.println("Set Power Mode");
+//      Serial.println("Set Power Mode");
       uint8_t currPwr = digitraxBuffer->getPowerStatus();
       switch (currPwr)
       {
@@ -222,7 +223,7 @@ void btnBClick()
         case 2: //idle
           currPwr = 0x83;
           break;
-        default: Serial.println("Invalid Power Status. Set to Idle.");
+        default: // Serial.println("Invalid Power Status. Set to Idle.");
           currPwr = 0x83;
           break;
       }
@@ -260,7 +261,7 @@ void btnBClick()
 
 void btnBDblClick(uint8_t evtCtr)
 {
-  Serial.printf("Button B %i Double Clicked\n", evtCtr);
+//  Serial.printf("Button B %i Double Clicked\n", evtCtr);
   if (useHat.devId == 6) //RedHat Shield
 //    if(evtCtr == 2) 
         if (digitraxBuffer->getPowerStatus() != 0)
@@ -269,12 +270,12 @@ void btnBDblClick(uint8_t evtCtr)
 
 void btnBOnHold(uint8_t evtCtr)
 {
-  Serial.printf("Button B %i Hold\n", evtCtr);
+//  Serial.printf("Button B %i Hold\n", evtCtr);
 }
 
 void btnCClick()
 {
-  Serial.println("Button C Clicked");
+//  Serial.println("Button C Clicked");
 }
 
 void btnCDblClick(uint8_t evtCtr)
@@ -283,6 +284,7 @@ void btnCDblClick(uint8_t evtCtr)
   pwrOffTimer = millis();
   if (evtCtr >= wifiResetReqCount)
   {
+    Serial.println("Reset Wifi");
     if (WiFi.status() == WL_CONNECTED)
       WiFi.disconnect();
     WiFi.begin("0","0");
@@ -297,7 +299,7 @@ void btnCDblClick(uint8_t evtCtr)
 
 void btnCOnHold(uint8_t evtCtr)
 {
-  Serial.println("Button C Hold");
+//  Serial.println("Button C Hold");
   pwrOffTimer = millis();
   prepareShutDown(); //could be on the way to power off, so we save the data to SPIFFS
 }
@@ -577,14 +579,14 @@ void setStatusPage()
     case 1: drawText("using DCC", 5, lineY[1], 2); break;
     case 2: drawText("using LocoNet", 5, lineY[1], 2); break;
     case 3: drawText("using LN over MQTT", 5, lineY[1], 2); break;
-    case 4: drawText("using LocoNet", 5, lineY[1], 2); break; //LN Gateway
-    case 5: drawText("using OpenLCB", 5, lineY[1], 2); break; 
-    case 6: drawText("using OpenLCB over MQTT", 5, lineY[1], 2); break; //OpenLCB 
-    case 7: drawText("using OpenLCB", 5, lineY[1], 2); break; //OpenLCB 
+//    case 4: drawText("using LocoNet", 5, lineY[1], 2); break; //LN Gateway
+//    case 5: drawText("using OpenLCB", 5, lineY[1], 2); break; 
+//    case 6: drawText("using OpenLCB over MQTT", 5, lineY[1], 2); break; //OpenLCB 
+//    case 7: drawText("using OpenLCB", 5, lineY[1], 2); break; //OpenLCB 
     case 8: drawText("using MQTT", 5, lineY[1], 2); break; //native MQTT 
-    case 9: drawText("using DCC to MQTT", 5, lineY[1], 2); break;
+//    case 9: drawText("using DCC to MQTT", 5, lineY[1], 2); break;
     case 10: drawText("using DCC from MQTT", 5, lineY[1], 2); break;
-    case 11: drawText("using LN/TCP(Server)", 5, lineY[1], 2); break;
+//    case 11: drawText("using LN/TCP(Server)", 5, lineY[1], 2); break;
     case 12: 
     {
       char outText[50];
@@ -593,19 +595,38 @@ void setStatusPage()
       sprintf(outText, "using LN/TCP(Client)");// %s", outStr[);
       drawText(outText, 5, lineY[1], 2); break;
     }
-    case 13: drawText("using LN/MQTT/TCP(Server)", 5, lineY[1], 2); break;
-    case 14: drawText("using LN Loopback/TCP(Server)", 5, lineY[1], 2); break;
-    case 15: drawText("using LN-LB/MQTT/TCP(Server)", 5, lineY[1], 2); break;
     case 16: drawText("using LN Loopback", 5, lineY[1], 2); break;
     case 17: drawText("using WiThrottle", 5, lineY[1], 2); break;
     default: drawText("unknown", 5, lineY[1], 2); break;
   }
-  if ((useInterface.devId == 4) || (useInterface.devId == 7))
-    drawText("Gateway: active", 5, lineY[2], 2);
-  else
-    drawText("Gateway: not used", 5, lineY[2], 2);
-  drawText("Modules:", 5, lineY[3], 2);
+//  if ((useInterface.devId == 4) || (useInterface.devId == 7))
+//    drawText("Gateway: active", 5, lineY[2], 2);
+//  else
+//    drawText("Gateway: not used", 5, lineY[2], 2);
+
+  drawText("Servers:", 5, lineY[2], 2);
   String modList = "[";
+
+  if (lnMQTTServer)
+    modList += "MQTT";
+  if (lbServer)
+  {
+    if (modList.length() > 1)
+      modList += ", ";
+    modList += "TCP";
+  }
+  if (wiServer)
+  {
+    if (modList.length() > 1)
+      modList += ", ";
+    modList += "WiTh";
+  }
+  
+  modList += "]";
+  drawText(&modList[0], 50, lineY[2], 2); 
+
+  drawText("Modules:", 5, lineY[3], 2);
+  modList = "[";
   if (eventHandler)
     modList += "Evnt Hdlr";
 #ifdef useAI
@@ -631,7 +652,7 @@ if (secElHandlerList)
 //    modList += "Sensor Chain";
 //  }
   modList += "]";
-  drawText(&modList[0], 5, lineY[4], 2); 
+  drawText(&modList[0], 50, lineY[3], 2); 
 }
 
 void setPwrStatusPage()
@@ -817,6 +838,7 @@ String getLNString(lnReceiveBuffer * newData)
 String getOLCBString(lnReceiveBuffer * newData)
 {
   String outText = "";
+/*
   olcbMsg thisMsg;
   if (gc_format_parse_olcb(&thisMsg, newData) >= 0)
   {
@@ -837,6 +859,7 @@ String getOLCBString(lnReceiveBuffer * newData)
       outText += thisData;
     }
   }
+*/
   return outText;  
 }
 

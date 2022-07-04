@@ -14,7 +14,10 @@ function saveConfigFileSettings()
 
 function downloadSettings(sender)
 {
-	downloadConfig(0x4000); //send just this
+	if (currentPage == 5)
+		downloadConfig(0x0400); //send just this for lbServer
+	if (currentPage == 6)
+		downloadConfig(0x4000); //send just this for WiThrottle
 }
 
 function setLbServer(sender)
@@ -23,7 +26,10 @@ function setLbServer(sender)
 	if (sender.id == "serverip")
 		configData[workCfg].ServerIP = sender.value; 
 	if (sender.id == "serverport")
-		configData[workCfg].PortNr = sender.value; 
+		if (pageParam == 's')
+			configData[workCfg].ServerPortNr = sender.value; 
+		else
+			configData[workCfg].PortNr = sender.value; 
 }
 
 function constructPageContent(contentTab)
@@ -33,8 +39,14 @@ function constructPageContent(contentTab)
 		tempObj = createPageTitle(mainScrollBox, "div", "tile-1", "BasicCfg_Title", "h1", "LocoNet over TCP Server Configuration");
 		tempObj.setAttribute("id", "ServerTitle");
 		setVisibility(false, tempObj);
+		tempObj = createPageTitle(mainScrollBox, "div", "tile-1", "BasicCfg_Title", "h1", "WiThrottle Server Configuration");
+		tempObj.setAttribute("id", "WiServerTitle");
+		setVisibility(false, tempObj);
 		tempObj = createPageTitle(mainScrollBox, "div", "tile-1", "BasicCfg_Title", "h1", "LocoNet over TCP Client Configuration");
 		tempObj.setAttribute("id", "ClientTitle");
+		setVisibility(false, tempObj);
+		tempObj = createPageTitle(mainScrollBox, "div", "tile-1", "BasicCfg_Title", "h1", "WiThrottle Client Configuration");
+		tempObj.setAttribute("id", "WiClientTitle");
 		setVisibility(false, tempObj);
 
 //		createPageTitle(mainScrollBox, "div", "tile-1", "", "h2", "Basic Settings");
@@ -63,12 +75,17 @@ function loadNodeDataFields(jsonData)
 function loadDataFields(jsonData)
 {
 	configData[workCfg] = upgradeJSONVersion(jsonData);
-//	console.log(jsonData);
+//	console.log(currentPage);
 //	console.log(configData[nodeCfg]);
-	writeInputField("serverport", jsonData.PortNr);
+	if (pageParam == 's')
+		writeInputField("serverport", jsonData.ServerPortNr);
+	else
+		writeInputField("serverport", jsonData.PortNr);
 	writeInputField("serverip", jsonData.ServerIP);
-	setVisibility([8,9,10,11].indexOf(configData[nodeCfg].InterfaceIndex) >= 0, document.getElementById("ServerTitle"));
-	setVisibility([12,13].indexOf(configData[nodeCfg].InterfaceIndex) >= 0, document.getElementById("ServerIPDiv"));
-	setVisibility([12].indexOf(configData[nodeCfg].InterfaceIndex) >= 0, document.getElementById("ClientTitle"));
-//	setVisibility([13].indexOf(configData[nodeCfg].InterfaceIndex) >= 0, document.getElementById("WiClientTitle"));
+	setVisibility((configData[nodeCfg].ServerIndex.indexOf(1) >= 0) && (pageParam == 's') && (currentPage == 5), document.getElementById("ServerTitle"));
+	setVisibility((configData[nodeCfg].ServerIndex.indexOf(2) >= 0) && (pageParam == 's') && (currentPage == 6), document.getElementById("WiServerTitle"));
+	setVisibility((pageParam == 'c'), document.getElementById("ServerIPDiv"));
+//	setVisibility(([12].indexOf(thisIntfID) && (pageParam == 'c'), document.getElementById("ServerIPDiv"));
+	setVisibility(([12].indexOf(thisIntfID) >= 0) && (pageParam == 'c'), document.getElementById("ClientTitle"));
+	setVisibility(([17].indexOf(thisIntfID) >= 0) && (pageParam == 'c'), document.getElementById("WiClientTitle"));
 }

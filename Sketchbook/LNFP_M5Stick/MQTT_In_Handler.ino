@@ -4,21 +4,22 @@ void mqttTransmit(byte txMode, char* topic, char* payload) //mode (0:send, 1:sub
   {
     case 0: //subscribe
 //      Serial.println(topic);
-      if (lnMQTT)
-        lnMQTT->subscribe(topic);
+      if (lnMQTTClient)
+        lnMQTTClient->subscribe(topic);
       break;
     case 1: //transmit
       if (useM5Viewer == 4)
         processMQTTtoM5(true, topic, payload);
       if (globalClient != NULL)
         processDataToMQTTBWebClient("MQTTOut", topic, payload);
-      if (lnMQTT)
-        lnMQTT->publish(topic, payload);
+      if (lnMQTTClient)
+        lnMQTTClient->publish(topic, payload);
       break;
   }
 }
 
-void callbackMQTTMessage(char* topic, byte *  payload, unsigned int length)
+void nativeClientCallback(char* topic, byte* payload, unsigned int length)
+//void callbackMQTTMessage(char* topic, byte* payload, unsigned int length)
 {
     DynamicJsonDocument doc(6 * length);
     DeserializationError error = deserializeJson(doc, payload);

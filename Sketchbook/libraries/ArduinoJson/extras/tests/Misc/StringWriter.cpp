@@ -1,5 +1,5 @@
 // ArduinoJson - https://arduinojson.org
-// Copyright Benoit Blanchon 2014-2021
+// Copyright © 2014-2022, Benoit BLANCHON
 // MIT License
 
 #define ARDUINOJSON_ENABLE_ARDUINO_STRING 1
@@ -133,20 +133,6 @@ TEST_CASE("Writer<custom_string>") {
 
   REQUIRE(4 == print(writer, "ABCD"));
   REQUIRE("ABCD" == output);
-}
-
-TEST_CASE("IsWriteableString") {
-  SECTION("std::string") {
-    REQUIRE(IsWriteableString<std::string>::value == true);
-  }
-
-  SECTION("custom_string") {
-    REQUIRE(IsWriteableString<custom_string>::value == true);
-  }
-
-  SECTION("basic_string<wchar_t>") {
-    REQUIRE(IsWriteableString<std::basic_string<wchar_t> >::value == false);
-  }
 }
 
 TEST_CASE("serializeJson(doc, String)") {

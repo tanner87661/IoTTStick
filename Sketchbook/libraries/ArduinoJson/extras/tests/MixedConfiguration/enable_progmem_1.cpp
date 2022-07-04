@@ -1,8 +1,6 @@
 // ArduinoJson - https://arduinojson.org
-// Copyright Benoit Blanchon 2014-2021
+// Copyright © 2014-2022, Benoit BLANCHON
 // MIT License
-
-#include "progmem_emulation.hpp"
 
 #define ARDUINOJSON_ENABLE_PROGMEM 1
 #include <ArduinoJson.h>
@@ -50,6 +48,14 @@ TEST_CASE("Flash strings") {
 
     REQUIRE(doc[0] == F("world"));
   }
+}
+
+TEST_CASE("parseNumber()") {  // tables are in Flash
+  using ARDUINOJSON_NAMESPACE::parseNumber;
+
+  CHECK(parseNumber<float>("1") == 1.f);
+  CHECK(parseNumber<float>("1.23") == 1.23f);
+  CHECK(parseNumber<float>("-1.23e34") == -1.23e34f);
 }
 
 TEST_CASE("strlen_P") {

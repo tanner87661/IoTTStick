@@ -1,5 +1,5 @@
 // ArduinoJson - https://arduinojson.org
-// Copyright Benoit Blanchon 2014-2021
+// Copyright © 2014-2022, Benoit BLANCHON
 // MIT License
 
 #include <ArduinoJson.h>
@@ -31,7 +31,7 @@ static void checkVariant(T value, const std::string& expected) {
 }
 
 TEST_CASE("serialize MsgPack value") {
-  SECTION("undefined") {
+  SECTION("unbound") {
     checkVariant(JsonVariant(), "\xC0");  // we represent undefined as nil
   }
 
@@ -143,5 +143,19 @@ TEST_CASE("serialize MsgPack value") {
   SECTION("serialized(const char*)") {
     checkVariant(serialized("\xDA\xFF\xFF"), "\xDA\xFF\xFF");
     checkVariant(serialized("\xDB\x00\x01\x00\x00", 5), "\xDB\x00\x01\x00\x00");
+  }
+
+  SECTION("serialize round double as integer") {  // Issue #1718
+    checkVariant(-32768.0, "\xD1\x80\x00");
+    checkVariant(-129.0, "\xD1\xFF\x7F");
+    checkVariant(-128.0, "\xD0\x80");
+    checkVariant(-33.0, "\xD0\xDF");
+    checkVariant(-32.0, "\xE0");
+    checkVariant(-1.0, "\xFF");
+    checkVariant(0.0, "\x00");
+    checkVariant(127.0, "\x7F");
+    checkVariant(128.0, "\xCC\x80");
+    checkVariant(255.0, "\xCC\xFF");
+    checkVariant(256.0, "\xCD\x01\x00");
   }
 }

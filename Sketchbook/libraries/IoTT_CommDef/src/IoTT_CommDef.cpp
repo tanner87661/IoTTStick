@@ -44,3 +44,16 @@ void dispSlot(uint8_t * slotBytes)
 		Serial.printf("%2X ", slotBytes[i]);
 	Serial.println();
 }
+
+void untokstr(char* strList[], uint8_t listLen, char* inpStr, const char* token)
+{
+	byte numStr = 0;
+	char* tokPos = strtok(inpStr, token);
+	while ((tokPos) && (numStr < listLen))
+	{
+		strList[numStr] = tokPos;
+		numStr++;
+		tokPos = strtok(NULL, token);
+	}	
+	strList[numStr] = '\0';
+}

@@ -32,6 +32,53 @@ void prepLACKMsg(lnTransmitMsg * msgData, uint8_t ackCode, uint8_t ackData)
 	setXORByte(&msgData->lnData[0]);
 }
 
+void prepTurnoutMsg(lnTransmitMsg * msgData, bool useACK, uint16_t swiAddr, uint8_t swiPos)
+{
+	if (swiPos == 2)
+		swiPos = (digitraxBuffer->getSwiPosition(swiAddr) >> 5) ^ 0x01;
+	msgData->lnData[0] = useACK ? 0xBD : 0xB0; //OPC_SW_ACK : OPC_SW_REQ
+	msgData->lnData[1] = swiAddr & 0x7F;
+	msgData->lnData[2] = ((swiAddr >> 7) & 0x0F) + (swiPos << 5);
+	msgData->lnMsgSize = 4;
+	setXORByte(&msgData->lnData[0]);
+}
+
+void prepSlotStat1Msg(lnTransmitMsg * msgData, uint8_t slotNr, uint8_t stat)
+{
+	msgData->lnData[0] = 0xB5; //OPC_SLOT_STAT1
+	msgData->lnData[1] = slotNr;
+	msgData->lnData[2] = stat;
+	msgData->lnMsgSize = 4;
+	setXORByte(&msgData->lnData[0]);
+}
+
+void prepSlotSpeedMsg(lnTransmitMsg * msgData, uint8_t slotNr, uint8_t speed)
+{
+	msgData->lnData[0] = 0xA0; //OPC_LOCO_SPD
+	msgData->lnData[1] = slotNr;
+	msgData->lnData[2] = speed;
+	msgData->lnMsgSize = 4;
+	setXORByte(&msgData->lnData[0]);
+}
+
+void prepSlotDirFMsg(lnTransmitMsg * msgData, uint8_t slotNr, uint8_t dirfdata)
+{
+	msgData->lnData[0] = 0xA1; //OPC_LOCO_DIRF
+	msgData->lnData[1] = slotNr;
+	msgData->lnData[2] = dirfdata;
+	msgData->lnMsgSize = 4;
+	setXORByte(&msgData->lnData[0]);
+}
+
+void prepSlotSndMsg(lnTransmitMsg * msgData, uint8_t slotNr, uint8_t snddata)
+{
+	msgData->lnData[0] = 0xA2; //OPC_LOCO_SND
+	msgData->lnData[1] = slotNr;
+	msgData->lnData[2] = snddata;
+	msgData->lnMsgSize = 4;
+	setXORByte(&msgData->lnData[0]);
+}
+
 void prepSlotRequestMsg(lnTransmitMsg * msgData, uint8_t slotNr)
 {
 	msgData->lnData[0] = 0xBB; //OPC_SL_RQ_DATA
@@ -76,6 +123,15 @@ void prepSlotWriteMsg(lnTransmitMsg * msgData, uint8_t slotNr)
 	msgData->lnData[4] &= 0x7F; //make sure slot init bit 7 is 0
 	msgData->lnData[7] = digitraxBuffer->trackByte; //insert global TrackByte
 	msgData->lnMsgSize = 14;
+	setXORByte(&msgData->lnData[0]);
+}
+
+void prepSlotMoveMsg(lnTransmitMsg * msgData, uint8_t slotSRC, uint8_t slotDEST)
+{
+	msgData->lnData[0] = 0xBA; //OPC_MOVE_SLOTS
+	msgData->lnData[1] = slotSRC;
+	msgData->lnData[2] = slotDEST;
+	msgData->lnMsgSize = 4;
 	setXORByte(&msgData->lnData[0]);
 }
 
@@ -1145,7 +1201,9 @@ void IoTT_DigitraxBuffers::processBufferUpdates(lnReceiveBuffer * newData) //pro
 				}
 			}
 			else
+			{
 				setSlotDirfSpeed(newData, isCommandStation); //update slot, send DCC commands, if command station
+			}
 		}
 		break;
         case 0xB1: //OPC_SW_REP from e.g. switch decoder
@@ -1917,8 +1975,9 @@ bool IoTT_DigitraxBuffers::processDCCGenerator(lnReceiveBuffer * newData)
 							for (uint8_t i = 0; i < numBytes; i++)
 								txBuffer.lnData[1+i] = newData->lnData[i+5] + ((newData->lnData[4] & (0x01 << i)) << (7 - i));
 							txBuffer.lnMsgSize = numBytes + 1;
-							for (uint8_t i = 0; i < (newData->lnData[3] & 0x07); i++)
-								dccPort->lnWriteMsg(txBuffer);
+							if (dccPort)
+								for (uint8_t i = 0; i < (newData->lnData[3] & 0x07); i++)
+									dccPort->lnWriteMsg(txBuffer);
 								//dccOutFct(txBuffer);
 						}
 						break;
@@ -1977,13 +2036,14 @@ void IoTT_DigitraxBuffers::setSlotDirfSpeed(lnReceiveBuffer * newData, bool send
 			case 0xA1: //OPC_LOCO_DIRF
 			{
 				newData->reqID = ((*thisSlot)[3] ^ newData->lnData[2]) & 0x003F; //mark the bits that change for updating DCC
+				(*thisSlot)[3] = (newData->lnData[2] & 0x3F);
 				if (isCommandStation)
+				{
 					if ((newData->reqID & 0x20) > 0) //Direction Change
 						iterateMULinks(newData->lnData[1], (*thisSlot)[2] | 0x80);
-				(*thisSlot)[3] = (newData->lnData[2] & 0x3F);
-				if ((newData->reqID & 0x1F) > 0) //Function Change
-					setDCCFuncCmd(newData->lnData[1], &newData->lnData[0]); //light and func 1-4
-					
+					if ((newData->reqID & 0x1F) > 0) //Function Change
+						setDCCFuncCmd(newData->lnData[1], &newData->lnData[0]); //light and func 1-4
+				}	
 //			    Serial.printf("New Slot DIRF %2X\n", (*thisSlot)[3]);
 				break; 
 			}
@@ -1991,12 +2051,13 @@ void IoTT_DigitraxBuffers::setSlotDirfSpeed(lnReceiveBuffer * newData, bool send
 			{
 				newData->reqID = ((*thisSlot)[7] ^ newData->lnData[2]) & 0x000F;
 			    (*thisSlot)[7] = newData->lnData[2] & 0x0F;
-				if ((newData->reqID & 0x0F) > 0) //Function Change
-					setDCCFuncCmd(newData->lnData[1], &newData->lnData[0]); //light and func 1-4
+				if (isCommandStation)
+					if ((newData->reqID & 0x0F) > 0) //Function Change
+						setDCCFuncCmd(newData->lnData[1], &newData->lnData[0]); //light and func 1-4
 				break; 
 			}
 			case 0xB5: //OPC_SLOT_STAT1 
-				Serial.println("slot stat1");
+//				Serial.println("slot stat1");
 				newData->reqID = ((*thisSlot)[0] ^ newData->lnData[2]) & 0x007F;
 			    (*thisSlot)[0] = newData->lnData[2];
 				break;
@@ -2005,8 +2066,9 @@ void IoTT_DigitraxBuffers::setSlotDirfSpeed(lnReceiveBuffer * newData, bool send
 				{
 					newData->reqID = ((*thisSlot)[3] ^ newData->lnData[2]) & 0x000F;
 					(*thisSlot)[3] = newData->lnData[2];
-				if ((newData->reqID & 0x0F) > 0) //Function Change
-					setDCCFuncCmd(newData->lnData[1], &newData->lnData[0]); //light and func 1-4
+					if (isCommandStation)
+					if ((newData->reqID & 0x0F) > 0) //Function Change
+						setDCCFuncCmd(newData->lnData[1], &newData->lnData[0]); //light and func 1-4
 				}
 				break;
 		}

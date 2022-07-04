@@ -39,16 +39,54 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
 extern IoTT_DigitraxBuffers * digitraxBuffer;
 extern void prepSlotReadMsg(lnTransmitMsg * msgData, uint8_t slotNr);
-//extern void callbackLocoNetMessage(lnReceiveBuffer * newData);
+extern void prepLocoAddrReqMsg(lnTransmitMsg * msgData, uint16_t dccAddr);
+extern void prepSlotMoveMsg(lnTransmitMsg * msgData, uint8_t slotSRC, uint8_t slotDEST);
+extern void prepSlotStat1Msg(lnTransmitMsg * msgData, uint8_t slotNr, uint8_t stat);
+extern void prepSlotSpeedMsg(lnTransmitMsg * msgData, uint8_t slotNr, uint8_t speed);
+extern void prepSlotDirFMsg(lnTransmitMsg * msgData, uint8_t slotNr, uint8_t dirfdata);
+extern void prepSlotSndMsg(lnTransmitMsg * msgData, uint8_t slotNr, uint8_t snddata);
+extern void prepTurnoutMsg(lnTransmitMsg * msgData, bool useACK, uint16_t swiAddr, uint8_t swiPos);
+
+extern void callbackLocoNetMessage(lnReceiveBuffer * newData);
+extern uint16_t sendMsg(lnTransmitMsg txData);
 
 typedef struct
 {
+	uint16_t locoAddr = 0;
+	uint8_t slotNum = 0;
+	uint16_t dirFct = 0;
+	uint16_t noLatchFct = 0x0200; //Fct 2 is momentary
+	uint8_t slotStatus = 0;
+	bool activeSlot = false;
+	char throttleID;
+} locoDef;
+
+//typedef struct
+class tcpDef
+{
+public:
+	tcpDef();
+	~tcpDef();
+	void addLoco(uint16_t locoAddr, char thID);
+	void removeLoco(uint16_t locoAddr, char thID);
+	void stealLoco(uint16_t locoAddr, char thID);
+	void confirmLoco(uint8_t slotAddr, uint16_t locoAddr, char thID, uint8_t slotStat, uint8_t slotSpeed, uint16_t dirFctFlags);
+	void setTurnout(char pos, char* addr);
+	locoDef* getLocoByAddr(uint16_t locoAddr, char thID);
+	locoDef* getLocoBySlot(uint8_t slotAddr, char thID);
+	void setLocoAction(uint16_t locoAddr, char thID, char* ActionCode);
+
+public:
 	AsyncClient * thisClient = NULL;
 	char * wiHWIdentifier = NULL;
 	char * wiDeviceName = NULL;
 	uint32_t nextPing = millis();
-} tcpDef;
-
+	uint8_t sendInitSeq = 0;
+private:	
+	uint8_t currSpeed;
+	std::vector<locoDef> slotList;
+//	uint8_t slotListLen = 0;
+};
 
 class IoTT_LBServer
 {
@@ -60,9 +98,9 @@ public:
 	void initWIServer(bool serverMode = false); //server mode not supported at this time
 	void startServer();
 	void processLoop();
-	uint16_t lnWriteMsg(lnTransmitMsg txData);
-	uint16_t lnWriteMsg(lnReceiveBuffer txData);
-	void setLNCallback(cbFct newCB);
+	uint16_t lnWriteMsg(lnTransmitMsg* txData);
+	uint16_t lnWriteMsg(lnReceiveBuffer* txData);
+//	void setLNCallback(cbFct newCB);
 	void loadLBServerCfgJSON(DynamicJsonDocument doc);
 	String getServerIP();
 	uint8_t getConnectionStatus();
@@ -80,7 +118,7 @@ public:
   
 private:
    // Member functions
-	bool sendLNMessage(lnReceiveBuffer txData);
+//	bool sendLNMessage(lnReceiveBuffer txData);
 
 	void handleData(AsyncClient* client, char *data, size_t len);
 	/* clients events */
@@ -92,7 +130,7 @@ private:
 	void processLoopWI(); //process function for WiThrottle
    // Member variables
     AsyncServer * lntcpServer = NULL;
-    tcpDef lntcpClient;
+    AsyncClient * lntcpClient = NULL;
     bool isServer = true;
 	
 	uint32_t lastReconnectAttempt = millis();
@@ -100,6 +138,7 @@ private:
 	uint8_t que_rdPos = 0, que_wrPos = 0;
     bool sendLNClientMessage(AsyncClient * thisClient, String cmdMsg, lnReceiveBuffer thisMsg);
 	String getWIMessageString(AsyncClient * thisClient, lnReceiveBuffer thisMsg);
+	bool sendWIServerMessageString(AsyncClient * thisClient, uint8_t replyType);
     bool sendWIClientMessage(AsyncClient * thisClient, String cmdMsg);
     void sendLNPing();
 	void sendWIPing();
@@ -124,10 +163,11 @@ private:
 	int16_t currentWIDCC = 0;
 	uint16_t pingInterval = 10000; //ping every 5-10 secs if there is no other traffic
 
-	std::vector<tcpDef> clients; // a list to hold all clients when in server mode
+	std::vector<tcpDef*> clients; // a list to hold all clients when in server mode
 
 	IPAddress lbs_IP;
 	uint16_t lbs_Port = 1234; // = LocoNet over TCP port number, must be set the same in JMRI or other programs
+	uint16_t lbs_ServerPort = 1234; // = LocoNet over TCP port number, must be set the same in JMRI or other programs
 
 	uint16_t wiVersion = 0;
 	char * wiServerType = NULL;
