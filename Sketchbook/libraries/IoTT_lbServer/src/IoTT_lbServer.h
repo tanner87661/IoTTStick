@@ -74,8 +74,8 @@ public:
 	void stealLoco(uint16_t locoAddr, char thID);
 	void confirmLoco(uint8_t slotAddr, uint16_t locoAddr, char thID, uint8_t slotStat, uint8_t slotSpeed, uint16_t dirFctFlags);
 	void setTurnout(char pos, char* addr);
-	locoDef* getLocoByAddr(uint16_t locoAddr, char thID);
-	locoDef* getLocoBySlot(uint8_t slotAddr, char thID);
+	locoDef* getLocoByAddr(locoDef* startAt, uint16_t locoAddr, char thID);
+	locoDef* getLocoBySlot(locoDef* startAt, uint8_t slotAddr, char thID);
 	void setLocoAction(uint16_t locoAddr, char thID, char* ActionCode);
 	void setTrackPowerStatus(uint8_t newStatus);
 public:

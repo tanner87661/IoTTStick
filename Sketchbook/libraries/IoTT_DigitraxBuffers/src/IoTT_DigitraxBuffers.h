@@ -150,8 +150,8 @@ class IoTT_DigitraxBuffers
 		void loadFromFile(String fileName);
 		void processLoop(); //run loop to see if something needs to be sent out
 		void processLocoNetMsg(lnReceiveBuffer * newData); //process incoming Loconet messages
-		void writeProg(uint16_t dccAddr, uint8_t progMode, uint16_t cvNr, uint8_t cvVal);
-		void readProg(uint16_t dccAddr, uint8_t progMode, uint16_t cvNr);
+		void writeProg(uint16_t dccAddr, uint8_t progMode, uint8_t progMethod, uint16_t cvNr, uint8_t cvVal);
+		void readProg(uint16_t dccAddr, uint8_t progMode, uint8_t progMethod, uint16_t cvNr);
 		void setPowerStatus(uint8_t newStatus);
 		void localPowerStatusChange(uint8_t newStatus);
 //		void sendSwiReq(bool useAck, uint16_t swiAddr, uint8_t newPos);

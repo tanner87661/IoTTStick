@@ -66,6 +66,30 @@ var ServerList = [{"Name":"MQTT Broker Gateway","ServerId":0,"InterfaceList":[1,
 	return jsonData;
 }
 
+function upgradeJSONVersionPurpleHat(jsonData)
+{
+	jsonFileVersion = "1.0.1";
+	var thisVersion = jsonData.Version;
+	console.log(thisVersion);
+	if (thisVersion == jsonFileVersion)
+		return jsonData;
+	if ((isNaN(thisVersion)) || (thisVersion = undefined))
+	{
+		//upgrade from noversion to 1.0.0
+		console.log("upgrade PurpleHat Config from noversion to 1.0.0");
+		jsonData.Version = "1.0.0";
+	}
+	if (jsonData.Version == "1.0.0")
+	{
+		
+		console.log("upgrade PurpleHat Config from 1.0.0 to 1.0.1");
+		jsonData.ProgMethod = 0;
+		jsonData.ProgMode = 0;
+		jsonData.Version = "1.0.1";
+	}
+	return jsonData;
+}
+
 function upgradeJSONVersionLBServer(jsonData)
 {
 	jsonFileVersion = "1.0.1";

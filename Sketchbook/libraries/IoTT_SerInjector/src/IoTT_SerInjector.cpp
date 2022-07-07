@@ -121,10 +121,12 @@ uint16_t IoTT_SerInjector::lnWriteMsg(lnReceiveBuffer txData)
 	}
 }
 
+
 void IoTT_SerInjector::setTxCallback(txFct newCB)
 {
 	usbCallback = newCB;
 }
+
 
 void IoTT_SerInjector::processLNMsg(lnTransmitMsg* recData)
 {

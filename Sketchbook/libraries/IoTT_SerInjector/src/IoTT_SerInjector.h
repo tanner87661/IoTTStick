@@ -111,5 +111,5 @@ private:
 //extern IoTT_SerInjector* usbSerial;
 
 //this is the callback function. Provide a function of this name and parameter in your application and it will be called when a new message is received
-extern void onLocoNetMessage(lnReceiveBuffer* recData) __attribute__ ((weak));
+//extern void onLocoNetMessage(lnReceiveBuffer* recData) __attribute__ ((weak));
 #endif

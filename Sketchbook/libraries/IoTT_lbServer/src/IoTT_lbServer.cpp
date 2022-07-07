@@ -111,7 +111,7 @@ void tcpDef::addLoco(uint16_t locoAddr, char thID)
 {
 //	Serial.printf("Add Loco %i\n", locoAddr);
 	lnTransmitMsg txData;
-	locoDef * thisLoco = getLocoByAddr(locoAddr, thID);
+	locoDef * thisLoco = getLocoByAddr(NULL, locoAddr, thID);
 	if (!thisLoco)
 	{
 		locoDef newLoco;
@@ -148,7 +148,7 @@ void tcpDef::removeLoco(uint16_t locoAddr, char thID)
 	}
 	else
 	{
-		locoDef * thisLoco = getLocoByAddr(locoAddr, thID);
+		locoDef * thisLoco = getLocoByAddr(NULL, locoAddr, thID);
 		if ((thisLoco) && ((thisLoco->throttleID == thID) || (thID == '*')))
 		{
 			prepSlotStat1Msg(&txData, thisLoco->slotNum, 0x13);
@@ -173,7 +173,7 @@ void tcpDef::removeLoco(uint16_t locoAddr, char thID)
 void tcpDef::confirmLoco(uint8_t slotAddr, uint16_t locoAddr, char thID, uint8_t slotStat, uint8_t slotSpeed, uint16_t dirFctFlags)
 {
 	char replBuf[20] = {'\0'};
-	locoDef * thisLoco = getLocoByAddr(locoAddr, thID);
+	locoDef * thisLoco = getLocoByAddr(NULL, locoAddr, thID);
 	if (thisLoco)
 	{
 		currSpeed = slotSpeed;
@@ -212,7 +212,7 @@ void tcpDef::confirmLoco(uint8_t slotAddr, uint16_t locoAddr, char thID, uint8_t
 void tcpDef::stealLoco(uint16_t locoAddr, char thID)
 {
 	char replBuf[20] = {'\0'};
-	locoDef * thisLoco = getLocoByAddr(locoAddr, thID);
+	locoDef * thisLoco = getLocoByAddr(NULL, locoAddr, thID);
 	if (thisLoco)
 	{
 		if (thisLoco->activeSlot) return;
@@ -243,29 +243,42 @@ void tcpDef::setTurnout(char pos, char* addr)
 	sendMsg(txData);
 }
 
-locoDef* tcpDef::getLocoByAddr(uint16_t locoAddr, char thID)
+locoDef* tcpDef::getLocoByAddr(locoDef* startAt, uint16_t locoAddr, char thID)
 {
+	bool trigOK = (startAt == NULL);
 	for (uint8_t i = 0; i < slotList.size(); i++)
-		if ((slotList[i].locoAddr == locoAddr) && ((slotList[i].throttleID == thID) || (thID == '*')))
-			return &slotList[i];
+	{
+		if (!trigOK)
+			trigOK = &slotList[i] == startAt;
+		else
+			if ((slotList[i].locoAddr == locoAddr) && ((slotList[i].throttleID == thID) || (thID == '*')))
+				return &slotList[i];
+	}
 	return NULL;
 }
 
-locoDef* tcpDef::getLocoBySlot(uint8_t slotAddr, char thID)
+locoDef* tcpDef::getLocoBySlot(locoDef* startAt, uint8_t slotAddr, char thID)
 {
+	bool trigOK = (startAt == NULL);
 	for (uint8_t i = 0; i < slotList.size(); i++)
-		if ((slotList[i].slotNum == slotAddr) && ((slotList[i].throttleID == thID) || (thID == '*')))
-			return &slotList[i];
+	{
+		if (!trigOK)
+			trigOK = &slotList[i] == startAt;
+		else
+			if ((slotList[i].slotNum == slotAddr) && ((slotList[i].throttleID == thID) || (thID == '*')))
+				return &slotList[i];
+	}
 	return NULL;
 }
 
 void tcpDef::setLocoAction(uint16_t locoAddr, char thID, char* ActionCode)
 {
 //	Serial.printf("Loco Action Throttle %c Addr %i %s\n", thID, locoAddr, ActionCode);
-	char replBuf[20] = {'\0'};
+	char replBuf[100] = {'\0'};
+	char* nextBuf = &replBuf[0]; 
 	locoDef * thisLoco = NULL;
 	if (locoAddr != 0xFFFF)
-		thisLoco = getLocoByAddr(locoAddr, thID);
+		thisLoco = getLocoByAddr(NULL, locoAddr, thID);
 	char* paramStr  = &ActionCode[1];
 	uint8_t paramVal = 0;
 	lnTransmitMsg txData;
@@ -286,21 +299,33 @@ void tcpDef::setLocoAction(uint16_t locoAddr, char thID, char* ActionCode)
 
 				if ((thisLoco) && ((thisLoco->throttleID == thID) || (thID == '*')))
 				{
-					bool isMomentary = (fctMask & thisLoco->noLatchFct) || forceVal;
-					if ((paramVal == 0) && (!isMomentary))
-						return; //no button release action for latching function)
-					if (isMomentary)
-						thisLoco->dirFct = (paramVal != 0) ? (thisLoco->dirFct | fctMask) : (thisLoco->dirFct & (~fctMask));
-					else
-						thisLoco->dirFct = (thisLoco->dirFct ^ fctMask);
-					thisLoco->dirFct &= 0x7F7F; //clear leading bits
-					if (fctNum <= 4)
-						prepSlotDirFMsg(&txData, thisLoco->slotNum, thisLoco->dirFct >> 8);
-					else if (fctNum <= 8)
-						prepSlotSndMsg(&txData, thisLoco->slotNum, thisLoco->dirFct & 0x7F);
-					else return;
+					while (thisLoco)
+					{
+						bool isMomentary = (fctMask & thisLoco->noLatchFct) || forceVal;
+						if ((paramVal == 0) && (!isMomentary))
+						{
+							thisLoco = getLocoByAddr(thisLoco, locoAddr, thID);
+							continue; //no button release action for latching function)
+						}
+						uint16_t currFct = (digitraxBuffer->slotBuffer[thisLoco->slotNum][3] << 8) + digitraxBuffer->slotBuffer[thisLoco->slotNum][7];
+						if (isMomentary)
+							currFct = (paramVal != 0) ? (currFct | fctMask) : (currFct & (~fctMask));
+						else
+							currFct = (currFct ^ fctMask);
+						currFct &= 0x7F7F; //clear leading bits
+						if (fctNum <= 4)
+							prepSlotDirFMsg(&txData, thisLoco->slotNum, currFct >> 8);
+						else if (fctNum <= 8)
+							prepSlotSndMsg(&txData, thisLoco->slotNum, currFct & 0x7F);
+						else 
+						{
+							thisLoco = getLocoByAddr(thisLoco, locoAddr, thID);
+							continue; //no button release action for latching function)
+						}
 //					Serial.printf("Num: %i Stat: %i Mask: 0x%2X Fct Val: 0x%2X\n", fctNum, paramVal, fctMask, thisLoco->dirFct);
-					sendMsg(txData);
+						sendMsg(txData);
+						thisLoco = getLocoByAddr(thisLoco, locoAddr, thID);
+					}
 				}
 				else
 					for (uint8_t i = 0; i < slotList.size(); i++)
@@ -310,15 +335,16 @@ void tcpDef::setLocoAction(uint16_t locoAddr, char thID, char* ActionCode)
 							bool isMomentary = (fctMask & slotList[i].noLatchFct) || forceVal;
 							if ((paramVal == 0) && (!isMomentary))
 								continue; //no button release action for latching function)
+							uint16_t currFct = (digitraxBuffer->slotBuffer[slotList[i].slotNum][3] << 8) + digitraxBuffer->slotBuffer[slotList[i].slotNum][7];
 							if (isMomentary)
-								slotList[i].dirFct = (paramVal != 0) ? (slotList[i].dirFct | fctMask) : (slotList[i].dirFct & (~fctMask));
+								currFct = (paramVal != 0) ? (currFct | fctMask) : (currFct & (~fctMask));
 							else
-								slotList[i].dirFct = (slotList[i].dirFct ^ fctMask);
-							slotList[i].dirFct &= 0x7F7F; //clear leading bits
+								currFct = (currFct ^ fctMask);
+							currFct &= 0x7F7F; //clear leading bits
 							if (fctNum <= 4)
-								prepSlotDirFMsg(&txData, slotList[i].slotNum, slotList[i].dirFct >> 8);
+								prepSlotDirFMsg(&txData, slotList[i].slotNum, currFct >> 8);
 							else if (fctNum <= 8)
-								prepSlotSndMsg(&txData, slotList[i].slotNum, slotList[i].dirFct & 0x7F);
+								prepSlotSndMsg(&txData, slotList[i].slotNum, currFct & 0x7F);
 							else continue;
 //							Serial.printf("Addr: %i Num: %i Stat: %i Mask: 0x%2X Fct Val: 0x%2X\n", slotList[i].locoAddr, fctNum, paramVal, fctMask, slotList[i].dirFct);
 							sendMsg(txData);
@@ -337,8 +363,47 @@ void tcpDef::setLocoAction(uint16_t locoAddr, char thID, char* ActionCode)
 //						Serial.printf("Slots %i:  %2x %2X\n", slotList[i].slotNum, (*thisSlot)[2],(*thisSlot)[3]);
 						switch (ActionCode[1])
 						{
-							case 'V': sprintf(replBuf, "M%cA%c%i<;>V%i\r\n", slotList[i].throttleID, slotList[i].locoAddr > 127 ? 'L' : 'S', slotList[i].locoAddr, (*thisSlot)[2]); break;
-							case 'R': sprintf(replBuf, "M%cA%c%i<;>R%i\r\n", slotList[i].throttleID, slotList[i].locoAddr > 127 ? 'L' : 'S', slotList[i].locoAddr, (((*thisSlot)[3] & 0x20) >> 5) ^ 0x01); break;
+							case 'V': 
+									sprintf(replBuf, "M%cA%c%i<;>V%i\r\n", slotList[i].throttleID, slotList[i].locoAddr > 127 ? 'L' : 'S', slotList[i].locoAddr, (*thisSlot)[2]); 
+									break;
+							case 'R': 
+								{
+									uint16_t currFct = (digitraxBuffer->slotBuffer[slotList[i].slotNum][3] << 8) + digitraxBuffer->slotBuffer[slotList[i].slotNum][7];
+//									Serial.printf("Curr Dir %i\n", currFct & 0x2000);
+									uint16_t fctChgMask = currFct ^ slotList[i].dirFct;
+//									Serial.printf("Fct: %2X Curr: %2X Chg: %2X\n", currFct, slotList[i].dirFct, fctChgMask);
+									if (fctChgMask & 0x2000)
+										slotList[i].dirFct ^= 0x2000;
+//									Serial.printf("Return Dir %i\n", slotList[i].dirFct & 0x2000);
+//									sprintf(replBuf, "M%cA%c%i<;>R%i\r\n", slotList[i].throttleID, slotList[i].locoAddr > 127 ? 'L' : 'S', slotList[i].locoAddr, (((*thisSlot)[3] & 0x20) >> 5) ^ 0x01); 
+									sprintf(replBuf, "M%cA%c%i<;>R%i\r\n", slotList[i].throttleID, slotList[i].locoAddr > 127 ? 'L' : 'S', slotList[i].locoAddr, ((slotList[i].dirFct & 0x2000) >> 13) ^ 0x01);
+								}
+								break;
+							case 'F': 
+								{
+									uint16_t currFct = (digitraxBuffer->slotBuffer[thisLoco->slotNum][3] << 8) + digitraxBuffer->slotBuffer[thisLoco->slotNum][7];
+									uint16_t fctChgMask = currFct ^ slotList[i].dirFct;
+									uint16_t bitMaskF = 0x0100;
+									uint16_t bitMaskS = 0x0001;
+//									Serial.printf("Fct: %2X Curr: %2X Chg: %2X\n", currFct, slotList[i].dirFct, fctChgMask);
+									if (fctChgMask)
+									{
+										if (fctChgMask & 0x1000)
+											nextBuf += sprintf(nextBuf, "M%cA%c%i<;>F%i%i\r\n", slotList[i].throttleID, slotList[i].locoAddr > 127 ? 'L' : 'S', slotList[i].locoAddr, (currFct & 0x1000)>>12, 0);
+										for (uint8_t j = 0; j < 4; j++)
+										{
+											if (fctChgMask & bitMaskF)
+												nextBuf += sprintf(nextBuf, "M%cA%c%i<;>F%i%i\r\n", slotList[i].throttleID, slotList[i].locoAddr > 127 ? 'L' : 'S', slotList[i].locoAddr, (currFct & bitMaskF)>>(j+8), j+1);
+											if (fctChgMask & bitMaskS)
+												nextBuf += sprintf(nextBuf, "M%cA%c%i<;>F%i%i\r\n", slotList[i].throttleID, slotList[i].locoAddr > 127 ? 'L' : 'S', slotList[i].locoAddr, (currFct & bitMaskS)>>j, j+5);
+											bitMaskF <<= 1;
+											bitMaskS <<= 1;
+										}
+											
+									}
+									slotList[i].dirFct = currFct;
+								}
+								break;
 							default: Serial.println("No code"); return;
 						}
 					}
@@ -354,12 +419,14 @@ void tcpDef::setLocoAction(uint16_t locoAddr, char thID, char* ActionCode)
 		case 'R':
 			{
 				paramVal = strtol(paramStr, NULL, 10);
-//				Serial.println(paramVal);
+				uint16_t targetFct = 0;
 				if ((thisLoco) && ((thisLoco->throttleID == thID) || (thID == '*')))
 				{
-					thisLoco->dirFct = ((paramVal == 0) ? (thisLoco->dirFct | 0x2000) : (thisLoco->dirFct & ~0x2000));
-					thisLoco->dirFct &= 0x7F7F; //clear leading bits
-					prepSlotDirFMsg(&txData, thisLoco->slotNum, thisLoco->dirFct >> 8);
+//					Serial.printf("Curr Dir %i to %i\n", thisLoco->dirFct & 0x2000, paramVal);
+					targetFct = ((paramVal == 0) ? (thisLoco->dirFct | 0x2000) : (thisLoco->dirFct & ~0x2000));
+					targetFct &= 0x7F7F; //clear leading bits
+//					Serial.printf("Set Dir %i\n", targetFct & 0x2000);
+					prepSlotDirFMsg(&txData, thisLoco->slotNum, targetFct >> 8);
 					sendMsg(txData);
 				}
 				else
@@ -367,9 +434,9 @@ void tcpDef::setLocoAction(uint16_t locoAddr, char thID, char* ActionCode)
 					{
 						if ((slotList[i].throttleID == thID) || (thID == '*'))
 						{
-							slotList[i].dirFct = paramVal == 0 ? (slotList[i].dirFct | 0x2000) : (slotList[i].dirFct & ~0x2000);
-							slotList[i].dirFct &= 0x7F7F; //clear leading bits
-							prepSlotDirFMsg(&txData, slotList[i].slotNum, slotList[i].dirFct >> 8);
+							targetFct = paramVal == 0 ? (slotList[i].dirFct | 0x2000) : (slotList[i].dirFct & ~0x2000);
+							targetFct &= 0x7F7F; //clear leading bits
+							prepSlotDirFMsg(&txData, slotList[i].slotNum, targetFct >> 8);
 							sendMsg(txData);
 						}
 					}
@@ -520,7 +587,7 @@ void IoTT_LBServer::handleNewClient(AsyncClient* client)
 	newClientData = new tcpDef();
 	// add to list
 	newClientData->thisClient = client;
-	newClientData->sendInitSeq = 7; //currently 8 init messages
+	newClientData->sendInitSeq = 9; //currently 10 init messages
 	clients.push_back(newClientData);
 	Serial.printf("New total is %i client(s)\n", clients.size());
 //	delay(100);
@@ -793,7 +860,7 @@ bool IoTT_LBServer::processWIServerMessage(AsyncClient* client, char * c)
 			break;
 		}
 	}
-	Serial.printf("WiClient message %i bytes: %s\n", len, c);
+//	Serial.printf("WiClient message %i bytes: %s\n", len, c);
 	if (currClient)
 	{
 		currClient->nextPing = millis() + pingInterval + random(500);
@@ -869,7 +936,7 @@ bool IoTT_LBServer::processWIServerMessage(AsyncClient* client, char * c)
 						currClient->wiDeviceName = (char*) realloc(currClient->wiDeviceName, len);
 						strcpy(&currClient->wiDeviceName[0], &c[1]);
 					}
-					sendWIServerMessageString(currClient->thisClient, 7); //ping time
+					sendWIServerMessageString(currClient->thisClient, 9); //ping time
 //					Serial.printf("Device Name: %s\n", currClient->wiDeviceName);
 					//send wiReply *HeartBeatInterval
 					return true;
@@ -902,7 +969,7 @@ bool IoTT_LBServer::processWIServerMessage(AsyncClient* client, char * c)
 							switch (c[2])
 							{
 								case 'A': //Power On/Off
-									Serial.println(allowPwrChg);
+//									Serial.println(allowPwrChg);
 									if (allowPwrChg > 0)
 										if (c[3] == '1')
 											currClient->setTrackPowerStatus(0x83); //ON
@@ -1322,16 +1389,20 @@ String IoTT_LBServer::getWIMessageString(AsyncClient * thisClient, lnReceiveBuff
 bool IoTT_LBServer::sendWIServerMessageString(AsyncClient * thisClient, uint8_t replyType) //server mode
 {
 	String outStr;
+	extern String BBVersion;
 	switch (replyType)
 	{
 		case 0: outStr = "VN2.0"; break;
 		case 1: outStr = "RL0"; break;
 		case 2: outStr = "PPA" + String(digitraxBuffer->getPowerStatus()); break;
-		case 3: outStr = "PTT0"; break;
-		case 4: outStr = "PRT0"; break;
+//		case 3: outStr = "PTT0"; break;
+//		case 4: outStr = "PRT0"; break;
 		case 5: outStr = "RCC0"; break;
-//		case 6: outStr = "PW" + String(lbs_Port); break;
-		case 7: outStr = "*" + String((int)round(pingInterval/1000)); break;
+		case 6: outStr = "HTIoTT"; break;
+		case 7: outStr = "HtIoTT Stick WiThrottle Server " + BBVersion; break;
+//		case 8: outStr = "PW" + String(lbs_Port); break; //web port
+		case 9: outStr = "*" + String((int)round(pingInterval/1000)); break;
+		case 20: outStr = "PFT" + String((int)(3600 * (256 - digitraxBuffer->slotBuffer[0x7B][4])) + (60 * (256 - digitraxBuffer->slotBuffer[0x7B][3]))) + "<;>" + String((int)digitraxBuffer->slotBuffer[0x7B][0]); break;
 		default: outStr = ""; break;
 	}
 	if (thisClient && (outStr != ""))
@@ -1342,8 +1413,8 @@ bool IoTT_LBServer::sendWIServerMessageString(AsyncClient * thisClient, uint8_t 
 
 bool IoTT_LBServer::sendWIClientMessage(AsyncClient * thisClient, String cmdMsg)
 {
-	Serial.print("Out: ");
-	Serial.println(cmdMsg);
+//	Serial.print("Out: ");
+//	Serial.println(cmdMsg);
 	if (thisClient)
 		if (thisClient->canSend())
 		{
@@ -1410,14 +1481,14 @@ void IoTT_LBServer::processLoopWI() //process function for WiThrottle
 			for (uint16_t i = 0; i < clients.size(); i++)
 				if (clients[i]->sendInitSeq > 0)
 				{
-					sendWIServerMessageString(clients[i]->thisClient, 7 - clients[i]->sendInitSeq);
+					sendWIServerMessageString(clients[i]->thisClient, 9 - clients[i]->sendInitSeq);
 					clients[i]->sendInitSeq--;
 				}
 
 			if (que_wrPos != que_rdPos)
 			{
 				int hlpQuePtr = (que_rdPos + 1) % queBufferSize;
-				locoDef * thisLoco;
+				locoDef * thisLoco = NULL;
 				switch (transmitQueue[hlpQuePtr].lnData[0])
 				{
 					case 0x82:;
@@ -1433,28 +1504,63 @@ void IoTT_LBServer::processLoopWI() //process function for WiThrottle
 				
 					case 0xA0:; //OPC_LOCO_SPD
 					case 0xA1: //OPC_LOCO_DIRF
+					case 0xA2: //OPC_LOCO_SND
 						{
 							for (uint16_t i = 0; i < clients.size(); i++)
 							{
-								thisLoco = clients[i]->getLocoBySlot(transmitQueue[hlpQuePtr].lnData[1], '*');
-								if (thisLoco)
+								thisLoco = clients[i]->getLocoBySlot(NULL, transmitQueue[hlpQuePtr].lnData[1], '*');
+								while (thisLoco)
 								{
+//									Serial.printf("LN Slot: %i Mem Slot: %i ThID: %c\n", transmitQueue[hlpQuePtr].lnData[1], thisLoco->slotNum, thisLoco->throttleID);
+									uint16_t currFct = (digitraxBuffer->slotBuffer[thisLoco->slotNum][3] << 8) + digitraxBuffer->slotBuffer[thisLoco->slotNum][7];
+									uint16_t fctChgMask = currFct ^ thisLoco->dirFct;
 									if (transmitQueue[hlpQuePtr].lnData[0] == 0xA0) clients[i]->setLocoAction(thisLoco->locoAddr, thisLoco->throttleID, "qV");
-									if (transmitQueue[hlpQuePtr].lnData[0] == 0xA1) clients[i]->setLocoAction(thisLoco->locoAddr, thisLoco->throttleID, "qR");
+									if ((fctChgMask & 0x2000))
+										if (transmitQueue[hlpQuePtr].lnData[0] == 0xA1) clients[i]->setLocoAction(thisLoco->locoAddr, thisLoco->throttleID, "qR");
+									if ((fctChgMask & 0x1F00))
+										if (transmitQueue[hlpQuePtr].lnData[0] == 0xA1) clients[i]->setLocoAction(thisLoco->locoAddr, thisLoco->throttleID, "qF");
+									if ((fctChgMask & 0x000F))
+										if (transmitQueue[hlpQuePtr].lnData[0] == 0xA2) clients[i]->setLocoAction(thisLoco->locoAddr, thisLoco->throttleID, "qF");
+									thisLoco = clients[i]->getLocoBySlot(thisLoco, transmitQueue[hlpQuePtr].lnData[1], '*');
 								}
 							}
 						}
 						break;
 					
-					case 0xE7: //SL_RD
+					case 0xE7: 
 						{
-							uint16_t locoAddr = (transmitQueue[hlpQuePtr].lnData[9] << 7) + transmitQueue[hlpQuePtr].lnData[4];
-//							Serial.printf("Slot Read Addr %i\n", locoAddr);
-							for (uint16_t i = 0; i < clients.size(); i++)
+							switch (transmitQueue[hlpQuePtr].lnData[1])
 							{
-								thisLoco = clients[i]->getLocoByAddr(locoAddr, '*');
-								if (thisLoco)
-									clients[i]->confirmLoco(transmitQueue[hlpQuePtr].lnData[2], locoAddr, thisLoco->throttleID, transmitQueue[hlpQuePtr].lnData[3], transmitQueue[hlpQuePtr].lnData[5], (transmitQueue[hlpQuePtr].lnData[6]<<8) + transmitQueue[hlpQuePtr].lnData[10]);
+								case 0x0E: //SL_RD
+								{
+									uint8_t slotNr = transmitQueue[hlpQuePtr].lnData[2];
+									if (slotNr <= 0x77)
+									{
+										uint16_t locoAddr = (transmitQueue[hlpQuePtr].lnData[9] << 7) + transmitQueue[hlpQuePtr].lnData[4];
+//										Serial.printf("Slot Read Addr %i\n", locoAddr);
+										for (uint16_t i = 0; i < clients.size(); i++)
+										{
+											thisLoco = clients[i]->getLocoByAddr(thisLoco, locoAddr, '*');
+											while (thisLoco)
+											{
+												clients[i]->confirmLoco(transmitQueue[hlpQuePtr].lnData[2], locoAddr, thisLoco->throttleID, transmitQueue[hlpQuePtr].lnData[3], transmitQueue[hlpQuePtr].lnData[5], (transmitQueue[hlpQuePtr].lnData[6]<<8) + transmitQueue[hlpQuePtr].lnData[10]);
+												thisLoco = clients[i]->getLocoByAddr(thisLoco, locoAddr, '*');
+											}
+										}
+									}
+									else
+									{
+										switch (slotNr)
+										{
+											case 0x7B: //FastClock
+												for (uint16_t i = 0; i < clients.size(); i++)
+													sendWIServerMessageString(clients[i]->thisClient, 20); //fast clock update
+											break;
+										}
+									}		
+									break;
+								}
+								break;
 							}
 						}
 						break;

@@ -45,7 +45,6 @@ var profileTemplate = {"Title":"title", "DispDim":[0,0], "FieldCol": "rgb(100,10
 var xmlFile = "";
 var jsonFile = "";
 
-var progMode = 1; //main line
 var cvId = -1;
 var cvVal = -1;
 var cvArray = [];
@@ -830,7 +829,13 @@ function canvasMouseOver(sender)
 
 function setProgMode(sender)
 {
-	progMode = parseInt(sender.id[sender.id.length - 1]);
+	configData[workCfg].ProgMode = parseInt(sender.id[sender.id.length - 1]);
+//	console.log(progMode);
+}
+
+function setProgMethod(sender)
+{
+	configData[workCfg].ProgMethod = parseInt(sender.id[sender.id.length - 1]);
 //	console.log(progMode);
 }
 

@@ -730,13 +730,14 @@ void IoTT_DigitraxBuffers::processLocoNetMsg(lnReceiveBuffer * newData)
 		processBufferUpdates(newData); //update the buffers
 }
 
-void IoTT_DigitraxBuffers::writeProg(uint16_t dccAddr, uint8_t progMode, uint16_t cvNr, uint8_t cvVal)
+void IoTT_DigitraxBuffers::writeProg(uint16_t dccAddr, uint8_t progMode, uint8_t progMethod, uint16_t cvNr, uint8_t cvVal)
 {
 	lnTransmitMsg txBuffer;
 	slotData * prSlot = getSlotData(0x7C);
 	switch (progMode)
 	{
-		case 0: (*prSlot)[0] = 0x60; //Prog track, byte mode
+		case 0: (*prSlot)[0] = 0x60; //Prog track, byte mode, paged
+			if (progMethod == 0) (*prSlot)[0] |= 0x08; //direct mode
 			break;
 		case 1: (*prSlot)[0] = 0x64; //OpsMode, byte mode, no feedback
 			break;
@@ -753,13 +754,14 @@ void IoTT_DigitraxBuffers::writeProg(uint16_t dccAddr, uint8_t progMode, uint16_
 	lnOutFct(txBuffer);
 }
 
-void IoTT_DigitraxBuffers::readProg(uint16_t dccAddr, uint8_t progMode, uint16_t cvNr)
+void IoTT_DigitraxBuffers::readProg(uint16_t dccAddr, uint8_t progMode, uint8_t progMethod, uint16_t cvNr)
 {
 	lnTransmitMsg txBuffer;
 	slotData * prSlot = getSlotData(0x7C);
 	switch (progMode)
 	{
 		case 0: (*prSlot)[0] = 0x20; //Prog track, byte mode
+			if (progMethod == 0) (*prSlot)[0] |= 0x08; //direct mode
 			break;
 		case 1: (*prSlot)[0] = 0x24; //OpsMode, no feedback
 			break;
