@@ -63,6 +63,8 @@ typedef struct
 	char throttleID;
 } locoDef;
 
+#define numInitSeq 11
+
 //typedef struct
 class tcpDef
 {
@@ -83,7 +85,7 @@ public:
 	char * wiHWIdentifier = NULL;
 	char * wiDeviceName = NULL;
 	uint32_t nextPing = millis();
-	uint8_t sendInitSeq = 0;
+	int8_t sendInitSeq = -1;
 private:	
 	uint8_t currSpeed;
 	std::vector<locoDef> slotList;
@@ -167,6 +169,7 @@ private:
 	uint16_t pingInterval = 10000; //ping every 5-10 secs if there is no other traffic
 
 	std::vector<tcpDef*> clients; // a list to hold all clients when in server mode
+	std::vector<uint16_t> turnoutSupport; //a list holding the turnout numbers to be initialized in WiThrottle Server
 
 	IPAddress lbs_IP;
 	uint16_t lbs_Port = 1234; // = LocoNet over TCP port number, must be set the same in JMRI or other programs

@@ -33,9 +33,24 @@ function setLbServer(sender)
 			configData[workCfg].PortNr = sender.value; 
 }
 
+function setTurnoutList(sender)
+{
+	var inpData = sender.value.split(',');
+	var validCount = 0;
+	configData[workCfg].Turnouts = [];
+	for (var i = 0; i < inpData.length; i++)
+		if (!isNaN(inpData[i]))
+		{
+			configData[workCfg].Turnouts[validCount] = inpData[i];
+			validCount++;
+		}
+//	console.log(configData[workCfg].Turnouts);
+	writeInputField("turnoutlist", configData[2].Turnouts.toString());
+}
+
 function setPowerMode(sender, id)
 {
-	console.log(id);
+//	console.log(id);
 	if (sender.id == "selectpowermode_0")
 		configData[2].PowerMode = 0;
 	if (sender.id == "selectpowermode_1")
@@ -74,7 +89,10 @@ function constructPageContent(contentTab)
 		wiConfigOptions = createEmptyDiv(mainScrollBox, "div", "tile-1", "");
 			setVisibility(false, wiConfigOptions);
 			tempObj = createPageTitle(wiConfigOptions, "div", "tile-1", "BasicCfg_Title", "h2", "WiThrottle Options");
+			tempObj = createEmptyDiv(wiConfigOptions, "div", "tile-1", "");
 			createRadiobox(tempObj, "tile-1_2", "Allow Power Commands:", ["Display only", "Toggle ON - Idle", "Toggle ON - OFF"], "selectpowermode", "setPowerMode(this, id)");
+			tempObj = createEmptyDiv(wiConfigOptions, "div", "tile-1", "");
+			createTextInput(tempObj, "tile-1_2", "Include Turnouts:", "n/a", "turnoutlist", "setTurnoutList(this)");
 
 		tempObj = createEmptyDiv(mainScrollBox, "div", "tile-1", "");
 
@@ -93,6 +111,7 @@ function loadNodeDataFields(jsonData)
 
 function loadDataFields(jsonData)
 {
+	var error;
 	configData[workCfg] = upgradeJSONVersion(jsonData);
 //	console.log(currentPage);
 //	console.log(configData[nodeCfg]);
@@ -101,8 +120,17 @@ function loadDataFields(jsonData)
 	else
 		writeInputField("serverport", jsonData.PortNr);
 	writeInputField("serverip", jsonData.ServerIP);
-	if (configData[2].PowerMode >= 0)
+	try
+	{
 		writeRBInputField("selectpowermode", configData[2].PowerMode);
+	}
+	catch (error) {};
+	try
+	{
+		if (Array.isArray(configData[2].Turnouts))
+			writeInputField("turnoutlist", configData[2].Turnouts.toString());
+	}
+	catch (error) {};
 
 	setVisibility((configData[nodeCfg].ServerIndex.indexOf(1) >= 0) && (pageParam == 's') && (currentPage == 5), document.getElementById("ServerTitle"));
 	setVisibility((configData[nodeCfg].ServerIndex.indexOf(2) >= 0) && (pageParam == 's') && (currentPage == 6), document.getElementById("WiServerTitle"));

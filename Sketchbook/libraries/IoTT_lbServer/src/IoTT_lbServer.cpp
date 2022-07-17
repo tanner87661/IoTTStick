@@ -587,7 +587,7 @@ void IoTT_LBServer::handleNewClient(AsyncClient* client)
 	newClientData = new tcpDef();
 	// add to list
 	newClientData->thisClient = client;
-	newClientData->sendInitSeq = 9; //currently 10 init messages
+	newClientData->sendInitSeq = numInitSeq; //currently 10 init messages
 	clients.push_back(newClientData);
 	Serial.printf("New total is %i client(s)\n", clients.size());
 //	delay(100);
@@ -655,6 +655,14 @@ void IoTT_LBServer::loadLBServerCfgJSON(DynamicJsonDocument doc)
 	}
 	if (doc.containsKey("PowerMode"))
 		allowPwrChg = doc["PowerMode"];
+	if (doc.containsKey("Turnouts"))
+	{
+		JsonArray turnoutList = doc["Turnouts"];
+		for (uint16_t i = 0; i < turnoutList.size(); i++)
+		{
+			turnoutSupport.push_back((uint16_t) turnoutList[i]);
+		}
+	}
 }
 
 uint8_t IoTT_LBServer::getConnectionStatus()
@@ -1395,16 +1403,31 @@ bool IoTT_LBServer::sendWIServerMessageString(AsyncClient * thisClient, uint8_t 
 		case 0: outStr = "VN2.0"; break;
 		case 1: outStr = "RL0"; break;
 		case 2: outStr = "PPA" + String(digitraxBuffer->getPowerStatus()); break;
-//		case 3: outStr = "PTT0"; break;
+		case 3: outStr = "PTT]\\[Turnouts}|{Turnout]\\[Closed}|{2]\\[Thrown}|{4"; break;
+		case 4: 
+			{
+				if (turnoutSupport.size() > 0)
+				{
+					outStr = "PTL";
+					for (uint16_t i = 0; i < turnoutSupport.size(); i++)
+					{
+						
+						outStr += "]\\[" + String(turnoutSupport[i]) + "}|{IoTT" + String(turnoutSupport[i]) + "}|{" + ((digitraxBuffer->getSwiPosition(turnoutSupport[i]) > 0) ? "2" : "4");
+					}
+				}
+			}
+			break;				
 //		case 4: outStr = "PRT0"; break;
 		case 5: outStr = "RCC0"; break;
 		case 6: outStr = "HTIoTT"; break;
 		case 7: outStr = "HtIoTT Stick WiThrottle Server " + BBVersion; break;
 //		case 8: outStr = "PW" + String(lbs_Port); break; //web port
 		case 9: outStr = "*" + String((int)round(pingInterval/1000)); break;
-		case 20: outStr = "PFT" + String((int)(3600 * (256 - digitraxBuffer->slotBuffer[0x7B][4])) + (60 * (256 - digitraxBuffer->slotBuffer[0x7B][3]))) + "<;>" + String((int)digitraxBuffer->slotBuffer[0x7B][0]); break;
+		case 10: outStr = "PFT" + String((int)(3600 * (24 - 127 + (digitraxBuffer->slotBuffer[0x7B][5]) % 24)) + (60 * (60 - 127 + (digitraxBuffer->slotBuffer[0x7B][3]) % 60))) + "<;>" + String((int)digitraxBuffer->slotBuffer[0x7B][0]); break;
+//---------------------->> Init sequence start^
 		default: outStr = ""; break;
 	}
+//	Serial.printf("%i %s\n", replyType, outStr.c_str());
 	if (thisClient && (outStr != ""))
 		return(sendWIClientMessage(thisClient, outStr));
 	else
@@ -1413,8 +1436,8 @@ bool IoTT_LBServer::sendWIServerMessageString(AsyncClient * thisClient, uint8_t 
 
 bool IoTT_LBServer::sendWIClientMessage(AsyncClient * thisClient, String cmdMsg)
 {
-//	Serial.print("Out: ");
-//	Serial.println(cmdMsg);
+	Serial.print("Out: ");
+	Serial.println(cmdMsg);
 	if (thisClient)
 		if (thisClient->canSend())
 		{
@@ -1474,14 +1497,16 @@ void IoTT_LBServer::processLoop()
 
 void IoTT_LBServer::processLoopWI() //process function for WiThrottle
 {
+	char outBuf[50] = {'\0'};
 	if (isServer)
 	{
 		if (clients.size() > 0)
 		{
 			for (uint16_t i = 0; i < clients.size(); i++)
-				if (clients[i]->sendInitSeq > 0)
+				if (clients[i]->sendInitSeq >= 0)
 				{
-					sendWIServerMessageString(clients[i]->thisClient, 9 - clients[i]->sendInitSeq);
+//					Serial.printf("%i %i \n", i, clients[i]->sendInitSeq);
+					sendWIServerMessageString(clients[i]->thisClient, numInitSeq - clients[i]->sendInitSeq);
 					clients[i]->sendInitSeq--;
 				}
 
@@ -1502,6 +1527,16 @@ void IoTT_LBServer::processLoopWI() //process function for WiThrottle
 						}
 						break;
 				
+					case 0xBD:;  //OPC_SW_REQ, SW_ACK
+					case 0xB0:
+						{
+							for (uint16_t i = 0; i < clients.size(); i++)
+							{
+								sprintf(outBuf, "PTA%c%i", transmitQueue[hlpQuePtr].lnData[2] & 0x20 ? '2' : '4', transmitQueue[hlpQuePtr].lnData[1] + ((transmitQueue[hlpQuePtr].lnData[2] & 0x0F)<<7));
+								sendWIClientMessage(clients[i]->thisClient, outBuf);
+							}
+						}
+						break;					
 					case 0xA0:; //OPC_LOCO_SPD
 					case 0xA1: //OPC_LOCO_DIRF
 					case 0xA2: //OPC_LOCO_SND
@@ -1554,7 +1589,7 @@ void IoTT_LBServer::processLoopWI() //process function for WiThrottle
 										{
 											case 0x7B: //FastClock
 												for (uint16_t i = 0; i < clients.size(); i++)
-													sendWIServerMessageString(clients[i]->thisClient, 20); //fast clock update
+													sendWIServerMessageString(clients[i]->thisClient, 10); //fast clock update
 											break;
 										}
 									}		

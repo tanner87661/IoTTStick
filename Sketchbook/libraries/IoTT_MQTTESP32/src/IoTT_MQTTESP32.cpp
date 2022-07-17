@@ -379,7 +379,7 @@ bool MQTTESP32::sendPingMessage()
 			return false;
       } else 
       {
-        	Serial.println(F("Ping OK!"));
+//        	Serial.println(F("Ping OK!"));
 			return true;
       }
     }
