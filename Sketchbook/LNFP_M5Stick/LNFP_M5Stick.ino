@@ -1,4 +1,4 @@
-String BBVersion = "1.5.13D02";
+String BBVersion = "1.5.13D03";
 
 //#define measurePerformance //uncomment this to display the number of loop cycles per second
 #define useM5Lite
@@ -586,7 +586,6 @@ void setup()
       jsonDataObj = getDocPtr("/configdata/lbserver.cfg", false);
       if (jsonDataObj != NULL)
       {
-      
         lbServer = new IoTT_LBServer();
         lbServer->loadLBServerCfgJSON(*jsonDataObj);
 //        lbServer->setLNCallback(callbackLocoNetMessage);

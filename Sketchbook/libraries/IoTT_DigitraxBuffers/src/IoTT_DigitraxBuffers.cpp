@@ -650,6 +650,7 @@ void IoTT_DigitraxBuffers::loadFromFile(String fileName)
 
 void IoTT_DigitraxBuffers::processLoop()
 {
+	lnTransmitMsg txBuffer;
 	if (dccPort)
 	{
 //		Serial.print(dccPort->getMsgType());
@@ -692,7 +693,6 @@ void IoTT_DigitraxBuffers::processLoop()
 			if ((millis() - progSent) > (uint32_t)progTimeout)
 			{
 //				Serial.printf("Prog timeout");
-				lnTransmitMsg txBuffer;
 				memcpy(&slotBuffer[0x7C][0], &progSlot[0], 10);;
 				slotBuffer[0x7C][0] = 0x04;
 				prepSlotReadMsg(&txBuffer, 0x7C);
@@ -705,9 +705,25 @@ void IoTT_DigitraxBuffers::processLoop()
 	if (millis() - fcRefresh > fcRefreshInterval)
 	{
 		//refresh fast clock slot
+		intFastClock += slotBuffer[0x7B][0]; //call every second, so just add the fc rate
+		intFastClock %= 86400;
 		fcRefresh += fcRefreshInterval;
 	}
 
+	if (millis() - fcLastBroadCast > fcBroadcastInterval)
+	{
+		uint16_t hlpRes = trunc(intFastClock / 3600);
+		slotBuffer[0x7C][3] = 128 - 24 + (hlpRes % 24);
+		
+		hlpRes = trunc(intFastClock / 60);
+		slotBuffer[0x7C][5] = 127 - 60 + (hlpRes % 60);
+		
+		prepSlotWriteMsg(&txBuffer, 0x7C);
+		lnOutFct(txBuffer);
+		fcLastBroadCast += fcBroadcastInterval;
+//		Serial.println("Sent FC Slot update");
+	}
+	
 	if (millis() > nextBufferUpdate)
 	{
 		nextBufferUpdate += bufferUpdateInterval;
@@ -1154,6 +1170,11 @@ void IoTT_DigitraxBuffers::enableBushbyWatch(bool enableBushby)
 	bushbyWatch = enableBushby;
 }
 
+uint32_t IoTT_DigitraxBuffers::getFCTime()
+{
+	return intFastClock;
+}
+
 void IoTT_DigitraxBuffers::enableLissyMod(bool enableLissy)
 {
 	translateLissy = enableLissy;
@@ -1456,6 +1477,12 @@ void IoTT_DigitraxBuffers::processBufferUpdates(lnReceiveBuffer * newData) //pro
 						switch (slotNr)
 						{
 							case 0x7B: //Fast Clock
+								{
+									uint8_t sysHour = (24 - 128 + digitraxBuffer->slotBuffer[0x7B][5]) % 24;
+									uint8_t sysMin = (60 - 127 + digitraxBuffer->slotBuffer[0x7B][3]) % 60;
+									intFastClock = 3600 * sysHour + 60 * sysMin; //seconds per day, roll over
+									fcLastBroadCast = millis();
+								}
 								break;
 							case 0x7C: //Programmer
 								if (newData->lnData[0] == 0xE7) //final programmer reply

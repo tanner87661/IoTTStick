@@ -25,6 +25,7 @@
 #define switchProtLen 20
 #define progTimeout 10000
 #define fcRefreshInterval 1000
+#define fcBroadcastInterval 75000
 #define purgeLimitShort 30 //count for 300 s purge time
 #define purgeLimitLong 60 // and for 60 sec
 #define purgeInterval 10000 //run purge timer every 10 seconds
@@ -174,6 +175,7 @@ class IoTT_DigitraxBuffers
 		void setAnalogValue(uint16_t analogNum, uint16_t analogValue);
 		bool getBushbyWatch();
 		void enableBushbyWatch(bool enableBushby);
+		uint32_t getFCTime();
 		void enableLissyMod(bool enableLissy);
 		uint8_t getUpdateReqStatus();
 		void clearUpdateReqFlag(uint8_t clrFlagMask);
@@ -258,6 +260,7 @@ class IoTT_DigitraxBuffers
 		bool progMode = false;
 		uint32_t progSent = millis();
 		uint32_t fcRefresh = millis();
+		uint32_t fcLastBroadCast = millis();
 		uint32_t purgeSlotTimer = millis();
 		slotData progSlot;
 		uint8_t rxPin = 36;
@@ -274,6 +277,7 @@ class IoTT_DigitraxBuffers
 		uint16_t progLimit = 50;
 		uint16_t progPulseMin = 200;
 		uint16_t progPulseMax = 20000;
+		uint32_t intFastClock = 0; //counts fc seconds per day from 0 to 86400, then loops
 		uint8_t progNumTry = 3;
 		bool    progBoost = false;
 		bool    configSensorPwrUp = true;

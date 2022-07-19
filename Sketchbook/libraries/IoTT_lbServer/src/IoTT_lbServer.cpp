@@ -1423,7 +1423,7 @@ bool IoTT_LBServer::sendWIServerMessageString(AsyncClient * thisClient, uint8_t 
 		case 7: outStr = "HtIoTT Stick WiThrottle Server " + BBVersion; break;
 //		case 8: outStr = "PW" + String(lbs_Port); break; //web port
 		case 9: outStr = "*" + String((int)round(pingInterval/1000)); break;
-		case 10: outStr = "PFT" + String((int)(3600 * (24 - 127 + (digitraxBuffer->slotBuffer[0x7B][5]) % 24)) + (60 * (60 - 127 + (digitraxBuffer->slotBuffer[0x7B][3]) % 60))) + "<;>" + String((int)digitraxBuffer->slotBuffer[0x7B][0]); break;
+		case 10: outStr = "PFT" + String(digitraxBuffer->getFCTime()) + "<;>" + String((int)digitraxBuffer->slotBuffer[0x7B][0]); break;
 //---------------------->> Init sequence start^
 		default: outStr = ""; break;
 	}
@@ -1436,8 +1436,8 @@ bool IoTT_LBServer::sendWIServerMessageString(AsyncClient * thisClient, uint8_t 
 
 bool IoTT_LBServer::sendWIClientMessage(AsyncClient * thisClient, String cmdMsg)
 {
-	Serial.print("Out: ");
-	Serial.println(cmdMsg);
+//	Serial.print("Out: ");
+//	Serial.println(cmdMsg);
 	if (thisClient)
 		if (thisClient->canSend())
 		{
@@ -1503,12 +1503,20 @@ void IoTT_LBServer::processLoopWI() //process function for WiThrottle
 		if (clients.size() > 0)
 		{
 			for (uint16_t i = 0; i < clients.size(); i++)
+			{
 				if (clients[i]->sendInitSeq >= 0)
 				{
 //					Serial.printf("%i %i \n", i, clients[i]->sendInitSeq);
 					sendWIServerMessageString(clients[i]->thisClient, numInitSeq - clients[i]->sendInitSeq);
 					clients[i]->sendInitSeq--;
 				}
+				else
+					if (trunc(clients[i]->lastFC/60) != trunc(digitraxBuffer->getFCTime()/60))
+					{
+						sendWIServerMessageString(clients[i]->thisClient, 10);
+						clients[i]->lastFC = digitraxBuffer->getFCTime();
+					}
+			}
 
 			if (que_wrPos != que_rdPos)
 			{
@@ -1588,8 +1596,13 @@ void IoTT_LBServer::processLoopWI() //process function for WiThrottle
 										switch (slotNr)
 										{
 											case 0x7B: //FastClock
-												for (uint16_t i = 0; i < clients.size(); i++)
-													sendWIServerMessageString(clients[i]->thisClient, 10); //fast clock update
+												{
+//													for (uint16_t i = 0; i < clients.size(); i++)
+//													{
+//														sendWIServerMessageString(clients[i]->thisClient, 10); //fast clock update
+//														clients[i]->lastFC = digitraxBuffer->getFCTime();
+//													}
+												}
 											break;
 										}
 									}		

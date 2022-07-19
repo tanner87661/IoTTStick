@@ -86,6 +86,7 @@ public:
 	char * wiDeviceName = NULL;
 	uint32_t nextPing = millis();
 	int8_t sendInitSeq = -1;
+	uint32_t lastFC = 0;
 private:	
 	uint8_t currSpeed;
 	std::vector<locoDef> slotList;
