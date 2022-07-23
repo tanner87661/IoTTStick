@@ -54,7 +54,7 @@ void IoTT_SerInjector::begin() {
 
 void IoTT_SerInjector::setProtType(messageType thisType)
 {
-	Serial.printf("Set Msg Type %i\n", thisType);
+//	Serial.printf("Set Msg Type %i\n", thisType);
 	usedProtocol = thisType;
 }
 
@@ -212,7 +212,7 @@ void IoTT_SerInjector::processLNReceive()
 			}
 			else
 			{
-			Serial.println("LN unexpected data byte while waiting for OpCode");
+//			Serial.println("LN unexpected data byte while waiting for OpCode");
 			//unexpected data byte while waiting for OpCode
 				lnInBuffer.lnMsgSize = 1;
 				lnInBuffer.reqID = 0;
@@ -346,14 +346,14 @@ int IoTT_SerInjector::parseDCCExParam(char** startAt, uint8_t ppNum, ppElement *
 	uint8_t decPtCtr = 0;
 	uint8_t charCtr = 0;
 	uint8_t digitsCtr = false;
-	bool negLead = true;
-	bool hexLead = true;
+	bool negLead = false;
+	bool hexLead = false;
 	outBuffer->dataType = 0; //invalid data
 	outBuffer->paramNr = ppNum;
-	while (**startAt == ' ')
-		*startAt += 1; //skip leading blanks
+	while ((**startAt == ' ') || (**startAt == '|'))
+		*startAt += 1; //skip leading blanks and |
 	char * origPtr = *startAt;
-	while ((**startAt != ' ') && (**startAt != '>'))
+	while ((**startAt != ' ') && (**startAt != '|') && (**startAt != '>'))
 	{
 //		Serial.printf("Testing: %c\n", **startAt);
 		if (posCtr == 0)
@@ -379,6 +379,7 @@ int IoTT_SerInjector::parseDCCExParam(char** startAt, uint8_t ppNum, ppElement *
 					return 0;
 				}
 		*startAt += 1;
+		posCtr++;
 		if (ppNum == 0) //first param is OpCode and only 1 char long
 			break;
 	}
@@ -386,6 +387,9 @@ int IoTT_SerInjector::parseDCCExParam(char** startAt, uint8_t ppNum, ppElement *
 	uint8_t msgLen = *startAt - origPtr;
 
 // ret = strtol(str, &ptr, 16); //hex conversion
+	if ((negLead) & (charCtr > 0)) charCtr--;
+	
+//	Serial.printf("neg: %i chr: %i dig: %i \n", negLead, charCtr, digitsCtr);
 	
 	if (charCtr > 0) //this is a string param, we return max 4 chars. It can have some digits as well
 	{
@@ -422,7 +426,7 @@ bool IoTT_SerInjector::parseDCCEx(lnTransmitMsg* thisEntry, lnTransmitMsg* txBuf
 		txBuffer->lnData[i] = 0;
 	char* readPtr = (char*) &thisEntry->lnData[0];
 	txBuffer->lnMsgSize = lnMaxMsgSize;
-	while ((*readPtr == '<') || (*readPtr == ' '))
+	while ((*readPtr == '<') || (*readPtr == ' ') || (*readPtr == '|'))
 		readPtr += 1;	//set read pointer to the first byte with data
 	uint8_t paramCtr = 0;
 
@@ -465,7 +469,7 @@ void IoTT_SerInjector::processDCCExReceive()
 					lnInBuffer.lnMsgSize = lnBufferPtr; //this is # of nibbles, so 2x byte length
 					lnBufferPtr = 0;
 					lnTransmitMsg txOutBuffer;
-//					Serial.println("Parse");
+//					Serial.println();
 					if (parseDCCEx(&lnInBuffer, &txOutBuffer))
 						processLNMsg(&txOutBuffer);
 					bitRecStatus = 0;
@@ -483,7 +487,6 @@ void IoTT_SerInjector::processDCCExReceive()
 	}
 }
 
-
 void IoTT_SerInjector::processDCCExTransmit()
 {
 	char txMsg[50];
@@ -496,146 +499,9 @@ void IoTT_SerInjector::processDCCExTransmit()
 		strcat(txMsg, outStr);
 		strcat(txMsg, ">\n\r");
 		write(txMsg);
-//		Serial.println(txMsg);
-		que_rdPos = hlpQuePtr;
-	}
-}
-
-/*
-void IoTT_SerInjector::processDCCExTransmit2()
-{
-	//take new message from transmit queue and send to USB/PC
-    if (que_wrPos != que_rdPos) //override protection
-    {
-		uint8_t hlpQuePtr = (que_rdPos + 1) % queBufferSize;
-
-		//send to USB port
-		Serial.printf("DCC++Ex Transmit %i %i %i\n", hlpQuePtr, transmitQueue[hlpQuePtr].lnData[0], transmitQueue[hlpQuePtr].lnData[1]);
-		char txMsg[50];
-		switch (transmitQueue[hlpQuePtr].lnData[0])
-		{
-			case 0: //Power management
-				switch (transmitQueue[hlpQuePtr].lnData[1])
-				{
-					case 0x82:;
-					case 0: //off
-						sprintf(txMsg, "<%c>", '0');
-						break;
-					case 0x83:;
-					case 1: //on
-//						Serial.print("<1>");
-						sprintf(txMsg, "<%c>", '1');
-						break;
-					case 0x85:;
-					case 2: //idle
-//						Serial.print("<!>");
-//						write("<!>");
-						sprintf(txMsg, "<%c>", '!');
-						break;
-				}
-				write(txMsg);
-				break;
-			case 1: //cab control
-			{
-				uint16_t cabAddr = (transmitQueue[hlpQuePtr].lnData[2] << 7) + (transmitQueue[hlpQuePtr].lnData[3] & 0x7F);
-				switch (transmitQueue[hlpQuePtr].lnData[1])
-				{
-					case 0: //remove from refresh buffer
-					{
-						sprintf(txMsg, "<- %i>", cabAddr, transmitQueue[hlpQuePtr].lnData[3], transmitQueue[hlpQuePtr].lnData[4]);
-						write(txMsg);
-					}
-					break;
-					case 1: //add to refresh buffer
-					{
-						sprintf(txMsg, "<t 1 %i %i %i>", cabAddr, transmitQueue[hlpQuePtr].lnData[4], ((transmitQueue[hlpQuePtr].lnData[5] & 0x20)>>5) ^ 0x01); //[4]: SPD, [5]:DIRF Dir bit change from LocoNet to DCC++
-						write(txMsg);
-					}
-					break;
-				}
-				break;
-			}
-			case 2: //function control
-			{
-				uint16_t cabAddr = (transmitQueue[hlpQuePtr].lnData[1] << 7) + (transmitQueue[hlpQuePtr].lnData[2] &0x7F);
-				sprintf(txMsg, "<f %i %i>", cabAddr, transmitQueue[hlpQuePtr].lnData[3]);
-				write(txMsg);
-//				Serial.println(txMsg);
-				break;
-			}
-			case 3: //switch control
-			{
-				uint16_t swiAddr = (transmitQueue[hlpQuePtr].lnData[1] << 7) + (transmitQueue[hlpQuePtr].lnData[2] &0x7F) +1; //DCC Offset
-				sprintf(txMsg, "<a %i %i>", swiAddr, transmitQueue[hlpQuePtr].lnData[3]);
-				write(txMsg);
-//				Serial.println(txMsg);
-				break;
-			}
-			case 4: //immediate command
-			{
-				char subStr[5];
-				sprintf(txMsg, "<M 0");
-//				sprintf(txMsg, "<M 0", transmitQueue[hlpQuePtr].lnData[3]);
-				for (uint8_t i = 1; i <   transmitQueue[hlpQuePtr].lnMsgSize; i++)
-				{
-					sprintf(subStr, " %2X", transmitQueue[hlpQuePtr].lnData[i]);
-					strcat(txMsg, subStr);
-				}
-				strcat(txMsg, ">");
-				write(txMsg);
-//				Serial.println(txMsg);
-				break;
-			}
-			case 5: //programming
-			{
-				uint16_t cabAddr = (transmitQueue[hlpQuePtr].lnData[2] << 7) + (transmitQueue[hlpQuePtr].lnData[3] &0x7F);
-				uint8_t progMode = transmitQueue[hlpQuePtr].lnData[1];
-				uint16_t cvNr = (transmitQueue[hlpQuePtr].lnData[4] << 7) + (transmitQueue[hlpQuePtr].lnData[5] &0x7F);
-				uint8_t cvVal = transmitQueue[hlpQuePtr].lnData[6];
-				switch ((progMode & 0x04) >> 2)
-				{
-					case 0: // Service Mode
-						progTrackActive = true;
-						if ((progMode & 0x40) > 0) //write Op
-						{
-							if ((progMode & 0x20) > 0) //byte write Op
-							{
-								sprintf(txMsg, "<W %i %i %i %i>", cvNr, cvVal, 0, 0);
-							}
-							else //bit write Op
-							{
-								uint8_t bitNr;
-								uint8_t bitVal;
-								sprintf(txMsg, "<B %i %i %i %i %i>", cvNr, bitNr, bitVal, 0, 0);
-							}
-						}
-						else //read op
-						{
-							sprintf(txMsg, "<R %i %i %i>", cvNr, 0, 0);
-						}
-						break;
-					case 1: //Ops Mode
-						sprintf(txMsg, "<w%i %i %i>", cabAddr, cvNr, cvVal);
-						break;
-				}
-				write(txMsg);
-//				Serial.print("Out: ");
-//				Serial.println(txMsg);
-				break;
-			}
-			case 99: //System configuration
-			{
-				uint16_t cfgId = (transmitQueue[hlpQuePtr].lnData[1] << 7) + (transmitQueue[hlpQuePtr].lnData[2] &0x7F);
-				uint16_t cfgVal = (transmitQueue[hlpQuePtr].lnData[3] << 7) + (transmitQueue[hlpQuePtr].lnData[4] &0x7F);
-				sprintf(txMsg, "<Z %i %i>", cfgId, cfgVal);
-				write(txMsg);
-				break;
-			}
-		}
 		Serial.print("Out: ");
 		Serial.println(txMsg);
 		que_rdPos = hlpQuePtr;
 	}
 }
-	
-*/
+

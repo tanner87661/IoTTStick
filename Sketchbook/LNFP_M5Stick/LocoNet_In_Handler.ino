@@ -144,4 +144,5 @@ void handleProgrammerEvent(uint8_t *  programmerSlot)
 {
 //  Serial.printf("Prog Stat: %i CV: %i Val: %i\n", programmerSlot[1], (programmerSlot[5]<<7) + (programmerSlot[6] & 0x7F), programmerSlot[7]);
   if (trainSensor) trainSensor->programmerReturn(programmerSlot);
+  //add code for RedHat
 }

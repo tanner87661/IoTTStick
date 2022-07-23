@@ -220,7 +220,7 @@ class IoTT_DigitraxBuffers
 		bool processDCCGenerator(lnReceiveBuffer * newData);
 //		void processDCCGeneratorFeedback(lnTransmitMsg txData);
 		void iterateMULinks(uint8_t thisSlot, uint8_t dirSpeedData);
-		void setSlotDirfSpeed(lnReceiveBuffer * newData, bool sendDCC);
+		void setSlotDirfSpeed(lnReceiveBuffer * newData);
 //		void generateSpeedCmd(lnTransmitMsg * txBuffer, uint8_t thisSlot, uint8_t topSpeed);
 //		void generateFunctionCmd(lnTransmitMsg * txBuffer, lnReceiveBuffer * newData);
 		void purgeUnusedSlots();

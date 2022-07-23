@@ -1,4 +1,4 @@
-String BBVersion = "1.5.13D03";
+String BBVersion = "1.5.13";
 
 //#define measurePerformance //uncomment this to display the number of loop cycles per second
 #define useM5Lite
@@ -813,7 +813,7 @@ void setup()
     else
       Serial.println("Purple Sensor not activated");
 
-    digitraxBuffer->clearSlotBuffer(); //if not command station mode, clear all slots to trigger reload
+//    digitraxBuffer->clearSlotBuffer(); //if not command station mode, clear all slots to trigger reload
 
     if (useHat.devId == 6) // || (useHat.devId == 8)) //RedHat++ Shield
     {

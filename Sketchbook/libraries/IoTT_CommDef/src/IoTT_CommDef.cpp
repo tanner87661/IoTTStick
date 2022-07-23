@@ -31,7 +31,7 @@ void dispMsg(uint8_t * msgData, uint8_t targetLen)
 	uint8_t msgLen = ((msgData[0] & 0x60) >> 4) + 2;
 	if (msgLen == 8)
 		msgLen = (msgData[1] & 0x7F); 
-	Serial.printf("Msg Len %i %i\n", targetLen, msgLen+1);
+	Serial.printf("Msg %i Len %i\n", targetLen, msgLen+1);
 	for (uint8_t i = 0; i < msgLen; i++)
 		Serial.printf("%2X ", msgData[i]);
 	Serial.println();

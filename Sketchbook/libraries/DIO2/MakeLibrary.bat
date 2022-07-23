@@ -1,0 +1,1 @@
+@..\MakeLibrary.bat
