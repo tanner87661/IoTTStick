@@ -59,14 +59,15 @@ public:
 	void setNetworkType(nodeType newNwType);
 	void processLoop();
 	void setBusyLED(int8_t ledNr, bool logLevel = true);
-	uint16_t lnWriteMsg(lnTransmitMsg txData);
-	uint16_t lnWriteMsg(lnReceiveBuffer txData);
-	uint16_t lnWriteReply(lnTransmitMsg txData);
+	uint16_t lnWriteMsg(lnTransmitMsg* txData);
+	uint16_t lnWriteMsg(lnReceiveBuffer* txData);
+	uint16_t lnWriteReply(lnTransmitMsg* txData);
 	void setLNCallback(cbFct newCB);
 //	int cdBackoff();
 	bool carrierOK();
 	bool hasMsgSpace();
 	void loadLNCfgJSON(DynamicJsonDocument doc);
+	void sendLineBreak(uint16_t breakBits);
    
 private:
    

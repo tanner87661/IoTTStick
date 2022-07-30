@@ -16,7 +16,7 @@ uint8_t oneShotRdPtr = 0;
 String lastWSRefreshStr = "";
 String lastNextionRefreshStr = "";
 
-void callbackDCCMQTTMessage(char* topic, byte *  payload, unsigned int length) //this is the landing point for incoming DCC messages from MQTT
+void dccClientCallback(char* topic, byte *  payload, unsigned int length) //this is the landing point for incoming DCC messages from MQTT
 {
   DynamicJsonDocument doc(4 * length);
   DeserializationError error = deserializeJson(doc, payload);
@@ -162,10 +162,10 @@ void notifyDccAccTurnoutOutput(uint16_t Addr, uint8_t Direction, uint8_t OutputP
   sprintf(dispStr, "Swi %u %s %s", Addr, Direction==0? "Th":"Cl", OutputPower==0?"Off":"On");
 //  Serial.println(dispStr);
   updateOneShotBuffer(dispStr);
-  if (lnMQTT)
+  if (lnMQTTServer)
   {
     sprintf(dispStr, "{\"type\":\"switch\", \"addr\": %u, \"dir\": \"%s\", \"power\":\"%s\"}", Addr, Direction==0? "thrown":"closed", OutputPower==0?"off":"on");
-    lnMQTT->sendDCCMsg(dispStr);
+    lnMQTTServer->sendDCCMsg(dispStr);
   }
 }
 
@@ -178,10 +178,10 @@ void notifyDccSigOutputState(uint16_t Addr, uint8_t State)
 //  Serial.println(dispStr);
 
   updateOneShotBuffer(dispStr);
-  if (lnMQTT)
+  if (lnMQTTServer)
   {
     sprintf(dispStr, "{\"type\":\"signal\", \"addr\": %u, \"aspect\": %i}", Addr, State);
-    lnMQTT->sendDCCMsg(dispStr);
+    lnMQTTServer->sendDCCMsg(dispStr);
   }
 }
 
@@ -190,10 +190,10 @@ void    notifyDccIdle(void)
   updateRefreshBuffer(0, "DCC Idle");
   char dispStr[25];  
 //    Serial.println("iDLE");
-  if (lnMQTT)
+  if (lnMQTTServer)
   {
     sprintf(dispStr, "{\"type\":\"idle\"}");
-    lnMQTT->sendDCCMsg(dispStr);
+    lnMQTTServer->sendDCCMsg(dispStr);
   }
 }
 
@@ -203,10 +203,10 @@ void    notifyDccSpeed(uint16_t Addr, DCC_ADDR_TYPE AddrType, uint8_t Speed, DCC
   sprintf(dispStr, "#%i T%i S%i/%i %c", Addr, AddrType, Speed, SpeedSteps, Dir == DCC_DIR_REV?'R':'F'); 
 //  Serial.println(dispStr);
   if (updateRefreshBuffer((Addr & 0x3FFF), dispStr))
-    if (lnMQTT)
+    if (lnMQTTServer)
     {
       sprintf(dispStr, "{\"type\":\"loco_speed\", \"addr\": %u, \"addr_type\": \"%s\", \"speed\": %i, \"speedsteps\": %i, \"dir\": \"%s\"}", Addr, AddrType == 0?"short":"long", Speed, SpeedSteps, Dir == DCC_DIR_REV?"reverse":"forward");
-      lnMQTT->sendDCCMsg(dispStr);
+      lnMQTTServer->sendDCCMsg(dispStr);
     }
 }
 
@@ -222,11 +222,11 @@ void    notifyDccFunc(uint16_t Addr, DCC_ADDR_TYPE AddrType, FN_GROUP FuncGrp, u
     default: thisID |= 0x8000; break;
   }
   if (updateRefreshBuffer(thisID, dispStr))
-    if (lnMQTT)
+    if (lnMQTTServer)
     {
 //      sprintf(dispStr, "{\"type\":\"loco_function\", \"addr\": %u, \"addr_type\": \"%s\", \"func_group\": %i, \"func_value\": %02X}", Addr, AddrType == 0?"short":"long", FuncGrp, FuncState);
       sprintf(dispStr, "{\"type\":\"loco_function\", \"addr\": %u, \"addr_type\": \"%s\", \"func_group\": %i, \"func_value\": %i}", Addr, AddrType == 0?"short":"long", FuncGrp, FuncState);
-      lnMQTT->sendDCCMsg(dispStr);
+      lnMQTTServer->sendDCCMsg(dispStr);
     }
 }
 

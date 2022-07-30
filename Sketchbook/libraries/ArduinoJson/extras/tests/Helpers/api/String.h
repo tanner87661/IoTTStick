@@ -1,5 +1,5 @@
 // ArduinoJson - https://arduinojson.org
-// Copyright Benoit Blanchon 2014-2021
+// Copyright © 2014-2022, Benoit BLANCHON
 // MIT License
 
 #pragma once
@@ -30,6 +30,17 @@ class String {
 
   bool operator==(const char* s) const {
     return _str == s;
+  }
+
+  String& operator=(const char* s) {
+    _str.assign(s);
+    return *this;
+  }
+
+  char operator[](unsigned int index) const {
+    if (index >= _str.size())
+      return 0;
+    return _str[index];
   }
 
   friend std::ostream& operator<<(std::ostream& lhs, const ::String& rhs) {

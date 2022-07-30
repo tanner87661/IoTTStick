@@ -5,7 +5,7 @@ var mqttTitle;
 var mqttBox;
 var setupText;
 var setupBox;
-var hatType; //used to control display of input fields
+//var hatType; //used to control display of input fields
 var interfaceType;
 
 var maxButtons = 0;
@@ -204,7 +204,7 @@ function updateOptions(thisRow)
 				setVisibility(([1].indexOf(btnTypeIndex) >= 0), t.parentElement);
 				break;
 			case 4: //checkbox 4 dbl click
-				setVisibility(([1].indexOf(btnTypeIndex) >= 0 && (hatType != 6)), t.parentElement);
+				setVisibility(([1].indexOf(btnTypeIndex) >= 0 && (thisHatID != 6)), t.parentElement);
 				break;
 		}
 		t.checked = ((configData[2].Buttons[thisRow].EventMask & (eventMask<<j)) > 0);
@@ -414,11 +414,11 @@ function loadNodeDataFields(jsonData)
 	maxButtons = 32; //16*jsonData.BtnModConfig.DataPins.length;
 	writeTextField("maxbuttons", maxButtons);
 	interfaceType = jsonData.InterfaceTypeList[jsonData.InterfaceIndex].Type;
-	hatType = jsonData.HatTypeList[jsonData.HatIndex].HatId;
+//	hatType = thisHatID; //jsonData.HatTypeList[jsonData.HatIndex].HatId;
 	setVisibility(interfaceType == 3, mqttTitle);
 	setVisibility(interfaceType == 3, mqttBox);
-//	setVisibility(hatType != 6, setupText);
-	setVisibility(hatType != 6, setupBox);
+//	setVisibility(thisHatID != 6, setupText);
+	setVisibility(thisHatID != 6, setupBox);
 }
 
 function loadDataFields(jsonData)
@@ -443,7 +443,7 @@ function loadDataFields(jsonData)
 		var idStr = "btnconfig_inp_" + i.toString() + "_2";
 		var dropDown = document.getElementById(idStr);
 		if (dropDown != undefined)
-			dropDown.options[2].disabled = hatType == 6;
+			dropDown.options[2].disabled = thisHatID == 6;
 	}
 }
 

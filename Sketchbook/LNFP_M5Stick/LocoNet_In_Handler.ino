@@ -3,10 +3,10 @@
 //LocoNet messages coming in from Communication module side, e.g. LN Driver, MQTT, or Gateway
 
 void callbackLocoNetMessage(lnReceiveBuffer * newData) //this is the landing point for incoming LocoNet messages
-                                                       //from LocoNet, MQTT, or Gateway
+                                                       //from LocoNet interfaces
 {
-//  Serial.println("App Callback");
-  if ((newData->errorFlags & (~msgEcho)) == 0)// && (newData->lnMsgSize > 0))//filter out echo flag
+//  Serial.printf("Loconet Callback ID %2X %2X\n", newData->reqID, newData->errorFlags);
+  if ((newData->errorFlags & (~msgEcho)) == 0) //filter out echo flag
     processLNValidMsg(newData);
   else
     processLNError(newData);
@@ -18,6 +18,7 @@ void processLNError(lnReceiveBuffer * newData)
 //   for (int i=0; i<newData->lnMsgSize; i++)
 //     Serial.printf("0x%02X ", newData->lnData[i]);
 //   Serial.println();
+
   if ((newData->errorFlags & errorCollision) > 0)
     Serial.println("LocoNet Error: LocoNet Collision detected");
   if ((newData->errorFlags & errorFrame) > 0)
@@ -42,15 +43,27 @@ void processLNValidMsg(lnReceiveBuffer * newData)
 //   for (int i=0; i<newData->lnMsgSize; i++)
 //     Serial.printf("0x%02X ", newData->lnData[i]);
 //   Serial.println();
+  digitraxBuffer->processLocoNetMsg(newData); //send it to DigitraxBuffers
   if (globalClient != NULL)
     processDataToWebClient("LN", newData);
   if (useM5Viewer == 1)
     processLNtoM5(newData);
   if (usbSerial)
     if (usbSerial->getMsgType() != DCCEx)
+    {
+      Serial.println("USB");
       usbSerial->lnWriteMsg(*newData);
-  digitraxBuffer->processLocoNetMsg(newData); //send it to DigitraxBuffers
+    }
 //  if (secElHandlerList) secElHandlerList->processLocoNetMsg(newData); //do not call this before buffer processing as it will read new buffer values
+  if (lbServer)
+    lbServer->lnWriteMsg(newData);
+  if ((lnMQTTServer) && ((newData->reqID & 0x2000) == 0)) //not coming from MQTT Gateway
+  {
+//    Serial.println("MQTT Callback");
+    lnMQTTServer->lnWriteMsg(newData);
+  }
+  if (wiServer)
+    wiServer->lnWriteMsg(newData);
 //   Serial.println("Done");
 }
 
@@ -82,7 +95,7 @@ void handleTranspondingEvent(uint16_t zoneAddr, uint16_t locoAddr, uint8_t event
 void handleSwiEvent(uint16_t swiAddr, uint8_t swiPos, uint8_t coilStat)
 {
   //add code here for event actions other than updating internal buffer
-  Serial.printf("Incoming Switch Command for Switch %i Position %i Status %i\n", swiAddr, swiPos, coilStat);
+//  Serial.printf("Incoming Switch Command for Switch %i Position %i Status %i\n", swiAddr, swiPos, coilStat);
   if (eventHandler) eventHandler->processBtnEvent(evt_trackswitch, swiAddr, swiPos);
   if (mySwitchList) mySwitchList->processBtnEvent(evt_trackswitch, swiAddr, swiPos);
 //  if (myChain) myChain->processBtnEvent(evt_trackswitch, swiAddr, swiPos);
@@ -131,4 +144,5 @@ void handleProgrammerEvent(uint8_t *  programmerSlot)
 {
 //  Serial.printf("Prog Stat: %i CV: %i Val: %i\n", programmerSlot[1], (programmerSlot[5]<<7) + (programmerSlot[6] & 0x7F), programmerSlot[7]);
   if (trainSensor) trainSensor->programmerReturn(programmerSlot);
+  //add code for RedHat
 }

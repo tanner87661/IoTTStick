@@ -26,9 +26,19 @@ This is the code repository for the IoTT Stick, port modules and hat devices wit
 - Version 1.5.8 Experimental with VoiceWatcher Support
 - Watch Video#80 for more information https://youtu.be/dP01Lq9poZw
 
-2022/04/09
+2022/05/10
+Version 1.5.12
+Improvements to the speed measurement algorithm, resulting in smoother display curve
 
-Version 1.5.11 with support for PurpleHat and automated speed matching
+2022/05/05
+Version 1.5.11
+bug fixes for automated speed matching function of PurpleHat
+fixed a bug with upgrading the node configuration to the latest version
+added Plain English translation to LocoNet viewer
+corrected a mistake in the assignment of BDL16 zones
+
+2022/04/09
+Version 1.5.10 with support for PurpleHat and automated speed matching
 added WiThrottle client
 improved LocoNet library
 minor bug fixes

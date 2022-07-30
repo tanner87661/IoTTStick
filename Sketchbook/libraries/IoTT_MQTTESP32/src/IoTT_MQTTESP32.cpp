@@ -31,218 +31,240 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
 #include <IoTT_MQTTESP32.h>
 
-
 #define ESP_getChipId()   ((uint32_t)ESP.getEfuseMac())
 
-char lnPingTopic[100] = "lnPing";  //ping topic, do not change. This is helpful to find Gateway IP Address if not known. 
-char lnBCTopic[100] = "lnIn";  //default topic, can be specified in mqtt.cfg. Useful when sending messages from 2 different LocoNet networks
-char lnEchoTopic[100] = "lnEcho"; //default topic, can be specified in mqtt.cfg
+topicList * brokerTopics = NULL;
+topicList * clientTopics = NULL;
 
-char thisNodeName[60] = ""; //default topic, can be specified in mqtt.cfg
+//char lnPingTopic[100] = "lnPing";  //ping topic, do not change. This is helpful to find Gateway IP Address if not known. 
+//char lnBCTopic[100] = "lnIn";  //default topic, can be specified in mqtt.cfg. Useful when sending messages from 2 different LocoNet networks
+//char lnEchoTopic[100] = "lnEcho"; //default topic, can be specified in mqtt.cfg
 
-cbFct mqttCallback = NULL;
-mqttFct nativeCallback = NULL;
-//cbFct mqttappCallback = NULL;
+//char thisNodeName[60] = ""; //default topic, can be specified in mqtt.cfg
 
-uint8_t workMode = 0; //0: LN; 1: DCC; 2: NativeMQTT; 3: DCC from MQTT
-
-MQTTESP32::MQTTESP32():PubSubClient()
+bool convertMQTTtoLN(lnReceiveBuffer* recData, char* topic, byte* payload, unsigned int length, topicList * myTopics, bool acceptLoop)
 {
-	setCallback(psc_callback);
-	nextPingPoint = millis() + pingDelay;
+	DynamicJsonDocument doc(4 * length);
+	DeserializationError error = deserializeJson(doc, payload);
+	if (!error)
+	{
+		if (doc.containsKey("From"))
+		{
+			String sentFrom = doc["From"];
+			if ((strcmp(topic, myTopics->pingTopic) == 0) && (strcmp(sentFrom.c_str(), myTopics->thisNodeName) != 0))
+			{
+				//this is a ping command from another node, do not process
+//				Serial.println("Foreign Ping");
+				return false;
+			}
+			if ((strcmp(sentFrom.c_str(), myTopics->thisNodeName) == 0) && (!acceptLoop))
+			{
+				//this is command we sent out, so ignore
+//				Serial.println("From us");
+				return false;
+			}
+			if (strcmp(topic, myTopics->bcTopic) == 0) //can be new message or echo from our own message
+			{
+				if (doc.containsKey("Data"))
+				{
+					recData->lnMsgSize = doc["Data"].size();
+					for (int j=0; j < recData->lnMsgSize; j++)  
+						recData->lnData[j] = doc["Data"][j];
+					if (doc.containsKey("ReqID"))
+						recData->reqID = (uint16_t) doc["ReqID"];
+					else
+						recData->reqID = 0;
+					recData->reqID &= 0x0FFF; //clear any bits in the routing space
+					if (doc.containsKey("ReqRespTime"))
+						recData->reqRespTime = doc["ReqRespTime"];
+					else
+						recData->reqRespTime = 0;
+					if (doc.containsKey("ReqRecTime"))
+						recData->reqRecTime = doc["ReqRecTime"];
+					else
+						recData->reqRecTime = 0;
+					if (doc.containsKey("EchoTime"))
+						recData->echoTime = doc["EchoTime"];
+					else
+						recData->echoTime = 0;
+					recData->msgType = doc["MsgType"];
+					recData->errorFlags = 0;
+/*
+					if (strcmp(sentFrom.c_str(), thisNodeName) == 0)
+					{
+						recData->errorFlags |= msgEcho;
+						recData->echoTime = micros() - recData->reqRecTime;
+						recData->reqID &= 0x0FFF; //clear flag to transmit to App
+//						Serial.println(recData->errorFlags);
+					}
+					else
+						recData->reqID |= 0x2000;
+*/
+//					Serial.printf("MQTT Rx %2X\n", recData->lnData[0]);
+					return true;
+				}
+			}
+		}
+	}
+//	else
+//		Serial.println("error");
+	return false;
 }
 
+void lnClientCallback(char* topic, byte *  payload, unsigned int length)
+{
+	if (!clientTopics) return;
+//	Serial.println("lnClientCallback");
+	lnReceiveBuffer recData;
+	if (convertMQTTtoLN(&recData, topic, payload, length, clientTopics, true))
+		callbackLocoNetMessage(&recData); //Loconet from MQTT. distribute message inside node
+}
+
+void lnGatewayCallback(char* topic, byte* payload, unsigned int length)
+{
+	if (!brokerTopics) return;
+//	Serial.println("lnGatewayCallback");
+	lnReceiveBuffer recData;
+	recData.reqID &= 0x0FFF;
+	recData.reqID |= 0x2000; //routing flag
+	lnTransmitMsg* txData = (lnTransmitMsg*)&recData;
+	if (convertMQTTtoLN(&recData, topic, payload, length, brokerTopics, false))
+		sendMsg(*txData); //MQTT gateway. Send message to Loconet, distribute return inside noe, but not to MQTT
+}
+
+/*
+void dccClientCallback(char* topic, byte* payload, unsigned int length)
+{
+}
+*/
+
+/*
+void nativeClientCallback(char* topic, byte* payload, unsigned int length)
+{
+}
+*/
+
+
+//cbFct mqttCallback = NULL;
+//mqttFct nativeCallback = NULL;
+//cbFct mqttappCallback = NULL;
+
+/*
+MQTTESP32::MQTTESP32():PubSubClient()
+{
+//	setCallback(psc_callback);
+	nextPingPoint = millis() + pingDelay;
+	workMode = 0xFF; //not initialized
+}
+*/
 MQTTESP32::~MQTTESP32()
 {
 }
 
 MQTTESP32::MQTTESP32(Client& client):PubSubClient(client)
 {
-	setCallback(psc_callback);
+	wifiClientMQTT = &client;
 	nextPingPoint = millis() + pingDelay;
 }
 
-void MQTTESP32::psc_callback(char* topic, byte* payload, unsigned int length)
+void MQTTESP32::initializeMQTT(uint8_t newMode)
 {
-	payload[length] = 0;
-	if (nativeCallback)
+	Serial.printf("Init MQTT %i \n", newMode);
+	workMode = newMode; // //0: LN Gateway; 1: DCC Client; 2: NativeMQTT; 3: LN Client; 4: DCC Server
+	switch (workMode)
 	{
-		nativeCallback(topic, payload, length);
-		return;
+		case 0: setCallback(lnGatewayCallback); brokerTopics = &myTopics; break;
+		case 1: setCallback(dccClientCallback); clientTopics = &myTopics; break;
+		case 2: setCallback(nativeClientCallback); break;
+		case 3: setCallback(lnClientCallback); clientTopics = &myTopics; break;
+		case 4: break; //no callback for DCC broker, send only
 	}
-	else
-	{
-		DynamicJsonDocument doc(4 * length);
-		DeserializationError error = deserializeJson(doc, payload);
-		switch(workMode)
-		{
-			case 0: //LocoNet, OLCB
-				if (!error)
-				{
-					if (doc.containsKey("From"))
-					{
-						lnReceiveBuffer recData;
-						String sentFrom = doc["From"];
-						if ((strcmp(topic, lnPingTopic) == 0) && (strcmp(sentFrom.c_str(), thisNodeName) != 0))
-						{
-							//this is a ping command from another node
-						}
-						if (strcmp(topic, lnBCTopic) == 0) //can be new message or echo from our own message
-						{
-							if (doc.containsKey("Data"))
-							{
-								recData.lnMsgSize = doc["Data"].size();
-								for (int j=0; j < recData.lnMsgSize; j++)  
-									recData.lnData[j] = doc["Data"][j];
-								if (doc.containsKey("ReqID"))
-									recData.reqID = (uint16_t) doc["ReqID"];
-								else
-									recData.reqID = 0;
-								if (doc.containsKey("ReqRespTime"))
-									recData.reqRespTime = doc["ReqRespTime"];
-								else
-									recData.reqRespTime = 0;
-								if (doc.containsKey("ReqRecTime"))
-									recData.reqRecTime = doc["ReqRecTime"];
-								else
-									recData.reqRecTime = 0;
-								if (doc.containsKey("EchoTime"))
-									recData.echoTime = doc["EchoTime"];
-								else
-									recData.echoTime = 0;
-								recData.msgType = doc["MsgType"];
-								recData.errorFlags = 0;
-								if (strcmp(sentFrom.c_str(), thisNodeName) == 0)
-								{
-									recData.errorFlags |= msgEcho;
-									recData.echoTime = micros() - recData.reqRecTime;
-									recData.reqID &= 0x3FFF; //clear flag to transmit to App
-//									Serial.println(recData.errorFlags);
-								}
-								else
-									recData.reqID |= 0xC000;
-//								Serial.printf("MQTT Rx %2X\n", recData.lnData[0]);
-								if (mqttCallback != NULL)
-									mqttCallback(&recData);
-//							else
-//								if (onMQTTMessage) 
-//									onMQTTMessage(&recData);
-							}
-						}
-					}
-				}
-		}
-	}//else
 }
 
 void MQTTESP32::setNodeName(char * newName, bool newUseMAC)
 {
-	strcpy(&thisNodeName[0], newName);
+	char nnBuf[60] = {'\0'};
+	strcpy(nnBuf, newName);
 	useMAC = newUseMAC;
-//	strcpy(&thisNodeName[0], nodeName);
 	if (useMAC)
 	{
 		String hlpStr = String(ESP_getChipId());
-	    strcpy(&thisNodeName[strlen(thisNodeName)], hlpStr.c_str());
+		strcat(nnBuf, hlpStr.c_str());
+		myTopics.thisNodeName = (char*) malloc(strlen(nnBuf)+1);
+		strcpy(myTopics.thisNodeName, nnBuf);
+		
+//	    strcpy(&thisNodeName[strlen(thisNodeName)], hlpStr.c_str());
 	}
 }
 
 void MQTTESP32::loadMQTTCfgJSON(DynamicJsonDocument doc)
 {
-	if (doc.containsKey("MQTTServer"))
-		strcpy(mqtt_server, doc["MQTTServer"]);
-    if (doc.containsKey("MQTTPort"))
-        mqtt_port = doc["MQTTPort"];
-    if (doc.containsKey("MQTTUser"))
-		strcpy(mqtt_user, doc["MQTTUser"]);
-    if (doc.containsKey("MQTTPassword"))
-        strcpy(mqtt_password, doc["MQTTPassword"]);
-    if (doc.containsKey("NodeName"))
-        strcpy(nodeName, doc["NodeName"]);
-    if (doc.containsKey("inclMAC"))
-        includeMAC = doc["inclMAC"];
-    if (doc.containsKey("pingDelay"))
-        setPingFrequency(doc["pingDelay"]);
-    if (doc.containsKey("BCTopic"))
-        strcpy(appBCTopic, doc["BCTopic"]);
-    if (doc.containsKey("DCCTopic"))
-        strcpy(appDCCTopic, doc["DCCTopic"]);
-    if (doc.containsKey("EchoTopic"))
-        strcpy(appEchoTopic, doc["EchoTopic"]);
-    if (doc.containsKey("PingTopic"))
-        strcpy(appPingTopic, doc["PingTopic"]);
-
-    setServer(mqtt_server, mqtt_port);
-    setNodeName(nodeName, includeMAC);
-    setBCTopicName(appBCTopic);
-    setEchoTopicName(appEchoTopic);
-    setPingTopicName(appPingTopic);
-}
-
-void MQTTESP32::setMQTTCallback(cbFct newCB, uint8_t newMode)
-{
-//	Serial.println("setMQTTCallback");
-	nativeCallback = NULL; //make sure only one callback is active
-	mqttCallback = newCB;
-	workMode = newMode; //0: LocoNet, 3: DCC from MQTT
-}
-
-void MQTTESP32::setNativeMQTTCallback(mqttFct newCB, uint8_t newMode)
-{
-	mqttCallback = NULL; //make sure only one callback is active
-	nativeCallback = newCB;
-	workMode = newMode;
+	JsonObject thisObj;
 	switch (workMode)
 	{
-		case 3: //DCC from MQTT
-			setBCTopicName(appDCCTopic);
-			break;
+		case 4: ; //DCC Broker
+		case 0: thisObj = doc["ServerSettings"]; break; //LN Broker
+		default: thisObj = doc["ClientSettings"]; break;
+		
 	}
-}
+	char tpcBuffer[100];
+	if (thisObj.containsKey("MQTTServer"))
+		strcpy(mqtt_server, thisObj["MQTTServer"]);
+    if (thisObj.containsKey("MQTTPort"))
+        mqtt_port = thisObj["MQTTPort"];
+    if (thisObj.containsKey("MQTTUser"))
+		strcpy(mqtt_user, thisObj["MQTTUser"]);
+    if (thisObj.containsKey("MQTTPassword"))
+        strcpy(mqtt_password, thisObj["MQTTPassword"]);
+    if (thisObj.containsKey("NodeName"))
+        strcpy(nodeName, thisObj["NodeName"]);
+    if (thisObj.containsKey("inclMAC"))
+        includeMAC = thisObj["inclMAC"];
+    if (thisObj.containsKey("pingDelay"))
+        setPingFrequency(thisObj["pingDelay"]);
 
-void MQTTESP32::setDCCMode()
-{
-	mqttCallback = NULL; //make sure only one callback is active
-	nativeCallback = NULL;
-	workMode = 1;
+    if (thisObj.containsKey("BCTopic"))
+        strcpy(tpcBuffer, thisObj["BCTopic"]);
+    else
+        strcpy(tpcBuffer, "lnIn");
+    myTopics.bcTopic = (char*) malloc(strlen(tpcBuffer)+1);
+    strcpy(&myTopics.bcTopic[0], tpcBuffer);
+    if (thisObj.containsKey("DCCTopic"))
+        strcpy(tpcBuffer, thisObj["DCCTopic"]);
+    else
+        strcpy(tpcBuffer, "dccBC");
+    myTopics.dccTopic = (char*) malloc(strlen(tpcBuffer)+1);
+    strcpy(&myTopics.dccTopic[0], tpcBuffer);
+    if (thisObj.containsKey("EchoTopic"))
+        strcpy(tpcBuffer, thisObj["EchoTopic"]);
+    else
+        strcpy(tpcBuffer, "lnEcho");
+    myTopics.echoTopic = (char*) malloc(strlen(tpcBuffer)+1);
+    strcpy(&myTopics.echoTopic[0], tpcBuffer);
+    if (thisObj.containsKey("PingTopic"))
+        strcpy(tpcBuffer, thisObj["PingTopic"]);
+    else
+        strcpy(tpcBuffer, "lnPingX");
+    myTopics.pingTopic = (char*) malloc(strlen(tpcBuffer)+1);
+    strcpy(&myTopics.pingTopic[0], tpcBuffer);
+    setServer(mqtt_server, mqtt_port);
+    setNodeName(nodeName, includeMAC);
 }
 
 void MQTTESP32::sendDCCMsg(char * msgStr)
 {
 	if (workMode == 1)
-		publish(appDCCTopic, msgStr);
-}
-
-/*
-void MQTTESP32::setAppCallback(cbFct newCB)
-{
-	Serial.println("setAppCallback");
-	mqttappCallback = newCB;
-}
-*/
-
-void MQTTESP32::setBCTopicName(char * newName)
-{
-	strcpy(&lnBCTopic[0], newName);
-}
-
-void MQTTESP32::setEchoTopicName(char * newName)
-{
-	strcpy(&lnEchoTopic[0], newName);
-}
-
-void MQTTESP32::setPingTopicName(char * newName)
-{
-	strcpy(&lnPingTopic[0], newName);
+		publish(myTopics.dccTopic, msgStr);
 }
 
 bool MQTTESP32::connectToBroker()
 {
 	uint32_t startTime = millis();
-	if (connect(thisNodeName, mqtt_user, mqtt_password)) 
+	Serial.println(mqtt_server);
+	if (connect(myTopics.thisNodeName, mqtt_user, mqtt_password)) 
 	{
 		// ... and resubscribe
-		if (mqttCallback)
+		if ((workMode == 0) || (workMode == 3))
 			subscribeTopics();
 		else //or cause main app to have libraries to resubscribe
 			subscriptionsOK = false;
@@ -258,11 +280,12 @@ bool MQTTESP32::connectToBroker()
 
 void MQTTESP32::subscribeTopics()
 {
+	Serial.println("Subscribe topics");
 	if ((workMode == 0) || (workMode == 3)) //LN or DCC from MQTT
 	{
-		subscribe(lnBCTopic);
-		subscribe(lnPingTopic);
-		subscribe(lnEchoTopic);
+		subscribe(myTopics.bcTopic);
+		subscribe(myTopics.pingTopic);
+		subscribe(myTopics.echoTopic);
 	}
 	subscriptionsOK = true;
 }
@@ -272,7 +295,7 @@ bool MQTTESP32::mustResubscribe()
 	return !subscriptionsOK;
 }
 
-int16_t MQTTESP32::lnWriteMsg(lnTransmitMsg txData)
+int16_t MQTTESP32::lnWriteMsg(lnTransmitMsg* txData)
 {
 // Serial.printf("MQTT Tx %2X\n", txData.lnData[0]);
    uint8_t hlpQuePtr = (que_wrPos + 1) % queBufferSize;
@@ -283,16 +306,16 @@ int16_t MQTTESP32::lnWriteMsg(lnTransmitMsg txData)
 //		for (int i = 1; i < txData.lnMsgSize; i++)
 //			Serial.printf(", %2X", txData.lnData[i]);
 //		Serial.println();
-		transmitQueue[hlpQuePtr].msgType = txData.msgType;
-		transmitQueue[hlpQuePtr].lnMsgSize = txData.lnMsgSize;
-		transmitQueue[hlpQuePtr].reqID = txData.reqID;
+		transmitQueue[hlpQuePtr].msgType = txData->msgType;
+		transmitQueue[hlpQuePtr].lnMsgSize = txData->lnMsgSize;
+		transmitQueue[hlpQuePtr].reqID = txData->reqID;
 		transmitQueue[hlpQuePtr].reqRecTime = micros();
-		memcpy(transmitQueue[hlpQuePtr].lnData, txData.lnData, lnMaxMsgSize); //txData.lnMsgSize);
+		memcpy(transmitQueue[hlpQuePtr].lnData, txData->lnData, lnMaxMsgSize); //txData.lnMsgSize);
 		transmitQueue[hlpQuePtr].reqRespTime = 0;
 		transmitQueue[hlpQuePtr].echoTime = 0;
 		transmitQueue[hlpQuePtr].errorFlags = 0;
 		que_wrPos = hlpQuePtr;
-		return txData.lnMsgSize;
+		return txData->lnMsgSize;
 	}
 	else
 	{	
@@ -301,7 +324,7 @@ int16_t MQTTESP32::lnWriteMsg(lnTransmitMsg txData)
 	}
 }
 
-int16_t MQTTESP32::lnWriteMsg(lnReceiveBuffer txData)
+int16_t MQTTESP32::lnWriteMsg(lnReceiveBuffer* txData)
 {
 // 	Serial.printf("MQTT Tx %2X\n", txData.lnData[0]);
     uint8_t hlpQuePtr = (que_wrPos + 1) % queBufferSize;
@@ -312,16 +335,16 @@ int16_t MQTTESP32::lnWriteMsg(lnReceiveBuffer txData)
 //		for (int i = 1; i < txData.lnMsgSize; i++)
 //			Serial.printf(", %2X", txData.lnData[i]);
 //		Serial.println();
-		transmitQueue[hlpQuePtr].msgType = txData.msgType;
-		transmitQueue[hlpQuePtr].lnMsgSize = txData.lnMsgSize;
-		transmitQueue[hlpQuePtr].reqID = txData.reqID;
+		transmitQueue[hlpQuePtr].msgType = txData->msgType;
+		transmitQueue[hlpQuePtr].lnMsgSize = txData->lnMsgSize;
+		transmitQueue[hlpQuePtr].reqID = txData->reqID;
 		transmitQueue[hlpQuePtr].reqRecTime = micros();
-		memcpy(transmitQueue[hlpQuePtr].lnData, txData.lnData, lnMaxMsgSize); //txData.lnMsgSize);
-		transmitQueue[hlpQuePtr].reqRespTime = txData.reqRespTime;
-		transmitQueue[hlpQuePtr].echoTime = txData.echoTime;
-		transmitQueue[hlpQuePtr].errorFlags = txData.errorFlags;
+		memcpy(transmitQueue[hlpQuePtr].lnData, txData->lnData, lnMaxMsgSize); //txData.lnMsgSize);
+		transmitQueue[hlpQuePtr].reqRespTime = txData->reqRespTime;
+		transmitQueue[hlpQuePtr].echoTime = txData->echoTime;
+		transmitQueue[hlpQuePtr].errorFlags = txData->errorFlags;
 		que_wrPos = hlpQuePtr;
-		return txData.lnMsgSize;
+		return txData->lnMsgSize;
 	}
 	else
 	{	
@@ -340,7 +363,7 @@ bool MQTTESP32::sendPingMessage()
 {
     DynamicJsonDocument doc(1200);
     char myMqttMsg[200];
-    String hlpStr = thisNodeName;
+    String hlpStr = myTopics.thisNodeName;
     doc["From"] = hlpStr; //NetBIOSName + "-" + ESP_getChipId();
 	doc["IP"] = WiFi.localIP().toString();
 	long rssi = WiFi.RSSI();
@@ -350,9 +373,9 @@ bool MQTTESP32::sendPingMessage()
     serializeJson(doc, myMqttMsg);
     if (connected())
     {
-      if (!publish(appPingTopic, myMqttMsg)) 
+      if (!publish(myTopics.pingTopic, myMqttMsg)) 
       {
-//        	Serial.println(F("Ping Failed"));
+        	Serial.println(F("Ping Failed"));
 			return false;
       } else 
       {
@@ -369,12 +392,12 @@ bool MQTTESP32::sendMQTTMessage(lnReceiveBuffer txData)
     DynamicJsonDocument doc(1200);
     char myMqttMsg[400];
     String jsonOut = "";
-    String hlpStr = thisNodeName;
+    String hlpStr = myTopics.thisNodeName;
     doc["From"] = hlpStr; //NetBIOSName + "-" + ESP_getChipId();
     doc["ReqRecTime"] = txData.reqRecTime;
     doc["ReqRespTime"] = txData.reqRespTime;
     doc["EchoTime"] = txData.echoTime;
-    doc["ReqID"] = txData.reqID;
+    doc["ReqID"] = txData.reqID & 0x0FFF; //clear routing flags
     doc["ErrorFlags"] = txData.errorFlags;
     switch (txData.msgType)
     {
@@ -399,24 +422,15 @@ bool MQTTESP32::sendMQTTMessage(lnReceiveBuffer txData)
 				}
 	}
     serializeJson(doc, myMqttMsg);
+
+//	Serial.println(myMqttMsg);
+
     if (connected())
     {
-      if ((txData.errorFlags & msgEcho) > 0)  //send echo message if echo flag is set 
-//        if (!publish(lnEchoTopic, myMqttMsg))
-//        {
-//			return false;
-//        } else 
-//        {
-			return true;
-//        }
-      else  //otherwise send BC message (in direct mode, meaning the command came in via lnOutTopic)
-        if (!publish(lnBCTopic, myMqttMsg))
-        {
+        if (!publish(myTopics.bcTopic, myMqttMsg))
 			return false; //changed from true
-        } else 
-        {
+        else 
 			return true;
-        }
     }
 	return false; //changed from true
 }
@@ -453,11 +467,13 @@ void MQTTESP32::processLoop()
     {
       // Client connected
 		loop();
-		if (mqttCallback)
+		if ((workMode == 0) || (workMode == 3))
 			if (que_wrPos != que_rdPos)
 			{
+//				Serial.println("sendMQTTMessage");
 				int hlpQuePtr = (que_rdPos + 1) % queBufferSize;
-				if (sendMQTTMessage(transmitQueue[hlpQuePtr]))
+				sendMQTTMessage(transmitQueue[hlpQuePtr]);
+//				if (sendMQTTMessage(transmitQueue[hlpQuePtr]))
 					que_rdPos = hlpQuePtr; //if not successful, we keep trying
 			}
 		if (pingDelay > 0)

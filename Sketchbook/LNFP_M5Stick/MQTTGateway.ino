@@ -1,6 +1,10 @@
 //establish the MQTT connection to the broker
+/*
 void   establishMQTTConnection()
 {
-  if (lnMQTT)
-    lnMQTT->connectToBroker();
+  if (lnMQTTServer)
+    lnMQTTServer->connectToBroker();
+  if (lnMQTTClient)
+    lnMQTTClient->connectToBroker();
 }
+*/

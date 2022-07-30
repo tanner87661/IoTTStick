@@ -1,5 +1,5 @@
 // ArduinoJson - https://arduinojson.org
-// Copyright Benoit Blanchon 2014-2021
+// Copyright © 2014-2022, Benoit BLANCHON
 // MIT License
 
 #include <ArduinoJson.h>
@@ -171,7 +171,7 @@ TEST_CASE("MemberProxy::remove()") {
     mp["a"] = 1;
     mp["b"] = 2;
 
-    int i = 4;
+    size_t i = 4;
     char vla[i];
     strcpy(vla, "b");
     mp.remove(vla);
@@ -229,6 +229,20 @@ TEST_CASE("MemberProxy::size()") {
   }
 }
 
+TEST_CASE("MemberProxy::memoryUsage()") {
+  DynamicJsonDocument doc(4096);
+  MemberProxy<JsonDocument &, const char *> mp = doc["hello"];
+
+  SECTION("returns 0 when null") {
+    REQUIRE(mp.memoryUsage() == 0);
+  }
+
+  SECTION("return the size for a string") {
+    mp.set(std::string("hello"));
+    REQUIRE(mp.memoryUsage() == 6);
+  }
+}
+
 TEST_CASE("MemberProxy::operator[]") {
   DynamicJsonDocument doc(4096);
   MemberProxy<JsonDocument &, const char *> mp = doc["hello"];
@@ -244,4 +258,30 @@ TEST_CASE("MemberProxy::operator[]") {
 
     REQUIRE(doc.as<std::string>() == "{\"hello\":[null,null,42]}");
   }
+}
+
+TEST_CASE("MemberProxy cast to JsonVariantConst") {
+  DynamicJsonDocument doc(4096);
+  doc["hello"] = "world";
+
+  const MemberProxy<JsonDocument &, const char *> mp = doc["hello"];
+
+  JsonVariantConst var = mp;
+
+  CHECK(var.as<std::string>() == "world");
+}
+
+TEST_CASE("MemberProxy cast to JsonVariant") {
+  DynamicJsonDocument doc(4096);
+  doc["hello"] = "world";
+
+  MemberProxy<JsonDocument &, const char *> mp = doc["hello"];
+
+  JsonVariant var = mp;
+
+  CHECK(var.as<std::string>() == "world");
+
+  var.set("toto");
+
+  CHECK(doc.as<std::string>() == "{\"hello\":\"toto\"}");
 }

@@ -2,6 +2,11 @@ var sourceArray = ["Switch", "Dyn. Signal", "DCC Signal", "Button","Analog Value
 var enableArray = ["Always On", "Always Off", "Button", "Switch", "Block Detector"];
 var btnArray = ["Btn Down","Btn Up","Btn Click","Btn Hold", "Btn Dbl Click"];
 var btnArray0x03 = ["Btn Down","Btn Up"];
+var truefalseArray = ["false","true"];
+var posnegArray = ["positive","negative"];
+var msgTypeArray = ["Input Report", "Switch Report", "Button Down/Up"];
+var turnoutTypeArray = ["ZPIN (!)", "DCC", "Servo", "VPIN"];
+var startupArray = ["restore", "set active", "set inactive"];
 
 function tfSetCoordinate(element, row, col, index, id)
 {
@@ -79,10 +84,45 @@ function tfEvtTypeSrcSel(y, x, id, evtHandler)
 	return selectList;
 }
 
+function tfStartupSel(y, x, id, evtHandler)
+{
+	var selectList = tfTemplateTypeSel(y, x, id, evtHandler);
+	createOptions(selectList, startupArray);
+	return selectList;
+}
+
 function tfEnableTypeSel(y, x, id, evtHandler)
 {
 	var selectList = tfTemplateTypeSel(y, x, id, evtHandler);
 	createOptions(selectList, enableArray);
+	return selectList;
+}
+
+function tfEnableTrueFalseSel(y, x, id, evtHandler)
+{
+	var selectList = tfTemplateTypeSel(y, x, id, evtHandler);
+	createOptions(selectList, truefalseArray);
+	return selectList;
+}
+
+function tfEnablePosNegSel(y, x, id, evtHandler)
+{
+	var selectList = tfTemplateTypeSel(y, x, id, evtHandler);
+	createOptions(selectList, posnegArray);
+	return selectList;
+}
+
+function tfTurnoutTypeSel(y, x, id, evtHandler)
+{
+	var selectList = tfTemplateTypeSel(y, x, id, evtHandler);
+	createOptions(selectList, turnoutTypeArray);
+	return selectList;
+}
+
+function tfMessageTypeSel(y, x, id, evtHandler)
+{
+	var selectList = tfTemplateTypeSel(y, x, id, evtHandler);
+	createOptions(selectList, msgTypeArray);
 	return selectList;
 }
 

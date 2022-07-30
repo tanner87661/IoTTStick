@@ -47,6 +47,11 @@ bool LocoNetESPSerial::hasMsgSpace()
     return (hlpQuePtr != que_rdPos);
 }
 
+void LocoNetESPSerial::sendLineBreak(uint16_t breakBits)
+{
+	hybrid_LineBreak(breakBits);
+}
+
 void LocoNetESPSerial::begin(int receivePin, int transmitPin, bool inverse_logicRx, bool inverse_logicTx) 
 {
 	m_invertRx = inverse_logicRx;
@@ -91,24 +96,24 @@ void LocoNetESPSerial::loadLNCfgJSON(DynamicJsonDocument doc)
 	begin(m_rxPin, m_txPin,m_invertRx, m_invertTx);
 }
 
-uint16_t LocoNetESPSerial::lnWriteMsg(lnTransmitMsg txData)
+uint16_t LocoNetESPSerial::lnWriteMsg(lnTransmitMsg* txData)
 {
     uint8_t hlpQuePtr = (que_wrPos + 1) % queBufferSize;
 //	Serial.printf("Serial lnWriteMsg tx %i Rd %i Wr %i Hlp %i\n", txData.lnMsgSize, que_rdPos, que_wrPos, hlpQuePtr);
     if (hlpQuePtr != que_rdPos) //override protection
     {
-		transmitQueue[hlpQuePtr].lnMsgSize = txData.lnMsgSize;
-		transmitQueue[hlpQuePtr].reqID = txData.reqID;
+		transmitQueue[hlpQuePtr].lnMsgSize = txData->lnMsgSize;
+		transmitQueue[hlpQuePtr].reqID = txData->reqID;
 		transmitQueue[hlpQuePtr].reqRecTime = micros();
-		memcpy(transmitQueue[hlpQuePtr].lnData, txData.lnData, txData.lnMsgSize);
-		if ((!hybrid_getBusyMode()) || (txData.lnData[0] != 0x81)) //do not insert busy commands from outside if in busy mode
+		memcpy(transmitQueue[hlpQuePtr].lnData, txData->lnData, txData->lnMsgSize);
+		if ((!hybrid_getBusyMode()) || (txData->lnData[0] != 0x81)) //do not insert busy commands from outside if in busy mode
 			que_wrPos = hlpQuePtr;
 //		Serial.printf("LN TX %2X", txData.lnData[0]);
 //		for (int i = 1; i < txData.lnMsgSize; i++)
 //			Serial.printf(", %2X", txData.lnData[i]);
 //		Serial.println();
 //		hybrid_setBusyMode(false);
-		return txData.lnMsgSize;
+		return txData->lnMsgSize;
 	}
 	else
 	{	
@@ -117,24 +122,24 @@ uint16_t LocoNetESPSerial::lnWriteMsg(lnTransmitMsg txData)
 	}
 }
 
-uint16_t LocoNetESPSerial::lnWriteMsg(lnReceiveBuffer txData)
+uint16_t LocoNetESPSerial::lnWriteMsg(lnReceiveBuffer* txData)
 {
 //	Serial.printf("Serial lnWriteMsg rx %i Rd %i Wr %i Hlp %i\n", txData.lnMsgSize, que_rdPos, que_wrPos, hlpQuePtr);
     uint8_t hlpQuePtr = (que_wrPos + 1) % queBufferSize;
     if (hlpQuePtr != que_rdPos) //override protection
     {
-		transmitQueue[hlpQuePtr].lnMsgSize = txData.lnMsgSize;
-		transmitQueue[hlpQuePtr].reqID = txData.reqID;
+		transmitQueue[hlpQuePtr].lnMsgSize = txData->lnMsgSize;
+		transmitQueue[hlpQuePtr].reqID = txData->reqID;
 		transmitQueue[hlpQuePtr].reqRecTime = micros();
-		memcpy(transmitQueue[hlpQuePtr].lnData, txData.lnData, txData.lnMsgSize);
-		if ((!hybrid_getBusyMode()) || (txData.lnData[0] != 0x81)) //do not insert busy commands from outside if in busy mode
+		memcpy(transmitQueue[hlpQuePtr].lnData, txData->lnData, txData->lnMsgSize);
+		if ((!hybrid_getBusyMode()) || (txData->lnData[0] != 0x81)) //do not insert busy commands from outside if in busy mode
 			que_wrPos = hlpQuePtr;
 //		Serial.printf("LN RX %2X", txData.lnData[0]);
 //		for (int i = 1; i < txData.lnMsgSize; i++)
 //			Serial.printf(", %2X", txData.lnData[i]);
 //		Serial.println();
 //		hybrid_setBusyMode(false);
-		return txData.lnMsgSize;
+		return txData->lnMsgSize;
 	}
 	else
 	{	
@@ -143,7 +148,7 @@ uint16_t LocoNetESPSerial::lnWriteMsg(lnReceiveBuffer txData)
 	}
 }
 
-uint16_t LocoNetESPSerial::lnWriteReply(lnTransmitMsg txData)
+uint16_t LocoNetESPSerial::lnWriteReply(lnTransmitMsg* txData)
 {
 	return lnWriteMsg(txData);
 	

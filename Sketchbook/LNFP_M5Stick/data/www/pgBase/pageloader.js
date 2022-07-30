@@ -1,6 +1,23 @@
 var systemTime = new Date();
 var serverIP = "ws://" + location.hostname + "/ws";  
 var ws = null; // = new WebSocket(serverIP);
+var urlString = window.location.href;
+let paramString = urlString.split('?')[1];
+let queryString = new URLSearchParams(paramString);
+var pageParam = "";
+var thisIntfID = 0; //= configData[nodeCfg].InterfaceTypeList[configData[nodeCfg].InterfaceIndex].IntfId;
+var thisHatID = 0;
+var thisServerList = [];
+var thisALMList = [];
+
+//console.log(queryString);
+for (var px of queryString.entries()) 
+{
+    pageParam = px[0];
+    break;
+}
+
+
 //var loadedScripts = [];
 var scriptList;
 var currentPage = 0;
@@ -39,21 +56,28 @@ function loadPageList(pageName, menueTab, contentTab, footerTab)
 			if (this.status == 200) 
 			{
 				scriptList = JSON.parse(this.response);
-//				console.log(scriptList, scriptList.Pages.length);
 				for (i=0; i<scriptList.Pages.length;i++)
 				{
-//					console.log("Loading Page", pageName, scriptList.Pages[i].WebPage );
-					if (scriptList.Pages[i].WebPage == pageName)
+					var paramOK = true;
+					var paramStr = (scriptList.Pages[i].URLParam) ? "?" + scriptList.Pages[i].URLParam : "";
+					if (pageParam.length > 0)
+						paramOK = (scriptList.Pages[i].URLParam == pageParam);
+
+					if ((scriptList.Pages[i].WebPage.indexOf(pageName) >= 0) && paramOK)
 					{
-//						console.log("Setting ID", pageName, scriptList.Pages[i].ID );
+//						console.log("Setting ID", pageName, scriptList.Pages[i].ID + paramStr);
 						currentPage = i; //scriptList.Pages[i].ID;
-						createMenueTabElement(menueTab, "button", "tablink", "main", scriptList.Pages[i].ID, scriptList.Pages[i].Menue, true, "");
+						createMenueTabElement(menueTab, "button", "tablink", "main", scriptList.Pages[i].ID + paramStr, scriptList.Pages[i].Menue, true, "");
 					}
 					else
-						createMenueTabElement(menueTab, "button", "tablink", "main", scriptList.Pages[i].ID, scriptList.Pages[i].Menue, false,"loadPage('" + scriptList.Pages[i].WebPage+ "')");
+					{
+						createMenueTabElement(menueTab, "button", "tablink", "main", scriptList.Pages[i].ID + paramStr, scriptList.Pages[i].Menue, false,"loadPage('" + scriptList.Pages[i].WebPage + paramStr + "')");
+					}
+//					console.log("Loading Page", pageName, scriptList.Pages[i].WebPage, scriptList.Pages[i].WebPage.indexOf(pageName), scriptList.Pages[i].ID + paramStr);
 						
 				}
-				updateMenueTabs("main", scriptList.Pages[currentPage].ID, "grey");
+				var paramStr = (scriptList.Pages[currentPage].URLParam) ? "?" + scriptList.Pages[currentPage].URLParam : "";
+				updateMenueTabs("main", scriptList.Pages[currentPage].ID + paramStr, "grey");
 				constructPageContent(contentTab);
 				constructFooterContent(footerTab);
 			}
@@ -61,7 +85,7 @@ function loadPageList(pageName, menueTab, contentTab, footerTab)
 	}
 	request.open("GET", "pageconfig.json", true);
 	request.setRequestHeader('Cache-Control', 'no-cache');
-	request.send();
+	request.send()
 }
 
 function updateMenueTabs(menuName, pageID, color) 
@@ -97,7 +121,7 @@ function setSensorReportRate(rateMillis)
 
 function reqPageStats()
 {
-	ws.send("{\"Cmd\":\"SetSensor\"}");
+	ws.send("{\"Cmd\":\"ReqStats\"}");
 }
 
 function downloadConfig(fileSelect) //get files from Stick and store to file
@@ -116,21 +140,23 @@ function showMenueTabs(thisConfigData)
 	for (i=0; i<scriptList.Pages.length;i++)
 	{
 		var isVisible = false;
-		var tabElement = document.getElementById(scriptList.Pages[i].ID);
+		var paramStr = (scriptList.Pages[i].URLParam) ? "?" + scriptList.Pages[i].URLParam : "";
+		var tabElement = document.getElementById(scriptList.Pages[i].ID + paramStr);
+		var thisHatId = parseInt(thisConfigData.HatTypeList[thisConfigData.HatIndex].HatId);
+		var thisInterfaceId = parseInt(thisConfigData.InterfaceTypeList[thisConfigData.InterfaceIndex].IntfId);
 		
-		if ((scriptList.Pages[i].ProdSel.indexOf(-1) >= 0) || (scriptList.Pages[i].CommSel.indexOf(-1) >= 0))
+		if ((scriptList.Pages[i].ProdSel.indexOf(-1) >= 0) || (scriptList.Pages[i].CommSel.indexOf(-1) >= 0)) //-1 sets it true in every case
 		{
 			isVisible = true;
 //			console.log(1);
 		}
-		var thisId = parseInt(thisConfigData.HatTypeList[thisConfigData.HatIndex].HatId);
-		if (scriptList.Pages[i].ProdSel.indexOf(thisId) >= 0)
+		if (scriptList.Pages[i].ProdSel.indexOf(thisHatId) >= 0)
 		{
 			isVisible = true;
+//			console.log(2);
 //			console.log(thisConfigData.HatIndex, thisConfigData.HatTypeList[thisConfigData.HatIndex].HatId, 2, thisId);
 		}
-		thisId = parseInt(thisConfigData.InterfaceTypeList[thisConfigData.InterfaceIndex].IntfId);
-		if (scriptList.Pages[i].CommSel.indexOf(thisId) >= 0)
+		if (scriptList.Pages[i].CommSel.indexOf(thisInterfaceId) >= 0)
 		{
 			isVisible = true;
 //			console.log(3);
@@ -140,6 +166,12 @@ function showMenueTabs(thisConfigData)
 		{
 			isVisible = true;
 //			console.log(4);
+		}
+		for (var j=0; j < thisConfigData.ServerIndex.length; j++)
+			if (scriptList.Pages[i].ServerSel.indexOf(thisConfigData.ServerIndex[j]) >= 0)
+		{
+			isVisible = true;
+//			console.log(5);
 		}
 //		if (isVisible)
 //			console.log(tabElement);
@@ -452,6 +484,7 @@ function writeDiskFile(newBlob, fileName)
 
 function startWebsockets()
 {
+//	console.log(serverIP);
 	ws = new WebSocket(serverIP);
 	  
     ws.onopen = function() 
@@ -506,6 +539,10 @@ function startWebsockets()
 			processDCCInput(myArr.Data);
   		if ((String(myArr.Cmd).indexOf("MQTT") >= 0) && (scriptList.Pages[currentPage].ID == "pgMQTTViewer"))
 			processMQTTInput(myArr);
+  		if ((myArr.Cmd == "DCCPP") && (scriptList.Pages[currentPage].ID == "pgRedHatCfg"))
+ 			processDCCPPInput(myArr);
+  		if ((myArr.Cmd == "FC") && (scriptList.Pages[currentPage].ID == "pgRedHatCfg"))
+ 			processFCInput(myArr);
 
   		if (myArr.Cmd == "CfgFiles")
   		{
@@ -531,7 +568,7 @@ function startWebsockets()
 						
 					if (storeConfigFiles) //store individual config files
 					{
-						console.log("SHIFT ", transferData.length);
+//						console.log("SHIFT ", transferData.length);
 						for (var i = 0; i < transferData.length; i++)
 						{
 							var a = document.createElement("a");
@@ -563,6 +600,9 @@ function startWebsockets()
 			{
 				wsInitNode = false;
 				configData[nodeCfg] = JSON.parse(JSON.stringify(myArr.Data));
+				thisIntfID = configData[nodeCfg].InterfaceTypeList[configData[nodeCfg].InterfaceIndex].IntfId;
+				thisHatID = configData[nodeCfg].ServerIndex;
+				thisALMList = configData[nodeCfg].ALMIndex;
 				showMenueTabs(configData[nodeCfg]);
 				loadNodeDataFields(configData[nodeCfg]);
 			}

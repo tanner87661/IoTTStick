@@ -47,8 +47,6 @@ function loadSettings(sender)
 		return pageEntry.ID == fileIDName;
 	}
 	
-	
-	
 	var fileName = document.getElementById("btnLoad").files[0];
 //	console.log("Load file ", fileName);
 	var reader = new FileReader();
@@ -95,11 +93,36 @@ function setDisplayOptions()
 	setVisibility([4,5,6,7,8,9,10,11,12].indexOf(configData[2].InterfaceIndex) >= 0, configLNOptBox);
 	setVisibility([4,7,8,9].indexOf(configData[2].InterfaceIndex) >= 0, configSubnetBox);
 
-	if (document.getElementById("cbUseALM_0"))
-		setVisibility([1, 2, 3, 4, 5, 6, 7, 8, 11, 12, 13, 14, 15, 16].indexOf(configData[2].InterfaceIndex) >= 0, document.getElementById("cbUseALM_0").parentElement);
-	if (document.getElementById("cbUseALM_1"))
-		setVisibility([0, 1, 5].indexOf(configData[2].HatIndex) >= 0, document.getElementById("cbUseALM_1").parentElement);
-
+	for (var i = 0; i < configData[2].ALMTypeList.length; i++)
+	{
+		var almId = "cbUseALM_" + i;
+		if (document.getElementById(almId))
+		{
+			var isVisible = configData[2].ALMTypeList[i].InterfaceList.indexOf(configData[2].InterfaceTypeList[configData[2].InterfaceIndex].IntfId) >= 0;
+			if (!isVisible)
+			{
+				clearElement(configData[2].ALMIndex, configData[2].ALMTypeList[i].ALMId);
+				document.getElementById(almId).checked = false;
+			}
+			setVisibility(isVisible, document.getElementById(almId).parentElement);
+		}
+	}
+	for (var i = 0; i < configData[2].ServerTypeList.length; i++)
+	{
+		var serverId = "cbUseServer_" + i;
+		if (document.getElementById(serverId))
+		{
+			var isVisible = configData[2].ServerTypeList[i].InterfaceList.indexOf(configData[2].InterfaceTypeList[configData[2].InterfaceIndex].IntfId) >= 0;
+			if (!isVisible)
+			{
+				clearElement(configData[2].ServerIndex, configData[2].ServerTypeList[i].ServerId);
+				document.getElementById(serverId).checked = false;
+			}
+			setVisibility(isVisible, document.getElementById(serverId).parentElement);
+		}
+	}
+//	console.log(configData[2].ALMIndex);
+//	console.log(configData[2].ServerIndex);
 }
 
 function setProdType(sender)
@@ -146,30 +169,37 @@ function setProdType(sender)
 //		writeCBInputField("cbUseWifi", false);
 	}	
 	setDisplayOptions();
-	console.log(configData[2]);
+//	console.log(configData[2]);
+}
+
+function setElement(inArray, e)
+{
+	if (inArray.indexOf(e) < 0)
+		inArray.push(e);
+}
+
+function clearElement(inArray, e)
+{
+	var elPos = inArray.indexOf(e);
+	if (elPos >= 0)
+		inArray.splice(elPos,1);
 }
 
 function setUseALM(sender)
 {
-	
-	function checkIndex(e) 
+	function checkALMId(e)
 	{
 		return e.ALMId == ALMId;
 	}
 	
 	var oldCommMode = configData[2].InterfaceIndex;
 	var ALMId = parseInt(sender.getAttribute("ALMId"));
-	var ALMIndex = configData[2].ALMTypeList.findIndex(checkIndex);
+	var ALMIndex = configData[2].ALMTypeList.findIndex(checkALMId);
 	if (sender.checked)
 	{
-		console.log(oldCommMode, ALMId, ALMIndex);
+//		console.log(oldCommMode, ALMId, ALMIndex);
 		if ((configData[2].InterfaceTypeList[oldCommMode].Type >= configData[2].ALMTypeList[ALMIndex].Type))
-		{
-			if (configData[2].ALMIndex.indexOf(ALMId) < 0)
-				configData[2].ALMIndex.push(ALMId);
-			else
-			{}
-		}
+			setElement(configData[2].ALMIndex, ALMId);
 		else
 		{
 			alert("This Logic Module does not work with the selected command source");
@@ -177,12 +207,25 @@ function setUseALM(sender)
 		}
 	}
 	else
+		clearElement(configData[2].ALMIndex, ALMId);
+//	console.log(configData[2].ALMIndex);
+}
+
+function setUseServer(sender)
+{
+	function checkServerId(e)
 	{
-		var elPos = configData[2].ALMIndex.indexOf(ALMId);
-		if (elPos >= 0)
-			configData[2].ALMIndex.splice(elPos,1);
+		return e.ServerId == ServerId;
 	}
-	console.log(configData[2].ALMIndex);
+
+	var oldCommMode = configData[2].InterfaceIndex;
+	var ServerId = parseInt(sender.getAttribute("ServerId"));
+	var ServerIndex = configData[2].ServerTypeList.findIndex(checkServerId);
+	if (sender.checked)
+		setElement(configData[2].ServerIndex, ServerId);
+	else
+		clearElement(configData[2].ServerIndex, ServerId);
+//	console.log(configData[2].ServerIndex);
 }
 
 function setWifiStatus(sender)
@@ -233,7 +276,7 @@ function setDHCP(sender)
 		configData[2].staticConfig.staticNetmask = sender.value;
 	if (sender.id == "dnsserver")
 		configData[2].staticConfig.staticDNS = sender.value;
-	console.log(configData[2].staticConfig);
+//	console.log(configData[2].staticConfig);
 }
 
 function setAP(sender)
@@ -242,7 +285,7 @@ function setAP(sender)
 		configData[2].apConfig.apGateway = sender.value;
 	if (sender.id == "ap_password")
 		configData[2].apConfig.apPassword = sender.value;
-	console.log(configData[2].apConfig);
+//	console.log(configData[2].apConfig);
 }
 
 function setWifiMode(sender, id)
@@ -298,7 +341,10 @@ function constructPageContent(contentTab)
 			createCheckbox(tempObj, "tile-1_4", "respect Bushby Bit", "cbUseBushbyBit", "setUseBushbyBit(this)");
 //			createCheckbox(tempObj, "tile-1_4", "Support Uhlenbrock Track display commands", "cbUseLissyBit", "setUseLissyBit(this)");
 		
-		createPageTitle(mainScrollBox, "div", "tile-1", "", "h2", "Embedded Logic Modules Activation");
+		createPageTitle(mainScrollBox, "div", "tile-1", "", "h2", "Communication Servers");
+		tempObj = createEmptyDiv(mainScrollBox, "div", "tile-1", "ServerBox");
+
+		createPageTitle(mainScrollBox, "div", "tile-1", "", "h2", "Embedded Function Modules Activation");
 		tempObj = createEmptyDiv(mainScrollBox, "div", "tile-1", "ALMBox");
 
 		createPageTitle(mainScrollBox, "div", "tile-1", "", "h2", "Wifi Setup");
@@ -393,14 +439,32 @@ function loadALMOptions(jsonData)
 	}
 }
 
+function loadServerOptions(jsonData)
+{
+	var ServerBox = document.getElementById("ServerBox");
+	var currDispBox;
+	//delete entries
+	while (ServerBox.hasChildNodes())
+		ServerBox.removeChild(ServerBox.childNodes[0]); //delete rows
+	for (var i = 0; i < jsonData.ServerTypeList.length; i++)
+	{
+		if ((i & 0x01) == 0)
+			currDispBox = createEmptyDiv(ServerBox, "div", "tile-1", "");
+		createCheckbox(currDispBox, "tile-1_4", jsonData.ServerTypeList[i].Name, "cbUseServer_" + i.toString(), "setUseServer(this)");
+		writeCBInputField("cbUseServer_" + i.toString(), jsonData.ServerIndex.indexOf(jsonData.ServerTypeList[i].ServerId) >=0);
+		document.getElementById("cbUseServer_" + i.toString()).setAttribute("ServerId", jsonData.ServerTypeList[i].ServerId);
+	}
+}
+
 function loadDataFields(jsonData)
 {
-	console.log("Loading ", jsonData);
+//	console.log("Loading ", jsonData);
 	configData[workCfg] = upgradeJSONVersion(jsonData);
 
 	loadHatOptions(jsonData);
 	loadInterfaceOptions(jsonData);
 	loadALMOptions(jsonData);
+	loadServerOptions(jsonData);
 	writeRBInputField("selectwifimode", jsonData.wifiMode-1);
 //	writeCBInputField("cbUseWifi", jsonData.useWifiTimeout);
 	writeInputField("nodename", jsonData.devName);

@@ -127,28 +127,28 @@ body, html {
 .tile-2_3 {
   float: left; 
   text-align: left;
-  width: 66%; 
+  width: 66% - 25px; 
   padding:5px;
 }
 
 .tile-1_2 {
   float: left; 
   text-align: left;
-  width: 50%; 
+  width: 50% - 20px; 
 //  padding:5px;
 }
 
 .tile-1_3 {
   float: left; 
   text-align: left;
-  width: 33%; 
+  width: 33% - 15px; 
   padding:5px;
 }
 
 .tile-1_4 {
   float: left; 
   text-align: left;
-  width: 25%; 
+  width: 25%-10px; 
   padding:5px;
 }
 
@@ -927,4 +927,15 @@ table, th, td {
   background-color: grey;
   background-image: url("/Nickel4020.jpg");
   color: white;
+}
+
+.pickerlabel {
+    display: block;
+    font: 1rem 'Fira Sans', sans-serif;
+}
+
+.pickerinput,
+.pickerlabel {
+	float: left;
+    margin: .4rem 0;
 }

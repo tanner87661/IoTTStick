@@ -138,9 +138,9 @@ void handleUpload(AsyncWebServerRequest *request, String filename, size_t index,
 
 void processStatustoWebClient()
 {
-  //  Serial.println("Keep alive");
-  DynamicJsonDocument doc(512);
-  char myStatusMsg[350];
+//    Serial.println("Keep alive");
+  DynamicJsonDocument doc(640);
+  char myStatusMsg[600];
   doc["Cmd"] = "STATS";
   JsonObject Data = doc.createNestedObject("Data");
   float float1 = (millisRollOver * 4294967296) + millis(); //calculate millis including rollovers
@@ -178,7 +178,7 @@ void processStatustoWebClient()
 //  Serial.println(myStatusMsg);
   globalClient->text(myStatusMsg);
   lastWifiUse = millis();
-  //  Serial.println("Keep alive done");
+//    Serial.println("Keep alive done");
 }
 
 void sendKeepAlive()
@@ -430,7 +430,7 @@ void processWsMessage(char * newMsg, int msgLen, AsyncWebSocketClient * client)
         if (fileSelector & 0x1000)  
           addFileToTx("rhcfg", 0, "pgRedHatCfg", 1);
         if (fileSelector & 0x2000)  
-          addFileToTx("rhcfg", 0, "pgPrplHatCfg", 1);
+          addFileToTx("phcfg", 0, "pgPrplHatCfg", 1);
         if (fileSelector & 0x4000)  
           addFileToTx("wiclient", 0, "pgWiCfg", 1);
         fileCtr = 0;
@@ -542,20 +542,61 @@ void processWsMessage(char * newMsg, int msgLen, AsyncWebSocketClient * client)
           {
             uint16_t dccAddr = doc["Addr"]; 
             uint8_t progMode = doc["ProgMode"];
+            uint8_t progMethod = doc["ProgMethod"];
             uint8_t cvNr = doc["CV"];
-            digitraxBuffer->readProg(dccAddr, progMode, cvNr);
+            digitraxBuffer->readProg(dccAddr, progMode, progMethod, cvNr);
           }
           if (subCmd == "WriteCV")
           {
             uint16_t dccAddr = doc["Addr"]; 
             uint8_t progMode = doc["ProgMode"];
+            uint8_t progMethod = doc["ProgMethod"];
             uint8_t cvNr = doc["CV"];
             uint8_t cvVal = doc["CVVal"];
-            digitraxBuffer->writeProg(dccAddr, progMode, cvNr, cvVal);
+            digitraxBuffer->writeProg(dccAddr, progMode, progMethod, cvNr, cvVal);
           }
           if (subCmd == "StopTest")
             if (trainSensor)
               trainSensor->stopTest();
+        }
+      }
+      if (thisCmd == "ResetSlots")
+      {
+        digitraxBuffer->clearSlotBuffer(true);
+        if (lnSerial)
+          lnSerial->sendLineBreak(50);
+      }
+      if (thisCmd == "SetFC")
+      {
+        if (doc.containsKey("FCTime"))
+        {
+          uint32_t newTime = doc["FCTime"];
+          digitraxBuffer->setFCTime(newTime, true);
+        }
+        if (doc.containsKey("FCRate"));
+        {
+          uint8_t newRate = doc["FCRate"];
+          digitraxBuffer->setFCRate(newRate, true);
+        }
+      }
+      if (thisCmd == "GetFC")
+        digitraxBuffer->sendFCCmdToWeb();
+      if (thisCmd == "SetDCCPP")  
+      {
+        if (doc.containsKey("SubCmd"))
+        {
+          String subCmd = doc["SubCmd"];
+          if (subCmd == "SendCmd")
+          {
+              String cmdStr = doc["OpCode"];
+              digitraxBuffer->sendRedHatCmd(&cmdStr[0]);
+          }
+          if (subCmd == "GetConfig")
+            if (digitraxBuffer) 
+            {
+              uint16_t cFlags = doc["Filter"];
+              digitraxBuffer->getRedHatConfig(cFlags);
+            }
         }
       }
     }
@@ -586,6 +627,7 @@ void onWsEvent(AsyncWebSocket * server, AsyncWebSocketClient * client, AwsEventT
       }
     case WS_EVT_DATA:
       {
+//        Serial.println("WS Data");
         AwsFrameInfo * info = (AwsFrameInfo*)arg;
         //      String msg = "";
         if (info->final && info->index == 0 && info->len == len)
@@ -667,6 +709,7 @@ void onWsEvent(AsyncWebSocket * server, AsyncWebSocketClient * client, AwsEventT
       }
     case WS_EVT_ERROR:
       {
+        Serial.println("WS Error");
         break;
       }
   }

@@ -47,7 +47,12 @@ var ScalingFactor = [dispSize[0]/(dispBoundaries[1] - dispBoundaries[0]), dispSi
 var	locoAddr = -1;
 var locoAddrValid = false;
 
-jsonFileVersion = "1.0.0";
+jsonFileVersion = "1.0.1";
+
+function upgradeJSONVersion(jsonData)
+{
+	return upgradeJSONVersionPurpleHat(jsonData);
+}
 
 function saveConfigFileSettings()
 {
@@ -67,26 +72,26 @@ function loadTableData(thisTable, thisData)
 function setButtonStatus()
 {
 //	console.log(configData[nodeCfg].InterfaceIndex, configData[work].InterfaceIndex);
-	setVisibility([6,12].indexOf(configData[nodeCfg].InterfaceIndex) >= 0, document.getElementById("btnAssign"));
-	setVisibility([6,12].indexOf(configData[nodeCfg].InterfaceIndex) >= 0, document.getElementById("dccaddr").parentElement);
-	setVisibility([6,12].indexOf(configData[nodeCfg].InterfaceIndex) >= 0, document.getElementById("dccstep").parentElement);
-	setVisibility([6,12].indexOf(configData[nodeCfg].InterfaceIndex) >= 0, document.getElementById("btnAssignsp"));
-	setVisibility([6,12].indexOf(configData[nodeCfg].InterfaceIndex) >= 0, document.getElementById("dccaddrsp").parentElement);
-	setVisibility([6,12].indexOf(configData[nodeCfg].InterfaceIndex) >= 0, document.getElementById("dccaddrtbl").parentElement);
+	setVisibility([3, 12,17].indexOf(thisIntfID) >= 0, document.getElementById("btnAssign"));
+	setVisibility([3, 12,17].indexOf(thisIntfID) >= 0, document.getElementById("dccaddr").parentElement);
+	setVisibility([3, 12,17].indexOf(thisIntfID) >= 0, document.getElementById("dccstep").parentElement);
+	setVisibility([3, 12,17].indexOf(thisIntfID) >= 0, document.getElementById("btnAssignsp"));
+	setVisibility([3, 12,17].indexOf(thisIntfID) >= 0, document.getElementById("dccaddrsp").parentElement);
+	setVisibility([3, 12,17].indexOf(thisIntfID) >= 0, document.getElementById("dccaddrtbl").parentElement);
 
 //	setVisibility([6,12].indexOf(configData[nodeCfg].InterfaceIndex) >= 0, document.getElementById("dccstepsp"));//.parentElement);
-	setVisibility([6,12,13].indexOf(configData[nodeCfg].InterfaceIndex) >= 0, document.getElementById("cbsetup_2"));
+	setVisibility([3, 12,17].indexOf(thisIntfID) >= 0, document.getElementById("cbsetup_2"));
 //	setVisibility([6,12].indexOf(configData[nodeCfg].InterfaceIndex) >= 0, document.getElementById("cbsetup_tx_2"));
 	
 	setVisibility(validLocoDef, document.getElementById("btnSaveDecoder"));
 	setVisibility(validThrottleDef, document.getElementById("btnSaveThrottle"));
 	setVisibility(validTableDef, document.getElementById("btnProg"));
 
-	setVisibility(!validLocoDef && [6,12].indexOf(configData[nodeCfg].InterfaceIndex) >= 0, cvTableNative);
+	setVisibility(!validLocoDef && [17,12].indexOf(thisIntfID) >= 0, cvTableNative);
 	setVisibility(validLocoDef, cvTableJMRI);
-	setVisibility([6,12].indexOf(configData[nodeCfg].InterfaceIndex) >= 0, tabProgrammer);
+	setVisibility([3, 12,17].indexOf(thisIntfID) >= 0, tabProgrammer);
 
-	setVisibility(validLocoDef || [6,12].indexOf(configData[nodeCfg].InterfaceIndex) >= 0, techSpeedDiv);
+	setVisibility(validLocoDef || [3, 12,17].indexOf(thisIntfID) >= 0, techSpeedDiv);
 	setVisibility(validTechSpeedDef, speedTableDiv);
 	
 	setVisibility(false, document.getElementById("cbsetup_3")); //do not show Layout TPS tab right now
@@ -230,11 +235,15 @@ function constructPageContent(contentTab)
 
 				tabProgrammer = createEmptyDiv(dispObj, "div", "tile-1", "");
 				tempObj = createEmptyDiv(tabProgrammer, "div", "tile-1", "");
-					createRadiobox(tempObj, "tile-1_2", "Programming Method", ["Prog Track","Main Line"], "rbprogmethod", "setProgMode(this)");
-					createDispText(tempObj, "tile-1_4", "Status:","","progstat");
+					createRadiobox(tempObj, "tile-1_2", "Programming on", ["Prog Track","Main Line"], "rbprogmode", "setProgMode(this)");
+				tempObj = createEmptyDiv(tabProgrammer, "div", "tile-1", "");
+					createRadiobox(tempObj, "tile-1_2", "Programming Mode", ["Direct","Paged"], "rbprogmethod", "setProgMethod(this)");
+				tempObj = createEmptyDiv(tabProgrammer, "div", "tile-1", "");
+					createDispText(tempObj, "tile-1_2", "Programmer Status:","","progstat");
 				tempObj = createEmptyDiv(tabProgrammer, "div", "tile-1", "");
 					createTextInput(tempObj, "tile-1_4", "Program CV:", "", "cvid", "setCV(this)");
 					createTextInput(tempObj, "tile-1_4", "CV Value:", "", "cvval", "setCV(this)");
+				tempObj = createEmptyDiv(tabProgrammer, "div", "tile-1", "");
 					createButton(tempObj, "", "Read CV", "btnReadCV", "readCV(this)");
 					createButton(tempObj, "", "Write CV", "btnWriteCV", "writeCV(this)");
 				setVisibility(false, tabProgrammer);
@@ -307,41 +316,8 @@ function constructPageContent(contentTab)
 				tabGPS = createEmptyDiv(mainScrollBox, "div", "tile-1", "");
 				createPageTitle(tabGPS, "div", "tile-1", "", "h1", "Layout TPS");
 				setVisibility(false, tabGPS);
-/*
-			var dispObj = createEmptyDiv(tempObj, "div", "tile-1", "Layout Position");
-				createPageTitle(dispObj, "div", "tile-1", "", "h2", "Layout Position");
-				createDispText(dispObj, "", "Pos x [mm]:", "n/a", "locx");
-				createDispText(dispObj, "", "Pos y [mm]:", "n/a", "locy");
-				createDispText(dispObj, "", "Pos z [mm]:", "n/a", "locz");
-				createDispText(dispObj, "", "Altitude [m]:", "n/a", "altitude");
-*/
-//		var thisObj = createEmptyDiv(mainScrollBox, "div", "tile-1", "");
-//			createButton(thisObj, "tile-1_4", "Reset Distance", "btnClearDist", "clearDistCtr(this)");
-//			createButton(thisObj, "tile-1_4", "Reset Position", "btnClearPos", "clearPositions(this)");
-//			createButton(thisObj, "tile-1_4", "Reset Ofsets", "btnClearOfs", "clearOfsets(this)");
-/*
-		tempObj = createEmptyDiv(mainScrollBox, "div", "tile-1", "");
-			createPageTitle(tempObj, "div", "tile-1", "", "h1", "Track Map");
-			var canvasElement = document.createElement("canvas");
-			tempObj.append(canvasElement);
-			canvasElement.setAttribute("id", "glCanvas");
-			canvasElement.setAttribute("width", canvasSize[0]);
-			canvasElement.setAttribute("height", canvasSize[1]);
-
-		var thisObj = createEmptyDiv(mainScrollBox, "div", "tile-1", "");
-			createButton(thisObj, "tile-1_4", "Start Recording", "btnStartTrack", "startRecording(this)");
-			createTextInput(tempObj, "tile-1_4", "File:", "", "txtFileName", "setFileName(this)");
-			createButton(thisObj, "tile-1_4", "End Recording", "btnEndTrack", "endRecording(this)");
-			createButton(thisObj, "tile-1_4", "Download Recording", "btnGetTrack", "downloadTrack(this)");
-		var thisObj = createEmptyDiv(mainScrollBox, "div", "tile-1", "");
-			createFileDlg(thisObj, "", "Load from File", "btnLoad", ".json", "loadSettings(this)");
-
-*/
-//		tempObj = createEmptyDiv(mainScrollBox, "div", "tile-1", "");
 
 		setTrackerDisplay();
-//		drawLineGraphs();
-//		graphicMain();
 }
 
 function drawLineGraphs()
@@ -480,13 +456,17 @@ function loadSettings(sender)
 
 function loadNodeDataFields(jsonData)
 {
+//	console.log(jsonData);
+//	console.log(thisIntfID);
 	setButtonStatus();
-	document.getElementById("btnProg").innerHTML = configData[nodeCfg].InterfaceIndex == 13 ? "Save JMRI File" : "Write CV's";
+	document.getElementById("btnProg").innerHTML = thisIntfID == 17 ? "Save JMRI File" : "Write CV's";
 }
 
 function loadDataFields(jsonData)
 {
+	configData[workCfg] = upgradeJSONVersion(jsonData);
 //	console.log(jsonData);
+//	console.log(thisIntfID);
 	writeInputField("wheelsize", jsonData.WheelDia);
 	writeInputField("magincr", jsonData.MagThreshold);
 	writeInputField("testtracklen", jsonData.TrackLen);
@@ -535,8 +515,8 @@ function loadDataFields(jsonData)
 			document.getElementById("jmrivmax_txt").innerHTML = "Max Speed [mph]:"; 
 			break;
 	}
-	writeRBInputField("rbprogmethod", progMode);
-//	writeRBInputField("rbtablemode", tableMode);
+	writeRBInputField("rbprogmethod", configData[workCfg].ProgMethod);
+	writeRBInputField("rbprogmode", configData[workCfg].ProgMode);
 	writeRBInputField("trimmode", trimMode);
 	writeRBInputField("dccstepsp", stepMode);
 
@@ -616,17 +596,17 @@ function clearPositions(sender)
 
 function readCV(sender)
 {
-	if ((progMode > 0) && (locoAddr <= 0))
+	if ((configData[workCfg].ProgMode > 0) && (locoAddr <= 0))
 	{
 		alert("Invalid Loco Address. Please assign a DCC Address.");
 		return;
 	}
-	if (progMode == 0)
+	if (configData[workCfg].ProgMode == 0)
 		if (confirm("Place locomotive on programming track and click OK") == false)
 			return;
 	if ((cvId >= 0) && (cvId <= 255))
 	{
-		ws.send("{\"Cmd\":\"SetSensor\", \"SubCmd\":\"ReadCV\", \"Addr\":" + locoAddr.toString() + ",\"ProgMode\":" + progMode.toString() + ",\"CV\":" + cvId.toString() + "}");
+		ws.send("{\"Cmd\":\"SetSensor\", \"SubCmd\":\"ReadCV\", \"Addr\":" + locoAddr.toString() + ",\"ProgMode\":" + configData[workCfg].ProgMode.toString() + ",\"ProgMethod\":" + configData[workCfg].ProgMethod.toString() + ",\"CV\":" + cvId.toString() + "}");
 		writeTextField("progstat", "Read CV in progress");
 	}
 	else
@@ -635,17 +615,17 @@ function readCV(sender)
 
 function writeCV(sender)
 {
-	if ((progMode > 0) && (locoAddr <= 0))
+	if ((configData[workCfg].ProgMode > 0) && (locoAddr <= 0))
 	{
 		alert("Invalid Loco Address. Please assign a DCC Address.");
 		return;
 	}
-	if (progMode == 0)
+	if (configData[workCfg].ProgMode == 0)
 		if (confirm("Place locomotive on programming track and click OK") == false)
 			return;
 	if ((cvId >= 0) && (cvVal >= 0) && (cvId <= 255) && (cvVal <= 255))
 	{
-		ws.send("{\"Cmd\":\"SetSensor\", \"SubCmd\":\"WriteCV\",\"Addr\":" + locoAddr.toString() + ", \"ProgMode\":" + progMode.toString() + ",\"CV\":" + cvId.toString() + ",\"CVVal\":" + cvVal.toString() + "}");
+		ws.send("{\"Cmd\":\"SetSensor\", \"SubCmd\":\"WriteCV\",\"Addr\":" + locoAddr.toString() + ", \"ProgMode\":" + configData[workCfg].ProgMode.toString() + ",\"ProgMode\":" + configData[workCfg].ProgMode.toString() + ",\"CV\":" + cvId.toString() + ",\"CVVal\":" + cvVal.toString() + "}");
 		writeTextField("progstat", "Write CV in progress");
 	}
 	else
@@ -691,7 +671,7 @@ function startSpeedTest(sender)
 //	return;
 	
 	if (locoAddr < 0)
-		if (configData[nodeCfg].InterfaceIndex == 13) //WiThrottle
+		if (thisIntfID == 17) //WiThrottle
 		{
 			alert("No DCC Address assigned! Verify connection to WiThrottle Server and reload JMRI file");
 			document.getElementById("btnLoadDecoder").files = [];
@@ -703,7 +683,7 @@ function startSpeedTest(sender)
 
 		if ((cvVal_2 != 0) || (cvVal_5 != 0) || (cvVal_6 != 0) || ((cvVal_29 & 0x10) != 0))
 		{
-			var dispText = "Verify and confirm CV settings before running the speed test.\nCV 2 expected 0 is " + cvVal_2 + "\nCV 5 expected 0 is " + cvVal_5 + "\nCV 6 expected 0 is " + cvVal_5 + "\nCV 29 Bit 6 expected 0 is " + ((cvVal_29 & 0x10)>>4) +  "\nProceed anyway?";
+			var dispText = "Verify and confirm CV settings before running the speed test.\nCV 2 expected 0 is " + cvVal_2 + "\nCV 5 expected 0 is " + cvVal_5 + "\nCV 6 expected 0 is " + cvVal_5 + "\nCV 29 Bit 4 expected 0 is " + ((cvVal_29 & 0x10)>>4) +  "\nProceed anyway?";
 			if (confirm(dispText) == false)
 				return;
 		}
@@ -880,7 +860,7 @@ function addCV(cvNr, cvVal)
 
 function progTable(sender)
 {
-	if ((progMode > 0) && (locoAddr <= 0))
+	if ((configData[workCfg].ProgMode > 0) && (locoAddr <= 0))
 	{
 		alert("Invalid Loco Address. Please assign a DCC Address.");
 		return;
@@ -889,11 +869,11 @@ function progTable(sender)
 	if (validLocoDef)
 		storeToJMRI(locoDef);
 
-	if ((progMode == 0) && (configData[nodeCfg].InterfaceIndex != 13))
+	if ((configData[workCfg].ProgMode == 0) && (thisIntfID != 17))
 		if (confirm("Place locomotive on programming track and click OK") == false)
 			return;
 
-	if (configData[nodeCfg].InterfaceIndex == 13)
+	if (thisIntfID == 17)
 	{
 		if (validLocoDef)
 			saveJMRIDecoder(null);

@@ -5,10 +5,7 @@
 void sendSwitchCommand(uint8_t opCode, uint16_t swiNr, uint8_t swiTargetPos, uint8_t coilStatus)
 {
   uint8_t currPos = digitraxBuffer->getSwiStatus(swiNr); //((swiPos[swiNr >> 2] >> (2 * (swiNr % 4))) & 0x03) << 4);
-//  Serial.print("currPos ");
-//  Serial.println(currPos);
   lnTransmitMsg txData;
-  txData.lnMsgSize = 4;
   txData.lnData[0] = opCode; //OPC_SW_REQ, OPC_SW_REP, OPC_SW_ACK
   txData.lnData[1] = swiNr & 0x007F;
   txData.lnData[2] = (swiNr & 0x0780)>>7;
@@ -39,9 +36,9 @@ void sendSwitchCommand(uint8_t opCode, uint16_t swiNr, uint8_t swiTargetPos, uin
     }
     break;
   }
-//  Serial.println(txData.lnData[2],16);
-  txData.lnData[3] = ~(txData.lnData[0] ^ txData.lnData[1] ^ txData.lnData[2]);
 //  Serial.printf("LN Out: %i %i %i %i\n", txData.lnData[0],txData.lnData[1],txData.lnData[2],txData.lnData[3]);
+  txData.lnMsgSize = 4;
+  setXORByte(&txData.lnData[0]);
   sendMsg(txData);
 }
 
@@ -51,7 +48,6 @@ void sendSignalCommand(uint16_t signalNr, uint8_t signalAspect)
   lnTransmitMsg txData;
   uint8_t boardAddr = (((signalNr-1) & 0x07FC)>>2) + 1;
   uint8_t turnoutIndex = (signalNr-1) & 0x03;
-  txData.lnMsgSize = 11;
   txData.lnData[0] = 0xED; //OPC_IMM_
   txData.lnData[1] = 0x0B;
   txData.lnData[2] = 0x7F;
@@ -65,24 +61,15 @@ void sendSignalCommand(uint16_t signalNr, uint8_t signalAspect)
   txData.lnData[8] = 0x00;
   txData.lnData[9] = 0x00;
   txData.lnData[10] = 0xED;
-  for (int i = 1; i < 10; i++)
-  {
-//    Serial.print(txData.lnData[i],16);
-//    Serial.print(" ");
-    txData.lnData[10] ^= txData.lnData[i];
-  }
-  txData.lnData[10] = ~txData.lnData[10];
-//    Serial.print(txData.lnData[10],16);
-//    Serial.println(" ");
-
+  txData.lnMsgSize = 11;
+  setXORByte(&txData.lnData[0]);
   sendMsg(txData);
 }
 
 void sendBlockDetectorCommand(uint16_t bdNr, uint8_t bdStatus) 
 { 
-  //  Serial.printf("Block Detector Nr %i Status %i \n", bdNr, bdStatus);
+//  Serial.printf("Block Detector Nr %i Status %i \n", bdNr, bdStatus);
   lnTransmitMsg txData;
-  txData.lnMsgSize = 4;
   txData.lnData[0] = 0xB2; //OPC_INPUT_REP
   txData.lnData[1] = (bdNr & 0x00FE)>>1;
   txData.lnData[2] = (bdNr & 0x0F00)>>8;
@@ -90,7 +77,19 @@ void sendBlockDetectorCommand(uint16_t bdNr, uint8_t bdStatus)
     txData.lnData[2] |= 0x20;
   if (bdStatus > 0)
     txData.lnData[2] |= 0x10;
-  txData.lnData[3] = ~(txData.lnData[0] ^ txData.lnData[1] ^ txData.lnData[2]);
+  txData.lnMsgSize = 4;
+  setXORByte(&txData.lnData[0]);
+  sendMsg(txData);
+}
+
+void sendSwiReportMessage(uint16_t inpAddr, uint8_t newPos)
+{
+  lnTransmitMsg txData;
+  txData.lnData[0] = 0xB1; 
+  txData.lnData[1] = (inpAddr & 0x007F); 
+  txData.lnData[2] = ((inpAddr & 0x0780) >> 7) + 0x60 + ((newPos & 0x01) << 4); 
+  txData.lnMsgSize = 4;
+  setXORByte(&txData.lnData[0]);
   sendMsg(txData);
 }
 
@@ -98,7 +97,6 @@ void sendButtonCommand(uint16_t btnNr, uint8_t  btnEvent)
 {
 //  Serial.printf("Button Nr %i Command %i \n", btnNr, btnEvent);
   lnTransmitMsg txData;
-  txData.lnMsgSize = 16;
   txData.lnData[0] = 0xE5; //OPC_PEER_XFER
   txData.lnData[1] = 0x10; //16 byte message
   txData.lnData[2] = 0x0C; //can be any number from 0x01 to 0x6F
@@ -118,10 +116,8 @@ void sendButtonCommand(uint16_t btnNr, uint8_t  btnEvent)
   txData.lnData[13] = 0x00;
   txData.lnData[14] = 0x00;
   
-  txData.lnData[15] = 0xE5;
-  for (int i = 1; i < 15; i++)
-    txData.lnData[15] ^= txData.lnData[i];
-  txData.lnData[15] = ~txData.lnData[15];
+  txData.lnMsgSize = 16;
+  setXORByte(&txData.lnData[0]);
   sendMsg(txData);
 }
 
@@ -129,7 +125,6 @@ void sendAnalogCommand(uint16_t btnNr, uint16_t analogVal)
 {
 //  Serial.printf("Analog Command Addr %i Value %i \n", btnNr, analogVal);
   lnTransmitMsg txData;
-  txData.lnMsgSize = 16;
   txData.lnData[0] = 0xE5; //OPC_PEER_XFER
   txData.lnData[1] = 0x10; //16 byte message
   txData.lnData[2] = 0x0C; //can be any number from 0x01 to 0x6F
@@ -149,12 +144,8 @@ void sendAnalogCommand(uint16_t btnNr, uint16_t analogVal)
   txData.lnData[13] = (analogVal & 0x0FC0) >> 6; //data high
   txData.lnData[14] = 0x00;
 
-//  Serial.println(txData.lnData[12],16);
-//  Serial.println(txData.lnData[13],16);
-  txData.lnData[15] = 0xE5;
-  for (int i = 1; i < 15; i++)
-    txData.lnData[15] ^= txData.lnData[i];
-  txData.lnData[15] = ~txData.lnData[15];
+  txData.lnMsgSize = 16;
+  setXORByte(&txData.lnData[0]);
   sendMsg(txData);
 }
 
@@ -174,23 +165,27 @@ void sendPowerCommand(uint8_t cmdType, uint8_t pwrStatus)
   else
     switch (pwrStatus)
     {
+      case 0x82:;
       case 0: txData.lnData[0] = 0x82; break; //OPC_GPOFF
+      case 0x83:;
       case 1: txData.lnData[0] = 0x83; break; //OPC_GPON
       case 2: txData.lnData[0] = 0x85; break; //OPC_IDLE
       default: txData.lnData[0] = 0x85; break; //OPC_IDLE
     }
-  txData.lnData[1] = ~txData.lnData[0];
+//  txData.lnData[1] = ~txData.lnData[0];
+  txData.lnMsgSize = 2;
+  setXORByte(&txData.lnData[0]);
   sendMsg(txData);
 }
 
 uint16_t sendLocoNetReply(lnTransmitMsg txData)
 {
 //  Serial.printf("Send reply: %2X", txData.lnData[0]);
-//  for (uint8_t i = 1; i < txData.lnMsgSize; i ++)
-//    Serial.printf(" %2X ", txData.lnData[i]);
+//  for (uint8_t i = 1; i < txData->lnMsgSize; i ++)
+//    Serial.printf(" %2X ", txData->lnData[i]);
 //  Serial.println();
   if (lnSerial)
-    lnSerial->lnWriteReply(txData);
+    lnSerial->lnWriteReply(&txData);
 }
 /*
 uint16_t sendDCCCmdGen(lnTransmitMsg txData)

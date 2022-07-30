@@ -1,5 +1,6 @@
 var mainScrollBox;
 var pingDelay;
+var wiConfigOptions;
 
 function upgradeJSONVersion(jsonData)
 {
@@ -14,7 +15,10 @@ function saveConfigFileSettings()
 
 function downloadSettings(sender)
 {
-	downloadConfig(0x4000); //send just this
+	if (currentPage == 5)
+		downloadConfig(0x0400); //send just this for lbServer
+	if (currentPage == 6)
+		downloadConfig(0x4000); //send just this for WiThrottle
 }
 
 function setLbServer(sender)
@@ -23,7 +27,36 @@ function setLbServer(sender)
 	if (sender.id == "serverip")
 		configData[workCfg].ServerIP = sender.value; 
 	if (sender.id == "serverport")
-		configData[workCfg].PortNr = sender.value; 
+		if (pageParam == 's')
+			configData[workCfg].ServerPortNr = sender.value; 
+		else
+			configData[workCfg].PortNr = sender.value; 
+}
+
+function setTurnoutList(sender)
+{
+	var inpData = sender.value.split(',');
+	var validCount = 0;
+	configData[workCfg].Turnouts = [];
+	for (var i = 0; i < inpData.length; i++)
+		if (!isNaN(inpData[i]))
+		{
+			configData[workCfg].Turnouts[validCount] = inpData[i];
+			validCount++;
+		}
+//	console.log(configData[workCfg].Turnouts);
+	writeInputField("turnoutlist", configData[2].Turnouts.toString());
+}
+
+function setPowerMode(sender, id)
+{
+//	console.log(id);
+	if (sender.id == "selectpowermode_0")
+		configData[2].PowerMode = 0;
+	if (sender.id == "selectpowermode_1")
+		configData[2].PowerMode = 1;
+	if (sender.id == "selectpowermode_2")
+		configData[2].PowerMode = 2;
 }
 
 function constructPageContent(contentTab)
@@ -33,8 +66,14 @@ function constructPageContent(contentTab)
 		tempObj = createPageTitle(mainScrollBox, "div", "tile-1", "BasicCfg_Title", "h1", "LocoNet over TCP Server Configuration");
 		tempObj.setAttribute("id", "ServerTitle");
 		setVisibility(false, tempObj);
+		tempObj = createPageTitle(mainScrollBox, "div", "tile-1", "BasicCfg_Title", "h1", "WiThrottle Server Configuration");
+		tempObj.setAttribute("id", "WiServerTitle");
+		setVisibility(false, tempObj);
 		tempObj = createPageTitle(mainScrollBox, "div", "tile-1", "BasicCfg_Title", "h1", "LocoNet over TCP Client Configuration");
 		tempObj.setAttribute("id", "ClientTitle");
+		setVisibility(false, tempObj);
+		tempObj = createPageTitle(mainScrollBox, "div", "tile-1", "BasicCfg_Title", "h1", "WiThrottle Client Configuration");
+		tempObj.setAttribute("id", "WiClientTitle");
 		setVisibility(false, tempObj);
 
 //		createPageTitle(mainScrollBox, "div", "tile-1", "", "h2", "Basic Settings");
@@ -47,6 +86,15 @@ function constructPageContent(contentTab)
 		tempObj.setAttribute("id", "ServerPortDiv");
 			createTextInput(tempObj, "tile-1_4", "Port #:", "n/a", "serverport", "setLbServer(this)");
 
+		wiConfigOptions = createEmptyDiv(mainScrollBox, "div", "tile-1", "");
+			setVisibility(false, wiConfigOptions);
+			tempObj = createPageTitle(wiConfigOptions, "div", "tile-1", "BasicCfg_Title", "h2", "WiThrottle Options");
+			tempObj = createEmptyDiv(wiConfigOptions, "div", "tile-1", "");
+			createRadiobox(tempObj, "tile-1_2", "Allow Power Commands:", ["Display only", "Toggle ON - Idle", "Toggle ON - OFF"], "selectpowermode", "setPowerMode(this, id)");
+			tempObj = createEmptyDiv(wiConfigOptions, "div", "tile-1", "");
+			createTextInput(tempObj, "tile-1_2", "Include Turnouts:", "n/a", "turnoutlist", "setTurnoutList(this)");
+
+		tempObj = createEmptyDiv(mainScrollBox, "div", "tile-1", "");
 
 		tempObj = createEmptyDiv(mainScrollBox, "div", "tile-1", "");
 			createButton(tempObj, "", "Save & Restart", "btnSave", "saveSettings(this)");
@@ -58,17 +106,37 @@ function constructPageContent(contentTab)
 
 function loadNodeDataFields(jsonData)
 {
+//	console.log(jsonData);
 }
 
 function loadDataFields(jsonData)
 {
+	var error;
 	configData[workCfg] = upgradeJSONVersion(jsonData);
-//	console.log(jsonData);
+//	console.log(currentPage);
 //	console.log(configData[nodeCfg]);
-	writeInputField("serverport", jsonData.PortNr);
+	if (pageParam == 's')
+		writeInputField("serverport", jsonData.ServerPortNr);
+	else
+		writeInputField("serverport", jsonData.PortNr);
 	writeInputField("serverip", jsonData.ServerIP);
-	setVisibility([8,9,10,11].indexOf(configData[nodeCfg].InterfaceIndex) >= 0, document.getElementById("ServerTitle"));
-	setVisibility([12,13].indexOf(configData[nodeCfg].InterfaceIndex) >= 0, document.getElementById("ServerIPDiv"));
-	setVisibility([12].indexOf(configData[nodeCfg].InterfaceIndex) >= 0, document.getElementById("ClientTitle"));
-//	setVisibility([13].indexOf(configData[nodeCfg].InterfaceIndex) >= 0, document.getElementById("WiClientTitle"));
+	try
+	{
+		writeRBInputField("selectpowermode", configData[2].PowerMode);
+	}
+	catch (error) {};
+	try
+	{
+		if (Array.isArray(configData[2].Turnouts))
+			writeInputField("turnoutlist", configData[2].Turnouts.toString());
+	}
+	catch (error) {};
+
+	setVisibility((configData[nodeCfg].ServerIndex.indexOf(1) >= 0) && (pageParam == 's') && (currentPage == 5), document.getElementById("ServerTitle"));
+	setVisibility((configData[nodeCfg].ServerIndex.indexOf(2) >= 0) && (pageParam == 's') && (currentPage == 6), document.getElementById("WiServerTitle"));
+	setVisibility((pageParam == 'c'), document.getElementById("ServerIPDiv"));
+//	setVisibility(([12].indexOf(thisIntfID) && (pageParam == 'c'), document.getElementById("ServerIPDiv"));
+	setVisibility(([12].indexOf(thisIntfID) >= 0) && (pageParam == 'c'), document.getElementById("ClientTitle"));
+	setVisibility(([17].indexOf(thisIntfID) >= 0) && (pageParam == 'c'), document.getElementById("WiClientTitle"));
+	setVisibility(((configData[nodeCfg].ServerIndex.indexOf(2) >= 0) && (pageParam == 's') && (currentPage == 6)), wiConfigOptions);
 }

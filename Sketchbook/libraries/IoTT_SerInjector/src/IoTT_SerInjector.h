@@ -75,7 +75,8 @@ private:
 	void processLCBTransmit();
 	void processDCCExReceive();
 	void processDCCExTransmit();
-	int parseDCCExNumVal(char** startAt, uint8_t* cntVal);
+//	void processDCCExTransmit2();
+	int parseDCCExParam(char** startAt, uint8_t ppNum, ppElement * outBuffer);
 	bool parseDCCEx(lnTransmitMsg* thisEntry, lnTransmitMsg* txBuffer);
 	
    // Member variables
@@ -110,5 +111,5 @@ private:
 //extern IoTT_SerInjector* usbSerial;
 
 //this is the callback function. Provide a function of this name and parameter in your application and it will be called when a new message is received
-extern void onLocoNetMessage(lnReceiveBuffer* recData) __attribute__ ((weak));
+//extern void onLocoNetMessage(lnReceiveBuffer* recData) __attribute__ ((weak));
 #endif
