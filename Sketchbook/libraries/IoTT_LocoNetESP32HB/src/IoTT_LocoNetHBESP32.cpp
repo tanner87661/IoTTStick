@@ -47,6 +47,11 @@ bool LocoNetESPSerial::hasMsgSpace()
     return (hlpQuePtr != que_rdPos);
 }
 
+void LocoNetESPSerial::sendLineBreak(uint16_t breakBits)
+{
+	hybrid_LineBreak(breakBits);
+}
+
 void LocoNetESPSerial::begin(int receivePin, int transmitPin, bool inverse_logicRx, bool inverse_logicTx) 
 {
 	m_invertRx = inverse_logicRx;

@@ -139,7 +139,7 @@ class IoTT_DigitraxBuffers
 		void loadRHCfgJSON(DynamicJsonDocument doc);
 		void setRedHatMode(txFct lnReply, DynamicJsonDocument doc);
 		void setLocoNetMode(bool newMode);
-		void clearSlotBuffer();
+		void clearSlotBuffer(bool hardReset);
 		bool cnTreeValid(uint8_t thisSlot, uint8_t cnLevel);
 		uint8_t getConsistStatus(uint8_t ofSlot);
 		uint8_t getRefreshStatus(uint8_t ofSlot);
@@ -176,11 +176,15 @@ class IoTT_DigitraxBuffers
 		bool getBushbyWatch();
 		void enableBushbyWatch(bool enableBushby);
 		uint32_t getFCTime();
+		uint32_t getFCRate();
+		void setFCTime(uint32_t newTime, bool updateLN);
+		void setFCRate(uint8_t newRate, bool updateLN);
 		void enableLissyMod(bool enableLissy);
 		uint8_t getUpdateReqStatus();
 		void clearUpdateReqFlag(uint8_t clrFlagMask);
-		void addActor(uint16_t Id, uint8_t pinType, uint8_t pinNr, uint8_t flags);
+//		void addActor(uint16_t Id, uint8_t pinType, uint8_t pinNr, uint8_t flags);
 		void sendDCCCmdToWeb(ppElement * myParams);
+		void sendFCCmdToWeb();
 		uint16_t receiveDCCGeneratorFeedback(lnTransmitMsg txData);
 		//LocoNet Management functions mainly for Command Station mode
 		//from incoming DCC command
@@ -280,8 +284,7 @@ class IoTT_DigitraxBuffers
 		uint32_t intFastClock = 0; //counts fc seconds per day from 0 to 86400, then loops
 		uint8_t progNumTry = 3;
 		bool    progBoost = false;
-		bool    configSensorPwrUp = true;
-		bool    configTurnoutPwrUp = true;
+		bool    configPeripheralsPwrUp = true;
 		uint32_t webTimeout = millis();
 };
 

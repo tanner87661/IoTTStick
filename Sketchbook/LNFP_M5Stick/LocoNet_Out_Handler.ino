@@ -68,7 +68,7 @@ void sendSignalCommand(uint16_t signalNr, uint8_t signalAspect)
 
 void sendBlockDetectorCommand(uint16_t bdNr, uint8_t bdStatus) 
 { 
-  Serial.printf("Block Detector Nr %i Status %i \n", bdNr, bdStatus);
+//  Serial.printf("Block Detector Nr %i Status %i \n", bdNr, bdStatus);
   lnTransmitMsg txData;
   txData.lnData[0] = 0xB2; //OPC_INPUT_REP
   txData.lnData[1] = (bdNr & 0x00FE)>>1;

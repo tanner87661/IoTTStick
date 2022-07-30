@@ -499,8 +499,8 @@ void IoTT_SerInjector::processDCCExTransmit()
 		strcat(txMsg, outStr);
 		strcat(txMsg, ">\n\r");
 		write(txMsg);
-		Serial.print("Out: ");
-		Serial.println(txMsg);
+//		Serial.print("Out: ");
+//		Serial.println(txMsg);
 		que_rdPos = hlpQuePtr;
 	}
 }

@@ -67,6 +67,7 @@ public:
 	bool carrierOK();
 	bool hasMsgSpace();
 	void loadLNCfgJSON(DynamicJsonDocument doc);
+	void sendLineBreak(uint16_t breakBits);
    
 private:
    

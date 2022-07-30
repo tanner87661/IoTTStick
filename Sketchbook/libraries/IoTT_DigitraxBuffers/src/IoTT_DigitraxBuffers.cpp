@@ -100,6 +100,7 @@ void prepLocoAddrReqMsg(lnTransmitMsg * msgData, uint16_t dccAddr)
 
 void prepSlotReadMsg(lnTransmitMsg * msgData, uint8_t slotNr)
 {
+//	Serial.println("Prep SL RD");
 //	dispSlot(&digitraxBuffer->slotBuffer[slotNr][0]);
 	msgData->lnData[0] = 0xE7; 
 	msgData->lnData[1] = 0x0E; //OPC_SL_RD_DATA
@@ -125,6 +126,7 @@ void prepSlotWriteMsg(lnTransmitMsg * msgData, uint8_t slotNr)
 	msgData->lnData[7] = digitraxBuffer->trackByte; //insert global TrackByte
 	msgData->lnMsgSize = 14;
 	setXORByte(&msgData->lnData[0]);
+//	dispMsg(&msgData->lnData[0], 14);
 }
 
 void prepSlotMoveMsg(lnTransmitMsg * msgData, uint8_t slotSRC, uint8_t slotDEST)
@@ -266,7 +268,7 @@ void setDCCSwitchCmd(uint16_t swiAddr, uint8_t swiPos, uint8_t coilStatus)
 {
 	lnTransmitMsg txBuffer;
 	char* outStr = (char*)&txBuffer.lnData[0];
-	sprintf(outStr, "a %i %i", swiAddr, swiPos ^ 0x01);
+	sprintf(outStr, "a %i %i", swiAddr+1, swiPos ^ 0x01);
 	txBuffer.lnMsgSize = strlen(outStr);
 	dccPort->lnWriteMsg(txBuffer);
 //	Serial.println(outStr);
@@ -389,6 +391,9 @@ void IoTT_DigitraxBuffers::loadRHCfgJSON(DynamicJsonDocument doc)
 	if (doc.containsKey("DevSettings"))
 	{
 		JsonObject thisObj = doc["DevSettings"];
+		if (thisObj.containsKey("FCRate"))
+			slotBuffer[0x7B][0] = doc["DevSettings"]["FCRate"];
+
 		if (thisObj.containsKey("LEDLevel"))
 			ledLevel = thisObj["LEDLevel"];
 		if (thisObj.containsKey("CfgSlot"))
@@ -398,8 +403,7 @@ void IoTT_DigitraxBuffers::loadRHCfgJSON(DynamicJsonDocument doc)
 				if (i != 4)
 					slotBuffer[0x7F][i] = cfgArray[i];
 		}
-		configSensorPwrUp = doc["DevSettings"]["ConfigSensorIO"];
-		configTurnoutPwrUp = doc["DevSettings"]["ConfigTurnoutIO"];
+		configPeripheralsPwrUp = !doc["DevSettings"]["ConfigToEEPROM"];
 		if (thisObj.containsKey("ProgTrack"))
 		{
 			progLimit = thisObj["ProgTrack"]["CurrLimit"];
@@ -453,14 +457,23 @@ void IoTT_DigitraxBuffers::setLocoNetMode(bool newMode)
 	isLocoNet = newMode;
 }
 
-void IoTT_DigitraxBuffers::clearSlotBuffer()
+void IoTT_DigitraxBuffers::clearSlotBuffer(bool hardReset)
 {
 	Serial.println("Clear Slots");
-	if (!isCommandStation)
-		for (int i = 0; i < numSlots; i++)
-		{
+	for (int i = 0; i < numSlots; i++)
+	{
+		if (hardReset)
 			memcpy(&slotBuffer[i], &stdSlot[0], 10);
+		else
+		{
+			for (uint8_t j = 0; j < 10; j++)
+				slotBuffer[i][j] &= 0x7F;
+			slotBuffer[i][TRK] = 0; //clear purge counter
+			if (getConsistStatus(i) != cnFree)
+				setConsistStatus(i, cnFree); //for the moment, just clear consists. Later full verification
 		}
+		
+	}
 }
 
 bool IoTT_DigitraxBuffers::cnTreeValid(uint8_t ofSlot, uint8_t cnLevel)
@@ -484,6 +497,8 @@ bool IoTT_DigitraxBuffers::cnTreeValid(uint8_t ofSlot, uint8_t cnLevel)
 
 void IoTT_DigitraxBuffers::setRedHatMode(txFct lnReply, DynamicJsonDocument doc)
 {
+	memcpy(&slotBuffer[0x7B], &stdSlot[0], 10);
+	memcpy(&slotBuffer[0x7C], &stdSlot[0], 10);
 	lnReplyFct = lnReply;
 	loadRHCfgJSON(doc);
 	isCommandStation = lnReply != NULL;
@@ -548,13 +563,13 @@ void IoTT_DigitraxBuffers::initArduinoBoard()
 	}
 	char outStr[30];
 	setDCCSpeedSteps(getOpSw(opSwSpeedStepDefault, 1));
-	if (configSensorPwrUp)
+	if (configPeripheralsPwrUp)
+	{
 		for (uint8_t i = 0; i < sensorInputLen; i++)
 			setDCCSensorPin(&sensorInputs[i]);
-	if (configTurnoutPwrUp)
 		for (uint8_t i = 0; i < turnoutOutputLen; i++)
 			setDCCDefTurnout(&turnoutOutputs[i]);
-
+	}
 	sprintf(outStr, "D ACK LIMIT %i", progLimit);
 	reqDCCPeripheralList(outStr);
 	sprintf(outStr, "D ACK MIN %i", progPulseMin);
@@ -652,15 +667,20 @@ void IoTT_DigitraxBuffers::loadFromFile(String fileName)
 
 //			setPowerStatus(0x83); //track power on after startup
 		}
+		else
+		{
+			clearSlotBuffer(true);
+//			resetComm();
+		}
 
 //clear MU links
 		for (int i = 0; i < maxSlots; i++)
 		{
 //			slotBuffer[i][0] &= 0xB7; //clear links
-			slotBuffer[i][TRK] = 0; //clear purge counter
-			Serial.print(i);
-			Serial.print(" ");
-			dispSlot(&slotBuffer[i][0]);
+//			slotBuffer[i][TRK] = 0; //clear purge counter
+//			Serial.print(i);
+//			Serial.print(" ");
+//			dispSlot(&slotBuffer[i][0]);
 		}
 
 /*		
@@ -735,18 +755,10 @@ void IoTT_DigitraxBuffers::processLoop()
 	if (millis() - fcRefresh > fcRefreshInterval)
 	{
 		//refresh fast clock slot
-		intFastClock += slotBuffer[0x7B][0]; //call every second, so just add the fc rate
-		intFastClock %= 86400;
-		uint16_t sysHour = trunc(intFastClock / 3600);
-		sysHour %= 24;
-		slotBuffer[0x7B][5] = 0x68 + sysHour;
-		
-		uint16_t sysMin = trunc(intFastClock / 60);
-		sysMin %= 60;
-		slotBuffer[0x7B][3] = 0x44 + sysMin;
+		setFCTime(getFCTime() + slotBuffer[0x7B][0], false); //call every second, so just add the fc rate
 		fcRefresh += fcRefreshInterval;
 	}
-
+	
 	if (millis() - fcLastBroadCast > fcBroadcastInterval)
 	{
 		prepSlotWriteMsg(&txBuffer, 0x7B);
@@ -919,8 +931,26 @@ bool IoTT_DigitraxBuffers::getBushbyWatch()
 	return bushbyWatch;
 }
 
+/*
 void IoTT_DigitraxBuffers::addActor(uint16_t Id, uint8_t pinType, uint8_t pinNr, uint8_t flags)
 {
+	
+}
+*/
+
+void IoTT_DigitraxBuffers::sendFCCmdToWeb()
+{
+	if (globalClient)
+	{
+		DynamicJsonDocument doc(200);
+		char myMqttMsg[100];
+		doc["Cmd"] = "FC";
+		JsonObject Data = doc.createNestedObject("Data");
+		Data["Time"] = getFCTime();
+		Data["Rate"] = getFCRate();
+		serializeJson(doc, myMqttMsg);
+		globalClient->text(myMqttMsg);
+	}
 }
 
 void IoTT_DigitraxBuffers::sendDCCCmdToWeb(ppElement * myParams)
@@ -934,20 +964,22 @@ void IoTT_DigitraxBuffers::sendDCCCmdToWeb(ppElement * myParams)
 		JsonArray msgArray = Data.createNestedArray("Msg");
 		for (uint8_t i = 0; i < myParams[0].numParams; i++)
 		{
-			char nodeName[3] = "";
+			char nodeName[5];
 			msgArray[i]["t"] = myParams[i].dataType;
 			switch (myParams[i].dataType)
 			{
 				case 10: msgArray[i]["d"] = myParams[i].payload.longVal ; break;
 				case 20: msgArray[i]["d"] = myParams[i].payload.floatVal; break;
-				default: memcpy(&nodeName, &myParams[i].payload.strVal[0], myParams[i].dataType);
-						 nodeName[myParams[i].dataType] = 0; 
+				default: memcpy(&nodeName[0], &myParams[i].payload.strVal[0], myParams[i].dataType);
+						 nodeName[myParams[i].dataType] = '\0';
+//						 nodeName[myParams[i].dataType] = 0; 
 						 msgArray[i]["d"] = nodeName;
 						 break;
 			}
 		}
 		serializeJson(doc, myMqttMsg);
 		globalClient->text(myMqttMsg);
+//		Serial.println(myMqttMsg);
 	}
 }
 
@@ -980,27 +1012,29 @@ uint16_t IoTT_DigitraxBuffers::receiveDCCGeneratorFeedback(lnTransmitMsg txData)
 	switch (myParams[0].payload.strVal[0])
 	{
 		case 'H': //turnout info
-			if (myParams[0].numParams == 5) // <H ID ADDRESS SUBADDRESS THROWN> for each defined DCC Accessory Turnout in return to <T>
+//			if (myParams[0].numParams == 5) // <H ID ADDRESS SUBADDRESS THROWN> for each defined DCC Accessory Turnout in return to <T>
+			if (myParams[2].dataType < 5) //string type
 			{
 				arduinoPins * thisActor = findPeripherialItemById(turnoutOutputs, turnoutOutputLen, 0x80, myParams[1].payload.longVal); //looking for ardID
+				char tType[5] = {0,0,0,0,0};
+				memcpy(&tType, &myParams[2].payload.strVal, myParams[2].dataType);
 				if (thisActor)
 				{
 					if (thisActor->ardType > 0)
 						thisActor->confOK = true;
-					char tType[5] = {0,0,0,0,0};
-					memcpy(&tType, &myParams[2].payload.strVal, myParams[2].dataType);
-					Serial.printf("Defined Turnout %i Type %s on Pin %i Position %i\n", myParams[1].payload.longVal, tType, myParams[3].payload.longVal, myParams[4].payload.longVal);
-					sendToWeb = true;
+//					Serial.printf("Defined Turnout %i Type %s on Pin %i Position %i\n", myParams[1].payload.longVal, tType, myParams[3].payload.longVal, myParams[4].payload.longVal);
 				}
-				else
-					addActor(myParams[1].payload.longVal, 0, myParams[3].payload.longVal, myParams[4].payload.longVal);
+//				else
+//					Serial.printf("Undefined Turnout %i Type %s on Pin %i Position %i\n", myParams[1].payload.longVal, tType, myParams[3].payload.longVal, myParams[4].payload.longVal);
+//					addActor(myParams[1].payload.longVal, 0, myParams[3].payload.longVal, myParams[4].payload.longVal);
+				sendToWeb = true;
 			}
 			break;
 		case 'l': //loco info  <l CAB SLOT SPEED/DIR FUNC>
 		{
 			uint16_t dccAddr = myParams[1].payload.longVal;
 			uint8_t thisSlot = getSlotOfAddr(dccAddr & 0x7F, dccAddr >> 7);
-			Serial.printf("<l> Loco %i Speed %i Dir %i Functions %2X\n", myParams[1].payload.longVal, myParams[3].payload.longVal & 0x7F, (myParams[3].payload.longVal & 0x80)>>7, myParams[4].payload.longVal);
+//			Serial.printf("<l> Loco %i Speed %i Dir %i Functions %2X\n", myParams[1].payload.longVal, myParams[3].payload.longVal & 0x7F, (myParams[3].payload.longVal & 0x80)>>7, myParams[4].payload.longVal);
 		}
 		break;
 		case 'p': //Power Report
@@ -1028,12 +1062,13 @@ uint16_t IoTT_DigitraxBuffers::receiveDCCGeneratorFeedback(lnTransmitMsg txData)
 				if (myParams[0].numParams == 4) //<Q ID PIN PULLUP> for each defined sensor as return to <S>
 				{
 					thisSensor->confOK = true;
-					Serial.printf("Defined Sensor %i on Pin %i Pullup %i\n", myParams[1].payload.longVal, myParams[2].payload.longVal, myParams[3].payload.longVal);
-					sendToWeb = true;
+//					Serial.printf("Defined Sensor %i on Pin %i Pullup %i\n", myParams[1].payload.longVal, myParams[2].payload.longVal, myParams[3].payload.longVal);
 				}
 				if (myParams[0].numParams == 2) //<Q ID > for sensor event report
 					processDCCInput(myParams[1].payload.longVal, (myParams[0].payload.strVal[0] == 'Q') ? true: false);
 			}
+			if (myParams[0].numParams == 4) //<Q ID PIN PULLUP> for each defined sensor as return to <S>
+				sendToWeb = true;
 			break;
 		}
 		case 'r': //programmer callback on read/write cv bit/byte on prog
@@ -1058,11 +1093,11 @@ uint16_t IoTT_DigitraxBuffers::receiveDCCGeneratorFeedback(lnTransmitMsg txData)
 			prepSlotReadMsg(&txBuffer, 0x7C);
 			lnOutFct(txBuffer);
 			progMode = false;
-			Serial.printf("Send Programmer final task reply CV %i Val %i \n", cvNr+1, cvVal);
+//			Serial.printf("Send Programmer final task reply CV %i Val %i \n", cvNr+1, cvVal);
 		}
 		break;
 		case 'X': //slot # report
-			Serial.println("Command execution failed");
+//			Serial.println("Command execution failed");
 		break;
 		
 		case 'Y': //<Y ID IN IFLAG STATE> for each defined output pin in return to <Z>
@@ -1073,12 +1108,13 @@ uint16_t IoTT_DigitraxBuffers::receiveDCCGeneratorFeedback(lnTransmitMsg txData)
 				{
 					if (thisActor->ardType == 0)
 						thisActor->confOK = true;
-//					Serial.printf("Defined VPin %i on Pin %i IFlag %i\n", myParams[1].payload.longVal, myParams[2].payload.longVal, myParams[3].payload.longVal, myParams[4].payload.longVal);
-					sendToWeb = true;
+//					Serial.printf("Defined ZPin %i on Pin %i IFlag %i\n", myParams[1].payload.longVal, myParams[2].payload.longVal, myParams[3].payload.longVal, myParams[4].payload.longVal);
 				}
-				else
-					addActor(myParams[1].payload.longVal, 0, myParams[3].payload.longVal, myParams[4].payload.longVal);
+//				else
+//					Serial.printf("Undefined ZPin %i on Pin %i IFlag %i\n", myParams[1].payload.longVal, myParams[2].payload.longVal, myParams[3].payload.longVal, myParams[4].payload.longVal);
+//					addActor(myParams[1].payload.longVal, 0, myParams[3].payload.longVal, myParams[4].payload.longVal);
 			}
+			sendToWeb = true;
 			break;
 		break;
 		case 'Z': //output pin report
@@ -1089,7 +1125,7 @@ uint16_t IoTT_DigitraxBuffers::receiveDCCGeneratorFeedback(lnTransmitMsg txData)
 			sendToWeb = true;
 //			Serial.printf("DCC++EX has %i refresh slots\n", myParams[1].payload.longVal);
 		break;
-		default: 	Serial.printf("Unprocessed DCC++ Msg OpCode %c with %i params\n", myParams[0].payload.strVal[0], myParams[0].numParams);
+		default: 	// Serial.printf("Unprocessed DCC++ Msg OpCode %c with %i params\n", myParams[0].payload.strVal[0], myParams[0].numParams);
 		break;
 	}
 	if (sendToWeb)
@@ -1205,6 +1241,35 @@ void IoTT_DigitraxBuffers::enableBushbyWatch(bool enableBushby)
 uint32_t IoTT_DigitraxBuffers::getFCTime()
 {
 	return intFastClock;
+}
+
+uint32_t IoTT_DigitraxBuffers::getFCRate()
+{
+	return slotBuffer[0x7B][0];
+}
+
+void IoTT_DigitraxBuffers::setFCTime(uint32_t newTime, bool updateLN)
+{
+//	Serial.printf("New time: %i\n", newTime);
+	intFastClock = newTime;
+	intFastClock %= 86400;
+	uint16_t sysHour = trunc(intFastClock / 3600);
+	sysHour %= 24;
+	slotBuffer[0x7B][5] = 0x68 + sysHour;
+		
+	uint16_t sysMin = trunc(intFastClock / 60);
+	sysMin %= 60;
+	slotBuffer[0x7B][3] = 0x44 + sysMin;
+	if (updateLN)
+		fcLastBroadCast = millis() - fcBroadcastInterval;
+}
+
+void IoTT_DigitraxBuffers::setFCRate(uint8_t newRate, bool updateLN)
+{
+//	Serial.printf("New rate: %i\n", newRate);
+	slotBuffer[0x7B][0] = newRate;
+	if (updateLN)
+		fcLastBroadCast = millis() - fcBroadcastInterval;
 }
 
 void IoTT_DigitraxBuffers::enableLissyMod(bool enableLissy)
@@ -1511,6 +1576,7 @@ void IoTT_DigitraxBuffers::processBufferUpdates(lnReceiveBuffer * newData) //pro
 									uint8_t sysMin = (digitraxBuffer->slotBuffer[0x7B][3] - 68) % 60;
 									intFastClock = 3600 * sysHour + 60 * sysMin; //seconds per day, roll over
 									fcLastBroadCast = millis();
+//									sendFCCmdToWeb();
 //									Serial.printf("Update internal FC %i:%i -> %i\n", sysHour, sysMin, intFastClock);
 //									Serial.println("FC Counter Reset");
 
@@ -1903,6 +1969,7 @@ void IoTT_DigitraxBuffers::processSlotManager(lnReceiveBuffer * newData) //proce
 						uint8_t sysMin = (digitraxBuffer->slotBuffer[0x7B][3] - 68) % 60;
 						intFastClock = 3600 * sysHour + 60 * sysMin; //seconds per day, roll over
 						fcLastBroadCast = millis();
+//						sendFCCmdToWeb();
 //						Serial.printf(" UpdateFC, Counter Reset, LACK %i:%i -> %i\n", sysHour, sysMin, intFastClock);
 						prepLACKMsg(&txBuffer, 0x6F, 0x7F); //ok
 					}
@@ -2112,8 +2179,8 @@ void IoTT_DigitraxBuffers::setSlotDirfSpeed(lnReceiveBuffer * newData)
 				focusNextAddr = false;
 //				Serial.printf("Set focus Slot %i\n", focusSlot);
 			}
-			else
-				Serial.printf("Slot %i not initialized\n", focusSlot);
+//			else
+//				Serial.printf("Slot %i not initialized\n", focusSlot);
 		}
 		switch (newData->lnData[0])
 		{
@@ -2219,7 +2286,7 @@ void IoTT_DigitraxBuffers::purgeUnusedSlots()
 			if (getRefreshStatus(i) & slotCommon) //loco is refreshed, (common or active)
 				if ((slotBuffer[i][TRK]) > purgeLimit) //limit is reached, so free slot
 				{
-					Serial.printf("Purge slot %i\n", i);
+//					Serial.printf("Purge slot %i\n", i);
 					uint8_t newSpeed = getOpSw(opSwPurgeForce0, 1) ? 0 : slotBuffer[i][SPD];
 					if (newSpeed == 0)
 						setDCCSpeedCmd(i, &newSpeed);

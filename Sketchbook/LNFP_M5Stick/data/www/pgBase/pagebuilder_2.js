@@ -6,7 +6,7 @@ var truefalseArray = ["false","true"];
 var posnegArray = ["positive","negative"];
 var msgTypeArray = ["Input Report", "Switch Report", "Button Down/Up"];
 var turnoutTypeArray = ["ZPIN (!)", "DCC", "Servo", "VPIN"];
-var startupArray = ["none", "restore", "set active", "set inactive"];
+var startupArray = ["restore", "set active", "set inactive"];
 
 function tfSetCoordinate(element, row, col, index, id)
 {

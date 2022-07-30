@@ -436,6 +436,15 @@ bool hybrid_carrierOK()
     return true;
 }
 
+void hybrid_LineBreak(uint16_t numBits)
+{
+//	Serial.print("Line break");
+	hybrid_flush();
+    digitalWrite(pinTx, (inverseLogicTx ? 1:0)); //send BREAK
+    uartMode = uart_collision;
+    bitCounter = numBits; //numBits bit times
+}
+
 uint16_t hybrid_read() //always check if data is available before calling this function
 {
 	if (txBuf.rxrdPointer != txBuf.rxwrPointer)

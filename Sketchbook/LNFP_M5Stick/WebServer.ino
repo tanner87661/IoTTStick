@@ -560,6 +560,27 @@ void processWsMessage(char * newMsg, int msgLen, AsyncWebSocketClient * client)
               trainSensor->stopTest();
         }
       }
+      if (thisCmd == "ResetSlots")
+      {
+        digitraxBuffer->clearSlotBuffer(true);
+        if (lnSerial)
+          lnSerial->sendLineBreak(50);
+      }
+      if (thisCmd == "SetFC")
+      {
+        if (doc.containsKey("FCTime"))
+        {
+          uint32_t newTime = doc["FCTime"];
+          digitraxBuffer->setFCTime(newTime, true);
+        }
+        if (doc.containsKey("FCRate"));
+        {
+          uint8_t newRate = doc["FCRate"];
+          digitraxBuffer->setFCRate(newRate, true);
+        }
+      }
+      if (thisCmd == "GetFC")
+        digitraxBuffer->sendFCCmdToWeb();
       if (thisCmd == "SetDCCPP")  
       {
         if (doc.containsKey("SubCmd"))

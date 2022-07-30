@@ -541,6 +541,8 @@ function startWebsockets()
 			processMQTTInput(myArr);
   		if ((myArr.Cmd == "DCCPP") && (scriptList.Pages[currentPage].ID == "pgRedHatCfg"))
  			processDCCPPInput(myArr);
+  		if ((myArr.Cmd == "FC") && (scriptList.Pages[currentPage].ID == "pgRedHatCfg"))
+ 			processFCInput(myArr);
 
   		if (myArr.Cmd == "CfgFiles")
   		{

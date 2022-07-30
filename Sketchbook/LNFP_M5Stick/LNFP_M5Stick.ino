@@ -191,8 +191,13 @@ File uploadFile; //used for web server to upload files
 //this is the outgoing communication function for IoTT_DigitraxBuffers.h, routing the outgoing messages to the correct interface
 uint16_t sendMsg(lnTransmitMsg txData)
 {
-//  Serial.printf("Call sendMsg to %i: %i, %2X, %2X, %2X, %2X \n", useInterface.devId, txData.lnMsgSize, txData.lnData[0], txData.lnData[1], txData.lnData[2], txData.lnData[3]);
-//  Serial.printf("Outgoing Callback to %i ID %2X\n", useInterface.devId, txData.reqID);
+//  Serial.println("verifySyntax");
+//  if (!verifySyntax(&txData.lnData[0]))
+//  {
+//    Serial.printf("ERROR: Call sendMsg to %i: %i, %2X, %2X, %2X, %2X \n", useInterface.devId, txData.lnMsgSize, txData.lnData[0], txData.lnData[1], txData.lnData[2], txData.lnData[3]);
+//    Serial.printf("Outgoing Callback to %i ID %2X\n", useInterface.devId, txData.reqID);
+//    return 0;
+//  }
   switch (useInterface.devId)
   {
     case 0: break; //none
@@ -813,8 +818,6 @@ void setup()
     else
       Serial.println("Purple Sensor not activated");
 
-//    digitraxBuffer->clearSlotBuffer(); //if not command station mode, clear all slots to trigger reload
-
     if (useHat.devId == 6) // || (useHat.devId == 8)) //RedHat++ Shield
     {
       jsonDataObj = getDocPtr("/configdata/rhcfg.cfg", false);
@@ -824,13 +827,19 @@ void setup()
         subnetMode = fullMaster;
         digitraxBuffer->setRedHatMode(sendLocoNetReply, *jsonDataObj); //function hooks in DigitraxBuffers
         if (lnSerial)
+        {
           lnSerial->setNetworkType(subnetMode); 
+//          delay(1000);
+//          lnSerial->sendLineBreak(50); //3ms
+//          delay(1000);
+        }
         delete(jsonDataObj); 
         Serial.println("DCC++Ex loaded"); 
       }
     }
     else
       Serial.println("DCC++Ex not activated");
+    digitraxBuffer->clearSlotBuffer(false); //do not erase, just fix problems
 
 //------------------------------------------------------------------------------------------------------------------------------------------------------------------
 //Initialize ALMs

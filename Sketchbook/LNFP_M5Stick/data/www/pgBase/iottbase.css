@@ -928,3 +928,14 @@ table, th, td {
   background-image: url("/Nickel4020.jpg");
   color: white;
 }
+
+.pickerlabel {
+    display: block;
+    font: 1rem 'Fira Sans', sans-serif;
+}
+
+.pickerinput,
+.pickerlabel {
+	float: left;
+    margin: .4rem 0;
+}

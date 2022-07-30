@@ -60,6 +60,7 @@ uint16_t hybrid_available();
 bool hybrid_carrierOK();
 uint16_t hybrid_read();
 uint8_t hybrid_write(uint8_t * dataByte, uint8_t numBytes=1);
+void hybrid_LineBreak(uint16_t numBits);
 void hybrid_flush();
 uint8_t  hybrid_LocoNetAvailable();
 //void hybrid_driver(); //timer interrupt occurs every 15 micros.
