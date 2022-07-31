@@ -1,6 +1,11 @@
 # IoTTStick
 This is the code repository for the IoTT Stick, port modules and hat devices with the source code for the latest release. 
 
+2022/07/31
+- Version 1.5.13
+- Official support for WiThrottle and RedHat++ Shield
+- WiThrottle now with mDNS support
+
 2022/05/10
 - Version 1.5.12
 - Improvements to the speed measurement algorithm, resulting in smoother display curve
