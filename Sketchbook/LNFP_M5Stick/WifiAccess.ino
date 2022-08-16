@@ -68,7 +68,6 @@ void checkWifiTimeout() //check if wifi can be switched off
 
 void getInternetTime() //periodically connect to an NTP server and get the current time
 {
-  
   int thisIntervall = ntpIntervallDefault;
   if (!ntpOK)
     thisIntervall = ntpIntervallShort;
@@ -85,6 +84,8 @@ void getInternetTime() //periodically connect to an NTP server and get the curre
       }
       else //success, so update RTC clock
       {      
+        M5.Rtc.setDateTime({{(int16_t)timeinfo.tm_year, (int8_t)timeinfo.tm_mon, (int8_t)timeinfo.tm_mday}, {(int8_t)timeinfo.tm_hour, (int8_t)timeinfo.tm_min, (int8_t)timeinfo.tm_sec}});
+/*
         RTC_TimeTypeDef TimeStruct;
         TimeStruct.Hours   = timeinfo.tm_hour;
         TimeStruct.Minutes = timeinfo.tm_min;
@@ -96,6 +97,7 @@ void getInternetTime() //periodically connect to an NTP server and get the curre
         DateStruct.Date = timeinfo.tm_mday;
         DateStruct.Year = timeinfo.tm_year + 1900;
         M5.Rtc.SetData(&DateStruct);
+*/
       }
       ntpTimer = millis();
       char time_output[30];

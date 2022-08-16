@@ -1258,7 +1258,7 @@ int8_t IoTT_ledChain::pingI2CDevice(uint8_t numBytes)
 		resetI2CWDT();
 		for (byteCount = 0; byteCount < 5; byteCount++ )
 		{
-			thisWire->requestFrom(I2CAddr, 1);
+			thisWire->requestFrom(I2CAddr, (uint8_t)1);
 			if (thisWire->available())
 			{
 				devData[byteCount] = (uint8_t)thisWire->read();
@@ -1577,6 +1577,7 @@ bool IoTT_ledChain::processMQTTCmd(char * topic, DynamicJsonDocument doc)
 				sendLEDStatusMQTT(ledAddr[i]);
 		return true;
 	}
+	return false;
 }
 
 

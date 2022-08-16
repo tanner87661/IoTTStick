@@ -1,0 +1,16 @@
+{
+  "name": "M5_EzData",
+  "description": "An IoT cloud data storage service provided by M5Stack",
+  "keywords": "M5_EzData",
+  "authors": {
+    "name": "M5Stack",
+    "url": "https://github.com/m5stack/M5_EzData"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/m5stack/M5_EzData.git"
+  },
+  "version": "0.0.1",
+  "framework": "arduino",
+  "platforms": "espressif32"
+}

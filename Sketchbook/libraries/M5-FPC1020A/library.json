@@ -1,0 +1,16 @@
+{
+  "name": "M5-FPC1020A",
+  "description": "Library for Unit & Module Finger",
+  "keywords": "M5Stack Unit Module Finger",
+  "authors": {
+    "name": "M5Stack",
+    "url": "http://www.m5stack.com"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/m5stack/M5-FPC1020A.git"
+  },
+  "version": "0.0.1",
+  "frameworks": "arduino",
+  "platforms": "espressif32"
+}

@@ -339,7 +339,7 @@ function constructPageContent(contentTab)
 			createCheckbox(tempObj, "tile-1_4", "LocoNet Subnet", "cbUseSubnet", "setSubnet(this)");
 		tempObj = createEmptyDiv(mainScrollBox, "div", "tile-1", "configLNOptBox");
 			createCheckbox(tempObj, "tile-1_4", "respect Bushby Bit", "cbUseBushbyBit", "setUseBushbyBit(this)");
-//			createCheckbox(tempObj, "tile-1_4", "Support Uhlenbrock Track display commands", "cbUseLissyBit", "setUseLissyBit(this)");
+			createCheckbox(tempObj, "tile-1_4", "Support Uhlenbrock Track display commands", "cbUseLissyBit", "setUseLissyBit(this)");
 		
 		createPageTitle(mainScrollBox, "div", "tile-1", "", "h2", "Communication Servers");
 		tempObj = createEmptyDiv(mainScrollBox, "div", "tile-1", "ServerBox");
@@ -481,8 +481,8 @@ function loadDataFields(jsonData)
 
 	writeCBInputField("cbUseSubnet", jsonData.subnetMode);
 	writeCBInputField("cbUseBushbyBit", jsonData.useBushby);
-//	if (typeof jsonData.useLissy !== 'undefined')
-//		writeCBInputField("cbUseLissyBit", jsonData.useLissy);
+	if (typeof jsonData.useLissy !== 'undefined')
+		writeCBInputField("cbUseLissyBit", jsonData.useLissy);
 	
 	writeCBInputField("cbUseNTP", jsonData.useNTP);
 	setVisibility(jsonData.useNTP, configNTPBox);

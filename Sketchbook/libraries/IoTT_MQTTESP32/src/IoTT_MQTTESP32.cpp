@@ -190,11 +190,9 @@ void MQTTESP32::setNodeName(char * newName, bool newUseMAC)
 	{
 		String hlpStr = String(ESP_getChipId());
 		strcat(nnBuf, hlpStr.c_str());
-		myTopics.thisNodeName = (char*) malloc(strlen(nnBuf)+1);
-		strcpy(myTopics.thisNodeName, nnBuf);
-		
-//	    strcpy(&thisNodeName[strlen(thisNodeName)], hlpStr.c_str());
 	}
+	myTopics.thisNodeName = (char*) malloc(strlen(nnBuf)+1);
+	strcpy(myTopics.thisNodeName, nnBuf);
 }
 
 void MQTTESP32::loadMQTTCfgJSON(DynamicJsonDocument doc)

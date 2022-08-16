@@ -44,7 +44,7 @@ STM32F2            |             |             |     X       |
 Adafruit invests time and resources providing this open source code, please support Adafruit and open-source hardware by purchasing products from Adafruit!
 
 # Dependencies
- * [TinyWireM](https://github.com/adafruit/TinyWireM)
+ * [Adafruit BusIO](https://github.com/adafruit/Adafruit_BusIO)
 
 # Contributing
 
@@ -65,8 +65,10 @@ https://learn.adafruit.com/the-well-automated-arduino-library/doxygen-tips
 The code should be formatted according to the [LLVM Coding Standards](https://llvm.org/docs/CodingStandards.html), which is the default of the clang-format tool.  The easiest way to ensure conformance is to [install clang-format](https://llvm.org/builds/) and run
 
 ```shell
-clang-format -i <source_file>`
+clang-format -i <source_file>
 ```
+
+See [Formatting with clang-format](https://learn.adafruit.com/the-well-automated-arduino-library/formatting-with-clang-format) for details.
 
 Written by JeeLabs
 MIT license, check license.txt for more information

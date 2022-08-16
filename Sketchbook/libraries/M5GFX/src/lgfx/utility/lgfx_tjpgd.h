@@ -25,14 +25,14 @@
 extern "C" {
 #endif
 
-#if defined(_WIN32)	/* Main development platform */
-typedef unsigned char	uint8_t;
-typedef unsigned short	uint16_t;
-typedef short			int16_t;
-typedef unsigned long	uint32_t;
-typedef long			int32_t;
-#else
-#include "stdint.h"
+#if __has_include (<stdint.h>)
+ #include <stdint.h>
+#elif defined(_WIN32)	/* Main development platform */
+ typedef unsigned char	uint8_t;
+ typedef unsigned short	uint16_t;
+ typedef short			int16_t;
+ typedef unsigned long	uint32_t;
+ typedef long			int32_t;
 #endif
 
 /* Error code */
@@ -78,7 +78,7 @@ struct lgfxJdec {
 	uint8_t* mcubuf;			/* Working buffer for the MCU */
 	uint8_t* pool;				/* Pointer to available memory pool */
 	uint_fast16_t sz_pool;			/* Size of momory pool (bytes available) */
-	uint32_t (*infunc)(lgfxJdec*, uint8_t*, uint32_t);/* Pointer to jpeg stream input function */
+	uint32_t (*infunc)(void*, uint8_t*, uint32_t);/* Pointer to jpeg stream input function */
 	void* device;				/* Pointer to I/O device identifiler for the session */
 	uint8_t comps_in_frame;		/* 1=Y(grayscale)  3=YCrCb */
 };
@@ -86,8 +86,8 @@ struct lgfxJdec {
 
 
 /* TJpgDec API functions */
-JRESULT lgfx_jd_prepare (lgfxJdec*, uint32_t(*)(lgfxJdec*,uint8_t*,uint32_t), void*, uint_fast16_t, void*);
-JRESULT lgfx_jd_decomp (lgfxJdec*, uint32_t(*)(lgfxJdec*,void*,JRECT*), uint_fast8_t);
+JRESULT lgfx_jd_prepare (lgfxJdec*, uint32_t(*)(void*,uint8_t*,uint32_t), void*, uint_fast16_t, void*);
+JRESULT lgfx_jd_decomp (lgfxJdec*, uint32_t(*)(void*,void*,JRECT*), uint_fast8_t);
 
 
 #ifdef __cplusplus

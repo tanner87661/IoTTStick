@@ -1,0 +1,16 @@
+{
+  "name": "TFTTerminal",
+  "description": "TFTTerminal",
+  "keywords": "TFTTerminal",
+  "authors": {
+    "name": "anonymous",
+    "url": "http://www.google.com"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Tinyu-Zhao/TFTTerminal.git"
+  },
+  "version": "0.0.1",
+  "framework": "arduino",
+  "platforms": "espressif32"
+}

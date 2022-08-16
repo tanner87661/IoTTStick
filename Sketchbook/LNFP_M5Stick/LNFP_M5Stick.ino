@@ -1,27 +1,29 @@
-String BBVersion = "1.5.13";
+#if defined ( ARDUINO )
+#include <Arduino.h>
+#include <SD.h>
+#include <SPIFFS.h>
+#endif
+#include <M5AtomDisplay.h>
+#include <M5UnitLCD.h>
+#include <M5UnitOLED.h>
+#include <M5Unified.h>
+
+String BBVersion = "1.5.14D1";
 
 //#define measurePerformance //uncomment this to display the number of loop cycles per second
-#define useM5Lite
 //#define useAI
 //Arduino published libraries. Install using the Arduino IDE or download from Github and install manually
-#include <arduino.h>
 #include <Math.h>
+
 //#include <Wiroe.h>
 //#include <esp_int_wdt.h>
 //#include <esp_task_wdt.>
-#ifdef useM5Lite
-  #include "M5Lite.h"
-  #define M5 M5Lite
-#else
-  #include <M5StickC.h>
-#endif
-//#include <M5StickCPlus.h>
+
+#include <WiFi.h>
 #include <ArduinoUniqueID.h>
 #include <time.h>
 #include <FS.h>
-#include <SPIFFS.h>
 #define FORMAT_SPIFFS_IF_FAILED true
-#include <WiFi.h>
 #include <AsyncTCP.h>
 #include <ESPAsyncWebServer.h>
 #include <DNSServer.h>
@@ -41,7 +43,7 @@ String BBVersion = "1.5.13";
 #include <IoTT_SerInjector.h> //Serial USB Port to make it an interface for LocoNet and OpenLCB
 //#include <IoTT_OpenLCB.h> //CAN port for OpenLCB
 #include <IoTT_Switches.h>
-#include <IoTT_SecurityElements.h> //not ready yet. This is the support for ABS/APB as described in Videos #20, 21, 23, 24
+//#include <IoTT_SecurityElements.h> //not ready yet. This is the support for ABS/APB as described in Videos #20, 21, 23, 24
 #include <NmraDcc.h> //install via Arduino IDE
 //#include <OneDimKalman.h>
 #include <IoTT_lbServer.h>
@@ -60,10 +62,10 @@ AsyncWebSocketClient * globalClient = NULL;
 uint32_t wsBufferSize = 16384;
 uint32_t wsRxReadPtr = 0;
 uint32_t wsRxWritePtr = 0;
-char * wsRxBuffer; //[32768]; //should this by dynamic?
+char * wsRxBuffer; //[16384, 32768]; //should this be dynamic?
 uint32_t wsTxReadPtr = 0;
 uint32_t wsTxWritePtr = 0;
-char * wsTxBuffer; //[32768]; //should this by dynamic?
+char * wsTxBuffer; //[32768]; //should this be dynamic?
 bool execLoop = true; //used to stop loop execution if update files are coming in. Must result in restart
 
 //global variables
@@ -217,6 +219,7 @@ uint16_t sendMsg(lnTransmitMsg txData)
             break;
 */            
   }
+  return 0;
 }
 
 uint16_t sendMQTTMsg(char * topic, char * payload) //used for native MQTT only
@@ -227,6 +230,7 @@ uint16_t sendMQTTMsg(char * topic, char * payload) //used for native MQTT only
       if (lnMQTTClient) return lnMQTTClient->mqttPublish(topic, payload);
       break; 
   }
+  return 0;
 }
 
 void resetPin(uint8_t pinNr)
@@ -698,7 +702,7 @@ void setup()
     if (useHat.devId == 3) //YellowHat
     {
         Serial.println("Init YellowHat");  
-        Wire.begin(hatSDA, hatSCL, 400000); //initialize the I2C interface 400kHz
+        Wire.begin(hatSDA, hatSCL); //, 400000); //initialize the I2C interface 400kHz
         jsonDataObj = getDocPtr("/configdata/btn.cfg", false);
         if (jsonDataObj != NULL)
         {
@@ -728,7 +732,7 @@ void setup()
           lnSerial->setBusyLED(stickLED, false);
           lnSerial->setLNCallback(callbackLocoNetMessage);
         } 
-        Wire.begin(hatSDA, hatSCL, 400000); //initialize the I2C interface
+        Wire.begin(hatSDA, hatSCL); //, 400000); //initialize the I2C interface
         jsonDataObj = getDocPtr("/configdata/greenhat.cfg", true);
         if (jsonDataObj != NULL)
           if (jsonDataObj->containsKey("Modules"))
@@ -806,7 +810,7 @@ void setup()
       jsonDataObj = getDocPtr("/configdata/phcfg.cfg", false);
       if (jsonDataObj != NULL)
       {
-        Wire.begin(hatSDA, hatSCL, 400000); //initialize the I2C interface 400kHz
+        Wire.begin(hatSDA, hatSCL); //, 400000); //initialize the I2C interface 400kHz
         Serial.println("Load Trainside Sensor"); 
         trainSensor = new IoTT_TrainSensor(&Wire);
         trainSensor->setTxCallback(sendMsg);
@@ -945,6 +949,7 @@ void setup()
     else
       Serial.println("NTP Module not defined");
     delete(jsonConfigObj);
+    
     startWebServer();
 //    if (useNTP) getInternetTime();
     if (wiServer)
@@ -958,7 +963,8 @@ void setup()
   pinMode(0, INPUT);
 }
 
-void loop() {
+void loop() 
+{
   // put your main code here, to run repeatedly:
 #ifdef measurePerformance
   loopCtr++;

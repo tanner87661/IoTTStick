@@ -185,7 +185,9 @@ uint16_t sendLocoNetReply(lnTransmitMsg txData)
 //    Serial.printf(" %2X ", txData->lnData[i]);
 //  Serial.println();
   if (lnSerial)
-    lnSerial->lnWriteReply(&txData);
+    return lnSerial->lnWriteReply(&txData);
+  else
+    return 0;
 }
 /*
 uint16_t sendDCCCmdGen(lnTransmitMsg txData)

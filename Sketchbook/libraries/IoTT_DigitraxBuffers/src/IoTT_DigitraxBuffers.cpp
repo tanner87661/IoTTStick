@@ -19,7 +19,7 @@ txFct lnOutFct = NULL;
 
 uint16_t dccGeneratorCallback(lnTransmitMsg txData)
 {
-	digitraxBuffer->receiveDCCGeneratorFeedback(txData);
+	return digitraxBuffer->receiveDCCGeneratorFeedback(txData);
 }
 
 //LocoNet functions for preparing reply messages
@@ -331,7 +331,7 @@ void setDCCSpeedSteps(uint8_t speedStepMode)
 	dccPort->lnWriteMsg(txBuffer);
 }
 
-void reqDCCPeripheralList(char * cmdChar)
+void reqDCCPeripheralList(const char* cmdChar)
 {
 	lnTransmitMsg txBuffer;
 	char* outStr = (char*)&txBuffer.lnData[0];
@@ -1131,6 +1131,7 @@ uint16_t IoTT_DigitraxBuffers::receiveDCCGeneratorFeedback(lnTransmitMsg txData)
 	if (sendToWeb)
 		if (millis() < webTimeout)
 			sendDCCCmdToWeb(myParams);
+	return 0; //not really needed
 }
 
 void IoTT_DigitraxBuffers::sendRedHatCmd(char * cmdStr)
@@ -2274,7 +2275,8 @@ uint8_t IoTT_DigitraxBuffers::getConsistTopSlot(uint8_t ofSlot)
 		case cnUplink : ;
 		case cnMiddle : return getConsistTopSlot(slotBuffer[ofSlot][SPD]); //return iterative top
 		case cnDownlink: return ofSlot; //return self
-	} 
+	}
+	return 0; 
 }
 
 

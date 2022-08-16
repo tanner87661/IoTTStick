@@ -1,0 +1,16 @@
+{
+  "name": "M5Unit-RTC",
+  "description": "Library for M5Stack Unit RTC(SKU:U126)",
+  "keywords": "M5Stack Unit BM8563 RTC",
+  "authors": {
+    "name": "M5Stack",
+    "url": "http://www.m5stack.com"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/m5stack/M5Unit-RTC.git"
+  },
+  "version": "0.0.2",
+  "frameworks": "arduino",
+  "platforms": "espressif32"
+}

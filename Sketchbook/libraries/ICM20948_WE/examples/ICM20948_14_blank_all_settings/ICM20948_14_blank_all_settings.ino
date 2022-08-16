@@ -20,7 +20,8 @@
  * ICM20948_WE myIMU = ICM20948_WE(ICM20948_ADDR) -> uses Wire / ICM20948_ADDR
  * ICM20948_WE myIMU = ICM20948_WE(&wire2)        -> uses the TwoWire object wire2 / ICM20948_ADDR
  * ICM20948_WE myIMU = ICM20948_WE(&wire2, ICM20948_ADDR) -> all together
- * Successfully tested with two I2C busses on an ESP32
+ * ICM20948_WE myIMU = ICM20948_WE(CS_PIN, spi);  -> uses SPI, spi is just a flag, see SPI example
+ * ICM20948_WE myIMU = ICM20948_WE(&SPI, CS_PIN, spi);  -> uses SPI / passes the SPI object, spi is just a flag, see SPI example
  */
 ICM20948_WE myIMU = ICM20948_WE(ICM20948_ADDR);
 
@@ -92,6 +93,8 @@ void setup() {
   
   /*  Choose a level for the Digital Low Pass Filter or switch it off.  
    *  ICM20948_DLPF_0, ICM20948_DLPF_2, ...... ICM20948_DLPF_7, ICM20948_DLPF_OFF 
+   *  
+   *  IMPORTANT: This needs to be ICM20948_DLPF_7 if DLPF is used in cycle mode!
    *  
    *  DLPF       3dB Bandwidth [Hz]      Output Rate [Hz]
    *    0              246.0               1125/(1+ASRD) 
@@ -178,8 +181,7 @@ void setup() {
 /************ Power, Sleep, Standby ***************/   
   
   /* In cycle mode the sensors wake up in the frequency of sample rate. You can define 
-   * which sensors shall work in cycle mode. Note: Cycle for acceleration in combination with 
-   * DLPF led to strange effects in my experiments. 
+   * which sensors shall work in cycle mode.
    * 
    *  ICM20948_NO_CYCLE          
    *  ICM20948_GYR_CYCLE           
@@ -192,7 +194,7 @@ void setup() {
   /* The Low Power Mode does not work if DLPF is enabled */
   //myIMU.enableLowPower(true);
 
-  /* In low power mode you can set the number of measured values for the gyroscope 
+  /* In low power mode you need to set the number of measured values for the gyroscope 
    * to be averaged. You can select 1,2,4,8,16,32,64 or 128: 
    * ICM20948_GYR_AVG_1, ICM20948_GYR_AVG_2, ..... , ICM20948_GYR_AVG_128 
    * The on-time for measurements increases with the number of samples to be averaged:
@@ -200,7 +202,7 @@ void setup() {
    */
   //myIMU.setGyrAverageInCycleMode(ICM20948_GYR_AVG_128);
 
-  /* In low power mode you can set the number of measured values for the accelerometer 
+  /* In low power mode you need to set the number of measured values for the accelerometer 
    * to be averaged. You can select 4,8,16,32: 
    * ICM20948_ACC_AVG_4, ICM20948_ACC_AVG_8, ICM20948_ACC_AVG_16, ICM20948_ACC_AVG_32 
    * The on-time for measurements increases with the number of samples to be averaged:

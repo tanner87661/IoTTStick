@@ -18,9 +18,16 @@ Contributors:
 #pragma once
 
 #include <stdint.h>
+
+#if __has_include("alloca.h")
 #include <alloca.h>
+#else
+#include <malloc.h>
+#define alloca _alloca
+#endif
 
 #include "misc/enum.hpp"
+#include "misc/colortype.hpp"
 #include "misc/pixelcopy.hpp"
 
 namespace lgfx
@@ -29,29 +36,58 @@ namespace lgfx
  {
 //----------------------------------------------------------------------------
 
-  class pixelcopy_t;
+  struct pixelcopy_t;
 
   struct IPanel
   {
   protected:
     uint32_t _start_count = 0;
-    uint16_t _xs = ~0;
-    uint16_t _xe = ~0;
-    uint16_t _ys = ~0;
-    uint16_t _ye = ~0;
+    union
+    {
+      uint32_t _xsxe = ~0;
+      struct
+      {
+        uint16_t _xs;
+        uint16_t _xe;
+      };
+    };
+    union
+    {
+      uint32_t _ysye = ~0;
+      struct
+      {
+        uint16_t _ys;
+        uint16_t _ye;
+      };
+    };
+    
     uint16_t _width = 0;
     uint16_t _height = 0;
-    color_depth_t _write_depth = color_depth_t::rgb565_2Byte;
-    color_depth_t _read_depth  = color_depth_t::rgb565_2Byte;
-    uint8_t _write_bits = 16;
-    uint8_t _read_bits = 16;
+    union
+    {
+      color_depth_t _write_depth = color_depth_t::rgb565_2Byte;
+      struct
+      {
+        uint8_t _write_bits;
+        uint8_t _write_attrib;
+      };
+    };
+    union
+    {
+      color_depth_t _read_depth  = color_depth_t::rgb565_2Byte;
+      struct
+      {
+        uint8_t _read_bits;
+        uint8_t _read_attrib;
+      };
+    };
     uint8_t _rotation = 0;
-    epd_mode_t _epd_mode = (epd_mode_t)0;  // EPDでない場合は0。それ以外の場合はEPD描画モード
+    epd_mode_t _epd_mode = (epd_mode_t)0;  // EPDでない場合は0。それ以外の場合はEPD描画モード;
     bool _invert = false;
     bool _auto_display = false;
 
   public:
-    constexpr IPanel(void) = default;
+    IPanel(void) = default;
     virtual ~IPanel(void) = default;
 
     void startWrite(bool transaction = true) { if (1 == ++_start_count && transaction) { beginTransaction(); } }
@@ -73,7 +109,7 @@ namespace lgfx
     virtual void beginTransaction(void) = 0;
     virtual void endTransaction(void) = 0;
 
-    virtual void setBrightness(__attribute__((unused)) uint8_t brightness) {};
+    virtual void setBrightness(uint8_t brightness) { (void)brightness; };
 
     virtual color_depth_t setColorDepth(color_depth_t depth) = 0;
 

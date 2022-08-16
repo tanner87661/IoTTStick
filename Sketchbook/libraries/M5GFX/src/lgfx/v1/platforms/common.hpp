@@ -25,7 +25,7 @@ Contributors:
 
 #include "esp8266/common.hpp"
 
-#elif defined (__SAMD21__)
+#elif defined (__SAMD21__) || defined(__SAMD21G18A__) || defined(__SAMD21J18A__) || defined(__SAMD21E17A__) || defined(__SAMD21E18A__)
 
 #include "samd21/common.hpp"
 
@@ -49,7 +49,17 @@ Contributors:
 
 #include "arduino_default/common.hpp"
 
+#elif defined (_WIN32) || __has_include(<opencv2/opencv.hpp>)
+
+#include "opencv/common.hpp"
+
+#elif defined (__linux__)
+
+#include "framebuffer/common.hpp"
+
 #endif
+
+#include "../../utility/result.hpp"
 
 namespace lgfx
 {
@@ -121,9 +131,9 @@ namespace lgfx
       length = (length + 3) & ~3;
       _flip = !_flip;
 
-      if (_length[_flip] != length)
+      if (_length[_flip] < length || _length[_flip] > length + 64)
       {
-        if (_buffer[_flip]) heap_free(_buffer[_flip]);
+        if (_buffer[_flip]) { heap_free(_buffer[_flip]); }
         _buffer[_flip] = (uint8_t*)heap_alloc_dma(length);
         _length[_flip] = _buffer[_flip] ? length : 0;
       }

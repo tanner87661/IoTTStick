@@ -1,0 +1,16 @@
+{
+  "name": "M5Unit-EXTIO2",
+  "description": "Library for M5Stack Unit-EXTIO2",
+  "keywords": "M5Stack M5Unit EXTIO2",
+  "authors": {
+    "name": "M5Stack",
+    "url": "http://www.m5stack.com"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/m5stack/M5Unit-EXTIO2.git"
+  },
+  "version": "1.0.2",
+  "framework": "arduino",
+  "platforms": "espressif32"
+}

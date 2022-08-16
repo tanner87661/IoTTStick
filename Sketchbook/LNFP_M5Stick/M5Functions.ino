@@ -46,6 +46,9 @@ uint32_t wifiResetLastClick = 0;
 #define wifiResetMaxDelay 2000
 #define wifiResetReqCount 2
 
+uint8_t btnBClickCount = 0;
+uint8_t btnCClickCount = 0;
+
 char dispBuffer[oneShotBufferSize][dccStrLen];
 
 bool isOneTime()
@@ -55,37 +58,20 @@ bool isOneTime()
 
 void getRTCTime()
 {
-  RTC_TimeTypeDef TimeStruct;
-  RTC_DateTypeDef DateStruct;
-  M5.Rtc.GetTime(&TimeStruct);
-  M5.Rtc.GetData(&DateStruct);
-  timeinfo.tm_hour = TimeStruct.Hours;
-  timeinfo.tm_min =  TimeStruct.Minutes;
-  timeinfo.tm_sec = TimeStruct.Seconds;
-  timeinfo.tm_wday = DateStruct.WeekDay;
-  timeinfo.tm_mon = DateStruct.Month - 1;
-  timeinfo.tm_mday = DateStruct.Date;
-  timeinfo.tm_year = DateStruct.Year - 1900;
-  now = mktime(&timeinfo);
-  struct timeval thisTimeVal = { .tv_sec = now };
-  settimeofday(&thisTimeVal, NULL);  
-}
-
-void setButtonLinks()
-{
-//  M5.BtnA.onBtnDown = &btnADown;
-//  M5.BtnA.onBtnUp = &btnAUp;
-  M5.BtnA.onBtnClick = &btnAClick;
-//  M5.BtnA.onBtnDblClick = &btnADblClick;
-//  M5.BtnA.onBtnHold = &btnAOnHold;
-//  M5.BtnB.onBtnDown = &btnBDown;
-//  M5.BtnB.onBtnUp = &btnBUp;
-  M5.BtnB.onBtnClick = &btnBClick;
-  M5.BtnB.onBtnDblClick = &btnBDblClick;
-  M5.BtnB.onBtnHold = &btnBOnHold;
-  M5.BtnC.onBtnClick = &btnCClick;
-  M5.BtnC.onBtnDblClick = &btnCDblClick;
-  M5.BtnC.onBtnHold = &btnCOnHold;
+  m5::rtc_datetime_t dt;
+  if (M5.Rtc.getDateTime(&dt))
+  {
+    timeinfo.tm_hour = dt.time.hours;
+    timeinfo.tm_min =  dt.time.minutes;
+    timeinfo.tm_sec = dt.time.seconds;
+    timeinfo.tm_wday = dt.date.weekDay & 7;
+    timeinfo.tm_mon = dt.date.month - 1;
+    timeinfo.tm_mday = dt.date.date;
+    timeinfo.tm_year = dt.date.year - 1900;
+    now = mktime(&timeinfo);
+    struct timeval thisTimeVal = { .tv_sec = now };
+    settimeofday(&thisTimeVal, NULL);  
+  }
 }
 
 void btnADown()
@@ -105,7 +91,7 @@ void btnAClick()
   pwrOffTimer = millis();
   if (darkScreen)
   {
-    M5.Axp.ScreenBreath(15);//7-15
+    M5.Display.setBrightness(255);//0-255
     darkScreen = false;
   }
   else
@@ -263,7 +249,7 @@ void btnBDblClick(uint8_t evtCtr)
 {
 //  Serial.printf("Button B %i Double Clicked\n", evtCtr);
   if (useHat.devId == 6) //RedHat Shield
-//    if(evtCtr == 2) 
+    if(evtCtr == 2) 
         if (digitraxBuffer->getPowerStatus() != 0)
           digitraxBuffer->localPowerStatusChange(0x82);
 }
@@ -306,16 +292,56 @@ void btnCOnHold(uint8_t evtCtr)
 
 void processDisplay()
 {
-  M5.BtnA.processEvents();
-  M5.BtnB.processEvents();
-  M5.BtnC.processEvents();
+  int state = M5.BtnA.wasHold() ? 1
+        : M5.BtnA.wasClicked() ? 2
+        : M5.BtnA.wasPressed() ? 3
+        : M5.BtnA.wasReleased() ? 4
+        : M5.BtnA.wasDeciedClickCount() ? 5
+        : 0;
+  switch (state)
+  {
+    case 3: btnAClick(); break;
+  }
 
-  axpBusVoltage = M5.Axp.GetVBusVoltage();
-  axpInVoltage = M5.Axp.GetVinVoltage();
+  state = M5.BtnB.wasHold() ? 1
+        : M5.BtnB.wasClicked() ? 2
+        : M5.BtnB.wasPressed() ? 3
+        : M5.BtnB.wasReleased() ? 4
+        : M5.BtnB.wasDeciedClickCount() ? 5
+        : 0;
+  switch (state)
+  {
+    case 3: btnBClick(); btnBClickCount++; break;
+    case 5: btnBDblClick(btnBClickCount);
+            btnBClickCount = 0;
+            break;
+  }
+
+  state = M5.BtnPWR.wasHold() ? 1
+        : M5.BtnPWR.wasClicked() ? 2
+        : M5.BtnPWR.wasPressed() ? 3
+        : M5.BtnPWR.wasReleased() ? 4
+        : M5.BtnPWR.wasDeciedClickCount() ? 5
+        : 0;
+  switch (state)
+  {
+    case 1: btnCOnHold(0); break;
+    case 3: btnCClickCount++;  break;
+    case 5: btnCDblClick(btnCClickCount);
+            btnCClickCount = 0;
+            break;
+  }
+
+//  M5.BtnA.processEvents();
+//  M5.BtnB.processEvents();
+//  M5.BtnC.processEvents();
+
+  axpBusVoltage = M5.Power.Axp192.getVBUSVoltage();
+  axpInVoltage = M5.Power.Axp192.getACINVolatge();
   hatPresent = axpInVoltage > 0.5;
   pwrUSB = axpBusVoltage > 4.5;
   pwrDC = axpInVoltage > 4.7;
-  M5.Axp.setEXTEN(pwrUSB || pwrDC);
+  M5.Power.Axp192.setEXTEN(pwrUSB || pwrDC);
   
   if (pwrUSB || pwrDC) //check for Power Status, but not for BlackHat
   {
@@ -323,7 +349,7 @@ void processDisplay()
     if (darkScreen)
     {
       darkScreen = false;
-      M5.Axp.ScreenBreath(15);//7-15
+      M5.Display.setBrightness(255); //0-255
     } 
   }
   else
@@ -333,14 +359,14 @@ void processDisplay()
       {
         if ((useHat.devId == 5) && (!darkScreen)) //darkScreen only for BlackHat
         {
-          M5.Axp.ScreenBreath(7);//7-15
+          M5.Display.setBrightness(0);
           darkScreen = true;
         }
       }
       else
       {
         prepareShutDown();
-        M5.Axp.PowerOff();
+        M5.Power.powerOff();
       }
     }
   if (m5CurrentPage == 3) //in case status changes while displayed, we update the page
@@ -393,13 +419,12 @@ void processDisplay()
 
 void initDisplay()
 {
-  M5.Lcd.setRotation(3);
-  if (M5.Lcd.width() == 160)
+  M5.Display.setRotation(3);
+  if (M5.Display.width() == 160)
     screenDef = 0;
   else
     screenDef = 1;
   setOpeningPage();
-  setButtonLinks();
 }
 
 void drawLogo(int x, int y, int logoSize)
@@ -409,25 +434,30 @@ void drawLogo(int x, int y, int logoSize)
     case 0:  //Stick C
       switch (logoSize)
       {
-        case 0 : M5.Lcd.pushImage( x,y,20,20, (uint16_t *)image_data_iottlogo2020); break;
-        case 1 : M5.Lcd.pushImage( x,y,30,30, (uint16_t *)image_data_iottlogo3030); break;
-        case 2 : M5.Lcd.pushImage( x,y,80,80, (uint16_t *)image_data_iottlogo8080); break;
+        case 0 : M5.Display.pushImage( x,y,20,20, (uint16_t *)image_data_iottlogo2020); break;
+        case 1 : M5.Display.pushImage( x,y,30,30, (uint16_t *)image_data_iottlogo3030); break;
+        case 2 : M5.Display.pushImage( x,y,80,80, (uint16_t *)image_data_iottlogo8080); break;
       }
       break;
     case 1:  //Stick C plus
       switch (logoSize)
       {
-        case 0 : M5.Lcd.pushImage( x,y,30,30, (uint16_t *)image_data_iottlogo3030); break;
-        case 1 : M5.Lcd.pushImage( x,y,80,80, (uint16_t *)image_data_iottlogo8080); break;
-        case 2 : M5.Lcd.pushImage( x,y,80,80, (uint16_t *)image_data_iottlogo8080); break;
+        case 0 : M5.Display.pushImage( x,y,30,30, (uint16_t *)image_data_iottlogo3030); break;
+        case 1 : M5.Display.pushImage( x,y,80,80, (uint16_t *)image_data_iottlogo8080); break;
+        case 2 : M5.Display.pushImage( x,y,80,80, (uint16_t *)image_data_iottlogo8080); break;
       }
       break;
   }
 }
 
-void drawText(char * payload, int x, int y, int what)
+void drawText(const char * payload, int x, int y, int what)
 {
-  M5.Lcd.drawString(payload,getXCoord(x),getYCoord(y),what);
+  M5.Display.drawString(payload,getXCoord(x),getYCoord(y),what);
+//  M5.Display.startWrite();
+//  M5.Display.setCursor(getXCoord(x), getYCoord(y));
+//  M5.Display.setTextSize(what); // = what;
+//  M5.Display.print(payload);
+//  M5.Display.endWrite();
 }
 
 void drawBackground()
@@ -437,12 +467,12 @@ void drawBackground()
     case 0: 
       for (int x = 0; x < 4; x++)
         for (int y = 0; y < 4; y++)
-          M5.Lcd.pushImage(40 * x, 20 *y,40,20, (uint16_t *)image_data_Nickel4020); 
+          M5.Display.pushImage(40 * x, 20 *y,40,20, (uint16_t *)image_data_Nickel4020); 
       break;
     case 1: 
       for (int x = 0; x < 6; x++)
         for (int y = 0; y < 7; y++)
-          M5.Lcd.pushImage( 40 * x,20 * y,40,20, (uint16_t *)image_data_Nickel4020); 
+          M5.Display.pushImage( 40 * x,20 * y,40,20, (uint16_t *)image_data_Nickel4020); 
       break;
   }
 }
@@ -465,8 +495,8 @@ void setOpeningPage()
 void setWifiConnectPage()
 {
   char outText[50];
-  M5.Lcd.fillScreen(TFT_LIGHTGREY);
-  M5.Lcd.setTextColor(TFT_BLACK, TFT_LIGHTGREY);
+  M5.Display.fillScreen(TFT_LIGHTGREY);
+  M5.Display.setTextColor(TFT_BLACK, TFT_LIGHTGREY);
   switch (screenDef)
   {
     case 0: 
@@ -487,8 +517,8 @@ void setWifiPage(int wifiCfgMode)
 {
   uint8_t * lineY = screenDef == 0 ? &lineY_0[0] : &lineY_1[0];
   char outText[50];
-  M5.Lcd.fillScreen(TFT_LIGHTGREY);
-  M5.Lcd.setTextColor(TFT_BLACK, TFT_LIGHTGREY);
+  M5.Display.fillScreen(TFT_LIGHTGREY);
+  M5.Display.setTextColor(TFT_BLACK, TFT_LIGHTGREY);
   switch (screenDef)
   {
     case 0: 
@@ -528,8 +558,8 @@ void setWifiPage(int wifiCfgMode)
 void setNoWifiPage()
 {
   uint8_t * lineY = screenDef == 0 ? &lineY_0[0] : &lineY_1[0];
-  M5.Lcd.fillScreen(TFT_LIGHTGREY);
-  M5.Lcd.setTextColor(TFT_BLACK, TFT_LIGHTGREY);
+  M5.Display.fillScreen(TFT_LIGHTGREY);
+  M5.Display.setTextColor(TFT_BLACK, TFT_LIGHTGREY);
   switch (screenDef)
   {
     case 0: 
@@ -549,9 +579,9 @@ void setNoWifiPage()
 void setStatusPage()
 {
   uint8_t * lineY = screenDef == 0 ? &lineY_0[0] : &lineY_1[0];
-  M5.Lcd.fillScreen(TFT_LIGHTGREY);
-  M5.Lcd.setTextColor(TFT_BLACK, TFT_LIGHTGREY);
-//  M5.Lcd.setTextSize(1);
+  M5.Display.fillScreen(TFT_LIGHTGREY);
+  M5.Display.setTextColor(TFT_BLACK, TFT_LIGHTGREY);
+//  M5.Display.setTextSize(1);
   switch (screenDef)
   {
     case 0: 
@@ -658,8 +688,8 @@ if (secElHandlerList)
 void setPwrStatusPage()
 {
   char outText[50];
-  M5.Lcd.fillScreen(TFT_LIGHTGREY);
-  M5.Lcd.setTextColor(TFT_BLACK, TFT_LIGHTGREY);
+  M5.Display.fillScreen(TFT_LIGHTGREY);
+  M5.Display.setTextColor(TFT_BLACK, TFT_LIGHTGREY);
   switch (screenDef)
   {
     case 0: 
@@ -671,23 +701,23 @@ void setPwrStatusPage()
   }
   sprintf(outText, "IoTT Stick V. %s", BBVersion.c_str());
   drawText(outText, 5, 3, 2);
-  sprintf(outText, "Stick Temp: %.1f C \n", M5.Axp.GetTempInAXP192());
+  sprintf(outText, "Stick Temp: %.1f C \n", M5.Power.Axp192.getInternalTemperature());
   drawText(outText, 5, 20, 1);
-  sprintf(outText, "Bat:  V: %.1fV I: %.1fmA\n", M5.Axp.GetBatVoltage(), M5.Axp.GetBatCurrent());
+  sprintf(outText, "Bat:  V: %.1fV I: %.1fmA\n", M5.Power.Axp192.getBatteryVoltage(), M5.Power.Axp192.getBatteryDischargeCurrent());
   drawText(outText, 5, 30, 1);
-  M5.Lcd.setTextColor(pwrUSB ? TFT_BLACK : TFT_RED, TFT_LIGHTGREY);
-  sprintf(outText, "USB:  V: %.1fV I: %.1fmA\n", axpBusVoltage, M5.Axp.GetVBusCurrent());
+  M5.Display.setTextColor(pwrUSB ? TFT_BLACK : TFT_RED, TFT_LIGHTGREY);
+  sprintf(outText, "USB:  V: %.1fV I: %.1fmA\n", axpBusVoltage, M5.Power.Axp192.getVBUSCurrent());
   drawText(outText, 5, 40, 1);
-  M5.Lcd.setTextColor(pwrDC ? TFT_BLACK : hatPresent ? TFT_BLUE : TFT_RED, TFT_LIGHTGREY);
-  sprintf(outText, "5VIn: V: %.1fV I: %.1fmA\n", axpInVoltage, M5.Axp.GetVinCurrent());                                                                                                                                                               
+  M5.Display.setTextColor(pwrDC ? TFT_BLACK : hatPresent ? TFT_BLUE : TFT_RED, TFT_LIGHTGREY);
+  sprintf(outText, "5VIn: V: %.1fV I: %.1fmA\n", axpInVoltage, M5.Power.Axp192.getACINCurrent());                                                                                                                                                               
   drawText(outText, 5, 50, 1);
-  M5.Lcd.setTextColor(TFT_BLACK, TFT_LIGHTGREY);
-  sprintf(outText, "Bat Pwr: %.1fmW", M5.Axp.GetBatPower());
+  M5.Display.setTextColor(TFT_BLACK, TFT_LIGHTGREY);
+  sprintf(outText, "Bat Pwr: %.1fmW", M5.Power.Axp192.getBatteryPower());
   drawText(outText, 5, 60, 1);
-  unsigned long allSeconds=millis()/1000;
-  int runHours= allSeconds/3600;
-  int secsRemaining=allSeconds%3600;
-  int runMinutes=secsRemaining/60;
+  unsigned long allSeconds = millis()/1000;
+  int runHours = allSeconds/3600;
+  int secsRemaining = allSeconds%3600;
+  int runMinutes = secsRemaining/60;
   int runSeconds=secsRemaining%60;
   sprintf(outText,"Uptime: %02d:%02d:%02d",runHours,runMinutes,runSeconds);  
   drawText(outText, 5, 70, 1);
@@ -695,8 +725,8 @@ void setPwrStatusPage()
 
 void lnViewerPage()
 {
-  M5.Lcd.fillScreen(TFT_LIGHTGREY);
-  M5.Lcd.setTextColor(TFT_BLACK, TFT_LIGHTGREY);
+  M5.Display.fillScreen(TFT_LIGHTGREY);
+  M5.Display.setTextColor(TFT_BLACK, TFT_LIGHTGREY);
   switch (screenDef)
   {
     case 0: 
@@ -713,8 +743,8 @@ void lnViewerPage()
 
 void olcbViewerPage()
 {
-  M5.Lcd.fillScreen(TFT_LIGHTGREY);
-  M5.Lcd.setTextColor(TFT_BLACK, TFT_LIGHTGREY);
+  M5.Display.fillScreen(TFT_LIGHTGREY);
+  M5.Display.setTextColor(TFT_BLACK, TFT_LIGHTGREY);
   switch (screenDef)
   {
     case 0: 
@@ -731,8 +761,8 @@ void olcbViewerPage()
 
 void dccViewerPage()
 {
-  M5.Lcd.fillScreen(TFT_LIGHTGREY);
-  M5.Lcd.setTextColor(TFT_BLACK, TFT_LIGHTGREY);
+  M5.Display.fillScreen(TFT_LIGHTGREY);
+  M5.Display.setTextColor(TFT_BLACK, TFT_LIGHTGREY);
   switch (screenDef)
   {
     case 0: 
@@ -753,8 +783,8 @@ void dccViewerPage()
 
 void mqttViewerPage()
 {
-  M5.Lcd.fillScreen(TFT_LIGHTGREY);
-  M5.Lcd.setTextColor(TFT_BLACK, TFT_LIGHTGREY);
+  M5.Display.fillScreen(TFT_LIGHTGREY);
+  M5.Display.setTextColor(TFT_BLACK, TFT_LIGHTGREY);
   switch (screenDef)
   {
     case 0: 
@@ -780,8 +810,8 @@ void sensorViewerPage()
   {
     sensorData currData = trainSensor->getSensorData();
     char outText[75];
-    M5.Lcd.fillScreen(TFT_LIGHTGREY);
-    M5.Lcd.setTextColor(TFT_BLACK, TFT_LIGHTGREY);
+    M5.Display.fillScreen(TFT_LIGHTGREY);
+    M5.Display.setTextColor(TFT_BLACK, TFT_LIGHTGREY);
     switch (screenDef)
     {
       case 0: //Stick C
@@ -797,10 +827,10 @@ void sensorViewerPage()
     if (currData.dispDim == 1)
       scaleSpeed /= 1.6; //mph
     sprintf(outText, "%s Scale Speed %.2f [%s]", currData.scaleName, scaleSpeed, currData.dispDim == 1 ? "mph" : "km/h");
-    M5.Lcd.setTextColor(TFT_BLUE, TFT_LIGHTGREY);
+    M5.Display.setTextColor(TFT_BLUE, TFT_LIGHTGREY);
     drawText(outText, 5, lineY[1], 2);
     sprintf(outText, "Track Radius %.2f %s %s ", currData.dispDim == 1 ? abs(currData.currRadiusTech/25.4) : abs(currData.currRadiusTech), currData.dispDim == 1 ? "in" : "mm", currData.currRadiusTech == 0 ? "straight" : currData.currRadiusTech > 0 ? "right" : "left");
-    M5.Lcd.setTextColor(TFT_BLACK, TFT_LIGHTGREY);
+    M5.Display.setTextColor(TFT_BLACK, TFT_LIGHTGREY);
     drawText(outText, 5, lineY[2], 2);
     sprintf(outText, "Dist [%s] Abs. %.2f Rel. %.2f", currData.dispDim == 1 ? "in" : "cm", currData.dispDim == 1 ? currData.absIntegrator/25.4 : currData.absIntegrator/10, currData.dispDim == 1 ? currData.relIntegrator/25.4 : currData.relIntegrator/10);
     drawText(outText, 5, lineY[3], 2);
