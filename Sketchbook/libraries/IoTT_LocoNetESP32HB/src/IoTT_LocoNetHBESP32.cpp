@@ -27,7 +27,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
 #define cdBackOffDelay 20  //20 bit-time Backoff Delay per LocoNet Standard
 
-cbFct lnCallback = NULL;
+//cbFct lnCallback = NULL;
 
 //uint8_t opcBusy[] = {0x81, 0x7E};
 
@@ -41,11 +41,13 @@ LocoNetESPSerial::~LocoNetESPSerial()
 //	HardwareSerial::~HardwareSerial();
 }
 
+/*
 bool LocoNetESPSerial::hasMsgSpace()
 {
 	uint8_t hlpQuePtr = (que_wrPos + 1) % queBufferSize;
     return (hlpQuePtr != que_rdPos);
 }
+*/
 
 void LocoNetESPSerial::sendLineBreak(uint16_t breakBits)
 {
@@ -99,7 +101,7 @@ void LocoNetESPSerial::loadLNCfgJSON(DynamicJsonDocument doc)
 uint16_t LocoNetESPSerial::lnWriteMsg(lnTransmitMsg* txData)
 {
     uint8_t hlpQuePtr = (que_wrPos + 1) % queBufferSize;
-//	Serial.printf("Serial lnWriteMsg tx %i Rd %i Wr %i Hlp %i\n", txData.lnMsgSize, que_rdPos, que_wrPos, hlpQuePtr);
+//	Serial.printf("Serial lnWriteMsg tx %i Rd %i Wr %i Hlp %i\n", txData->lnMsgSize, que_rdPos, que_wrPos, hlpQuePtr);
     if (hlpQuePtr != que_rdPos) //override protection
     {
 		transmitQueue[hlpQuePtr].lnMsgSize = txData->lnMsgSize;
@@ -108,24 +110,25 @@ uint16_t LocoNetESPSerial::lnWriteMsg(lnTransmitMsg* txData)
 		memcpy(transmitQueue[hlpQuePtr].lnData, txData->lnData, txData->lnMsgSize);
 		if ((!hybrid_getBusyMode()) || (txData->lnData[0] != 0x81)) //do not insert busy commands from outside if in busy mode
 			que_wrPos = hlpQuePtr;
-//		Serial.printf("LN TX %2X", txData.lnData[0]);
-//		for (int i = 1; i < txData.lnMsgSize; i++)
-//			Serial.printf(", %2X", txData.lnData[i]);
+		
+//		Serial.printf("LN TX %2X", txData->lnData[0]);
+//		for (int i = 1; i < txData->lnMsgSize; i++)
+//			Serial.printf(", %2X", txData->lnData[i]);
 //		Serial.println();
 //		hybrid_setBusyMode(false);
 		return txData->lnMsgSize;
 	}
 	else
 	{	
-		Serial.println("LocoNet Write Error. Too many messages in queue");
-		return -1;
+		Serial.println("LocoNet HB Write Error. Too many messages in queue");
+		return 0;
 	}
 }
 
 uint16_t LocoNetESPSerial::lnWriteMsg(lnReceiveBuffer* txData)
 {
-//	Serial.printf("Serial lnWriteMsg rx %i Rd %i Wr %i Hlp %i\n", txData.lnMsgSize, que_rdPos, que_wrPos, hlpQuePtr);
     uint8_t hlpQuePtr = (que_wrPos + 1) % queBufferSize;
+//	Serial.printf("Serial lnWriteMsg rx %i Rd %i Wr %i Hlp %i\n", txData->lnMsgSize, que_rdPos, que_wrPos, hlpQuePtr);
     if (hlpQuePtr != que_rdPos) //override protection
     {
 		transmitQueue[hlpQuePtr].lnMsgSize = txData->lnMsgSize;
@@ -134,7 +137,7 @@ uint16_t LocoNetESPSerial::lnWriteMsg(lnReceiveBuffer* txData)
 		memcpy(transmitQueue[hlpQuePtr].lnData, txData->lnData, txData->lnMsgSize);
 		if ((!hybrid_getBusyMode()) || (txData->lnData[0] != 0x81)) //do not insert busy commands from outside if in busy mode
 			que_wrPos = hlpQuePtr;
-//		Serial.printf("LN RX %2X", txData.lnData[0]);
+//		Serial.printf("LN RX %2X", txData->lnData[0]);
 //		for (int i = 1; i < txData.lnMsgSize; i++)
 //			Serial.printf(", %2X", txData.lnData[i]);
 //		Serial.println();
@@ -143,8 +146,8 @@ uint16_t LocoNetESPSerial::lnWriteMsg(lnReceiveBuffer* txData)
 	}
 	else
 	{	
-		Serial.println("LocoNet Write Error. Too many messages in queue");
-		return -1;
+		Serial.println("LocoNet HB Lib Write Error. Too many messages in queue");
+		return 0;
 	}
 }
 
@@ -178,17 +181,20 @@ uint16_t LocoNetESPSerial::lnWriteReply(lnTransmitMsg* txData)
 */
 }
 
+/*
 void LocoNetESPSerial::setLNCallback(cbFct newCB)
 {
 	lnCallback = newCB;
 }
+*/
 
 void LocoNetESPSerial::processLNMsg(lnReceiveBuffer * recData)
 {
 //	Serial.println();
 //	Serial.printf("LN Rx %2X %i\n", recData->lnData[0], recData->errorFlags);
-	if (lnCallback != NULL)
-		lnCallback(recData);
+//	if (lnCallback != NULL)
+//		lnCallback(recData);
+	callbackLocoNetMessage(recData);
 }
 
 void LocoNetESPSerial::handleLNIn(uint8_t inData, uint8_t inFlags) //called for stuff that comes in through the HW uart
@@ -257,13 +263,18 @@ void LocoNetESPSerial::handleLNIn(uint8_t inData, uint8_t inFlags) //called for 
       lnBufferPtr++; 
       if (lnBufferPtr == lnExpLen) //message length received
       {
+//		Serial.println("as exp");
 		lnInBuffer.lnMsgSize = lnBufferPtr;  
         if (getXORCheck(&lnInBuffer.lnData[0], &lnInBuffer.lnMsgSize) != 0xFF)
 	  	  lnInBuffer.errorFlags |= msgXORCheck;
 		if ((lnEchoBuffer.lnData[0] == lnInBuffer.lnData[0]) && ((lnEchoBuffer.errorFlags & msgXORCheck) == 0) && ((lnInBuffer.errorFlags & msgXORCheck) == 0)) //valid echo message
 		{
+//			Serial.printf("echo ok r %i w %i\n", que_rdPos, que_wrPos);
 			if (que_rdPos != que_wrPos)
+			{
 				que_rdPos = (que_rdPos + 1) % queBufferSize; //finalize transmit process
+//				Serial.println("Update rd ptr");
+			}
 			lnInBuffer.errorFlags |= msgEcho;
 			lnInBuffer.echoTime = micros() - lnInBuffer.reqRecTime;
 //			Serial.printf("incr read: %02X %02X %02X \n", lnEchoBuffer.lnData[0], lnInBuffer.lnData[0], lnEchoBuffer.errorFlags);
@@ -343,6 +354,7 @@ void LocoNetESPSerial::processLoop()
 
 void LocoNetESPSerial::processLNReceive()
 {
+//	Serial.printf("Proc Rec %i\n", receiveMode);
 	hybrid_highSpeed(false); //sets the speed low, but only if uart is idling
 //	while (uart_available() > 0) //empty that input buffer
 	while (HardwareSerial::available() > 0) //empty that input buffer
@@ -351,16 +363,18 @@ void LocoNetESPSerial::processLNReceive()
 		uint8_t newData = HardwareSerial::read();
         handleLNIn((newData), 0); //and process incoming bytes
 	}
-	if ((que_wrPos != que_rdPos) && (hybrid_LocoNetAvailable() == lnNetAvailable)) //if rxBuffer is empty, load next command, if available
+	if ((que_wrPos != que_rdPos) && (hybrid_LocoNetAvailable() == lnNetAvailable) && ((que_lastPos != que_rdPos) || (micros() > transmitTime))) //if rxBuffer is empty, load next command, if available
 	{
+//		Serial.printf("TxBuf: r %i w %i\n", que_rdPos, que_wrPos);
 //		Serial.printf("TxBuf: %i\n", que_wrPos > que_rdPos ? que_wrPos - que_rdPos :  que_rdPos - que_wrPos);
+		que_lastPos = que_rdPos;
 		receiveMode = false;
 	}
 }
 
 void LocoNetESPSerial::processLNTransmit()
 {
-
+//	Serial.printf("Proc Tx %i\n", transmitStatus);
 	switch (transmitStatus)
 	{
 		case 0: //not yet started, transfer data and start transmission
@@ -414,12 +428,16 @@ void LocoNetESPSerial::processLNTransmit()
 			if ((numRead == numWrite) || (micros() > transmitTime)) //success or timeout
 			{
 				if (micros() > transmitTime)
+				{
+//					Serial.println("timeout");
 					lnEchoBuffer.errorFlags |= errorTimeout;
+				}
 				if (getXORCheck(&lnEchoBuffer.lnData[0], &lnEchoBuffer.lnMsgSize) != 0xFF)
 					lnEchoBuffer.errorFlags |= msgXORCheck;
 				lnEchoBuffer.echoTime = micros() - lnEchoBuffer.reqRecTime;
 				transmitStatus = 0;
 				receiveMode = true;
+//				Serial.println("rec true");
 				hybrid_flush();
 			}
 			break;

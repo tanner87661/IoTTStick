@@ -76,7 +76,10 @@ void IoTT_SerInjector::loadLNCfgJSON(DynamicJsonDocument doc)
 uint16_t IoTT_SerInjector::lnWriteMsg(lnTransmitMsg txData)
 {
 	//here we receive a LocoNet message from LocoNet and place it in the buffer so it gets sent to the PC
-    uint8_t hlpQuePtr = (que_wrPos + 1) % queBufferSize;
+//	Serial.printf("r %i w %i \n", que_rdPos, que_wrPos);
+//	char* outStr = (char*)&txData.lnData[0];
+//	Serial.println(outStr);
+    uint8_t hlpQuePtr = (que_wrPos + 1) % queInjBufferSize;
     if (hlpQuePtr != que_rdPos) //override protection
     {
 //		Serial.printf("put to transmitQueue TxMsg %i\n", hlpQuePtr);
@@ -94,8 +97,8 @@ uint16_t IoTT_SerInjector::lnWriteMsg(lnTransmitMsg txData)
 	}
 	else
 	{	
-		Serial.println("USB Port Write Error. Too many messages in queue");
-		return -1;
+		Serial.printf("%i %i SerInj Port Write Error. Too many messages in queue\n", que_rdPos, que_wrPos);
+		return 0;
 	}
 }
 
@@ -103,7 +106,7 @@ uint16_t IoTT_SerInjector::lnWriteMsg(lnReceiveBuffer txData)
 {
 //	Serial.println("SerInj put to transmitQueue RxMsg");
 	//here we receive a LocoNet message from LocoNet and place it in the buffer so it gets sent to the PC
-    uint8_t hlpQuePtr = (que_wrPos + 1) % queBufferSize;
+    uint8_t hlpQuePtr = (que_wrPos + 1) % queInjBufferSize;
     if (hlpQuePtr != que_rdPos) //override protection
     {
 		transmitQueue[hlpQuePtr].msgType = txData.msgType;
@@ -116,8 +119,8 @@ uint16_t IoTT_SerInjector::lnWriteMsg(lnReceiveBuffer txData)
 	}
 	else
 	{	
-		Serial.println("USB Port Write Error. Too many messages in queue");
-		return -1;
+		Serial.println("SerInj USB Port Write Error. Too many messages in queue");
+		return 0;
 	}
 }
 
@@ -130,7 +133,7 @@ void IoTT_SerInjector::setTxCallback(txFct newCB)
 
 void IoTT_SerInjector::processLNMsg(lnTransmitMsg* recData)
 {
-	//send to PC/USB
+//	Serial.println("send to PC/USB");
 	if (usbCallback)
 		usbCallback(*recData);
 }
@@ -227,7 +230,7 @@ void IoTT_SerInjector::processLNReceive()
 void IoTT_SerInjector::processLNTransmit()
 {
 	//take new message from transmit queue and send to USB/PC
-	uint8_t hlpQuePtr = (que_rdPos + 1) % queBufferSize;
+	uint8_t hlpQuePtr = (que_rdPos + 1) % queInjBufferSize;
     if (que_wrPos != que_rdPos) //override protection
     {
 		//send to USB port
@@ -306,7 +309,7 @@ void IoTT_SerInjector::processLCBReceive()
 void IoTT_SerInjector::processLCBTransmit()
 {
 	//take new message from transmit queue and send to USB/PC
-	uint8_t hlpQuePtr = (que_rdPos + 1) % queBufferSize;
+	uint8_t hlpQuePtr = (que_rdPos + 1) % queInjBufferSize;
     if (que_wrPos != que_rdPos) //override protection
     {
 		//send to USB port
@@ -489,11 +492,11 @@ void IoTT_SerInjector::processDCCExReceive()
 
 void IoTT_SerInjector::processDCCExTransmit()
 {
-	char txMsg[50];
+	char txMsg[50] = {'\0'};
 	//take new message from transmit queue and send to USB/PC
     if (que_wrPos != que_rdPos) //override protection
     {
-		uint8_t hlpQuePtr = (que_rdPos + 1) % queBufferSize;
+		uint8_t hlpQuePtr = (que_rdPos + 1) % queInjBufferSize;
 		char * outStr = (char*)&transmitQueue[hlpQuePtr].lnData;
 		strcpy(txMsg, "<");
 		strcat(txMsg, outStr);
@@ -502,6 +505,7 @@ void IoTT_SerInjector::processDCCExTransmit()
 //		Serial.print("Out: ");
 //		Serial.println(txMsg);
 		que_rdPos = hlpQuePtr;
+//		Serial.printf("sent %i %i\n", que_rdPos, que_wrPos);
 	}
 }
 

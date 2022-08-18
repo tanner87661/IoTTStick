@@ -193,7 +193,7 @@ File uploadFile; //used for web server to upload files
 //this is the outgoing communication function for IoTT_DigitraxBuffers.h, routing the outgoing messages to the correct interface
 uint16_t sendMsg(lnTransmitMsg txData)
 {
-//  Serial.println("verifySyntax");
+//  Serial.printf("verifySyntax %i\n", useInterface.devId);
 //  if (!verifySyntax(&txData.lnData[0]))
 //  {
 //    Serial.printf("ERROR: Call sendMsg to %i: %i, %2X, %2X, %2X, %2X \n", useInterface.devId, txData.lnMsgSize, txData.lnData[0], txData.lnData[1], txData.lnData[2], txData.lnData[3]);
@@ -211,7 +211,7 @@ uint16_t sendMsg(lnTransmitMsg txData)
     case 2: if (lnSerial) return lnSerial->lnWriteMsg(&txData); break;
     case 3: if (lnMQTTClient) return lnMQTTClient->lnWriteMsg(&txData); break;
     case 17:; //WiThrottle
-    case 12:if (lbClient) //LocoNet over TCP or 
+    case 12:if (lbClient) //LocoNet over TCP or WiClient
                return lbClient->lnWriteMsg(&txData); break; //this is message to lbServer or WiServer
 /*            
     case 5: //OpenLCB
@@ -219,6 +219,7 @@ uint16_t sendMsg(lnTransmitMsg txData)
             break;
 */            
   }
+  Serial.println("nada");
   return 0;
 }
 
@@ -484,7 +485,7 @@ void setup()
         Serial.printf("LocoNet Prio Mode: %i\n", subnetMode);
       }
       lnSerial->setBusyLED(stickLED, false);
-      lnSerial->setLNCallback(callbackLocoNetMessage);
+//      lnSerial->setLNCallback(callbackLocoNetMessage);
     } 
     else 
       Serial.println("LocoNet not activated");
@@ -730,7 +731,7 @@ void setup()
           lnSerial = new LocoNetESPSerial(); //UART2 by default
           lnSerial->begin(); //Initialize as Loopback
           lnSerial->setBusyLED(stickLED, false);
-          lnSerial->setLNCallback(callbackLocoNetMessage);
+//          lnSerial->setLNCallback(callbackLocoNetMessage);
         } 
         Wire.begin(hatSDA, hatSCL); //, 400000); //initialize the I2C interface
         jsonDataObj = getDocPtr("/configdata/greenhat.cfg", true);

@@ -314,6 +314,7 @@ void setDCCPowerOutMsg(uint8_t trStatus, uint8_t trType)
 	}
 	txBuffer.lnMsgSize = strlen(outStr);
 	txBuffer.lnData[txBuffer.lnMsgSize] = 0;
+	Serial.printf("try: %s\n", outStr);
 	dccPort->lnWriteMsg(txBuffer);
 }
 
@@ -727,7 +728,7 @@ void IoTT_DigitraxBuffers::processLoop()
 			if (inpQuery != 0xFF)
 			{
 				queryDelay += queryInterval;
-//				Serial.printf("Set Switch %i to %i\n", 1020 - (inpQuery & 0x03), (inpQuery & 0x04) >> 2);
+				Serial.printf("Set Switch %i to %i\n", 1020 - (inpQuery & 0x03), (inpQuery & 0x04) >> 2);
 				sendSwitchCommand(0xB0, 1020 - (inpQuery & 0x03) - 1, (inpQuery & 0x04) >> 2, false);
 				inpQuery--;
 			}
@@ -1628,7 +1629,7 @@ void IoTT_DigitraxBuffers::localPowerStatusChange(uint8_t newStatus)
 	lnTransmitMsg thisBuffer;
 	if (getOpSw(opSwDisablePwrUpdate, 1) != 0)
 	{
-//		Serial.println("localPowerStatusChange to LocoNet");
+		Serial.println("localPowerStatusChange to LocoNet");
 		sendPowerCommand(onVal, newStatus);
 	}
 	else
@@ -1638,6 +1639,7 @@ void IoTT_DigitraxBuffers::localPowerStatusChange(uint8_t newStatus)
 		if (newStatus == 0x83)
 			destTrack = getOpSw(opSwProgIsMain, 1) ? 3 : 0;
 		setDCCPowerOutMsg(newStatus, destTrack);
+		Serial.println("1642");
 	}
 }
 
@@ -2046,6 +2048,7 @@ bool IoTT_DigitraxBuffers::processDCCGenerator(lnReceiveBuffer * newData)
 			if (newData->lnData[0] == 0x83)
 				destTrack = getOpSw(opSwProgIsMain, 1) ? 3 : 0;
 			setDCCPowerOutMsg(newData->lnData[0], destTrack);
+		Serial.println("2051");
 			break;
 		}
 		case 0xA0: //OPC_LOCO_SPD  <1><REFRESH><ADDRHI><ADDRLO><SPEED><DIRF><SND>

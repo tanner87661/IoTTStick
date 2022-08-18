@@ -1438,9 +1438,9 @@ bool IoTT_LBServer::sendWIServerMessageString(AsyncClient * thisClient, uint8_t 
 
 bool IoTT_LBServer::sendWIClientMessage(AsyncClient * thisClient, String cmdMsg)
 {
-	Serial.print(thisClient->remoteIP());
-	Serial.print(" Out: ");
-	Serial.println(cmdMsg);
+//	Serial.print(thisClient->remoteIP());
+//	Serial.print(" Out: ");
+//	Serial.println(cmdMsg);
 	if (thisClient)
 		if (thisClient->canSend())
 		{

@@ -49,6 +49,8 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #define queBufferSize 50 //messages that can be written in one burst before buffer overflow
 //#define queReplyBufferSize 5 //messages to that queue get sent high priority
 
+extern void callbackLocoNetMessage(lnReceiveBuffer * newData);
+
 class LocoNetESPSerial : public HardwareSerial
 {
 public:
@@ -62,10 +64,10 @@ public:
 	uint16_t lnWriteMsg(lnTransmitMsg* txData);
 	uint16_t lnWriteMsg(lnReceiveBuffer* txData);
 	uint16_t lnWriteReply(lnTransmitMsg* txData);
-	void setLNCallback(cbFct newCB);
+//	void setLNCallback(cbFct newCB);
 //	int cdBackoff();
 	bool carrierOK();
-	bool hasMsgSpace();
+//	bool hasMsgSpace();
 	void loadLNCfgJSON(DynamicJsonDocument doc);
 	void sendLineBreak(uint16_t breakBits);
    
@@ -86,6 +88,7 @@ private:
    lnTransmitMsg transmitQueue[queBufferSize];
 //   lnTransmitMsg replyQueue[queReplyBufferSize];
    uint8_t que_rdPos = 0, que_wrPos = 0;
+   uint8_t que_lastPos = 0; //used to prevent sending multiple time while echo not received
 //   uint8_t que_replyRdPos = 0, que_replyWrPos = 0;
    lnReceiveBuffer lnInBuffer, lnEchoBuffer;
    int m_rxPin, m_txPin;
@@ -99,8 +102,8 @@ private:
    uint8_t m_bitTime = 60;
    bool m_highSpeed = true;
    uint32_t m_StartCD;
-   uint16_t rx_buffer[rxBufferSize];
-   uint8_t tx_buffer[txBufferSize];
+//   uint16_t rx_buffer[rxBufferSize];
+//   uint8_t tx_buffer[txBufferSize];
 
 	
    uint8_t    bitRecStatus = 0;    //0: waiting for OpCode; 1: waiting for package data
@@ -108,7 +111,7 @@ private:
    uint8_t    lnExpLen = 0;
 
    uint8_t transmitStatus;
-   uint32_t transmitTime;
+   uint32_t transmitTime = micros() + 1000;
    uint8_t numWrite = 0, numRead = 0;
    
    uint32_t respTime; //store here the micros for each message that goes out

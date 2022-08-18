@@ -317,7 +317,7 @@ int16_t MQTTESP32::lnWriteMsg(lnTransmitMsg* txData)
 	}
 	else
 	{	
-//		Serial.println("MQTT Write Error. Too many messages in queue");
+		Serial.println("MQTT Write Error. Too many messages in queue");
 		return -1;
 	}
 }
@@ -346,7 +346,7 @@ int16_t MQTTESP32::lnWriteMsg(lnReceiveBuffer* txData)
 	}
 	else
 	{	
-//		Serial.println("MQTT Write Error. Too many messages in queue");
+		Serial.println("MQTT Lib Write Error. Too many messages in queue");
 		return -1;
 	}
 }
