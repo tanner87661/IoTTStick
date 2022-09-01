@@ -1,0 +1,16 @@
+{
+  "name": "MODULE_GRBL13.2",
+  "description": "M5Stack GRBL13.2 MODULE",
+  "keywords": "M5Stack GRBL STEPMOTOR",
+  "authors": {
+    "name": "Sean, M5Stack",
+    "url": "http://www.m5stack.com"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/m5stack/MODULE_GRBL13.2.git"
+  },
+  "version": "0.0.1",
+  "framework": "arduino",
+  "platforms": "espressif32"
+}

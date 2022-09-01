@@ -12,6 +12,8 @@ String BBVersion = "1.5.14D1";
 
 //#define measurePerformance //uncomment this to display the number of loop cycles per second
 //#define useAI
+//#define useSecEl
+
 //Arduino published libraries. Install using the Arduino IDE or download from Github and install manually
 #include <Math.h>
 
@@ -43,7 +45,7 @@ String BBVersion = "1.5.14D1";
 #include <IoTT_SerInjector.h> //Serial USB Port to make it an interface for LocoNet and OpenLCB
 //#include <IoTT_OpenLCB.h> //CAN port for OpenLCB
 #include <IoTT_Switches.h>
-//#include <IoTT_SecurityElements.h> //not ready yet. This is the support for ABS/APB as described in Videos #20, 21, 23, 24
+#include <IoTT_SecurityElements.h> //not ready yet. This is the support for ABS/APB as described in Videos #20, 21, 23, 24
 #include <NmraDcc.h> //install via Arduino IDE
 //#include <OneDimKalman.h>
 #include <IoTT_lbServer.h>
@@ -92,7 +94,9 @@ String bufferFileName = "/buffers.dat";
 //more library object pointers. Libraries will be dynamically initialized as needed during the setup() function
 IoTT_Mux64Buttons * myButtons = NULL;
 IoTT_LocoNetButtonList * eventHandler = NULL; 
-//IoTT_SecurityElementList * secElHandlerList = NULL;
+#ifdef useSecEl
+IoTT_SecurityElementList * secElHandlerList = NULL;
+#endif
 #ifdef useAI
   IoTT_VoiceControl * voiceWatcher = NULL;
 #endif
@@ -233,13 +237,14 @@ uint16_t sendMQTTMsg(char * topic, char * payload) //used for native MQTT only
   }
   return 0;
 }
-
+/*
 void resetPin(uint8_t pinNr)
 {
   pinMode(pinNr, OUTPUT);
   digitalWrite(pinNr,0);
   pinMode(pinNr, INPUT);
 }
+*/
 
 void setup() 
 {
@@ -252,9 +257,19 @@ void setup()
 
   wsRxBuffer = (char*) malloc(wsBufferSize); 
   wsTxBuffer = (char*) malloc(wsBufferSize); 
-  M5.begin();
-//  M5.Axp.EnableCoulombcounter();
-  
+  auto cfg = M5.config();
+  cfg.serial_baudrate = 115200;   // default=115200. if "Serial" is not needed, set it to 0.
+  cfg.clear_display = true;  // default=true. clear the screen when begin.
+  cfg.output_power  = true;  // default=true. use external port 5V output.
+  cfg.internal_imu  = true;  // default=true. use internal IMU.
+  cfg.internal_rtc  = true;  // default=true. use internal RTC.
+  cfg.internal_spk  = false;  // default=true. use internal speaker.
+  cfg.internal_mic  = true;  // default=true. use internal microphone.
+  cfg.external_imu  = false;  // default=false. use Unit Accel & Gyro.
+  cfg.external_rtc  = false;  // default=false. use Unit RTC.
+  cfg.external_spk  = false; // default=false. use SPK_HAT / ATOMIC_SPK
+  cfg.led_brightness = 0;   // default= 0. system LED brightness (0=off / 255=max) (※ not NeoPixel)
+  M5.begin(cfg);
 
   initDisplay();
   getRTCTime();
@@ -703,7 +718,9 @@ void setup()
     if (useHat.devId == 3) //YellowHat
     {
         Serial.println("Init YellowHat");  
-        Wire.begin(hatSDA, hatSCL); //, 400000); //initialize the I2C interface 400kHz
+        Wire.begin(hatSDA, hatSCL);//, 400000); //initialize the I2C interface 400kHz
+        delay(10);
+        Wire.setClock(400000);
         jsonDataObj = getDocPtr("/configdata/btn.cfg", false);
         if (jsonDataObj != NULL)
         {
@@ -733,7 +750,9 @@ void setup()
           lnSerial->setBusyLED(stickLED, false);
 //          lnSerial->setLNCallback(callbackLocoNetMessage);
         } 
-        Wire.begin(hatSDA, hatSCL); //, 400000); //initialize the I2C interface
+        Wire.begin(hatSDA, hatSCL);//, 400000); //initialize the I2C interface
+        delay(10);
+        Wire.setClock(400000);
         jsonDataObj = getDocPtr("/configdata/greenhat.cfg", true);
         if (jsonDataObj != NULL)
           if (jsonDataObj->containsKey("Modules"))
@@ -811,10 +830,13 @@ void setup()
       jsonDataObj = getDocPtr("/configdata/phcfg.cfg", false);
       if (jsonDataObj != NULL)
       {
-        Wire.begin(hatSDA, hatSCL); //, 400000); //initialize the I2C interface 400kHz
+        Wire.begin(hatSDA, hatSCL);//, 400000); //initialize the I2C interface 400kHz
+        delay(10);
+        Wire.setClock(400000);
+        delay(10);
         Serial.println("Load Trainside Sensor"); 
-        trainSensor = new IoTT_TrainSensor(&Wire);
-        trainSensor->setTxCallback(sendMsg);
+        trainSensor = new IoTT_TrainSensor(&Wire, hatSDA, hatSCL);
+//        trainSensor->setTxCallback(sendMsg);
         trainSensor->loadLNCfgJSON(*jsonDataObj);
         delete(jsonDataObj); 
         Serial.println("Purple Sensor loaded"); 
@@ -872,11 +894,12 @@ void setup()
     }
     else 
       Serial.println("Button Handler not activated");
-/*
+
+#ifdef useSecEl
     if (useALM & 0x02)
     {
       Serial.println("Load Security Element Data");  
-      jsonDataObj = getDocPtr("/configdata/secel.cfg");
+      jsonDataObj = getDocPtr("/configdata/secel.cfg", false);
       if (jsonDataObj != NULL)
       {
         secElHandlerList = new(IoTT_SecurityElementList);
@@ -885,7 +908,7 @@ void setup()
         uint16_t subFileCtr = 1;
         while (SPIFFS.exists("/configdata/secel" + String(subFileCtr) + ".cfg"))
         {
-          jsonDataObj = getDocPtr("/configdata/secel" + String(subFileCtr) + ".cfg");
+          jsonDataObj = getDocPtr("/configdata/secel" + String(subFileCtr) + ".cfg", false);
           if (jsonDataObj)
           {
             secElHandlerList->loadSecElCfgJSON(*jsonDataObj, false);
@@ -899,9 +922,10 @@ void setup()
       }
     else 
       Serial.println("Security Elements not loaded");
-*/
+#endif
+
 #ifdef useAI
-    if ((useALM & 0x02) && ((useHat.devId == 0) ||(useHat.devId == 1) ||(useHat.devId == 6)))  //RedHat Serial Injector
+    if (useALM & 0x04) // && ((useHat.devId == 0) ||(useHat.devId == 1) ||(useHat.devId == 6)))  //RedHat Serial Injector
     {
       Serial.println("Initialize VoiceWatcher");  
       voiceWatcher = new(IoTT_VoiceControl);
@@ -921,12 +945,6 @@ void setup()
     Serial.println("Connect WiFi");  
     establishWifiConnection(myWebServer,dnsServer);
     delay(1000);    
-//    if (lnMQTT)
-//    {
-//      Serial.println("Connect MQTT");  
-//      establishMQTTConnection();
-//      Serial.println("Connect MQTT done");  
-//    }
     if (jsonConfigObj->containsKey("useNTP"))
     {
       useNTP = (bool)(*jsonConfigObj)["useNTP"];
@@ -983,19 +1001,21 @@ void loop()
 
   if (execLoop)
   {
-//  if (secElHandlerList) secElHandlerList->processLoop(); //calculates speeds in all blocks and sets signals accordingly
-#ifdef useAI
-  if (voiceWatcher) voiceWatcher->processKeywordRecognition(); //listens for STOP and GO keywords
+#ifdef useSecEl
+    if (secElHandlerList) secElHandlerList->processLoop(); //calculates speeds in all blocks and sets signals accordingly
 #endif
-  if (myDcc) myDcc->process(); //receives and decodes track signals
-  if (eventHandler) eventHandler->processButtonHandler(); //drives the outgoing buffer and time delayed commands
-  if (usbSerial) usbSerial->processLoop(); //drives the USB interface serial traffic
-  if (lbClient) lbClient->processLoop(); //drives the LocoNet over TCP and WiThrottle interface client traffic
-  if (lbServer) lbServer->processLoop(); //drives the LocoNet over TCP interface server traffic
-  if (wiServer) wiServer->processLoop(); //drives the WiThrottle interface server traffic
-  if (lnSerial) lnSerial->processLoop(); //handling all LocoNet communication
-//  if (olcbSerial) olcbSerial->processLoop(); //handling all OpenLCB communication
-  if (trainSensor) trainSensor->processLoop(); //getting the data fromn the speed sensor
+#ifdef useAI
+    if (voiceWatcher) voiceWatcher->processKeywordRecognition(); //listens for STOP and GO keywords
+#endif
+    if (myDcc) myDcc->process(); //receives and decodes track signals
+    if (eventHandler) eventHandler->processButtonHandler(); //drives the outgoing buffer and time delayed commands
+    if (usbSerial) usbSerial->processLoop(); //drives the USB interface serial traffic
+    if (lbClient) lbClient->processLoop(); //drives the LocoNet over TCP and WiThrottle interface client traffic
+    if (lbServer) lbServer->processLoop(); //drives the LocoNet over TCP interface server traffic
+    if (wiServer) wiServer->processLoop(); //drives the WiThrottle interface server traffic
+    if (lnSerial) lnSerial->processLoop(); //handling all LocoNet communication
+//    if (olcbSerial) olcbSerial->processLoop(); //handling all OpenLCB communication
+    if (trainSensor) trainSensor->processLoop(); //getting the data fromn the speed sensor
 
   if (myChain)
     hatVerified = myChain->isVerified();

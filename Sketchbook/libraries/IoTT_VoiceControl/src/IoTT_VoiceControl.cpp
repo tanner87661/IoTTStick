@@ -58,39 +58,49 @@ static int print_results = -(EI_CLASSIFIER_SLICES_PER_MODEL_WINDOW);
 
 TaskHandle_t taskRecognize = NULL;
 
-void i2sInit()
-{
-   i2s_config_t i2s_config = {
-    .mode = (i2s_mode_t)(I2S_MODE_MASTER | I2S_MODE_RX | I2S_MODE_PDM),
-    .sample_rate =  16000,
-    .bits_per_sample = I2S_BITS_PER_SAMPLE_16BIT, // is fixed at 12bit, stereo, MSB
-    .channel_format = I2S_CHANNEL_FMT_ALL_RIGHT,
-    .communication_format = I2S_COMM_FORMAT_I2S,
-    .intr_alloc_flags = ESP_INTR_FLAG_LEVEL1,
-    .dma_buf_count = 2,
-    .dma_buf_len = 128,
-   };
 
-   i2s_pin_config_t pin_config;
-   pin_config.bck_io_num   = I2S_PIN_NO_CHANGE;
-   pin_config.ws_io_num    = PIN_CLK;
-   pin_config.data_out_num = I2S_PIN_NO_CHANGE;
-   pin_config.data_in_num  = PIN_DATA;
-  
-   i2s_driver_install(I2S_NUM_0, &i2s_config, 0, NULL);
-   i2s_set_pin(I2S_NUM_0, &pin_config);
-   i2s_set_clk(I2S_NUM_0, 16000, I2S_BITS_PER_SAMPLE_16BIT, I2S_CHANNEL_MONO);
+void i2sInit() {
+    i2s_config_t i2s_config = {
+        .mode = (i2s_mode_t)(I2S_MODE_MASTER | I2S_MODE_RX | I2S_MODE_PDM),
+        .sample_rate = 16000,
+        .bits_per_sample =
+            I2S_BITS_PER_SAMPLE_16BIT,  // is fixed at 12bit, stereo, MSB
+        .channel_format = I2S_CHANNEL_FMT_ALL_RIGHT,
+#if ESP_IDF_VERSION > ESP_IDF_VERSION_VAL(4, 1, 0)
+        .communication_format = I2S_COMM_FORMAT_STAND_I2S,
+#else
+        .communication_format = I2S_COMM_FORMAT_I2S,
+#endif
+        .intr_alloc_flags = ESP_INTR_FLAG_LEVEL1,
+        .dma_buf_count    = 2,
+        .dma_buf_len      = 128,
+    };
+
+    i2s_pin_config_t pin_config;
+
+#if (ESP_IDF_VERSION > ESP_IDF_VERSION_VAL(4, 3, 0))
+    pin_config.mck_io_num = I2S_PIN_NO_CHANGE;
+#endif
+
+    pin_config.bck_io_num   = I2S_PIN_NO_CHANGE;
+    pin_config.ws_io_num    = PIN_CLK;
+    pin_config.data_out_num = I2S_PIN_NO_CHANGE;
+    pin_config.data_in_num  = PIN_DATA;
+
+    i2s_driver_install(I2S_NUM_0, &i2s_config, 0, NULL);
+    i2s_set_pin(I2S_NUM_0, &pin_config);
+    i2s_set_clk(I2S_NUM_0, 16000, I2S_BITS_PER_SAMPLE_16BIT, I2S_CHANNEL_MONO);
 }
 
 void mic_record_task (void* arg)
 {   
+  Serial.println("VW Create Task");	
   size_t bytesread;
   while(1){
     i2s_read(I2S_NUM_0,(char*) &sampleBuffer[0], inference.n_samples>>1, &bytesread, (100 / portTICK_RATE_MS));
-    
     if (record_ready == true) 
     {
-        for (int i = 0; i< bytesread >> 1; i++) {
+        for (int i = 0; i< inference.n_samples >> 1; i++) {
             inference.buffers[inference.buf_select][inference.buf_count++] = sampleBuffer[i];
 
             if (inference.buf_count >= inference.n_samples) 
@@ -165,6 +175,7 @@ void IoTT_VoiceControl::beginKeywordRecognition()
     inference.buf_ready = 0;
 
     i2sInit();
+
     run_classifier_init();
 
     xTaskCreate(mic_record_task, "mic_record_task", 2048, NULL, 1, &taskRecognize);
@@ -176,7 +187,7 @@ void IoTT_VoiceControl::processKeywordRecognition()
 	if (inference.buf_ready == 1)
 //    if (microphone_inference_record())
     {
-//		uint32_t startTime = micros();
+		uint32_t startTime = micros();
 		inference.buf_ready = 0;
 		signal_t signal;
 		signal.total_length = EI_CLASSIFIER_SLICE_SIZE;
@@ -223,6 +234,8 @@ void IoTT_VoiceControl::processKeywordRecognition()
 								break;
 						}
 				}
+//				else
+//				Serial.println("val < 0.5");
 			}
 			if (result.anomaly > 0.5)
 				Serial.printf("    anomaly score: %.3f\n", result.anomaly);

@@ -634,7 +634,8 @@ void IoTT_LBServer::handleDisconnect(AsyncClient* client)
 
 void IoTT_LBServer::handleTimeOut(AsyncClient* client, uint32_t time) 
 {
-  Serial.printf("Client ACK timeout ip: %s \n", client->remoteIP().toString().c_str());
+  Serial.printf("Client ACK timeout ip: %s for %ims\n", client->remoteIP().toString().c_str(), time);
+  client->close(true);
 }
 
 /*

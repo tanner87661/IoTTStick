@@ -18,7 +18,7 @@ void establishWifiConnection(AsyncWebServer * webServer,DNSServer * dnsServer)
         //in seconds
         Serial.println("Set STA Mode");
         wifiManager.setTimeout(120); 
-        String hlpStr = "IoTT_Stick_M5_" + String((uint32_t)ESP.getEfuseMac());
+        String hlpStr = "New_IoTT-Stick_" + String((uint32_t)ESP.getEfuseMac());
         if (!wifiManager.autoConnect(hlpStr.c_str()))
         {
           Serial.println("failed to connect and hit timeout, setting up AP, if configured, otherwise restart ESP32");
@@ -37,6 +37,7 @@ void establishWifiConnection(AsyncWebServer * webServer,DNSServer * dnsServer)
       WiFi.softAP(deviceName.c_str(), apPassword.c_str());
       delay(300); //wait for AP to get started
       WiFi.softAPConfig(ap_ip, ap_ip, ap_nm);
+      WiFi.setHostname(deviceName.c_str());
       Serial.print("Local Access Point at ");
       Serial.println(WiFi.softAPIP());
     }

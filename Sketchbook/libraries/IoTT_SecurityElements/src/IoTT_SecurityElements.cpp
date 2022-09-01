@@ -120,10 +120,12 @@ void IoTT_AspectGenerator::loadAspectCfgJSON(JsonObject thisObj)
 
 uint8_t IoTT_AspectGenerator::getAspectFromSpeed(uint8_t dynSpeedLevel, uint8_t statSpeedLevel)
 {
+	return 0;
 }
 
 uint8_t IoTT_AspectGenerator::getDynLevelFromAspect(uint8_t thisAspect)
 {
+	return 0;
 }
 
 
@@ -385,6 +387,7 @@ IoTT_SecElLeg * IoTT_SecElLeg::getOpenLeg() //returns pointer to B or C or NULL
 				}
 				break;
 	}
+	return NULL;
 }
 
 uint8_t IoTT_SecElLeg::getCurrentDynSpeed()
@@ -410,6 +413,7 @@ uint8_t IoTT_SecElLeg::getLegPos()
 
 uint8_t IoTT_SecElLeg::updateDynSpeedFromSignal()
 {
+	return 0;
 }
 
 

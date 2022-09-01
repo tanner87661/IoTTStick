@@ -28,6 +28,8 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #include <inttypes.h>
 #include <IoTT_CommDef.h>
 #include <ArduinoJSON.h>
+//#include <M5Unified.h>
+
 
 /** Audio buffers, pointers and selectors */
 typedef struct {
@@ -54,6 +56,6 @@ private:
 };
 
 //this is the callback function. Provide a function of this name and parameter in your application and it will be called when a new message is received
-extern void onLocoNetMessage(lnReceiveBuffer * recData) __attribute__ ((weak));
+//extern void onLocoNetMessage(lnReceiveBuffer * recData) __attribute__ ((weak));
 
 #endif

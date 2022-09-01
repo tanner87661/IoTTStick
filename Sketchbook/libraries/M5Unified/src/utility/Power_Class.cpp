@@ -359,6 +359,7 @@ namespace m5
 
   void Power_Class::_timerSleep(void)
   {
+	  Serial.println("TimerSleep");
     M5.Display.sleep();
     M5.Display.waitDisplay();
 
@@ -392,6 +393,7 @@ namespace m5
 
   void Power_Class::deepSleep(std::uint64_t micro_seconds, bool touch_wakeup)
   {
+	  Serial.println("DeepSleep");
     M5.Display.sleep();
     ESP_LOGD("Power","deepSleep");
 #if defined (CONFIG_IDF_TARGET_ESP32C3)
@@ -424,6 +426,7 @@ namespace m5
 
   void Power_Class::lightSleep(std::uint64_t micro_seconds, bool touch_wakeup)
   {
+	  Serial.println("LightSleep");
     ESP_LOGD("Power","lightSleep");
 #if defined (CONFIG_IDF_TARGET_ESP32C3)
 
@@ -453,6 +456,7 @@ namespace m5
 
   void Power_Class::powerOff(void)
   {
+	  Serial.println("PowerOff");
     M5.Display.sleep();
     M5.Display.waitDisplay();
     _powerOff(false);
@@ -460,6 +464,7 @@ namespace m5
 
   void Power_Class::timerSleep( int seconds )
   {
+	  Serial.println("TimerSleep467");
     M5.Rtc.clearIRQ();
     M5.Rtc.setAlarmIRQ(seconds);
     esp_sleep_enable_timer_wakeup(seconds * 1000000ULL);
@@ -468,6 +473,7 @@ namespace m5
 
   void Power_Class::timerSleep( const rtc_time_t& time)
   {
+	  Serial.println("TimerSleep476");
     M5.Rtc.clearIRQ();
     M5.Rtc.setAlarmIRQ(time);
     _timerSleep();
@@ -475,7 +481,8 @@ namespace m5
 
   void Power_Class::timerSleep( const rtc_date_t& date, const rtc_time_t& time)
   {
-    M5.Rtc.clearIRQ();
+ 	  Serial.println("TimerSleep484");
+   M5.Rtc.clearIRQ();
     M5.Rtc.setAlarmIRQ(date, time);
     _timerSleep();
   }

@@ -46,8 +46,8 @@ uint32_t wifiResetLastClick = 0;
 #define wifiResetMaxDelay 2000
 #define wifiResetReqCount 2
 
-uint8_t btnBClickCount = 0;
-uint8_t btnCClickCount = 0;
+//uint8_t btnBClickCount = 0;
+//uint8_t btnCClickCount = 0;
 
 char dispBuffer[oneShotBufferSize][dccStrLen];
 
@@ -266,9 +266,9 @@ void btnCClick()
 
 void btnCDblClick(uint8_t evtCtr)
 {
-  Serial.printf("Button C %i Double Clicked\n", evtCtr);
+//  Serial.printf("Button C %i Double Clicked\n", evtCtr);
   pwrOffTimer = millis();
-  if (evtCtr >= wifiResetReqCount)
+  if (evtCtr > wifiResetReqCount)
   {
     Serial.println("Reset Wifi");
     if (WiFi.status() == WL_CONNECTED)
@@ -311,9 +311,8 @@ void processDisplay()
         : 0;
   switch (state)
   {
-    case 3: btnBClick(); btnBClickCount++; break;
-    case 5: btnBDblClick(btnBClickCount);
-            btnBClickCount = 0;
+    case 3: btnBClick(); break;
+    case 5: btnBDblClick(M5.BtnB.getClickCount());
             break;
   }
 
@@ -323,12 +322,17 @@ void processDisplay()
         : M5.BtnPWR.wasReleased() ? 4
         : M5.BtnPWR.wasDeciedClickCount() ? 5
         : 0;
+
+//  static constexpr const char* const names[] = { "none", "wasHold", "wasClicked", "wasPressed", "wasReleased", "wasDeciedCount" };
+//  if (state)
+//    Serial.printf("BtnPWR:%s  count:%d\n", names[state], M5.BtnPWR.getClickCount());
+
   switch (state)
   {
     case 1: btnCOnHold(0); break;
-    case 3: btnCClickCount++;  break;
-    case 5: btnCDblClick(btnCClickCount);
-            btnCClickCount = 0;
+//    case 3: btnCClick(); btnCClickCount++;  break;
+    case 5: btnCDblClick(M5.BtnPWR.getClickCount());
+//            btnCClickCount = 0;
             break;
   }
 
@@ -341,7 +345,7 @@ void processDisplay()
   hatPresent = axpInVoltage > 0.5;
   pwrUSB = axpBusVoltage > 4.5;
   pwrDC = axpInVoltage > 4.7;
-  M5.Power.Axp192.setEXTEN(pwrUSB || pwrDC);
+//  M5.Power.Axp192.setEXTEN(pwrUSB || pwrDC);
   
   if (pwrUSB || pwrDC) //check for Power Status, but not for BlackHat
   {
@@ -419,6 +423,7 @@ void processDisplay()
 
 void initDisplay()
 {
+  uint16_t devType = M5.getBoard(); //4: stick c 5: stick c plus
   M5.Display.setRotation(3);
   if (M5.Display.width() == 160)
     screenDef = 0;
@@ -834,7 +839,9 @@ void sensorViewerPage()
     drawText(outText, 5, lineY[2], 2);
     sprintf(outText, "Dist [%s] Abs. %.2f Rel. %.2f", currData.dispDim == 1 ? "in" : "cm", currData.dispDim == 1 ? currData.absIntegrator/25.4 : currData.absIntegrator/10, currData.dispDim == 1 ? currData.relIntegrator/25.4 : currData.relIntegrator/10);
     drawText(outText, 5, lineY[3], 2);
-    sprintf(outText, "Hd.: %.0f Gr.[%s] %.1f S.El. [%s] %.1f", 180*currData.eulerVectorRad[0]/PI, "%", 180*currData.eulerVectorRad[1]/PI, "%", 180*currData.eulerVectorRad[2]/PI );
+    int8_t dirInd = currData.currDirFwd ? 1 : -1;
+    sprintf(outText, "Hd.: %.0f Gr.[%s] %.1f S.El. [%s] %.1f", 180*currData.eulerVectorRad[0]/PI, "%", dirInd * trainSensor->getPercOfAngle(currData.imuVal[1]), "%", dirInd * trainSensor->getPercOfAngle(currData.imuVal[0]));
+//    sprintf(outText, "Hd.: %.0f Gr.[%s] %.1f S.El. [%s] %.1f", 180*currData.eulerVectorRad[0]/PI, "%", 90*currData.imuVal[1], "%", 90*currData.imuVal[0]);
     drawText(outText, 5, lineY[4], 2);
 
     if (screenDef == 1)

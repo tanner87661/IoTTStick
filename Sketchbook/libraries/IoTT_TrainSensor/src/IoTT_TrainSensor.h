@@ -38,8 +38,10 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #include <Adafruit_BNO055.h>
 #include <TMAG5273.h>
 #include <utility/imumaths.h>
+#include <M5Unified.h>
 //#include <OneDimKalman.h>
 
+extern uint16_t sendMsg(lnTransmitMsg txData);
 
 // This class is compatible with the corresponding AVR one,
 // the constructor however has an optional rx buffer size.
@@ -85,6 +87,7 @@ typedef struct
     float_t modScale = 87; //HO by default
     uint8_t dispDim = 0; //metric by default
     char scaleName[5];
+	float_t imuVal[6] = {0,0,0,0,0,0};
 	float_t eulerVectorRad[4] = {0,0,0,0}; //0: yaw rad  1: roll rad 2: pitch rad 3: distance
 	float_t posVector_mm[3] = {0,0,0};	//0 dimX 1: dimY 2: dimZ
 //	uint8_t Error = 0;
@@ -137,13 +140,14 @@ extern AsyncWebSocketClient * globalClient;
 class IoTT_TrainSensor
 {
 public:
-	IoTT_TrainSensor(TwoWire * newWire);
+	IoTT_TrainSensor(TwoWire * newWire, uint8_t sda, uint8_t scl);
 	~IoTT_TrainSensor();
 	void begin();
 	void processLoop();
 	sensorData getSensorData();
 	void resetDistance();
 	void resetHeading();
+	float_t getPercOfAngle(float_t gForce);
 	void setTxCallback(txFct newCB);
 	void loadLNCfgJSON(DynamicJsonDocument doc);
 	volatile void sensorTask(void * thisParam);
@@ -156,7 +160,7 @@ public:
 	void programmerReturn(uint8_t * programmerSlot);
    
 private:
-	void sendSpeedTableDataToWeb();
+	void sendSpeedTableDataToWeb(bool isFinal);
 //	void sendPosDataToWeb();
 	void sendSensorDataToWeb();
 	void clrSpeedTable();

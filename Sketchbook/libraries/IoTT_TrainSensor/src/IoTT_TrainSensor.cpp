@@ -24,7 +24,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
 #include <IoTT_TrainSensor.h>
 
-txFct sensorCallback = NULL;
+//txFct sensorCallback = NULL;
 
 void myTask(void * thisParam)
 {
@@ -36,9 +36,11 @@ void myTask(void * thisParam)
 	}
 }
 
-IoTT_TrainSensor::IoTT_TrainSensor(TwoWire * newWire)
+IoTT_TrainSensor::IoTT_TrainSensor(TwoWire * newWire, uint8_t sda, uint8_t scl)
 {
 	sensorWire = newWire;
+//	sensorWire->begin(sda, scl);
+//	delay(10);
 }
 
 IoTT_TrainSensor::~IoTT_TrainSensor() 
@@ -52,7 +54,6 @@ volatile void IoTT_TrainSensor::sensorTask(void * thisParam)
 	float rotAngle = -1;
 	if ((millis() - lastSampleCtrl) > measuringInterval)
 	{
-
 		uint32_t currTime = micros();
 		lastSampleCtrl += measuringInterval;
 
@@ -234,17 +235,25 @@ void IoTT_TrainSensor::begin()
 			displayIMUSensorStatus();
 		}
 	}
+	if (!imuSensor) //use Stick imu sensor
+	{
+		Serial.println("Using internal IMU!");
+	}
 		
 	sensorSemaphore = xSemaphoreCreateMutex();
 	if (magSensor || imuSensor)
 	{
 		if (taskHandleSensor == NULL)
+		{
+			Serial.println("Create Sensor Task");
+//			xTaskCreatePinnedToCore(myTask, 
 			xTaskCreate(myTask,        ///* Task function. 
 					"SensorTask",      //* String with name of task. 
                     16000,            //* Stack size in bytes. 
                     (void*)this,     //* Parameter passed as input of the task 
                     1,                //* Priority of the task. 
-                    &taskHandleSensor);            //* Task handle. 
+                    &taskHandleSensor);            //* Task handle, core Number
+        }
 	}
 }
 
@@ -333,12 +342,12 @@ void IoTT_TrainSensor::loadLNCfgJSON(DynamicJsonDocument doc)
 		magThreshold = doc["MagThreshold"]; //0: metric; 1: imperial
 	begin();
 }
-
+/*
 void IoTT_TrainSensor::setTxCallback(txFct newCB)
 {
 	sensorCallback = newCB;
 }
-
+*/
 void IoTT_TrainSensor::resetDistance()
 {
 //	Serial.println("resetDistance");
@@ -361,6 +370,12 @@ void IoTT_TrainSensor::resetHeading()
 	}
 }
 
+float_t IoTT_TrainSensor::getPercOfAngle(float_t gForce)
+{
+	float_t radAngle = asin(gForce);
+	return reverseDir ? (-100 * tan(radAngle)) : (100 * tan(radAngle));
+}
+
 sensorData IoTT_TrainSensor::getSensorData()
 {
 	if (xSemaphoreTake(sensorSemaphore, portMAX_DELAY) == pdPASS) 
@@ -375,9 +390,31 @@ sensorData IoTT_TrainSensor::getSensorData()
 			for (uint8_t i = 0; i < 4; i++)
 				cpyData.eulerVectorRad[i] = 0;
 		}
+		if (mountStyle == 0)
+			M5.Imu.getAccel(&cpyData.imuVal[0], &cpyData.imuVal[1], &cpyData.imuVal[2]);
+		else
+			M5.Imu.getAccel(&cpyData.imuVal[2], &cpyData.imuVal[1], &cpyData.imuVal[0]);
+		M5.Imu.getGyro(&cpyData.imuVal[3], &cpyData.imuVal[4], &cpyData.imuVal[5]);
 		return cpyData;
 	}
 }
+
+/*
+ * Flat:  Left  Center  Right Forward
+ * x		-1	0	1	
+ * z		0	-1	0
+ * 			Down	Flat	Up
+ * y		-1		0		1
+ * 
+ * Upright Left  Center  Right Forward
+ * x		0	1	0
+ * z		-1	0	1
+
+ * 			Down	Flat	Up
+ * y		-1		0		1
+ * 
+ * Dir Chg * -1
+*/
 
 void IoTT_TrainSensor::setRepRate(AsyncWebSocketClient * newClient, int newRate)
 {
@@ -415,9 +452,9 @@ void IoTT_TrainSensor::startTest(float_t trackLen, float_t vMax, uint8_t pMode)
 	int8_t currSlot = digitraxBuffer->getFocusSlotNr();
 	if ((currSlot > 0) || (digitraxBuffer->getLocoNetMode() == false))
 	{
-		speedSample.adminData.testTrackLen = 10 * trackLen; //comes in cmor inches. Change web page
-		speedSample.adminData.sampleMinDistance = wheelDia * PI * minTestWheelTurns;
-		speedSample.adminData.crawlSpeedMax = wheelDia * PI * crawlTurns; //mm/s
+		speedSample.adminData.testTrackLen = 10 * trackLen; //comes in cm or inches. Change web page
+		speedSample.adminData.sampleMinDistance = wheelDia * PI * minTestWheelTurns; //always mm
+		speedSample.adminData.crawlSpeedMax = wheelDia * PI * crawlTurns; //always mm/s
 //		Serial.printf("%.2f \n", speedSample.adminData.crawlSpeedMax);
 		speedSample.adminData.testSteps = pMode == 0 ? 28 : 127;
 //		Serial.printf("%i %i\n", speedSample.adminData.testSteps, pMode);
@@ -441,6 +478,10 @@ void IoTT_TrainSensor::startTest(float_t trackLen, float_t vMax, uint8_t pMode)
 		speedSample.adminData.currSpeedStep = 0;
 		speedSample.adminData.validSample = false;
 		speedSample.adminData.speedTestRunning = true;
+		if (workData.dispDim == 1) //imperial
+		{
+			speedSample.adminData.testTrackLen *= 2.54; //change to millimters
+		}
 	}
 	else
 		Serial.println("No focus slot assigned");
@@ -458,7 +499,7 @@ void IoTT_TrainSensor::sendSpeedCommand(uint8_t newSpeed)
 		txBuffer.lnData[2] = map(newSpeed, 0, speedSample.adminData.testSteps, 0, maxSpeedSteps-1);
 		txBuffer.lnMsgSize = 4;
 		setXORByte(&txBuffer.lnData[0]);
-		sensorCallback(txBuffer);
+		sendMsg(txBuffer);
 	}
 }
 
@@ -475,7 +516,7 @@ void IoTT_TrainSensor::toggleDirCommand()
 //		Serial.printf("Slot %2X Sent %2X\n", (*focusSlot)[3], txBuffer.lnData[2]);
 		txBuffer.lnMsgSize = 4;
 		setXORByte(&txBuffer.lnData[0]);
-		sensorCallback(txBuffer);
+		sendMsg(txBuffer);
 		speedSample.adminData.upDir = (!speedSample.adminData.upDir);
 	}
 }
@@ -488,7 +529,7 @@ void IoTT_TrainSensor::stopTest()
 		sendSpeedCommand(0);
 //		toggleDirCommand();
 		speedSample.adminData.speedTestRunning = false;
-		sendSpeedTableDataToWeb();
+		sendSpeedTableDataToWeb(true);
 	}
 }
 
@@ -501,6 +542,7 @@ void IoTT_TrainSensor::clrSpeedTable()
 		speedSample.fw[i] = 0;
 		speedSample.bw[i] = 0;
 	}
+	sendSpeedTableDataToWeb(false);
 }
 
 bool IoTT_TrainSensor::processTestStep(sensorData * sensStatus)
@@ -617,6 +659,8 @@ bool IoTT_TrainSensor::processSpeedTest() //returns false if complete
 								speedSample.adminData.testState[upDirIndex].testPhase = 0;
 								speedSample.adminData.masterPhase = 1;
 							}
+							sendSpeedTableDataToWeb(false);
+
 //							Serial.println(speedSample.adminData.testState[upDirIndex].testPhase);
 						}
 					break;
@@ -685,7 +729,7 @@ void IoTT_TrainSensor::programmerReturn(uint8_t * programmerSlot)
 		Serial.println("No global");
 }
 
-void IoTT_TrainSensor::sendSpeedTableDataToWeb()
+void IoTT_TrainSensor::sendSpeedTableDataToWeb(bool isFinal)
 {
 	if (globalClient)
 	{
@@ -697,6 +741,8 @@ void IoTT_TrainSensor::sendSpeedTableDataToWeb()
 		Data["NumSteps"] = speedSample.adminData.testSteps;
 		JsonArray fwArray = Data.createNestedArray("fw");
 		JsonArray bwArray = Data.createNestedArray("bw");
+		if (isFinal)
+			Data["final"] = true;
 		for (uint8_t i = 0; i < speedSample.adminData.testSteps; i++)
 		{
 			fwArray.add(speedSample.fw[i]);
@@ -714,6 +760,8 @@ void IoTT_TrainSensor::sendSensorDataToWeb()
 //	for (uint8_t i = 0; i < 50; i++)
 //		Serial.println(cpyData.avgMove[i]);
 //	Serial.println();
+
+
 	if (globalClient)
 	{
 		sensorData cpyData = getSensorData();
@@ -725,6 +773,9 @@ void IoTT_TrainSensor::sendSensorDataToWeb()
 		Data["AbsDist"] = cpyData.absIntegrator;
 		Data["RelDist"] = cpyData.relIntegrator;
 		Data["AxisAngle"] = cpyData.axisAngle;
+		int8_t dirFlag = cpyData.currSpeedTech >= 0 ? 1 : -1;
+		Data["Slope"] = dirFlag * getPercOfAngle(cpyData.imuVal[1]);
+		Data["Banking"] = dirFlag * getPercOfAngle(cpyData.imuVal[0]);
 
 //	Serial.println(cpyData.axisAngle);
 
