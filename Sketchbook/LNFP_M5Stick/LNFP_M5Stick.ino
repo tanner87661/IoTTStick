@@ -8,7 +8,7 @@
 #include <M5UnitOLED.h>
 #include <M5Unified.h>
 
-String BBVersion = "1.5.14D1";
+String BBVersion = "1.5.14";
 
 //#define measurePerformance //uncomment this to display the number of loop cycles per second
 //#define useAI
