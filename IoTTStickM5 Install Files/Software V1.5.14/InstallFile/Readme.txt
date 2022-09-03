@@ -1,4 +1,5 @@
-This file contains The IoTT Stick software Version 1.5.13 with WiThrottle Server and full RedHat++ Shield functionality
+This file contains The IoTT Stick software Version 1.5.14 with WiThrottle Server and full RedHat++ Shield functionality. Some additional bug fixes for the PurpleHat.
+
 To install, connect your M5 Stick C to the computer's USB port.
 Extract the zip file and execute (double-click) the file update.bat
 If everything goes right, the update program will find the stick on the USB port and will load the program and the web pages.
