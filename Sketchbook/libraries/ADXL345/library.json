@@ -1,0 +1,24 @@
+{
+  "name": "ADXL345",
+  "description": "A acceleration sensor library for Arduino",
+  "keywords": "sensor,accelerometer,i2c",
+  "authors":
+  {
+    "name": "Hideki Hamada",
+    "email": "jakalada.net@gmail.com"
+  },
+  "repository":
+  {
+    "type": "git",
+    "url": "https://github.com/jakalada/Arduino-ADXL345.git"
+  },
+  "version": "0.2.0",
+  "url": "https://github.com/jakalada/Arduino-ADXL345",
+  "frameworks": "arduino",
+  "platforms":
+  [
+    "atmelavr",
+    "espressif8266",
+    "espressif32"
+  ]
+}

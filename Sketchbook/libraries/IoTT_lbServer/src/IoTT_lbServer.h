@@ -78,7 +78,7 @@ public:
 	void setTurnout(char pos, char* addr);
 	locoDef* getLocoByAddr(locoDef* startAt, uint16_t locoAddr, char thID);
 	locoDef* getLocoBySlot(locoDef* startAt, uint8_t slotAddr, char thID);
-	void setLocoAction(uint16_t locoAddr, char thID, char* ActionCode);
+	void setLocoAction(uint16_t locoAddr, char thID, const char* ActionCode);
 	void setTrackPowerStatus(uint8_t newStatus);
 public:
 	AsyncClient * thisClient = NULL;

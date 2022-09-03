@@ -19,8 +19,7 @@
  *  BSD license, all text above must be included in any redistribution
  */
 
-#include "Adafruit_BMP280.h"
-#include "Arduino.h"
+#include <Adafruit_BMP280.h>
 
 /*!
  * @brief  BMP280 constructor using i2c
@@ -31,15 +30,6 @@ Adafruit_BMP280::Adafruit_BMP280(TwoWire *theWire) {
   _wire = theWire;
   temp_sensor = new Adafruit_BMP280_Temp(this);
   pressure_sensor = new Adafruit_BMP280_Pressure(this);
-}
-
-Adafruit_BMP280::~Adafruit_BMP280(void) {
-  if (spi_dev)
-    delete spi_dev;
-  if (i2c_dev)
-    delete i2c_dev;
-  delete temp_sensor;
-  delete pressure_sensor;
 }
 
 /*!
@@ -74,6 +64,17 @@ Adafruit_BMP280::Adafruit_BMP280(int8_t cspin, int8_t mosipin, int8_t misopin,
   pressure_sensor = new Adafruit_BMP280_Pressure(this);
 }
 
+Adafruit_BMP280::~Adafruit_BMP280(void) {
+  if (spi_dev)
+    delete spi_dev;
+  if (i2c_dev)
+    delete i2c_dev;
+  if (temp_sensor)
+    delete temp_sensor;
+  if (pressure_sensor)
+    delete pressure_sensor;
+}
+
 /*!
  *  Initialises the sensor.
  *  @param addr
@@ -96,7 +97,9 @@ bool Adafruit_BMP280::begin(uint8_t addr, uint8_t chipid) {
       return false;
   }
 
-  if (read8(BMP280_REGISTER_CHIPID) != chipid)
+  // check if sensor, i.e. the chip ID is correct
+  _sensorID = read8(BMP280_REGISTER_CHIPID);
+  if (_sensorID != chipid)
     return false;
 
   readCoefficients();
@@ -124,6 +127,8 @@ void Adafruit_BMP280::setSampling(sensor_mode mode,
                                   sensor_sampling pressSampling,
                                   sensor_filter filter,
                                   standby_duration duration) {
+  if (!_sensorID)
+    return; // begin() not called yet
   _measReg.mode = mode;
   _measReg.osrs_t = tempSampling;
   _measReg.osrs_p = pressSampling;
@@ -238,10 +243,12 @@ void Adafruit_BMP280::readCoefficients() {
 
 /*!
  * Reads the temperature from the device.
- * @return The temperature in degress celcius.
+ * @return The temperature in degrees celsius.
  */
 float Adafruit_BMP280::readTemperature() {
   int32_t var1, var2;
+  if (!_sensorID)
+    return NAN; // begin() not called yet
 
   int32_t adc_T = read24(BMP280_REGISTER_TEMPDATA);
   adc_T >>= 4;
@@ -268,6 +275,8 @@ float Adafruit_BMP280::readTemperature() {
  */
 float Adafruit_BMP280::readPressure() {
   int64_t var1, var2, p;
+  if (!_sensorID)
+    return NAN; // begin() not called yet
 
   // Must be done first to get the t_fine variable set up
   readTemperature();
@@ -345,26 +354,25 @@ float Adafruit_BMP280::waterBoilingPoint(float pressure) {
 }
 
 /*!
- *  @brief  Take a new measurement (only possible in forced mode)
- *  !!!todo!!!
+    @brief  Take a new measurement (only possible in forced mode)
+    @return true if successful, otherwise false
  */
-/*
-void Adafruit_BMP280::takeForcedMeasurement()
-{
-    // If we are in forced mode, the BME sensor goes back to sleep after each
-    // measurement and we need to set it to forced mode once at this point, so
-    // it will take the next measurement and then return to sleep again.
-    // In normal mode simply does new measurements periodically.
-    if (_measReg.mode == MODE_FORCED) {
-        // set to forced mode, i.e. "take next measurement"
-        write8(BMP280_REGISTER_CONTROL, _measReg.get());
-        // wait until measurement has been completed, otherwise we would read
-        // the values from the last measurement
-        while (read8(BMP280_REGISTER_STATUS) & 0x08)
-                delay(1);
-    }
+bool Adafruit_BMP280::takeForcedMeasurement() {
+  // If we are in forced mode, the BME sensor goes back to sleep after each
+  // measurement and we need to set it to forced mode once at this point, so
+  // it will take the next measurement and then return to sleep again.
+  // In normal mode simply does new measurements periodically.
+  if (_measReg.mode == MODE_FORCED) {
+    // set to forced mode, i.e. "take next measurement"
+    write8(BMP280_REGISTER_CONTROL, _measReg.get());
+    // wait until measurement has been completed, otherwise we would read
+    // the values from the last measurement
+    while (read8(BMP280_REGISTER_STATUS) & 0x08)
+      delay(1);
+    return true;
+  }
+  return false;
 }
-*/
 
 /*!
  *  @brief  Resets the chip via soft reset
@@ -377,9 +385,7 @@ void Adafruit_BMP280::reset(void) {
  *   Returns Sensor ID for diagnostics
  *   @returns 0x61 for BME680, 0x60 for BME280, 0x56, 0x57, 0x58 for BMP280
  */
-uint8_t Adafruit_BMP280::sensorID(void) {
-  return read8(BMP280_REGISTER_CHIPID);
-};
+uint8_t Adafruit_BMP280::sensorID(void) { return _sensorID; };
 
 /*!
     @brief  Gets the most recent sensor event from the hardware status register.

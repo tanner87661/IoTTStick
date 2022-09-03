@@ -1,0 +1,23 @@
+######################################
+# Datatypes (KEYWORD1)
+#######################################
+
+ADXL345	KEYWORD1
+
+#######################################
+# Methods and Functions (KEYWORD2)
+#######################################
+
+start	KEYWORD2
+stop	KEYWORD2
+update	KEYWORD2
+readDeviceID	KEYWORD2
+getX	KEYWORD2
+getY	KEYWORD2
+getZ	KEYWORD2
+getRawX	KEYWORD2
+getRawY	KEYWORD2
+getRawZ	KEYWORD2
+writeRate	KEYWORD2
+writeRateWithLowPower	KEYWORD2
+writeRange	KEYWORD2

@@ -18,6 +18,13 @@ Contributors:
 
 #include "LGFX_Sprite.hpp"
 
+#ifdef min
+#undef min
+#endif
+#ifdef max
+#undef max
+#endif
+
 namespace lgfx
 {
  inline namespace v1
@@ -71,7 +78,8 @@ namespace lgfx
     deleteSprite();
 
     _img.reset(buffer);
-    _bitwidth = (w + conv->x_mask) & (~(uint32_t)conv->x_mask);
+    uint32_t x_mask = 7 >> (conv->bits >> 1);
+    _bitwidth = (w + x_mask) & (~x_mask);
     _panel_width = w;
     _xe = w - 1;
     _panel_height = h;
@@ -98,8 +106,9 @@ namespace lgfx
     {
       _panel_width = w;
       _panel_height = h;
-      _bitwidth = (w + conv->x_mask) & (~(uint32_t)conv->x_mask);
-      size_t len = h * (_bitwidth * _write_bits >> 3) + 1;
+      uint32_t x_mask = 7 >> (conv->bits >> 1);
+      _bitwidth = (w + x_mask) & (~x_mask);
+      size_t len = h * (_bitwidth * _write_bits >> 3) + std::max(1, _write_bits >> 3);
 
       _img.reset(len, psram ? AllocationSource::Psram : AllocationSource::Dma);
 
@@ -120,8 +129,6 @@ namespace lgfx
   {
     _write_depth = depth;
     _read_depth = depth;
-    _write_bits = depth & color_depth_t::bit_mask;
-    _read_bits = _write_bits;
     return depth;
   }
 
@@ -145,10 +152,10 @@ namespace lgfx
 
   void Panel_Sprite::setWindow(uint_fast16_t xs, uint_fast16_t ys, uint_fast16_t xe, uint_fast16_t ye)
   {
-    xs = std::max(0u, std::min<uint_fast16_t>(_width  - 1, xs));
-    xe = std::max(0u, std::min<uint_fast16_t>(_width  - 1, xe));
-    ys = std::max(0u, std::min<uint_fast16_t>(_height - 1, ys));
-    ye = std::max(0u, std::min<uint_fast16_t>(_height - 1, ye));
+    xs = std::max<uint_fast16_t>(0u, std::min<uint_fast16_t>(_width  - 1, xs));
+    xe = std::max<uint_fast16_t>(0u, std::min<uint_fast16_t>(_width  - 1, xe));
+    ys = std::max<uint_fast16_t>(0u, std::min<uint_fast16_t>(_height - 1, ys));
+    ye = std::max<uint_fast16_t>(0u, std::min<uint_fast16_t>(_height - 1, ye));
     _xpos = xs;
     _xs = xs;
     _xe = xe;
@@ -327,15 +334,15 @@ namespace lgfx
     if (bitr & 0b10010110) // case 1:2:4:7:
     {
       param->src_y32 += nexty * (h - 1);
-      nexty = -nexty;
+      nexty = -(int32_t)nexty;
       y = _height - (y + h);
     }
     if (r & 2)
     {
       param->src_x32 += addx * (w - 1);
       param->src_y32 += addy * (w - 1);
-      addx = -addx;
-      addy = -addy;
+      addx = -(int32_t)addx;
+      addy = -(int32_t)addy;
       x = _width  - (x + w);
     }
     if (r & 1)
@@ -418,7 +425,7 @@ namespace lgfx
       {
         do
         {
-          param->fp_copy(&_img.img8()[x * k], y, y + 1, param); /// xとyを入れ替えて処理する
+          param->fp_copy(&_img.img8()[x * k], y, y + 1, param); /// xとyを入れ替えて処理する;
           if (x != xe)
           {
             x += ax;
@@ -476,7 +483,7 @@ namespace lgfx
         auto src = &((uint8_t*)param->src_data)[param->src_y * sw];
         if (sw == bw && this->_panel_width == w && sx == 0 && x == 0)
         {
-          memcpy(dst, src, bw * h);
+          memcpy_P(dst, src, bw * h);
           return;
         }
         y = 0;
@@ -485,7 +492,7 @@ namespace lgfx
         w    =  w * bits >> 3;
         do
         {
-          memcpy(&dst[y * bw], &src[y * sw], w);
+          memcpy_P(&dst[y * bw], &src[y * sw], w);
         } while (++y != h);
         return;
       }
@@ -564,7 +571,7 @@ namespace lgfx
     }
     index *= bits;
     uint8_t mask = (1 << bits) - 1;
-    return (_img.img8()[index >> 3] >> (-(index + bits) & 7)) & mask;
+    return (_img.img8()[index >> 3] >> (-(int32_t)(index + bits) & 7)) & mask;
   }
 
   void Panel_Sprite::readRect(uint_fast16_t x, uint_fast16_t y, uint_fast16_t w, uint_fast16_t h, void* dst, pixelcopy_t* param)
@@ -576,9 +583,10 @@ namespace lgfx
       auto bytes = _write_bits >> 3;
       auto bw = _bitwidth;
       auto d = (uint8_t*)dst;
+      w *= bytes;
       do {
-        memcpy(d, &_img[(x + y * bw) * bytes], w * bytes);
-        d += w * bytes;
+        memcpy(d, &_img[(x + y * bw) * bytes], w);
+        d += w;
       } while (++y != h);
     }
     else
@@ -594,17 +602,17 @@ namespace lgfx
         uint_fast8_t rb = 1 << r;
         if (rb & 0b10010110) // case 1:2:4:7:
         {
-          nexty = -nexty;
+          nexty = -(int32_t)nexty;
           y = _height - (y + 1);
         }
         if (r & 2)
         {
-          addx = -addx;
+          addx = -(int32_t)addx;
           x = _width - (x + 1);
         }
         if ((r+1) & 2)
         {
-          addy  = -addy;
+          addy  = -(int32_t)addy;
         }
         if (r & 1)
         {

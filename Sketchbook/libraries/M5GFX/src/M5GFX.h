@@ -1,3 +1,6 @@
+// Copyright (c) M5Stack. All rights reserved.
+// Licensed under the MIT license. See LICENSE file in the project root for full license information.
+
 #pragma once
 
 // If you want to use a set of functions to handle SD/SPIFFS/HTTP,
@@ -7,14 +10,6 @@
 // #include <HTTPClient.h>
 #if defined (ARDUINO)
 #include <FS.h>
-#endif
-
-/// Use of std::min and std::max instead of macro definitions is recommended.
-#ifdef min
-#undef min
-#endif
-#ifdef max
-#undef max
 #endif
 
 #ifdef setFont
@@ -28,6 +23,7 @@
 #include "lgfx/v1/lgfx_filesystem_support.hpp"
 #include "lgfx/v1/LGFXBase.hpp"
 #include "lgfx/v1/LGFX_Sprite.hpp"
+#include "lgfx/v1/LGFX_Button.hpp"
 
 #include <vector>
 
@@ -89,7 +85,7 @@ namespace m5gfx
     static constexpr int ILI9341_MAROON      = 0x7800;      /* 128,   0,   0 */
     static constexpr int ILI9341_PURPLE      = 0x780F;      /* 128,   0, 128 */
     static constexpr int ILI9341_OLIVE       = 0x7BE0;      /* 128, 128,   0 */
-    static constexpr int ILI9341_LIGHTGREY   = 0xC618;      /* 192, 192, 192 */
+    static constexpr int ILI9341_LIGHTGREY   = 0xD69A;      /* 211, 211, 211 */
     static constexpr int ILI9341_DARKGREY    = 0x7BEF;      /* 128, 128, 128 */
     static constexpr int ILI9341_BLUE        = 0x001F;      /*   0,   0, 255 */
     static constexpr int ILI9341_GREEN       = 0x07E0;      /*   0, 255,   0 */
@@ -98,29 +94,39 @@ namespace m5gfx
     static constexpr int ILI9341_MAGENTA     = 0xF81F;      /* 255,   0, 255 */
     static constexpr int ILI9341_YELLOW      = 0xFFE0;      /* 255, 255,   0 */
     static constexpr int ILI9341_WHITE       = 0xFFFF;      /* 255, 255, 255 */
-    static constexpr int ILI9341_ORANGE      = 0xFD20;      /* 255, 165,   0 */
-    static constexpr int ILI9341_GREENYELLOW = 0xAFE5;      /* 173, 255,  47 */
-    static constexpr int ILI9341_PINK        = 0xF81F;
+    static constexpr int ILI9341_ORANGE      = 0xFDA0;      /* 255, 180,   0 */
+    static constexpr int ILI9341_GREENYELLOW = 0xB7E0;      /* 180, 255,   0 */
+    static constexpr int ILI9341_PINK        = 0xFE19;      /* 255, 192, 203 */
+    static constexpr int ILI9341_BROWN       = 0x9A60;      /* 150,  75,   0 */
+    static constexpr int ILI9341_GOLD        = 0xFEA0;      /* 255, 215,   0 */
+    static constexpr int ILI9341_SILVER      = 0xC618;      /* 192, 192, 192 */
+    static constexpr int ILI9341_SKYBLUE     = 0x867D;      /* 135, 206, 235 */
+    static constexpr int ILI9341_VIOLET      = 0x915C;      /* 180,  46, 226 */
 
-    static constexpr int BLACK           = 0x0000;      /*   0,   0,   0 */
-    static constexpr int NAVY            = 0x000F;      /*   0,   0, 128 */
-    static constexpr int DARKGREEN       = 0x03E0;      /*   0, 128,   0 */
-    static constexpr int DARKCYAN        = 0x03EF;      /*   0, 128, 128 */
-    static constexpr int MAROON          = 0x7800;      /* 128,   0,   0 */
-    static constexpr int PURPLE          = 0x780F;      /* 128,   0, 128 */
-    static constexpr int OLIVE           = 0x7BE0;      /* 128, 128,   0 */
-    static constexpr int LIGHTGREY       = 0xC618;      /* 192, 192, 192 */
-    static constexpr int DARKGREY        = 0x7BEF;      /* 128, 128, 128 */
-    static constexpr int BLUE            = 0x001F;      /*   0,   0, 255 */
-    static constexpr int GREEN           = 0x07E0;      /*   0, 255,   0 */
-    static constexpr int CYAN            = 0x07FF;      /*   0, 255, 255 */
-    static constexpr int RED             = 0xF800;      /* 255,   0,   0 */
-    static constexpr int MAGENTA         = 0xF81F;      /* 255,   0, 255 */
-    static constexpr int YELLOW          = 0xFFE0;      /* 255, 255,   0 */
-    static constexpr int WHITE           = 0xFFFF;      /* 255, 255, 255 */
-    static constexpr int ORANGE          = 0xFD20;      /* 255, 165,   0 */
-    static constexpr int GREENYELLOW     = 0xAFE5;      /* 173, 255,  47 */
-    static constexpr int PINK            = 0xF81F;
+    static constexpr int BLACK       = 0x0000;      /*   0,   0,   0 */
+    static constexpr int NAVY        = 0x000F;      /*   0,   0, 128 */
+    static constexpr int DARKGREEN   = 0x03E0;      /*   0, 128,   0 */
+    static constexpr int DARKCYAN    = 0x03EF;      /*   0, 128, 128 */
+    static constexpr int MAROON      = 0x7800;      /* 128,   0,   0 */
+    static constexpr int PURPLE      = 0x780F;      /* 128,   0, 128 */
+    static constexpr int OLIVE       = 0x7BE0;      /* 128, 128,   0 */
+    static constexpr int LIGHTGREY   = 0xD69A;      /* 211, 211, 211 */
+    static constexpr int DARKGREY    = 0x7BEF;      /* 128, 128, 128 */
+    static constexpr int BLUE        = 0x001F;      /*   0,   0, 255 */
+    static constexpr int GREEN       = 0x07E0;      /*   0, 255,   0 */
+    static constexpr int CYAN        = 0x07FF;      /*   0, 255, 255 */
+    static constexpr int RED         = 0xF800;      /* 255,   0,   0 */
+    static constexpr int MAGENTA     = 0xF81F;      /* 255,   0, 255 */
+    static constexpr int YELLOW      = 0xFFE0;      /* 255, 255,   0 */
+    static constexpr int WHITE       = 0xFFFF;      /* 255, 255, 255 */
+    static constexpr int ORANGE      = 0xFDA0;      /* 255, 180,   0 */
+    static constexpr int GREENYELLOW = 0xB7E0;      /* 180, 255,   0 */
+    static constexpr int PINK        = 0xFE19;      /* 255, 192, 203 */
+    static constexpr int BROWN       = 0x9A60;      /* 150,  75,   0 */
+    static constexpr int GOLD        = 0xFEA0;      /* 255, 215,   0 */
+    static constexpr int SILVER      = 0xC618;      /* 192, 192, 192 */
+    static constexpr int SKYBLUE     = 0x867D;      /* 135, 206, 235 */
+    static constexpr int VIOLET      = 0x915C;      /* 180,  46, 226 */
   }
 
   namespace tft_command
@@ -130,23 +136,6 @@ namespace m5gfx
     static constexpr int TFT_SLPIN   = 0x10;
     static constexpr int TFT_SLPOUT  = 0x11;
   }
-
-  namespace boards
-  {
-    enum board_t
-    { board_unknown
-    , board_Non_Panel
-    , board_M5Stack
-    , board_M5StackCore2
-    , board_M5StickC
-    , board_M5StickCPlus
-    , board_M5StackCoreInk
-    , board_M5Paper
-    , board_M5Tough
-    , board_M5ATOM
-    };
-  }
-  using board_t = boards::board_t;
 
   class M5GFX : public lgfx::LGFX_Device
   {
@@ -164,7 +153,6 @@ namespace m5gfx
     lgfx::Panel_Device* _panel_last;
     lgfx::ILight* _light_last;
     lgfx::ITouch* _touch_last;
-    board_t _board;
     std::vector<DisplayState> _displayStateStack;
 
     bool init_impl(bool use_reset, bool use_clear) override;
@@ -175,9 +163,9 @@ namespace m5gfx
   public:
     M5GFX(void);
 
-    static M5GFX* getInstance(void) { return _instance; }
+    using LGFXBase::drawBitmap;
 
-    inline board_t getBoard(void) const { return _board; }
+    static M5GFX* getInstance(void) { return _instance; }
 
     void clearDisplay(int32_t color = TFT_BLACK) { fillScreen(color); }
     void progressBar(int x, int y, int w, int h, uint8_t val);
@@ -194,6 +182,34 @@ namespace m5gfx
     void drawBitmap(int16_t x, int16_t y, int16_t w, int16_t h, const void *data, uint16_t transparent)
     {
       pushImage(x, y, w, h, (const rgb565_t*)data, transparent);
+    }
+
+    bool setResolution( uint16_t logical_width  = 0
+                      , uint16_t logical_height = 0
+                      , float refresh_rate      = 0
+                      , uint16_t output_width   = 0
+                      , uint16_t output_height  = 0
+                      , uint_fast8_t scale_w    = 0
+                      , uint_fast8_t scale_h    = 0
+                      )
+    {
+#ifdef __M5GFX_M5ATOMDISPLAY__
+      if (getBoard() == board_t::board_M5AtomDisplay)
+      {
+        bool res = ((Panel_M5HDMI*)panel())->setResolution
+          ( logical_width
+          , logical_height
+          , refresh_rate
+          , output_width
+          , output_height
+          , scale_w
+          , scale_h
+          );
+        setRotation(getRotation());
+        return res;
+      }
+#endif
+      return false;
     }
   };
 
@@ -214,3 +230,4 @@ using namespace m5gfx::ili9341_colors;
 using namespace m5gfx::tft_command;
 using M5GFX = m5gfx::M5GFX;
 using M5Canvas = m5gfx::M5Canvas;
+using RGBColor = m5gfx::bgr888_t;

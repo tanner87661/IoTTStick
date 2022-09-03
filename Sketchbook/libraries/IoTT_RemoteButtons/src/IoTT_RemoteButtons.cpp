@@ -740,4 +740,5 @@ bool IoTT_Mux64Buttons::processMQTTCmd(char * topic, DynamicJsonDocument doc)
 				sendBtnStatusMQTT(1, portAddr[i]); //use reply topic
 		return true;
 	}
+	return false;
 }

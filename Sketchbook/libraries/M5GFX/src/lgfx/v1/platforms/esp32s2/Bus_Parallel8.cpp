@@ -70,21 +70,23 @@ namespace lgfx
     _last_freq_apb = 0;
   }
 
+  static void _gpio_pin_init(int pin)
+  {
+    if (pin >= 0)
+    {
+      gpio_pad_select_gpio(pin);
+      gpio_hi(pin);
+      gpio_set_direction((gpio_num_t)pin, GPIO_MODE_OUTPUT);
+    }
+  }
+
   bool Bus_Parallel8::init(void)
   {
     _init_pin();
 
-    gpio_pad_select_gpio(_cfg.pin_rd);
-    gpio_pad_select_gpio(_cfg.pin_wr);
-    gpio_pad_select_gpio(_cfg.pin_rs);
-
-    gpio_hi(_cfg.pin_rd);
-    gpio_hi(_cfg.pin_wr);
-    gpio_hi(_cfg.pin_rs);
-
-    gpio_set_direction((gpio_num_t)_cfg.pin_rd, GPIO_MODE_OUTPUT);
-    gpio_set_direction((gpio_num_t)_cfg.pin_wr, GPIO_MODE_OUTPUT);
-    gpio_set_direction((gpio_num_t)_cfg.pin_rs, GPIO_MODE_OUTPUT);
+    _gpio_pin_init(_cfg.pin_rd);
+    _gpio_pin_init(_cfg.pin_wr);
+    _gpio_pin_init(_cfg.pin_rs);
 
     auto idx_base = I2S0O_DATA_OUT15_IDX;
 
@@ -253,6 +255,8 @@ namespace lgfx
 
   size_t Bus_Parallel8::_flush(size_t count, bool dc)
   {
+    bool slow = _div_num > 8;
+
     auto i2s_dev = (i2s_dev_t*)_dev;
     if (i2s_dev->out_link.val)
     {
@@ -281,13 +285,18 @@ namespace lgfx
       gpio_matrix_out(_cfg.pin_rs, idx_base, 0, 0);
     }
     else if (_div_num < 4)
-    { /// OUTLINK_START～TX_STARTの時間が短すぎるとデータの先頭を送り損じる事があるのでnopウェイトを入れる
+    { /// OUTLINK_START～TX_STARTの時間が短すぎるとデータの先頭を送り損じる事があるのでnopウェイトを入れる;
       size_t wait = (8 - _div_num) << 2;
       do { __asm__ __volatile__ ("nop"); } while (--wait);
     }
     i2s_dev->conf.val = _conf_reg_start;
 
     _cache_flip = (_cache_flip == _cache[0]) ? _cache[1] : _cache[0];
+    if (slow)
+    {
+      size_t wait = _div_num >> 1;
+      do { __asm__ __volatile__ ("nop"); } while (--wait);
+    }
     return 0;
   }
 
@@ -394,7 +403,7 @@ namespace lgfx
     }
     const uint32_t bytes = param->dst_bits >> 3;
     auto fp_copy = param->fp_copy;
-    const uint32_t limit = CACHE_SIZE / bytes;
+    const uint32_t limit = (CACHE_THRESH * sizeof(_cache[0][0])) / bytes;
     uint8_t len = length % limit;
     if (len)
     {
@@ -431,7 +440,7 @@ namespace lgfx
       }
       else
       {
-        size_t len = ((length - 1) % CACHE_SIZE) + 1;
+        size_t len = ((length - 1) % (CACHE_THRESH * sizeof(_cache[0][0]))) + 1;
         length -= len;
         memcpy(_cache_flip, data, len);
         data += len;
@@ -480,7 +489,11 @@ namespace lgfx
 
   void Bus_Parallel8::_read_bytes(uint8_t* dst, uint32_t length)
   {
-    uint8_t in[8];
+    union
+    {
+      uint32_t in32[2];
+      uint8_t in[8];
+    };
 
     uint32_t mask = (((((((((((((((
                     (_cfg.pin_d0 & 7)) << 3)
@@ -510,8 +523,8 @@ namespace lgfx
     uint_fast8_t val;
     do
     {
-      ((uint32_t*)in)[0] = GPIO.in;
-      ((uint32_t*)in)[1] = GPIO.in1.val;
+      in32[0] = GPIO.in;
+      in32[1] = GPIO.in1.val;
       *reg_rd_h = mask_rd;
       val =              (1 & (in[(idx >>  0) & 7] >> ((mask >>  0) & 7)));
       val = (val << 1) + (1 & (in[(idx >>  3) & 7] >> ((mask >>  3) & 7)));

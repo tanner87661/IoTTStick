@@ -6,10 +6,9 @@
 */
 
 #include <Wire.h>
-//#include <M5StickC.h>
 
 void setup() {
-//  M5.begin();
+
   Serial.begin(115200);
   while (!Serial);             // Leonardo: wait for serial monitor
   Serial.println("\n\nI2C Scanner to scan for devices on each port pair D0 to D7\n");
@@ -17,11 +16,13 @@ void setup() {
 }
 
 //uint8_t portArray[] = {22, 21}; //scl 0 SDA 26 //LC2021
+//uint8_t portArray[] = {33, 32}; //scl 33 SDA 32 //IoTT Stick Grove
 uint8_t portArray[] = {0, 26}; //scl 0 SDA 26 //IoTT Stick
 //uint8_t portArray[] = {26, 27}; //scl 26 SDA 27 //Sensor Test
 //uint8_t portArray[] = {A5, A4}; //scl A5 SDA A4 //Arduino Uno, Nano
 //String portMap[] = {"D0", "D1", "D2", "D3", "D4", "D5", "D6", "D7"}; //for Wemos
 //String portMap[] = {"GPIO 22", "GPIO 21"}; //LC2021
+//String portMap[] = {"GPIO 33", "GPIO 32"}; //IoTT Stick Grove
 String portMap[] = {"GPIO 0", "GPIO 26"}; //IoTT Stick
 //String portMap[] = {"Analog IO A5", "Analog IO A4"}; //Arduino Uno, Nano
 //String portMap[] = {"GPIO 26", "GPIO 27"}; //Sensor Test
@@ -32,8 +33,13 @@ void scanPorts() {
       if (i != j)
       {
         Serial.println("Scanning (SDA : SCL) - " + portMap[i] + " : " + portMap[j] + " - ");
-        Wire.begin(portArray[i], portArray[j],400000); //for ESP32
-//        Wire.begin(); //for Arduino, Nano
+        Serial.println(Wire.setPins(portArray[i], portArray[j]));
+//        Wire.begin(portArray[i], portArray[j]); //for ESP32
+        Wire.begin(); //for Arduino, Nano
+        delay(10);
+        Serial.println(Wire.getClock());
+        Serial.println(Wire.setClock(400000));
+        Serial.println(Wire.getClock());
         delay(500);
         check_if_exist_I2C();
       }

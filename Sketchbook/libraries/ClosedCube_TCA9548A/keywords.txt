@@ -1,0 +1,26 @@
+##################################################################
+# Syntax Coloring Map For
+# Arduino library for Texas Instruments TCA9548A 8-Channel I2C Switch/Multiplexer
+##################################################################
+
+##################################################################
+# Datatypes (KEYWORD1)
+##################################################################
+
+ClosedCube	KEYWORD1
+Wired	KEYWORD1
+TCA9548A	KEYWORD1
+
+
+##################################################################
+# Methods and Functions (KEYWORD2)
+##################################################################
+
+address	KEYWORD2
+getChannel	KEYWORD2
+selectChannel	KEYWORD2
+nextChannel	KEYWORD2
+
+
+
+### Updated: Saturday, 23 March 2019 at 11:59:13 GMT-00:00

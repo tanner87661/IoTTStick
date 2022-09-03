@@ -1,4 +1,4 @@
-//onLocoNetMessage is called everytime a LocoNet message is received
+//callbackLocoNetMessage is called everytime a LocoNet message is received
 //it should decode valid messages, update any status buffer and call event handlers as needed
 //LocoNet messages coming in from Communication module side, e.g. LN Driver, MQTT, or Gateway
 

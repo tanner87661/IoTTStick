@@ -1,0 +1,16 @@
+{
+  "name": "M5-DLight",
+  "description": "Library for M5Stack Unit&Hat DLight",
+  "keywords": "M5Stack Unit Hat DLight",
+  "authors": {
+    "name": "M5Stack",
+    "url": "http://www.m5stack.com"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/m5stack/M5-DLight.git"
+  },
+  "version": "0.0.1",
+  "frameworks": "arduino",
+  "platforms": "espressif32"
+}

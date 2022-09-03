@@ -19,10 +19,10 @@ Contributors:
 
 #include <string.h>
 
-#if __has_include(<esp32/rom/lldesc.h>)
- #include <esp32/rom/lldesc.h>
-#else
+#if __has_include(<rom/lldesc.h>)
  #include <rom/lldesc.h>
+#else
+ #include <esp32/rom/lldesc.h>
 #endif
 
 #if __has_include(<driver/spi_common_internal.h>)
@@ -31,6 +31,17 @@ Contributors:
 
 #include <driver/spi_common.h>
 #include <soc/spi_reg.h>
+
+#if __has_include(<esp_idf_version.h>)
+ #include <esp_idf_version.h>
+ #if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(4, 3, 0)
+  #define LGFX_ESP32_SPI_DMA_CH SPI_DMA_CH_AUTO
+ #endif
+#endif
+
+#ifndef LGFX_ESP32_SPI_DMA_CH
+#define LGFX_ESP32_SPI_DMA_CH 0
+#endif
 
 #include "../../Bus.hpp"
 #include "../common.hpp"
@@ -43,7 +54,7 @@ namespace lgfx
 
   class Bus_SPI : public IBus
   {
-#if defined (CONFIG_IDF_TARGET_ESP32C3)
+#if !defined (SPI_MOSI_DLEN_REG)
     static constexpr uint32_t SPI_EXECUTE = SPI_USR | SPI_UPDATE;
     #define SPI_MOSI_DLEN_REG(i) (REG_SPI_BASE(i) + 0x1C)
     #define SPI_MISO_DLEN_REG(i) (REG_SPI_BASE(i) + 0x1C)
@@ -63,11 +74,10 @@ namespace lgfx
       uint8_t spi_mode = 0;
       bool spi_3wire = true;
       bool use_lock = true;
+      uint8_t dma_channel = LGFX_ESP32_SPI_DMA_CH;
 #if !defined (CONFIG_IDF_TARGET) || defined (CONFIG_IDF_TARGET_ESP32)
-      uint8_t dma_channel = 0;
       spi_host_device_t spi_host = VSPI_HOST;
 #else
-      uint8_t dma_channel = SPI_DMA_CH_AUTO; // or SPI_DMA_DISABLED
       spi_host_device_t spi_host = SPI2_HOST;
 #endif
     };
@@ -87,6 +97,8 @@ namespace lgfx
     void endTransaction(void) override;
     void wait(void) override;
     bool busy(void) const override;
+    uint32_t getClock(void) const override { return _cfg.freq_write; }
+    void setClock(uint32_t freq) override { if (_cfg.freq_write != freq) { _cfg.freq_write = freq; _last_freq_apb = 0; } }
 
     void flush(void) override {}
     bool writeCommand(uint32_t data, uint_fast8_t bit_length) override;
@@ -100,6 +112,7 @@ namespace lgfx
     void execDMAQueue(void) override;
     uint8_t* getDMABuffer(uint32_t length) override { return _flip_buffer.getBuffer(length); }
 
+    void beginRead(uint_fast8_t dummy_bits) override;
     void beginRead(void) override;
     void endRead(void) override;
     uint32_t readData(uint_fast8_t bit_length) override;
@@ -155,8 +168,8 @@ namespace lgfx
     volatile uint32_t* _spi_cmd_reg = nullptr;
     volatile uint32_t* _spi_user_reg = nullptr;
     volatile uint32_t* _spi_dma_out_link_reg = nullptr;
-    volatile uint32_t* _spi_dma_outstatus_reg = nullptr;    
-    volatile uint32_t* _clear_dma_reg = nullptr;    
+    volatile uint32_t* _spi_dma_outstatus_reg = nullptr;
+    volatile uint32_t* _clear_dma_reg = nullptr;
     uint32_t _last_freq_apb = 0;
     uint32_t _clkdiv_write = 0;
     uint32_t _clkdiv_read = 0;

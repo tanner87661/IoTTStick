@@ -70,5 +70,5 @@ void untokstr(char* strList[], uint8_t listLen, char* inpStr, const char* token)
 		numStr++;
 		tokPos = strtok(NULL, token);
 	}	
-	strList[numStr] = '\0';
+	strList[numStr] = NULL;
 }

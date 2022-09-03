@@ -1,0 +1,16 @@
+{
+  "name": "PCA9554",
+  "description": "PCA9554 8 bit I2C port expander arduino/esp library",
+  "keywords": "PCA9554",
+  "authors": {
+    "name": "AD0ND",
+    "url": "https://github.com/AD0ND"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Tinyu-Zhao/PCA9554"
+  },
+  "version": "0.0.1",
+  "framework": "arduino",
+  "platforms": "espressif32"
+}

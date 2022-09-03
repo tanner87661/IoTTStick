@@ -138,7 +138,7 @@ void handleUpload(AsyncWebServerRequest *request, String filename, size_t index,
 
 void processStatustoWebClient()
 {
-//    Serial.println("Keep alive");
+//  Serial.println("Keep alive");
   DynamicJsonDocument doc(640);
   char myStatusMsg[600];
   doc["Cmd"] = "STATS";
@@ -163,22 +163,20 @@ void processStatustoWebClient()
   Data["sigstrength"] = WiFi.RSSI();
   Data["apname"] = WiFi.SSID();
 
-  Data["temp"] = M5.Axp.GetTempInAXP192();
-  Data["ubat"] = M5.Axp.GetBatVoltage();
-  Data["ibat"] =  M5.Axp.GetBatCurrent();
-  Data["ubus"] = M5.Axp.GetVBusVoltage();
-  Data["ibus"] = M5.Axp.GetVBusCurrent();
-  Data["uin"] = M5.Axp.GetVinVoltage();
-  Data["iin"] = M5.Axp.GetVinCurrent();
-  Data["pwrbat"] = M5.Axp.GetBatPower();
-  Data["ibat"] = M5.Axp.GetBatCurrent();
-  Data["ubat"] = M5.Axp.GetBatVoltage();
+  Data["temp"] = M5.Power.Axp192.getInternalTemperature();
+  Data["ubat"] = M5.Power.Axp192.getBatteryVoltage();
+  Data["ibat"] =  M5.Power.Axp192.getBatteryDischargeCurrent();
+  Data["pwrbat"] = M5.Power.Axp192.getBatteryPower();
+  Data["ubus"] = M5.Power.Axp192.getVBUSVoltage();
+  Data["ibus"] = M5.Power.Axp192.getVBUSCurrent();
+  Data["uin"] = M5.Power.Axp192.getACINVolatge();
+  Data["iin"] = M5.Power.Axp192.getACINCurrent();
 
   serializeJson(doc, myStatusMsg);
 //  Serial.println(myStatusMsg);
   globalClient->text(myStatusMsg);
   lastWifiUse = millis();
-//    Serial.println("Keep alive done");
+//  Serial.println("Keep alive done");
 }
 
 void sendKeepAlive()
@@ -187,10 +185,12 @@ void sendKeepAlive()
   {
     if (millis() > sendDataTimer)
     {
+//    Serial.println("Send File");
       int hlpRxPtr = (fileListRdPtr + 1) % outListLen;
       sendJSONFile(hlpRxPtr);
       fileListRdPtr = hlpRxPtr;
       sendDataTimer = millis() + sendDataInterval;
+//    Serial.println("Send File done");
     }
   } 
   else
@@ -248,7 +248,7 @@ bool addFileToTx(String fileName, int fileIndex, String cmdType, uint8_t multiMo
 
 void sendJSONFile(int thisFileIndex)
 {
-//  Serial.printf("Try to send File %s Type %s as Index %i\n", &outFileList[thisFileIndex].fileName[0], &outFileList[thisFileIndex].cmdType[0], outFileList[thisFileIndex].fileIndex);
+//  Serial.printf("Try to send Mode %i File %s Type %s as Index %i\n", outFileList[thisFileIndex].multiFileMode, &outFileList[thisFileIndex].fileName[0], &outFileList[thisFileIndex].cmdType[0], outFileList[thisFileIndex].fileIndex);
   String fileStr;
   uint32_t retStr = 0;//"";
   wsTxWritePtr = 0;
@@ -290,7 +290,8 @@ uint32_t createCfgEntryByName(String fileName, String cmdType, char * toBuffer)
   strcat(toBuffer, "\"Type\":\"");
   strcat(toBuffer, cmdType.c_str());
   strcat(toBuffer, "\",\"Data\":");
-  uint32_t retStr = readFileToBuffer(configDir + "/" + fileName, &wsTxBuffer[strlen(wsTxBuffer)], wsBufferSize - strlen(wsTxBuffer));
+//  uint32_t retStr = readFileToBuffer(configDir + "/" + fileName, &wsTxBuffer[strlen(wsTxBuffer)], wsBufferSize - strlen(wsTxBuffer));
+  return readFileToBuffer(configDir + "/" + fileName, &wsTxBuffer[strlen(wsTxBuffer)], wsBufferSize - strlen(wsTxBuffer));
 }
 
 /*
@@ -603,7 +604,7 @@ void processWsMessage(char * newMsg, int msgLen, AsyncWebSocketClient * client)
   } 
   else
     Serial.printf("processWsMessage deserializeJson() wsProcessing failed: %s\n", error.c_str());
-//  yield();
+  yield();
 }
 
 void onWsEvent(AsyncWebSocket * server, AsyncWebSocketClient * client, AwsEventType type, void * arg, uint8_t *data, size_t len)
@@ -705,6 +706,7 @@ void onWsEvent(AsyncWebSocket * server, AsyncWebSocketClient * client, AwsEventT
       }
     case WS_EVT_PONG:
       {
+        Serial.println("WS Pong");
         break;
       }
     case WS_EVT_ERROR:
@@ -713,4 +715,5 @@ void onWsEvent(AsyncWebSocket * server, AsyncWebSocketClient * client, AwsEventT
         break;
       }
   }
+//  Serial.println("processed");
 }

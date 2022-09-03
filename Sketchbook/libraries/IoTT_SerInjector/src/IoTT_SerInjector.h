@@ -45,7 +45,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #define txBufferSize 64
 #define verBufferSize 48
 
-#define queBufferSize 50 //messages that can be written in one burst before buffer overflow
+#define queInjBufferSize 50 //messages that can be written in one burst before buffer overflow
 
 class IoTT_DigitraxBuffers;
 
@@ -80,7 +80,7 @@ private:
 	bool parseDCCEx(lnTransmitMsg* thisEntry, lnTransmitMsg* txBuffer);
 	
    // Member variables
-   lnTransmitMsg transmitQueue[queBufferSize];
+   lnTransmitMsg transmitQueue[queInjBufferSize];
    uint8_t que_rdPos, que_wrPos = 0;
    lnTransmitMsg lnInBuffer;
    int m_rxPin, m_txPin;

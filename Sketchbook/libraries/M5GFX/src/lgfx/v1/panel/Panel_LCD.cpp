@@ -108,8 +108,6 @@ namespace lgfx
   color_depth_t Panel_LCD::setColorDepth(color_depth_t depth)
   {
     setColorDepth_impl(depth);
-    _write_bits = _write_depth & color_depth_t::bit_mask;
-    _read_bits = _read_depth & color_depth_t::bit_mask;
 
     update_madctl();
 
@@ -119,7 +117,7 @@ namespace lgfx
   {
     r &= 7;
     _rotation = r;
-    // offset_rotationを加算 (0~3:回転方向、 4:上下反転フラグ)
+    // offset_rotationを加算 (0~3:回転方向、 4:上下反転フラグ);
     _internal_rotation = ((r + _cfg.offset_rotation) & 3) | ((r & 4) ^ (_cfg.offset_rotation & 4));
 
     auto ox = _cfg.offset_x;
@@ -151,11 +149,13 @@ namespace lgfx
   {
     if (_bus != nullptr)
     {
+      
       startWrite();
       write_command(CMD_COLMOD);
       writeData(getColMod(_write_bits), 1);
       write_command(CMD_MADCTL);
       writeData(getMadCtl(_internal_rotation) | (_cfg.rgb_order ? MAD_RGB : MAD_BGR), 1);
+      _bus->flush();
       endWrite();
     }
   }
@@ -199,8 +199,7 @@ namespace lgfx
 
   uint32_t Panel_LCD::read_bits(uint_fast8_t bit_index, uint_fast8_t bit_len)
   {
-    _bus->beginRead();
-    if (bit_index) { _bus->readData(bit_index); } // dummy read
+    _bus->beginRead(bit_index);
     auto res = _bus->readData(bit_len);
     cs_control(true);
     _bus->endRead();
@@ -317,9 +316,10 @@ namespace lgfx
           static constexpr uint32_t WRITEPIXELS_MAXLEN = 32767;
 
           setWindow(x, y, x + w - 1, y + h - 1);
-          bool nogap = (param->src_bitwidth == w || h == 1);
+          // bool nogap = (param->src_bitwidth == w || h == 1);
+          bool nogap = (h == 1) || (param->src_y32_add == 0 && ((param->src_bitwidth << pixelcopy_t::FP_SCALE) == (w * param->src_x32_add)));
           if (nogap && (w * h <= WRITEPIXELS_MAXLEN))
-          { 
+          {
             writePixels(param, w * h, use_dma);
           }
           else
@@ -402,12 +402,7 @@ namespace lgfx
     setWindow(x, y, x + w - 1, y + h - 1);
 
     write_command(_cmd_ramrd);
-    _bus->beginRead();
-
-    if (_cfg.dummy_read_pixel)
-    {
-      _bus->readData(_cfg.dummy_read_pixel); // dummy read
-    }
+    _bus->beginRead(_cfg.dummy_read_pixel);
 
     if (param->no_convert)
     {
@@ -418,6 +413,11 @@ namespace lgfx
       _bus->readPixels(dst, param, len);
     }
     cs_control(true);
+    if (_cfg.end_read_delay_us)
+    {
+      delayMicroseconds(_cfg.end_read_delay_us);
+    }
+
     _bus->endRead();
 
     endWrite();
@@ -427,23 +427,22 @@ namespace lgfx
 
   void Panel_LCD::set_window_8(uint_fast16_t xs, uint_fast16_t ys, uint_fast16_t xe, uint_fast16_t ye, uint32_t cmd)
   {
-    if (xs != _xs || xe != _xe)
+    static constexpr uint32_t mask = 0xFF00FF;
+    uint32_t x = xs + (xe << 16);
+    if (_xsxe != x)
     {
-      _xs = xs;
-      _xe = xe;
+      _xsxe = x;
       _bus->writeCommand(CMD_CASET, 8);
-      xs += _colstart;
-      xe += _colstart;
-      _bus->writeData(xs >> 8 | (xs & 0xFF) << 8 | (xe << 8 | xe >> 8) << 16, 32);
+      x += _colstart + (_colstart << 16);
+      _bus->writeData(((x >> 8) & mask) + ((x & mask) << 8), 32);
     }
-    if (ys != _ys || ye != _ye)
+    uint32_t y = ys + (ye << 16);
+    if (_ysye != y)
     {
-      _ys = ys;
-      _ye = ye;
+      _ysye = y;
       _bus->writeCommand(CMD_RASET, 8);
-      ys += _rowstart;
-      ye += _rowstart;
-      _bus->writeData(ys >> 8 | (ys & 0xFF) << 8 | (ye << 8 | ye >> 8) << 16, 32);
+      y += _rowstart + (_rowstart << 16);
+      _bus->writeData(((y >> 8) & mask) + ((y & mask) << 8), 32);
     }
     _bus->writeCommand(cmd, 8);
   }

@@ -724,6 +724,8 @@ function setTestSpeed(sender)
 {
 	configData[workCfg].MaxTestSpeed = verifyNumber(sender.value, configData[workCfg].MaxTestSpeed); 
 	var techSpeed = (1000 * configData[workCfg].MaxTestSpeed / 3.6) / configData[workCfg].ScaleList[configData[workCfg].ScaleIndex].Scale;
+	if (configData[workCfg].Units == 1)
+		techSpeed *= 1.6; //imperial
 //	console.log(configData[workCfg].MaxTestSpeed, techSpeed, configData[workCfg].ScaleList[configData[workCfg].ScaleIndex].Scale);
 	if (!isNaN(techSpeed))
 	{
@@ -1071,7 +1073,8 @@ function processSpeedTableInput(jsonData)
 	}
 	validTechSpeedDef = true;
 	drawProfileBox(canvasElementTechSpeed, techSpeedProfileGraph);
-	calcTable();
+	if (jsonData.final != undefined)
+		calcTable();
 //	console.log(speedTableProfileGraph);
 }
 
@@ -1104,8 +1107,8 @@ function processSensorInput(jsonData)
 	{
 		writeTextField("radius", dirStr);
 		writeTextField("heading", (180 * jsonData.EulerVect[0] / 3.1415).toFixed(2));
-		writeTextField("roll", (180 * jsonData.EulerVect[1] / 3.141).toFixed(2));
-		writeTextField("pitch", (180 * jsonData.EulerVect[2] / 3.1415).toFixed(2));
+		writeTextField("roll", jsonData.Banking.toFixed(1)); //(180 * jsonData.EulerVect[1] / 3.141).toFixed(2));
+		writeTextField("pitch", jsonData.Slope.toFixed(1)); //(180 * jsonData.EulerVect[2] / 3.1415).toFixed(2));
 		addEntryToArray(lineGraphHeading, jsonData.TS , ((180 * jsonData.EulerVect[0]) / 3.1415), speedGraph.MaxXRange * 1000);
 		addEntryToArray(lineGraphGrade, jsonData.TS , ((180 * jsonData.EulerVect[2]) / 3.1415), speedGraph.MaxXRange * 1000);
 		addEntryToArray(lineGraphElevation, jsonData.TS , ((180 * jsonData.EulerVect[1]) / 3.1415), speedGraph.MaxXRange * 1000);

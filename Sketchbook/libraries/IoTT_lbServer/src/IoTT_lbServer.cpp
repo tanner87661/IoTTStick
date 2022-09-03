@@ -271,7 +271,7 @@ locoDef* tcpDef::getLocoBySlot(locoDef* startAt, uint8_t slotAddr, char thID)
 	return NULL;
 }
 
-void tcpDef::setLocoAction(uint16_t locoAddr, char thID, char* ActionCode)
+void tcpDef::setLocoAction(uint16_t locoAddr, char thID, const char* ActionCode)
 {
 //	Serial.printf("Loco Action Throttle %c Addr %i %s\n", thID, locoAddr, ActionCode);
 	char replBuf[100] = {'\0'};
@@ -279,7 +279,7 @@ void tcpDef::setLocoAction(uint16_t locoAddr, char thID, char* ActionCode)
 	locoDef * thisLoco = NULL;
 	if (locoAddr != 0xFFFF)
 		thisLoco = getLocoByAddr(NULL, locoAddr, thID);
-	char* paramStr  = &ActionCode[1];
+	const char* paramStr  = &ActionCode[1];
 	uint8_t paramVal = 0;
 	lnTransmitMsg txData;
 	bool forceVal = false;
@@ -408,9 +408,11 @@ void tcpDef::setLocoAction(uint16_t locoAddr, char thID, char* ActionCode)
 						}
 					}
 				}
-//				Serial.println(replBuf);
 				if (thisClient->space() > strlen(replBuf))
 				{
+//					Serial.print(thisClient->remoteIP());
+//					Serial.print(" Out: ");
+//					Serial.println(replBuf);
 					thisClient->add(replBuf, strlen(replBuf));
 					thisClient->send();
 				}
@@ -632,7 +634,8 @@ void IoTT_LBServer::handleDisconnect(AsyncClient* client)
 
 void IoTT_LBServer::handleTimeOut(AsyncClient* client, uint32_t time) 
 {
-  Serial.printf("Client ACK timeout ip: %s \n", client->remoteIP().toString().c_str());
+  Serial.printf("Client ACK timeout ip: %s for %ims\n", client->remoteIP().toString().c_str(), time);
+  client->close(true);
 }
 
 /*
@@ -872,7 +875,7 @@ bool IoTT_LBServer::processWIServerMessage(AsyncClient* client, char * c)
 	if (currClient)
 	{
 		currClient->nextPing = millis() + pingInterval + random(500);
-		char* strList[4];
+		char* strList[5];
 		untokstr(strList, 4, c, "<;>"); //IoTT_CommDef
 		switch (c[0])
 		{
@@ -1436,7 +1439,8 @@ bool IoTT_LBServer::sendWIServerMessageString(AsyncClient * thisClient, uint8_t 
 
 bool IoTT_LBServer::sendWIClientMessage(AsyncClient * thisClient, String cmdMsg)
 {
-//	Serial.print("Out: ");
+//	Serial.print(thisClient->remoteIP());
+//	Serial.print(" Out: ");
 //	Serial.println(cmdMsg);
 	if (thisClient)
 		if (thisClient->canSend())
@@ -1517,7 +1521,6 @@ void IoTT_LBServer::processLoopWI() //process function for WiThrottle
 						clients[i]->lastFC = digitraxBuffer->getFCTime();
 					}
 			}
-
 			if (que_wrPos != que_rdPos)
 			{
 				int hlpQuePtr = (que_rdPos + 1) % queBufferSize;

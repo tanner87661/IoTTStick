@@ -32,12 +32,26 @@ Contributors:
 #include "lgfx_fonts.hpp"
 #include "Touch.hpp"
 #include "panel/Panel_Device.hpp"
+#include "../boards.hpp"
 
 namespace lgfx
 {
  inline namespace v1
  {
+
+#if defined ( _MSVC_LANG )
+#define LGFX_INLINE                        inline
+#define LGFX_INLINE_T template<typename T> inline
+#else
+#define LGFX_INLINE                        __attribute__ ((always_inline)) inline
+#define LGFX_INLINE_T template<typename T> __attribute__ ((always_inline)) inline
+#endif
 //----------------------------------------------------------------------------
+
+#if !defined (ARDUINO) || defined (ARDUINO_ARCH_MBED_RP2040) || defined (ARDUINO_ARCH_RP2040)
+#define LGFX_PRINTF_ENABLED
+#endif
+
 
   class LGFXBase
 #if defined (ARDUINO)
@@ -47,9 +61,6 @@ namespace lgfx
   public:
     LGFXBase(void);
     virtual ~LGFXBase(void) = default;
-
-#define LGFX_INLINE                        __attribute__ ((always_inline)) inline
-#define LGFX_INLINE_T template<typename T> __attribute__ ((always_inline)) inline
 
     LGFX_INLINE static constexpr uint8_t  color332(uint8_t r, uint8_t g, uint8_t b) { return lgfx::color332(r, g, b); }
     LGFX_INLINE static constexpr uint16_t color565(uint8_t r, uint8_t g, uint8_t b) { return lgfx::color565(r, g, b); }
@@ -225,9 +236,6 @@ namespace lgfx
       _panel->writePixels(&pc, len, false);
     }
 
-#undef LGFX_INLINE
-#undef LGFX_INLINE_T
-
     uint8_t getRotation(void) const { return _panel->getRotation(); }
     void setRotation(uint_fast8_t rotation);
     void setColorDepth(int bits) { setColorDepth((color_depth_t)(bits & color_depth_t::bit_mask));}
@@ -286,7 +294,6 @@ namespace lgfx
     }
 
     void pushImage(int32_t x, int32_t y, int32_t w, int32_t h, pixelcopy_t *param, bool use_dma = false);
-
 
 //----------------------------------------------------------------------------
 
@@ -408,6 +415,12 @@ namespace lgfx
 
 //----------------------------------------------------------------------------
 
+    LGFX_INLINE_T void pushGrayscaleImage(int32_t x, int32_t y, int32_t w, int32_t h, const uint8_t* image, color_depth_t depth, const T& forecolor, const T& backcolor) { push_grayimage(x, y, w, h, image, depth, convert_to_rgb888(forecolor), convert_to_rgb888(backcolor)); }
+    LGFX_INLINE_T void pushGrayscaleImageRotateZoom(float dst_x, float dst_y, float src_x, float src_y, float angle, float zoom_x, float zoom_y, int32_t w, int32_t h, const uint8_t* image, color_depth_t depth, const T& forecolor, const T& backcolor) { push_grayimage_rotate_zoom(dst_x, dst_y, src_x, src_y, angle, zoom_x, zoom_y, w, h, image, depth, convert_to_rgb888(forecolor), convert_to_rgb888(backcolor)); }
+    LGFX_INLINE_T void pushGrayscaleImageAffine(const float matrix[6], int32_t w, int32_t h, const uint8_t* image, color_depth_t depth, const T& forecolor, const T& backcolor) { push_grayimage_affine(matrix, w, h, image, depth, convert_to_rgb888(forecolor), convert_to_rgb888(backcolor)); }
+
+//----------------------------------------------------------------------------
+
     /// read RGB565 16bit color
     uint16_t readPixel(int32_t x, int32_t y)
     {
@@ -418,7 +431,7 @@ namespace lgfx
 
       _panel->readRect(x, y, 1, 1, &data, &p);
 
-      return __builtin_bswap16(data);
+      return (data<<8)+(data>>8);
     }
 
     /// read RGB888 24bit color
@@ -434,7 +447,7 @@ namespace lgfx
       return data[0];
     }
 
-    __attribute__ ((always_inline)) inline
+    LGFX_INLINE
     void readRectRGB( int32_t x, int32_t y, int32_t w, int32_t h, uint8_t* data) { readRectRGB(x, y, w, h, (bgr888_t*)data); }
     void readRectRGB( int32_t x, int32_t y, int32_t w, int32_t h, RGBColor* data)
     {
@@ -445,11 +458,19 @@ namespace lgfx
     template<typename T> inline
     void readRect( int32_t x, int32_t y, int32_t w, int32_t h, T* data)
     {
-      pixelcopy_t p(nullptr, get_depth<T>::value, _read_conv.depth, false, getPalette());
+      auto src_palette = getPalette();
+      pixelcopy_t p(nullptr, get_depth<T>::value, _read_conv.depth, false, src_palette);
       if (std::is_same<rgb565_t, T>::value || std::is_same<rgb888_t, T>::value || std::is_same<argb8888_t, T>::value || std::is_same<grayscale_t, T>::value || p.fp_copy == nullptr)
       {
         p.no_convert = false;
-        p.fp_copy = pixelcopy_t::get_fp_copy_rgb_affine_dst<T>(_read_conv.depth);
+        if (src_palette)
+        {
+          p.fp_copy = pixelcopy_t::copy_palette_affine<T, bgr888_t>;
+        }
+        else
+        {
+          p.fp_copy = pixelcopy_t::get_fp_copy_rgb_affine_dst<T>(_read_conv.depth);
+        }
       }
       read_rect(x, y, w, h, data, &p);
     }
@@ -463,9 +484,9 @@ namespace lgfx
 
 
     [[deprecated("use IFont")]]
-    void setCursor( int32_t x, int32_t y, uint8_t      font) { _filled_x = 0; _cursor_x = x; _cursor_y = y; setFont(fontdata[font]); }
-    void setCursor( int32_t x, int32_t y, const IFont* font) { _filled_x = 0; _cursor_x = x; _cursor_y = y; setFont(font); }
-    void setCursor( int32_t x, int32_t y)                    { _filled_x = 0; _cursor_x = x; _cursor_y = y; }
+    void setCursor( int32_t x, int32_t y, uint8_t      font) { setCursor(x, y); setFont(fontdata[font]); }
+    void setCursor( int32_t x, int32_t y, const IFont* font) { setCursor(x, y); setFont(font); }
+    void setCursor( int32_t x, int32_t y)                    { _decoderState = utf8_state0; _filled_x = 0; _cursor_x = x; _cursor_y = y; }
     int32_t getCursorX(void) const { return _cursor_x; }
     int32_t getCursorY(void) const { return _cursor_y; }
     void setTextStyle(const TextStyle& text_style) { _text_style = text_style; }
@@ -499,9 +520,12 @@ namespace lgfx
     }
 
     [[deprecated("use IFont")]]
-    int32_t fontHeight(uint8_t font) const { return ((const BaseFont*)fontdata[font])->height * _text_style.size_y; }
+    int32_t fontHeight(uint8_t font) const { return (int32_t)(((const BaseFont*)fontdata[font])->height * _text_style.size_y); }
     int32_t fontHeight(const IFont* font) const;
-    int32_t fontHeight(void) const { return _font_metrics.height * _text_style.size_y; }
+    int32_t fontHeight(void) const { return (int32_t)(_font_metrics.height * _text_style.size_y); }
+    int32_t fontWidth(uint8_t font) const { return (int32_t)(((const BaseFont*)fontdata[font])->width * _text_style.size_x); }
+    int32_t fontWidth(const IFont* font) const;
+    int32_t fontWidth(void) const { return (int32_t)(_font_metrics.width * _text_style.size_x); }
     int32_t textLength(const char *string, int32_t width);
     int32_t textWidth(const char *string) { return textWidth(string, _font); };
     int32_t textWidth(const char *string, const IFont* font);
@@ -571,9 +595,9 @@ namespace lgfx
     }
 
     [[deprecated("use getFont()")]]
-    uint8_t getTextFont(void) const
+    uint_fast8_t getTextFont(void) const
     {
-      size_t i = 0;
+      uint_fast8_t i = 0;
       do {
         if (fontdata[i] == _font) return i;
       } while (fontdata[++i]);
@@ -593,7 +617,7 @@ namespace lgfx
     [[deprecated("use setFont()")]]
     void setFreeFont(const IFont* font = nullptr) { setFont(font); }
 
-    __attribute__ ((always_inline)) inline const IFont* getFont (void) const { return _font; }
+    LGFX_INLINE const IFont* getFont (void) const { return _font; }
 
     void setFont(const IFont* font);
 
@@ -653,13 +677,20 @@ namespace lgfx
   //size_t println(const String &s)              { size_t t = print(s); return println() + t; }
   //size_t println(const __FlashStringHelper *s) { size_t t = print(s); return println() + t; }
 
-    size_t printf(const char * format, ...)  __attribute__ ((format (printf, 2, 3)));
-
     size_t write(const char* str)                 { return (!str) ? 0 : write((const uint8_t*)str, strlen(str)); }
     size_t write(const char *buf, size_t size)    { return write((const uint8_t *) buf, size); }
   #else
     using Print::write;
   #endif
+
+  #if defined (LGFX_PRINTF_ENABLED)
+   #ifdef __GNUC__
+    size_t printf(const char* format, ...)  __attribute__((format(printf, 2, 3)));
+   #else
+    size_t printf(const char* format, ...);
+   #endif
+  #endif
+
     size_t write(const uint8_t *buf, size_t size) { size_t n = 0; this->startWrite(); while (size--) { n += write(*buf++); } this->endWrite(); return n; }
     size_t write(uint8_t utf8);
     size_t vprintf(const char *format, va_list arg);
@@ -672,45 +703,35 @@ namespace lgfx
 #endif
     void qrcode(const char *string, int32_t x = -1, int32_t y = -1, int32_t width = -1, uint8_t version = 1);
 
+  #define LGFX_FUNCTION_GENERATOR(drawImg, draw_img) \
+    protected: \
+    bool draw_img(DataWrapper* data, int32_t x, int32_t y, int32_t maxWidth, int32_t maxHeight, int32_t offX, int32_t offY, float scale_x, float scale_y, datum_t datum); \
+    public: \
+    bool drawImg(const uint8_t *data, uint32_t len, int32_t x=0, int32_t y=0, int32_t maxWidth=0, int32_t maxHeight=0, int32_t offX=0, int32_t offY=0, float scale_x = 1.0f, float scale_y = 0.0f, datum_t datum = datum_t::top_left) \
+    { \
+      PointerWrapper data_wrapper; \
+      data_wrapper.set(data, len); \
+      return this->draw_img(&data_wrapper, x, y, maxWidth, maxHeight, offX, offY, scale_x, scale_y, datum); \
+    } \
+    inline bool drawImg(DataWrapper *data, int32_t x=0, int32_t y=0, int32_t maxWidth=0, int32_t maxHeight=0, int32_t offX=0, int32_t offY=0, float scale_x = 1.0f, float scale_y = 0.0f, datum_t datum = datum_t::top_left) \
+    { \
+      return this->draw_img(data, x, y, maxWidth, maxHeight, offX, offY, scale_x, scale_y, datum); \
+    } \
 
-    bool drawBmp(const uint8_t *bmp_data, uint32_t bmp_len, int32_t x=0, int32_t y=0, int32_t maxWidth=0, int32_t maxHeight=0, int32_t offX=0, int32_t offY=0, float scale_x = 1.0f, float scale_y = 0.0f, datum_t datum = datum_t::top_left)
-    {
-      PointerWrapper data;
-      data.set(bmp_data, bmp_len);
-      return this->draw_bmp(&data, x, y, maxWidth, maxHeight, offX, offY, scale_x, scale_y, datum);
-    }
-    bool drawJpg(const uint8_t *jpg_data, uint32_t jpg_len, int32_t x=0, int32_t y=0, int32_t maxWidth=0, int32_t maxHeight=0, int32_t offX=0, int32_t offY=0, float scale_x = 1.0f, float scale_y = 0.0f, datum_t datum = datum_t::top_left)
-    {
-      PointerWrapper data;
-      data.set(jpg_data, jpg_len);
-      return this->draw_jpg(&data, x, y, maxWidth, maxHeight, offX, offY, scale_x, scale_y, datum);
-    }
+    LGFX_FUNCTION_GENERATOR(drawBmp, draw_bmp)
+    LGFX_FUNCTION_GENERATOR(drawJpg, draw_jpg)
+    LGFX_FUNCTION_GENERATOR(drawPng, draw_png)
+    LGFX_FUNCTION_GENERATOR(drawQoi, draw_qoi)
+
+  #undef LGFX_FUNCTION_GENERATOR
+
     [[deprecated("use float scale")]] bool drawJpg(const uint8_t *jpg_data, uint32_t jpg_len, int32_t x, int32_t y, int32_t maxWidth, int32_t maxHeight, int32_t offX, int32_t offY, jpeg_div::jpeg_div_t scale)
     {
       return drawJpg(jpg_data, jpg_len, x, y, maxWidth, maxHeight, offX, offY, 1.0f / (1 << scale));
     }
-    bool drawPng(const uint8_t *png_data, uint32_t png_len, int32_t x = 0, int32_t y = 0, int32_t maxWidth = 0, int32_t maxHeight = 0, int32_t offX = 0, int32_t offY = 0, float scale_x = 1.0f, float scale_y = 0.0f, datum_t datum = datum_t::top_left)
-    {
-      PointerWrapper data;
-      data.set(png_data, png_len);
-      return this->draw_png(&data, x, y, maxWidth, maxHeight, offX, offY, scale_x, scale_y, datum);
-    }
-
-    inline bool drawBmp(DataWrapper *data, int32_t x=0, int32_t y=0, int32_t maxWidth=0, int32_t maxHeight=0, int32_t offX=0, int32_t offY=0, float scale_x = 1.0f, float scale_y = 0.0f, datum_t datum = datum_t::top_left)
-    {
-      return this->draw_bmp(data, x, y, maxWidth, maxHeight, offX, offY, scale_x, scale_y, datum);
-    }
-    inline bool drawJpg(DataWrapper *data, int32_t x=0, int32_t y=0, int32_t maxWidth=0, int32_t maxHeight=0, int32_t offX=0, int32_t offY=0, float scale_x = 1.0f, float scale_y = 0.0f, datum_t datum = datum_t::top_left)
-    {
-      return this->draw_jpg(data, x, y, maxWidth, maxHeight, offX, offY, scale_x, scale_y, datum);
-    }
     [[deprecated("use float scale")]] inline bool drawJpg(DataWrapper *data, int32_t x, int32_t y, int32_t maxWidth, int32_t maxHeight, int32_t offX, int32_t offY, jpeg_div::jpeg_div_t scale)
     {
       return drawJpg(data, x, y, maxWidth, maxHeight, offX, offY, 1.0f / (1 << scale));
-    }
-    inline bool drawPng(DataWrapper *data, int32_t x = 0, int32_t y = 0, int32_t maxWidth = 0, int32_t maxHeight = 0, int32_t offX = 0, int32_t offY = 0, float scale_x = 1.0f, float scale_y = 0.0f, datum_t datum = datum_t::top_left)
-    {
-      return this->draw_png(data, x, y, maxWidth, maxHeight, offX, offY, scale_x, scale_y, datum);
     }
 
     void* createPng( size_t* datalen, int32_t x = 0, int32_t y = 0, int32_t width = 0, int32_t height = 0);
@@ -758,13 +779,13 @@ namespace lgfx
 
     bool _swapBytes = false;
 
-    enum utf8_decode_state_t
+    enum utf8_decode_state_t : uint8_t
     { utf8_state0 = 0
     , utf8_state1 = 1
     , utf8_state2 = 2
     };
     utf8_decode_state_t _decoderState = utf8_state0;   // UTF8 decoder state
-    uint_fast16_t _unicode_buffer = 0;   // Unicode code-point buffer
+    uint16_t _unicode_buffer = 0;   // Unicode code-point buffer
 
     int32_t _cursor_x = 0;  // print text cursor
     int32_t _cursor_y = 0;
@@ -782,7 +803,7 @@ namespace lgfx
     bool _textwrap_y = false;
     bool _textscroll = false;
 
-    __attribute__ ((always_inline)) inline static bool _adjust_abs(int32_t& x, int32_t& w) { if (w < 0) { x += w + 1; w = -w; } return !w; }
+    LGFX_INLINE static bool _adjust_abs(int32_t& x, int32_t& w) { if (w < 0) { x += w; w = -w; } return !w; }
     static bool _adjust_width(int32_t& x, int32_t& dx, int32_t& dw, int32_t left, int32_t width)
     {
       if (x < left) { dx = -x; dw += x; x = left; }
@@ -832,16 +853,16 @@ namespace lgfx
       }
       return pc;
     }
-    __attribute__ ((always_inline)) inline pixelcopy_t create_pc_fast(const uint8_t*  data) { return create_pc_fast(reinterpret_cast<const rgb332_t*>(data)); }
-    __attribute__ ((always_inline)) inline pixelcopy_t create_pc_fast(const uint16_t* data) { return create_pc_fast(data, _swapBytes); }
-    __attribute__ ((always_inline)) inline pixelcopy_t create_pc_fast(const void*     data) { return create_pc_fast(data, _swapBytes); }
-    __attribute__ ((always_inline)) inline pixelcopy_t create_pc_fast(const uint16_t* data, bool swap)
+    LGFX_INLINE pixelcopy_t create_pc_fast(const uint8_t*  data) { return create_pc_fast(reinterpret_cast<const rgb332_t*>(data)); }
+    LGFX_INLINE pixelcopy_t create_pc_fast(const uint16_t* data) { return create_pc_fast(data, _swapBytes); }
+    LGFX_INLINE pixelcopy_t create_pc_fast(const void*     data) { return create_pc_fast(data, _swapBytes); }
+    LGFX_INLINE pixelcopy_t create_pc_fast(const uint16_t* data, bool swap)
     {
       return swap && !hasPalette() && _write_conv.bits >= 8
            ? create_pc_fast(reinterpret_cast<const rgb565_t* >(data))
            : create_pc_fast(reinterpret_cast<const swap565_t*>(data));
     }
-    __attribute__ ((always_inline)) inline pixelcopy_t create_pc_fast(const void *data, bool swap)
+    LGFX_INLINE pixelcopy_t create_pc_fast(const void *data, bool swap)
     {
       return swap && !hasPalette() && _write_conv.bits >= 8
            ? create_pc_fast(reinterpret_cast<const rgb888_t*>(data))
@@ -907,16 +928,16 @@ namespace lgfx
       return pc;
     }
 
-    __attribute__ ((always_inline)) inline pixelcopy_t create_pc(const uint8_t*  data) { return create_pc(reinterpret_cast<const rgb332_t*>(data)); }
-    __attribute__ ((always_inline)) inline pixelcopy_t create_pc(const uint16_t* data) { return create_pc(data, _swapBytes); }
-    __attribute__ ((always_inline)) inline pixelcopy_t create_pc(const void*     data) { return create_pc(data, _swapBytes); }
-    __attribute__ ((always_inline)) inline pixelcopy_t create_pc(const uint16_t* data, bool swap)
+    LGFX_INLINE pixelcopy_t create_pc(const uint8_t*  data) { return create_pc(reinterpret_cast<const rgb332_t*>(data)); }
+    LGFX_INLINE pixelcopy_t create_pc(const uint16_t* data) { return create_pc(data, _swapBytes); }
+    LGFX_INLINE pixelcopy_t create_pc(const void*     data) { return create_pc(data, _swapBytes); }
+    LGFX_INLINE pixelcopy_t create_pc(const uint16_t* data, bool swap)
     {
       return swap && !hasPalette() && _write_conv.bits >= 8
            ? create_pc(reinterpret_cast<const rgb565_t* >(data))
            : create_pc(reinterpret_cast<const swap565_t*>(data));
     }
-    __attribute__ ((always_inline)) inline pixelcopy_t create_pc(const void* data, bool swap)
+    LGFX_INLINE pixelcopy_t create_pc(const void* data, bool swap)
     {
       return swap && !hasPalette() && _write_conv.bits >= 8
            ? create_pc(reinterpret_cast<const rgb888_t*>(data))
@@ -941,10 +962,7 @@ namespace lgfx
     template<typename T1, typename T2>
     pixelcopy_t create_pc_tr(const T1 *data, const T2& transparent)
     {
-      return create_pc_rawtr( data
-                            , (std::is_same<T1, T2>::value)
-                              ? transparent
-                              : get_fp_convert_src<T2>(get_depth<T1>::value, false)(transparent));
+      return create_pc_rawtr( data, color_convert<T1, T2>(transparent));
     }
 
     template<typename T> pixelcopy_t create_pc_tr(const uint8_t*  data, const T& transparent) { return create_pc_tr(reinterpret_cast<const rgb332_t*>(data), transparent); }
@@ -979,18 +997,17 @@ namespace lgfx
       return pc;
     }
 
-
-    __attribute__ ((always_inline)) inline pixelcopy_t create_pc_antialias(const uint8_t *data, uint32_t raw_transparent = pixelcopy_t::NON_TRANSP)
+    LGFX_INLINE pixelcopy_t create_pc_antialias(const uint8_t *data, uint32_t raw_transparent = pixelcopy_t::NON_TRANSP)
     {
       return create_pc_antialias(reinterpret_cast<const rgb332_t*>(data), raw_transparent);
     }
-    __attribute__ ((always_inline)) inline pixelcopy_t create_pc_antialias(const uint16_t *data, uint32_t raw_transparent = pixelcopy_t::NON_TRANSP)
+    LGFX_INLINE pixelcopy_t create_pc_antialias(const uint16_t *data, uint32_t raw_transparent = pixelcopy_t::NON_TRANSP)
     {
       return _swapBytes
            ? create_pc_antialias(reinterpret_cast<const rgb565_t* >(data), raw_transparent)
            : create_pc_antialias(reinterpret_cast<const swap565_t*>(data), raw_transparent);
     }
-    __attribute__ ((always_inline)) inline pixelcopy_t create_pc_antialias(const void *data, uint32_t raw_transparent = pixelcopy_t::NON_TRANSP)
+    LGFX_INLINE pixelcopy_t create_pc_antialias(const void *data, uint32_t raw_transparent = pixelcopy_t::NON_TRANSP)
     {
       return _swapBytes
            ? create_pc_antialias(reinterpret_cast<const rgb888_t*>(data), raw_transparent)
@@ -1009,10 +1026,7 @@ namespace lgfx
     template<typename T1, typename T2>
     pixelcopy_t create_pc_tr_antialias(const T1* data, const T2& transparent)
     {
-      return create_pc_antialias( data
-                                , std::is_same<T1, T2>::value
-                                  ? transparent
-                                  : get_fp_convert_src<T2>(get_depth<T1>::value, false)(transparent));
+      return create_pc_antialias( data, color_convert<T1, T2>(transparent));
     }
 
     template<typename T>
@@ -1042,6 +1056,8 @@ namespace lgfx
       return pc;
     }
 
+    pixelcopy_t create_pc_gray(const uint8_t *image, lgfx::color_depth_t depth, uint32_t fore_rgb888, uint32_t back_rgb888);
+
 //----------------------------------------------------------------------------
 
     static void make_rotation_matrix(float* result, float dst_x, float dst_y, float src_x, float src_y, float angle, float zoom_x, float zoom_y);
@@ -1052,6 +1068,9 @@ namespace lgfx
     void draw_bezier_helper(int32_t x0, int32_t y0, int32_t x1, int32_t y1, int32_t x2, int32_t y2);
     void draw_bitmap(int32_t x, int32_t y, const uint8_t *bitmap, int32_t w, int32_t h, uint32_t fg_rawcolor, uint32_t bg_rawcolor = ~0u);
     void draw_xbitmap(int32_t x, int32_t y, const uint8_t *bitmap, int32_t w, int32_t h, uint32_t fg_rawcolor, uint32_t bg_rawcolor = ~0u);
+    void push_grayimage(int32_t x, int32_t y, int32_t w, int32_t h, const uint8_t *image, color_depth_t depth, uint32_t fg_rgb888, uint32_t bg_rgb888);
+    void push_grayimage_rotate_zoom(float dst_x, float dst_y, float src_x, float src_y, float angle, float zoom_x, float zoom_y, int32_t w, int32_t h, const uint8_t* image, color_depth_t depth, uint32_t fg_rgb888, uint32_t bg_rgb888);
+    void push_grayimage_affine(const float* matrix, int32_t w, int32_t h, const uint8_t *image, color_depth_t depth, uint32_t fg_rgb888, uint32_t bg_rgb888);
     void push_image_rotate_zoom(float dst_x, float dst_y, float src_x, float src_y, float angle, float zoom_x, float zoom_y, int32_t w, int32_t h, pixelcopy_t* pc);
     void push_image_rotate_zoom_aa(float dst_x, float dst_y, float src_x, float src_y, float angle, float zoom_x, float zoom_y, int32_t w, int32_t h, pixelcopy_t* pc);
     void push_image_affine(const float* matrix, int32_t w, int32_t h, pixelcopy_t *pc);
@@ -1066,10 +1085,6 @@ namespace lgfx
     size_t draw_string(const char *string, int32_t x, int32_t y, textdatum_t datum, const IFont* font = nullptr);
     int32_t text_width(const char *string, const IFont* font, FontMetrics* metrics);
     bool load_font(lgfx::DataWrapper* data);
-
-    bool draw_bmp(DataWrapper* data, int32_t x, int32_t y, int32_t maxWidth, int32_t maxHeight, int32_t offX, int32_t offY, float scale_x, float scale_y, datum_t datum);
-    bool draw_jpg(DataWrapper* data, int32_t x, int32_t y, int32_t maxWidth, int32_t maxHeight, int32_t offX, int32_t offY, float scale_x, float scale_y, datum_t datum);
-    bool draw_png(DataWrapper* data, int32_t x, int32_t y, int32_t maxWidth, int32_t maxHeight, int32_t offX, int32_t offY, float scale_x, float scale_y, datum_t datum);
 
     static void tmpBeginTransaction(LGFXBase* lgfx)
     {
@@ -1088,7 +1103,7 @@ namespace lgfx
 
 //----------------------------------------------------------------------------
 
-  /// LovyanGFXクラス。ファイルシステム等、利用環境側のinclude順に依存する機能はLGFX_FILESYSTEM_Supportから継承する。
+  /// LovyanGFXクラス。ファイルシステム等、利用環境側のinclude順に依存する機能はLGFX_FILESYSTEM_Supportから継承する。;
   class LovyanGFX : public
   #ifdef LGFX_FILESYSTEM_SUPPORT_HPP_
       LGFX_FILESYSTEM_Support<
@@ -1102,7 +1117,7 @@ namespace lgfx
 
 //----------------------------------------------------------------------------
 
-  class Panel_Device;
+  struct Panel_Device;
 
   class LGFX_Device : public LovyanGFX
   {
@@ -1112,6 +1127,7 @@ namespace lgfx
     bool init(void)               { return init_impl(true , true); };
     bool begin(void)              { return init_impl(true , true); };
     bool init_without_reset(void) { return init_impl(false, false); };
+    board_t getBoard(void) const { return _board; }
     void initBus(void);
     void releaseBus(void);
     void setPanel(Panel_Device* panel);
@@ -1131,17 +1147,18 @@ namespace lgfx
     inline Panel_Device* getPanel(void) const { return reinterpret_cast<Panel_Device*>(_panel); }
     inline void panel(Panel_Device* panel) { setPanel(panel); }
 
-    inline void writeCommand(  uint8_t  cmd) { _panel->writeCommand(                  cmd , 1); } // AdafruitGFX compatible
-    inline void writecommand(  uint8_t  cmd) { _panel->writeCommand(                  cmd , 1); } // TFT_eSPI compatible
-    inline void writeCommand16(uint16_t cmd) { _panel->writeCommand(__builtin_bswap16(cmd), 2); }
+    inline void writeCommand(  uint8_t  cmd) { _panel->writeCommand(             cmd , 1); } // AdafruitGFX compatible
+    inline void writecommand(  uint8_t  cmd) { _panel->writeCommand(             cmd , 1); } // TFT_eSPI compatible
+    inline void writeCommand16(uint16_t cmd) { _panel->writeCommand((cmd<<8)+(cmd>>8), 2); }
     inline void spiWrite(   uint8_t  data) { _panel->writeData(                  data , 1); } // AdafruitGFX compatible
     inline void writedata(  uint8_t  data) { _panel->writeData(                  data , 1); } // TFT_eSPI compatible
     inline void writeData(  uint8_t  data) { _panel->writeData(                  data , 1); }
-    inline void writeData16(uint16_t data) { _panel->writeData(__builtin_bswap16(data), 2); }
-    inline void writeData32(uint32_t data) { _panel->writeData(__builtin_bswap32(data), 4); }
+    inline void writeData16(uint16_t data) { _panel->writeData((data<<8)+(data>>8), 2); }
+    inline void writeData32(uint32_t data) { data = (data << 16) + (data >> 16); _panel->writeData(((data >> 8) & 0xFF00FF) + ((data & 0xFF00FF) << 8), 4); }
+
     inline uint8_t  readData8( uint8_t index=0) { return                   _panel->readData(index, 1) ; }
-    inline uint16_t readData16(uint8_t index=0) { return __builtin_bswap16(_panel->readData(index, 2)); }
-    inline uint32_t readData32(uint8_t index=0) { return __builtin_bswap32(_panel->readData(index, 4)); }
+    inline uint16_t readData16(uint8_t index=0) { auto r = _panel->readData(index, 2); return (r<<8)+(r>>8); }
+    inline uint32_t readData32(uint8_t index=0) { auto r = _panel->readData(index, 4); r=(r<<16)+(r>>16); return ((r>>8)&0xFF00FF)+((r&0xFF00FF)<<8); }
 
     inline ILight* light(void) const { return _panel ? panel()->light() : nullptr; }
     inline void setBrightness(uint8_t brightness) { _brightness = brightness; if (_panel) { _panel->setBrightness(brightness); } }
@@ -1160,13 +1177,14 @@ namespace lgfx
       if (index >= count) return 0;
       if (x) *x = tp[index].x;
       if (y) *y = tp[index].y;
-      return index;
+      return count;
     }
 
     template <typename T>
     uint_fast8_t getTouch(T *x, T *y, uint_fast8_t index = 0)
     {
-      touch_point_t tp[index + 1];
+      if (index >= 8) return 0;
+      touch_point_t tp[8];
       auto count = getTouch(tp, index + 1);
       if (index >= count) return 0;
       if (x) *x = tp[index].x;
@@ -1188,19 +1206,20 @@ namespace lgfx
     /// This requires a uint16_t array with 8 elements. ( or nullptr )
     template <typename T>
     void calibrateTouch(uint16_t *parameters, const T& color_fg, const T& color_bg, uint8_t size = 10)
-    { // 第1引数 にuint16_t[8]のポインタを渡すことで、setTouchCalibrateで使用できるキャリブレーション値を得ることが出来る。
-      // この値をフラッシュ等に記録しておき、次回起動時にsetTouchCalibrateを使うことで、手作業によるキャリブレーションを省略できる。
+    { // 第1引数 にuint16_t[8]のポインタを渡すことで、setTouchCalibrateで使用できるキャリブレーション値を得ることが出来る。;
+      // この値をフラッシュ等に記録しておき、次回起動時にsetTouchCalibrateを使うことで、手作業によるキャリブレーションを省略できる。;
       calibrate_touch(parameters, _write_conv.convert(color_fg), _write_conv.convert(color_bg), size);
     }
 
     /// This requires a uint16_t array with 8 elements.
-    /// calibrateTouchで得たキャリブレーション値を用いて設定を再現する。
+    /// calibrateTouchで得たキャリブレーション値を用いて設定を再現する。;
     void setTouchCalibrate(uint16_t *parameters)
     {
       panel()->setCalibrate(parameters);
     }
 
   protected:
+    board_t _board = board_t::board_unknown;
     uint8_t _brightness = 127;
 
     virtual bool init_impl(bool use_reset, bool use_clear);
@@ -1214,6 +1233,9 @@ namespace lgfx
   };
 
 //----------------------------------------------------------------------------
+#undef LGFX_INLINE
+#undef LGFX_INLINE_T
+
  }
 }
 

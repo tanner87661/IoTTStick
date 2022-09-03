@@ -19,7 +19,7 @@ txFct lnOutFct = NULL;
 
 uint16_t dccGeneratorCallback(lnTransmitMsg txData)
 {
-	digitraxBuffer->receiveDCCGeneratorFeedback(txData);
+	return digitraxBuffer->receiveDCCGeneratorFeedback(txData);
 }
 
 //LocoNet functions for preparing reply messages
@@ -314,6 +314,7 @@ void setDCCPowerOutMsg(uint8_t trStatus, uint8_t trType)
 	}
 	txBuffer.lnMsgSize = strlen(outStr);
 	txBuffer.lnData[txBuffer.lnMsgSize] = 0;
+//	Serial.printf("try: %s\n", outStr);
 	dccPort->lnWriteMsg(txBuffer);
 }
 
@@ -331,7 +332,7 @@ void setDCCSpeedSteps(uint8_t speedStepMode)
 	dccPort->lnWriteMsg(txBuffer);
 }
 
-void reqDCCPeripheralList(char * cmdChar)
+void reqDCCPeripheralList(const char* cmdChar)
 {
 	lnTransmitMsg txBuffer;
 	char* outStr = (char*)&txBuffer.lnData[0];
@@ -536,17 +537,17 @@ void IoTT_DigitraxBuffers::initArduinoBoard()
 {
 	switch (getOpSw(opSwTrackPwrRestore, 2))
 	{
-		case 0: Serial.println("Track Power Init ON");
+		case 0: //Serial.println("Track Power Init ON");
 				localPowerStatusChange(0x83);
 				break;
-		case 1: Serial.println("Track Power Init Idle");
+		case 1: //Serial.println("Track Power Init Idle");
 				localPowerStatusChange(0x83);
 				localPowerStatusChange(0x85);
 				break;
-		case 2: Serial.println("Track Power Init OFF");
+		case 2: //Serial.println("Track Power Init OFF");
 				localPowerStatusChange(0x82);
 				break;
-		case 3: Serial.println("Track Power Init Previous");
+		case 3: //Serial.println("Track Power Init Previous");
 				switch (trackByte & 0x03)
 				{
 					case 0: localPowerStatusChange(0x82); //off
@@ -1131,6 +1132,7 @@ uint16_t IoTT_DigitraxBuffers::receiveDCCGeneratorFeedback(lnTransmitMsg txData)
 	if (sendToWeb)
 		if (millis() < webTimeout)
 			sendDCCCmdToWeb(myParams);
+	return 0; //not really needed
 }
 
 void IoTT_DigitraxBuffers::sendRedHatCmd(char * cmdStr)
@@ -1637,6 +1639,7 @@ void IoTT_DigitraxBuffers::localPowerStatusChange(uint8_t newStatus)
 		if (newStatus == 0x83)
 			destTrack = getOpSw(opSwProgIsMain, 1) ? 3 : 0;
 		setDCCPowerOutMsg(newStatus, destTrack);
+//		Serial.println("1642");
 	}
 }
 
@@ -2045,6 +2048,7 @@ bool IoTT_DigitraxBuffers::processDCCGenerator(lnReceiveBuffer * newData)
 			if (newData->lnData[0] == 0x83)
 				destTrack = getOpSw(opSwProgIsMain, 1) ? 3 : 0;
 			setDCCPowerOutMsg(newData->lnData[0], destTrack);
+//		Serial.println("2051");
 			break;
 		}
 		case 0xA0: //OPC_LOCO_SPD  <1><REFRESH><ADDRHI><ADDRLO><SPEED><DIRF><SND>
@@ -2274,7 +2278,8 @@ uint8_t IoTT_DigitraxBuffers::getConsistTopSlot(uint8_t ofSlot)
 		case cnUplink : ;
 		case cnMiddle : return getConsistTopSlot(slotBuffer[ofSlot][SPD]); //return iterative top
 		case cnDownlink: return ofSlot; //return self
-	} 
+	}
+	return 0; 
 }
 
 

@@ -109,7 +109,7 @@ void verifyRefreshAge()
   }
 }
 
-bool updateRefreshBuffer(uint16_t thisID, char dispStr[])
+bool updateRefreshBuffer(uint16_t thisID, const char dispStr[]) //make pointer
 {
   for (uint8_t i=0; i < refreshBufferSize; i++)
     if (refreshBuffer[i].slotID == thisID)

@@ -18,7 +18,7 @@ void establishWifiConnection(AsyncWebServer * webServer,DNSServer * dnsServer)
         //in seconds
         Serial.println("Set STA Mode");
         wifiManager.setTimeout(120); 
-        String hlpStr = "IoTT_Stick_M5_" + String((uint32_t)ESP.getEfuseMac());
+        String hlpStr = "New_IoTT-Stick_" + String((uint32_t)ESP.getEfuseMac());
         if (!wifiManager.autoConnect(hlpStr.c_str()))
         {
           Serial.println("failed to connect and hit timeout, setting up AP, if configured, otherwise restart ESP32");
@@ -37,6 +37,7 @@ void establishWifiConnection(AsyncWebServer * webServer,DNSServer * dnsServer)
       WiFi.softAP(deviceName.c_str(), apPassword.c_str());
       delay(300); //wait for AP to get started
       WiFi.softAPConfig(ap_ip, ap_ip, ap_nm);
+      WiFi.setHostname(deviceName.c_str());
       Serial.print("Local Access Point at ");
       Serial.println(WiFi.softAPIP());
     }
@@ -68,7 +69,6 @@ void checkWifiTimeout() //check if wifi can be switched off
 
 void getInternetTime() //periodically connect to an NTP server and get the current time
 {
-  
   int thisIntervall = ntpIntervallDefault;
   if (!ntpOK)
     thisIntervall = ntpIntervallShort;
@@ -85,6 +85,8 @@ void getInternetTime() //periodically connect to an NTP server and get the curre
       }
       else //success, so update RTC clock
       {      
+        M5.Rtc.setDateTime({{(int16_t)timeinfo.tm_year, (int8_t)timeinfo.tm_mon, (int8_t)timeinfo.tm_mday}, {(int8_t)timeinfo.tm_hour, (int8_t)timeinfo.tm_min, (int8_t)timeinfo.tm_sec}});
+/*
         RTC_TimeTypeDef TimeStruct;
         TimeStruct.Hours   = timeinfo.tm_hour;
         TimeStruct.Minutes = timeinfo.tm_min;
@@ -96,6 +98,7 @@ void getInternetTime() //periodically connect to an NTP server and get the curre
         DateStruct.Date = timeinfo.tm_mday;
         DateStruct.Year = timeinfo.tm_year + 1900;
         M5.Rtc.SetData(&DateStruct);
+*/
       }
       ntpTimer = millis();
       char time_output[30];
