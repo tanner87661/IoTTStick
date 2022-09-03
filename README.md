@@ -1,6 +1,13 @@
 # IoTTStick
 This is the code repository for the IoTT Stick, port modules and hat devices with the source code for the latest release. 
 
+2022/09/03 1.5.14
+- Version 1.5.14
+- switch to No OTA memory model due to code size
+- switch to 2.0.4
+- bug fix for PurpleHat SpeedMagic when using imperial dimensions
+- adding grade and superelevation data to PurpleHat from Stick IMU
+
 2022/07/31
 - Version 1.5.13
 - Official support for WiThrottle and RedHat++ Shield
