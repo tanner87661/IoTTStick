@@ -911,14 +911,14 @@ void IoTT_ledChain::loadLEDChainJSONObj(JsonObject doc, bool resetList)
 	if (doc.containsKey("ChainParams"))
     {
         chainLength = doc["ChainParams"]["NumLEDs"];
-        Serial.printf("Length: %i\n", chainLength);
+//        Serial.printf("Length: %i\n", chainLength);
         if (thisWire)
 			if (chainLength > i2cMaxChainLength)
 				chainLength = i2cMaxChainLength; //for safety. Value limited in config alreadyhtness: %i\n",
         currentBrightness = doc["ChainParams"]["Brightness"]["InitLevel"];
         if (currentBrightness > 1 || (currentBrightness < 0))
 			currentBrightness = 0.8;
-        Serial.printf("JSON Brightness: %f\n", currentBrightness);
+//        Serial.printf("JSON Brightness: %f\n", currentBrightness);
         if (doc.containsKey("MQTT"))
         {
 			JsonObject myMQTT = doc["MQTT"];
@@ -1212,7 +1212,7 @@ void IoTT_ledChain::setI2CLED(uint16_t ledNr, CHSV newCol)
 		thisWire->write(newCol.v);
 		lastCol = newCol;
 	}
-	thisWire->endTransmission(false);
+	thisWire->endTransmission();
 	ledChain[ledNr] = newCol;
 }
 
@@ -1276,7 +1276,7 @@ int8_t IoTT_ledChain::pingI2CDevice(uint8_t numBytes)
 			i2cDevID = devData[0]; //0x55 YellowHat 0x56 GreenHat
 			i2cChainLength = (devData[1]<<8) + devData[2];
 			i2cChainType = (devData[3]<<8) + devData[4];
-//			Serial.printf("I2C LED Chain Dev %i Type %i Length %i\n", i2cDevID, i2cChainType, i2cChainLength);
+//			Serial.printf("I2C LED Chain Dev 0x%2X Type %i Length %i\n", i2cDevID, i2cChainType, i2cChainLength);
 		}
 		return devData[0];
 	}

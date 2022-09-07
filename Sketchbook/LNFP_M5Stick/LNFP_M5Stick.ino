@@ -8,7 +8,7 @@
 #include <M5UnitOLED.h>
 #include <M5Unified.h>
 
-String BBVersion = "1.5.14";
+String BBVersion = "1.5.15";
 
 //#define measurePerformance //uncomment this to display the number of loop cycles per second
 //#define useAI
@@ -638,6 +638,20 @@ void setup()
     else 
       Serial.println("WIThrottle Server not activated");
 //------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+    if ((useHat.devId == 7) || (useHat.devId == 3) || (useHat.devId == 4)) //PurpleHat or YellowHat or GreenHat
+    {
+        Serial.println("Init TwoWire");  
+        Wire.begin(hatSDA, hatSCL);//, 400000); //initialize the I2C interface 400kHz
+        delay(10);
+//        Serial.println(Wire.getClock());
+//        Serial.println("Set Clock");  
+        Wire.setClock(400000);
+        delay(10);
+//        Serial.println(Wire.getClock());
+    }
+
+
 // initialize selected Hat
     if ((useHat.devId == 1) || (useHat.devId == 3) || (useHat.devId == 6)) //BlueHat or YellowHat or RedHat
     {
@@ -718,9 +732,18 @@ void setup()
     if (useHat.devId == 3) //YellowHat
     {
         Serial.println("Init YellowHat");  
-        Wire.begin(hatSDA, hatSCL);//, 400000); //initialize the I2C interface 400kHz
+/*
+        Serial.println("Set Pins");  
+        Wire.setPins(hatSDA, hatSCL);
+        Serial.println("Init");  
+        Wire.begin();//, 400000); //initialize the I2C interface 400kHz
         delay(10);
+        Serial.println(Wire.getClock());
+        Serial.println("Set Clock");  
         Wire.setClock(400000);
+        delay(10);
+*/
+        Serial.println("Load Btn Config Data");  
         jsonDataObj = getDocPtr("/configdata/btn.cfg", false);
         if (jsonDataObj != NULL)
         {
@@ -750,9 +773,11 @@ void setup()
           lnSerial->setBusyLED(stickLED, false);
 //          lnSerial->setLNCallback(callbackLocoNetMessage);
         } 
+/*
         Wire.begin(hatSDA, hatSCL);//, 400000); //initialize the I2C interface
         delay(10);
         Wire.setClock(400000);
+*/        
         jsonDataObj = getDocPtr("/configdata/greenhat.cfg", true);
         if (jsonDataObj != NULL)
           if (jsonDataObj->containsKey("Modules"))
@@ -830,10 +855,12 @@ void setup()
       jsonDataObj = getDocPtr("/configdata/phcfg.cfg", false);
       if (jsonDataObj != NULL)
       {
+/*        
         Wire.begin(hatSDA, hatSCL);//, 400000); //initialize the I2C interface 400kHz
         delay(10);
         Wire.setClock(400000);
         delay(10);
+*/
         Serial.println("Load Trainside Sensor"); 
         trainSensor = new IoTT_TrainSensor(&Wire, hatSDA, hatSCL);
 //        trainSensor->setTxCallback(sendMsg);
