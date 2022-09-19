@@ -1,8 +1,13 @@
 # IoTTStick
 This is the code repository for the IoTT Stick, port modules and hat devices with the source code for the latest release. 
 
-2022/09/03 1.5.14
-- Version 1.5.14
+2022/09/18 1.5.16
+- Version 1.5.16
+- Improved webpage loading (bugfix for timeout problem)
+- Added buttons in LED chain configuration to increment and decrement LED numbers when adding/removing Neopixels
+
+2022/09/03 1.5.15
+- Version 1.5.15
 - switch to No OTA memory model due to code size
 - switch to 2.0.4
 - bug fix for PurpleHat SpeedMagic when using imperial dimensions
