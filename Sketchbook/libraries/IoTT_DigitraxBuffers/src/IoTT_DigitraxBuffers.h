@@ -29,6 +29,7 @@
 #define purgeLimitShort 30 //count for 300 s purge time
 #define purgeLimitLong 60 // and for 60 sec
 #define purgeInterval 10000 //run purge timer every 10 seconds
+#define statusInterval 1000 //run status timer every 5 seconds
 #define queryInterval 1000
 
 //Digitrax CS
@@ -266,6 +267,7 @@ class IoTT_DigitraxBuffers
 		uint32_t fcRefresh = millis();
 		uint32_t fcLastBroadCast = millis();
 		uint32_t purgeSlotTimer = millis();
+		uint32_t getStatusTimer = millis();
 		slotData progSlot;
 		uint8_t rxPin = 36;
 		uint8_t txPin = 26; 

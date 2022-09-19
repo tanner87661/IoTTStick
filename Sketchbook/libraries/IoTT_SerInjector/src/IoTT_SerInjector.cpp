@@ -446,7 +446,7 @@ void IoTT_SerInjector::processDCCExReceive()
 	while (available()) //read GridConnect protocol and package by message
 	{
 		char inData = read();
-//		Serial.print(inData);
+		Serial.print(inData);
 		switch (inData)
 		{
 			case '<' : //start new message

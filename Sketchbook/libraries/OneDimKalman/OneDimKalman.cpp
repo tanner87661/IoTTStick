@@ -10,7 +10,7 @@
 #include <Arduino.h>
 
 
-OneDimKalman::OneDimKalman(double_t initErrMeasure, double_t initGain, double_t initErrEst, double_t initEst)
+OneDimKalman::OneDimKalman(double initErrMeasure, double initGain, double initErrEst, double initEst)
 {
 	setInitValues(initErrMeasure, initGain, initErrEst, initEst);
 }
@@ -24,12 +24,12 @@ OneDimKalman::~OneDimKalman()
 {
 }
 
-void OneDimKalman::updateErrorRange(double_t newVal)
+void OneDimKalman::updateErrorRange(double newVal)
 {
 	errMeasure = newVal;
 }
 
-void OneDimKalman::setInitValues(double_t initErrMeasure, double_t initGain, double_t initErrEst, double_t initEst)
+void OneDimKalman::setInitValues(double initErrMeasure, double initGain, double initErrEst, double initEst)
 {
 	kGain = initGain;
 	currEst = initEst;
@@ -37,9 +37,9 @@ void OneDimKalman::setInitValues(double_t initErrMeasure, double_t initGain, dou
 	errEst = initErrEst;
 }
 
-double_t OneDimKalman::getEstimate(double_t Measurement)
+double OneDimKalman::getEstimate(double Measurement)
 {
-	double_t lastEst = currEst;
+	double lastEst = currEst;
 	kGain = errEst / (errEst + errMeasure);
 	currEst = currEst + (kGain * (Measurement - currEst));
 	errEst = (1.0 - kGain) * errEst + fabs(lastEst - currEst);
@@ -48,7 +48,7 @@ double_t OneDimKalman::getEstimate(double_t Measurement)
 	return currEst;
 }
 
-double_t OneDimKalman::getCurrVal()
+double OneDimKalman::getCurrVal()
 {
 	return currEst;
 }

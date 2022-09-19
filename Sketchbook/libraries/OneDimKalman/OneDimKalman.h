@@ -12,18 +12,18 @@
 
 class OneDimKalman {
 public:
-	OneDimKalman(double_t initErrMeasure=8, double_t initGain=10, double_t initErrEst=10, double_t initEst=10);
+	OneDimKalman(double initErrMeasure=8, double initGain=10, double initErrEst=10, double initEst=10);
 	OneDimKalman();
 	~OneDimKalman();
-	void setInitValues(double_t initErrMeasure=8, double_t initGain=10, double_t initErrEst=10, double_t initEst=10);
-	void updateErrorRange(double_t newVal);
-	double_t getEstimate(double_t Measurement);
-	double_t getCurrVal();
+	void setInitValues(double initErrMeasure=8, double initGain=10, double initErrEst=10, double initEst=10);
+	void updateErrorRange(double newVal);
+	double getEstimate(double Measurement);
+	double getCurrVal();
 private:
-	double_t kGain = 10;
-	double_t errEst = 10;
-	double_t errMeasure = 8;
-	double_t currEst = 10;
+	double kGain = 10;
+	double errEst = 10;
+	double errMeasure = 8;
+	double currEst = 10;
 };
 
 

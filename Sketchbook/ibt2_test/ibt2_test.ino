@@ -1,3 +1,4 @@
+#include <OneDimKalman.h>
 
 #define useNano
 
@@ -15,6 +16,9 @@ int16_t nzcounterA = 0;
 int16_t nzcounterB = 0;
 int16_t dzcounter = 0;
 int16_t dnzcounter = 0;
+OneDimKalman* filterA = NULL;
+OneDimKalman* filterB = NULL;
+
 double sensorValueA = 0;  // variable to store the value coming from the sensor
 double sensorValueB = 0;  // variable to store the value coming from the sensor
 
@@ -22,6 +26,7 @@ double sensorValueB = 0;  // variable to store the value coming from the sensor
 int sensorPinA = A0;    // select the input pin for the potentiometer
 int sensorPinB = A1;    // select the input pin for the potentiometer
 int ledPin = 13;      // select the pin for the LED
+int pwmPin = 9;      // select the pin for the PWM output
 #else
 int sensorPinA = A2;    // select the input pin for the potentiometer
 int ledPin = 1;      // select the pin for the LED
@@ -34,6 +39,8 @@ void setup() {
   #ifdef useNano
     Serial.begin(115200);
   #endif
+  filterA = new OneDimKalman(8,10,10,10);
+  filterB = new OneDimKalman(8,10,10,10);
   pinMode(0, OUTPUT);
   pinMode(ledPin, OUTPUT);
   digitalWrite(ledPin, 0);
@@ -47,48 +54,33 @@ void setup() {
 
 void loop() { //AtTiny85: ca. 3300 runs per second
   pinValA = analogRead(sensorPinA);
-//  if (pinValA > 102)
-    pinValB = analogRead(sensorPinB);
-//  else
-//    if (pinValA > 0)
-//      pinValB = pinValA;
-//    else
-//      pinValB = 0;
-  sensorValueA = 4.15 * (float)pinValA; // 5 / 1024 * analogRead(sensorPinA) / 10000 * 8500; //mA
-  sensorValueB = 4.63 * (float)pinValB; // 5 / 1024 * analogRead(sensorPinA) / 10000 * 9500; //mA
-//  sensorValueB = (0.8689 * sensorValueB) + 242.75; //y=0.8689x+242.7460
-  uint8_t readFlags = ((sensorValueA > 0) << 1) + (sensorValueB > 0);
+  pinValB = analogRead(sensorPinB);
+//  sensorValueA = filterA->getEstimate(4.15 * (double)pinValA); // 5 / 1024 * analogRead(sensorPinA) / 10000 * 8500; //mA
+//  sensorValueB = filterB->getEstimate(4.63 * (double)pinValB); // 5 / 1024 * analogRead(sensorPinA) / 10000 * 9500; //mA
+
+  uint8_t readFlags = ((pinValA > 0) << 1) + (pinValB > 0);
+
   switch (readFlags)
   {
     case 0: //no current
-//      chBMax = max(chBMax, sensorValueB);
-//      chBAvg = (999 * chBAvg + sensorValueB)/1000; 
-//      chAMax = max(chAMax, sensorValueA);
-//      chAAvg = (999 * chAAvg + sensorValueA)/1000; 
+      sensorValueB = filterB->getEstimate(0); // 5 / 1024 * analogRead(sensorPinA) / 10000 * 9500; //mA
+      sensorValueA = filterA->getEstimate(0); // 5 / 1024 * analogRead(sensorPinA) / 10000 * 9500; //mA
       dzcounter++;
       break;
     case 1: //chB only
+      sensorValueB = filterB->getEstimate(4.63 * (double)pinValB); // 5 / 1024 * analogRead(sensorPinA) / 10000 * 9500; //mA
       chBMax = max(chBMax, sensorValueB);
-//      chBAvg = (999 * chBAvg + sensorValueB)/1000; 
       chBAvg += sq(sensorValueB);
       nzcounterB++;
       break;
     case 2: //chA only
+      sensorValueA = filterA->getEstimate(4.15 * (double)pinValA); // 5 / 1024 * analogRead(sensorPinA) / 10000 * 8500; //mA
       chAMax = max(chAMax, sensorValueA);
-//      chAAvg = (999 * chAAvg + sensorValueA)/1000; 
       chAAvg += sq(sensorValueA);
       nzcounterA++;
       break;
     case 3:
       dnzcounter++;
-/*
-      chAMax = max(chAMax, sensorValueA);
-      chAAvg += sq(sensorValueA);
-      nzcounterA++;
-      chBMax = max(chBMax, sensorValueB);
-      chBAvg += sq(sensorValueB);
-      nzcounterB++;
-*/      
       break;
   }
   counter++;
@@ -124,17 +116,22 @@ void loop() { //AtTiny85: ca. 3300 runs per second
       Serial.print(" ");
       Serial.print(chBMax);
       Serial.print(" ");
-      Serial.print(nzcounterA > 0 ? sqrt(chAAvg/nzcounterA) : 0);
+      double avgA = nzcounterA > 0 ? sqrt(chAAvg/nzcounterA) : 0;
+      Serial.print(avgA);
       Serial.print(" ");
-      Serial.print(nzcounterB > 0 ? sqrt(chBAvg/nzcounterB) : 0);
+      double avgB = nzcounterB > 0 ? sqrt(chBAvg/nzcounterB) : 0;
+      uint16_t pwmOut = round((max(avgA, avgB) * 255) / 2000);
+      double sampleRatio = max(avgA, avgB) / (double)(nzcounterA + nzcounterB);
+      Serial.print(avgB);
       Serial.print(" ");
 //      Serial.print((chAMax + chBMax)/2);
       Serial.print(" ");
 //      Serial.print(chAAvg + chBAvg);
-      Serial.println();
-    #else
-      analogWrite(pwmPin, 10 * chA1); 
+      Serial.print(pwmOut);
+      Serial.print(" ");
+      Serial.println(sampleRatio);
     #endif
+    analogWrite(pwmPin, pwmOut); 
     counter = 0;
     nzcounterA = 0;
     nzcounterB = 0;

@@ -318,6 +318,16 @@ void setDCCPowerOutMsg(uint8_t trStatus, uint8_t trType)
 	dccPort->lnWriteMsg(txBuffer);
 }
 
+void reqDCCCurrent()
+{
+	lnTransmitMsg txBuffer;
+	char* outStr = (char*)&txBuffer.lnData[0];
+	strcpy(outStr, "c");
+	txBuffer.lnMsgSize = strlen(outStr);
+	txBuffer.lnData[txBuffer.lnMsgSize] = 0;
+	dccPort->lnWriteMsg(txBuffer);
+}
+
 void setDCCSpeedSteps(uint8_t speedStepMode)
 {
 	lnTransmitMsg txBuffer;
@@ -733,6 +743,12 @@ void IoTT_DigitraxBuffers::processLoop()
 				inpQuery--;
 			}
 		}
+		if (millis() - getStatusTimer > statusInterval) //runs every 5 secs
+		{
+			reqDCCCurrent();
+			getStatusTimer += statusInterval;
+		}
+		
 		if (millis() - purgeSlotTimer > purgeInterval) //runs every 10 secs
 		{
 //			Serial.println("check purging");
@@ -1013,6 +1029,9 @@ uint16_t IoTT_DigitraxBuffers::receiveDCCGeneratorFeedback(lnTransmitMsg txData)
 
 	switch (myParams[0].payload.strVal[0])
 	{
+		case 'c': //current information main track
+//			Serial.println(myParams[2].payload.longVal);
+			break;
 		case 'H': //turnout info
 //			if (myParams[0].numParams == 5) // <H ID ADDRESS SUBADDRESS THROWN> for each defined DCC Accessory Turnout in return to <T>
 			if (myParams[2].dataType < 5) //string type
