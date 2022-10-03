@@ -1,5 +1,47 @@
 # IoTTStick
-This is the development repository for the IoTT Stick, port modules and hat devices with the source code for the latest release. 
+This is the code repository for the IoTT Stick, port modules and hat devices with the source code for the latest release. 
+
+2022/09/18 1.5.16
+- Version 1.5.16
+- Improved webpage loading (bugfix for timeout problem)
+- Added buttons in LED chain configuration to increment and decrement LED numbers when adding/removing Neopixels
+
+2022/09/03 1.5.15
+- Version 1.5.15
+- switch to No OTA memory model due to code size
+- switch to 2.0.4
+- bug fix for PurpleHat SpeedMagic when using imperial dimensions
+- adding grade and superelevation data to PurpleHat from Stick IMU
+
+2022/07/31
+- Version 1.5.13
+- Official support for WiThrottle and RedHat++ Shield
+- WiThrottle now with mDNS support
+
+2022/05/10
+- Version 1.5.12
+- Improvements to the speed measurement algorithm, resulting in smoother display curve
+
+2022/05/05
+- Version 1.5.11 
+- bug fixes for automated speed matching function of PurpleHat
+- fixed a bug with upgrading the node configuration to the latest version
+- added Plain English translation to LocoNet viewer
+- corrected a mistake in the assignment of BDL16 zones
+
+2022/04/09
+- Version 1.5.10 with support for PurpleHat and automated speed matching
+- added WiThrottle client
+- improved LocoNet library
+- minor bug fixes
+
+2021/12/17
+- Version 1.5.9 with improved support for RedHat
+- minor bug fixes
+
+2021/10/23
+- Version 1.5.8 Experimental with VoiceWatcher Support
+- Watch Video#80 for more information https://youtu.be/dP01Lq9poZw
 
 2022/09/03 1.5.14
 - Version 1.5.14
@@ -46,7 +88,7 @@ minor bug fixes
 - some minor bug fixes
 
 2021/06/04
-- Ready to release new vesion 1.5.5 adding enabler function to event handler
+- Ready to release new version 1.5.5 adding enabler function to event handler
 - adding analog scaler function to event handler to allow for changing ranges and slope of analog data input to adapt sensor input to the levels needed
 - adding swi ack command to event handler and GreenHat button command lists
 - some minor bug fixes
