@@ -318,11 +318,11 @@ void setDCCPowerOutMsg(uint8_t trStatus, uint8_t trType)
 	dccPort->lnWriteMsg(txBuffer);
 }
 
-void reqDCCCurrent()
+void setCurrReportMode(uint8_t newMode)
 {
 	lnTransmitMsg txBuffer;
 	char* outStr = (char*)&txBuffer.lnData[0];
-	strcpy(outStr, "c");
+	sprintf(outStr, "A %i", newMode);
 	txBuffer.lnMsgSize = strlen(outStr);
 	txBuffer.lnData[txBuffer.lnMsgSize] = 0;
 	dccPort->lnWriteMsg(txBuffer);
@@ -454,7 +454,11 @@ void IoTT_DigitraxBuffers::loadRHCfgJSON(DynamicJsonDocument doc)
 			turnoutOutputs[i].posLogic = btnArray[i]["Logic"];
 			turnoutOutputs[i].lnAddr = btnArray[i]["LNAddr"];
 		}
-//		Serial.printf("%i outputs loaded\n", turnoutOutputLen);
+	}
+	if (doc.containsKey("CurrentTracker"))
+	{
+		currBuffSize = doc["CurrentTracker"]["SampleSize"];
+		currReportMode = doc["CurrentTracker"]["ReportMode"];
 	}
 }
 
@@ -519,6 +523,10 @@ void IoTT_DigitraxBuffers::setRedHatMode(txFct lnReply, DynamicJsonDocument doc)
         dccPort->loadLNCfgJSON(doc); //loads baudrate and invert information
         dccPort->setProtType(DCCEx); //DCC++Ex DCC Generator
         dccPort->setTxCallback(dccGeneratorCallback);
+        if ((currReportMode & 0x01) > 0)
+			trackData = new	rmsBuffer(currBuffSize);
+        if ((currReportMode & 0x02) > 0)
+			progData = new	rmsBuffer(currBuffSize);
 	}
 /**
 	if (isRedHat && (rhButtons == NULL)) //buttons are only available if RedHat hardware is used
@@ -600,6 +608,7 @@ void IoTT_DigitraxBuffers::initArduinoBoard()
 		purgeLimit = purgeLimitLong;
 	else
 		purgeLimit = purgeLimitShort;
+	setCurrReportMode(currReportMode);
 }
 
 bool IoTT_DigitraxBuffers::saveToFile(String fileName)
@@ -743,12 +752,13 @@ void IoTT_DigitraxBuffers::processLoop()
 				inpQuery--;
 			}
 		}
+/*
 		if (millis() - getStatusTimer > statusInterval) //runs every 5 secs
 		{
 			reqDCCCurrent();
 			getStatusTimer += statusInterval;
 		}
-		
+*/		
 		if (millis() - purgeSlotTimer > purgeInterval) //runs every 10 secs
 		{
 //			Serial.println("check purging");
@@ -970,6 +980,24 @@ void IoTT_DigitraxBuffers::sendFCCmdToWeb()
 	}
 }
 
+void IoTT_DigitraxBuffers::sendTrackCurrent(uint8_t trackId)
+{
+	if (globalClient)
+	{
+		DynamicJsonDocument doc(200);
+		char myMqttMsg[100];
+		doc["Cmd"] = "DCCAmp";
+		JsonObject Data = doc.createNestedObject("Data");
+		Data["Track"] = trackId;		
+		if (trackId == 0)
+			Data["Value"] = trackData ? trackData->getRMSVal() : 0;
+		else
+			Data["Value"] = progData ? progData->getRMSVal() : 0;
+		serializeJson(doc, myMqttMsg);
+		globalClient->text(myMqttMsg);
+	}
+}
+
 void IoTT_DigitraxBuffers::sendDCCCmdToWeb(ppElement * myParams)
 {
 	if (globalClient)
@@ -1029,7 +1057,18 @@ uint16_t IoTT_DigitraxBuffers::receiveDCCGeneratorFeedback(lnTransmitMsg txData)
 
 	switch (myParams[0].payload.strVal[0])
 	{
-		case 'c': //current information main track
+		case 'a': //current reporting
+			if (myParams[0].numParams == 3) // <a TRACK VALUE>
+			{
+				uint8_t trackID = myParams[1].payload.longVal;
+				switch (trackID)
+				{
+					case 0: if (trackData) trackData->addVal(myParams[2].payload.longVal); break;
+					case 1: if (progData) progData->addVal(myParams[2].payload.longVal); break;
+				}
+			}
+			break;
+		case 'c': 
 //			Serial.println(myParams[2].payload.longVal);
 			break;
 		case 'H': //turnout info

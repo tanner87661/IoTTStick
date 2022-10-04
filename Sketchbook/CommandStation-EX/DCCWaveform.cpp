@@ -11,7 +11,7 @@
  *  This is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
  *  the Free Software Foundation, either version 3 of the License, or
- *  (at your option) any later version.g
+ *  (at your option) any later version.
  *
  *  It is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -53,8 +53,7 @@ void DCCWaveform::begin(MotorDriver * mainDriver, MotorDriver * progDriver) {
   MotorDriver::usePWM= mainDriver->isPWMCapable() && progDriver->isPWMCapable();
   DIAG(F("Signal pin config: %S accuracy waveform"),
 	 MotorDriver::usePWM ? F("high") : F("normal") );
-  DCCTimer::begin(DCCWaveform::interruptHandler);  
-//  DCCCurrentSensor::begin();   
+  DCCTimer::begin(DCCWaveform::interruptHandler);     
 }
 
 void DCCWaveform::loop(bool ackManagerActive) {
@@ -110,7 +109,6 @@ DCCWaveform::DCCWaveform( byte preambleBits, bool isMain) {
   sampleDelay = 0;
   lastSampleTaken = millis();
   ackPending=false;
-  sendCurrentSample = false;
 }
 
 POWERMODE DCCWaveform::getPowerMode() {
@@ -145,7 +143,6 @@ void DCCWaveform::checkPowerOverload(bool ackManagerActive) {
       lastCurrent=motorDriver->getCurrentRaw();
       if (sendCurrentSample)
         StringFormatter::send(outStream, F("<a %d %d>\n"), isMainTrack ? 0 : 1, getCurrentmA());
-
       if (lastCurrent < 0) {
 	  // We have a fault pin condition to take care of
 	  lastCurrent = -lastCurrent;

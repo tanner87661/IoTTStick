@@ -57,6 +57,7 @@ class DCCWaveform {
     static void loop(bool ackManagerActive);
     static DCCWaveform  mainTrack;
     static DCCWaveform  progTrack;
+
     void beginTrack();
     void setPowerMode(POWERMODE);
     POWERMODE getPowerMode();
@@ -117,7 +118,6 @@ class DCCWaveform {
 
   private:
     
-
 // For each state of the wave  nextState=stateTransform[currentState] 
    static const WAVE_STATE stateTransform[6];
 
@@ -163,7 +163,7 @@ class DCCWaveform {
     volatile bool ackPending;
     volatile bool ackDetected;
     int  ackThreshold; 
-    int  ackLimitmA = 60;
+    int  ackLimitmA = 50;
     int ackMaxCurrent;
     unsigned long ackCheckStart; // millis
     unsigned int ackCheckDuration; // millis       
@@ -171,8 +171,8 @@ class DCCWaveform {
     unsigned int ackPulseDuration;  // micros
     unsigned long ackPulseStart; // micros
 
-    unsigned int minAckPulseDuration = 4000; // micros
-    unsigned int maxAckPulseDuration = 8500; // micros
+    unsigned int minAckPulseDuration = 2000; // micros
+    unsigned int maxAckPulseDuration = 20000; // micros
 
     volatile static uint8_t numAckGaps;
     volatile static uint8_t numAckSamples;

@@ -186,6 +186,7 @@ class IoTT_DigitraxBuffers
 //		void addActor(uint16_t Id, uint8_t pinType, uint8_t pinNr, uint8_t flags);
 		void sendDCCCmdToWeb(ppElement * myParams);
 		void sendFCCmdToWeb();
+		void sendTrackCurrent(uint8_t trackId);
 		uint16_t receiveDCCGeneratorFeedback(lnTransmitMsg txData);
 		//LocoNet Management functions mainly for Command Station mode
 		//from incoming DCC command
@@ -288,6 +289,11 @@ class IoTT_DigitraxBuffers
 		bool    progBoost = false;
 		bool    configPeripheralsPwrUp = true;
 		uint32_t webTimeout = millis();
+		uint8_t currReportMode = 0;
+		uint8_t currBuffSize = 50;
+		rmsBuffer* trackData = NULL;
+		rmsBuffer* progData = NULL;
+		
 };
 
 extern IoTT_DigitraxBuffers* digitraxBuffer; //pointer to DigitraxBuffers
