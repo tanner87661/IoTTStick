@@ -318,11 +318,11 @@ void setDCCPowerOutMsg(uint8_t trStatus, uint8_t trType)
 	dccPort->lnWriteMsg(txBuffer);
 }
 
-void setCurrReportMode(uint8_t newMode)
+void setCurrReportMode(uint8_t mainMode, uint8_t progMode)
 {
 	lnTransmitMsg txBuffer;
 	char* outStr = (char*)&txBuffer.lnData[0];
-	sprintf(outStr, "A %i", newMode);
+	sprintf(outStr, "A %i %i", mainMode, progMode);
 	txBuffer.lnMsgSize = strlen(outStr);
 	txBuffer.lnData[txBuffer.lnMsgSize] = 0;
 	dccPort->lnWriteMsg(txBuffer);
@@ -608,7 +608,7 @@ void IoTT_DigitraxBuffers::initArduinoBoard()
 		purgeLimit = purgeLimitLong;
 	else
 		purgeLimit = purgeLimitShort;
-	setCurrReportMode(currReportMode);
+	setCurrReportMode(currReportMode & 0x01, currReportMode >> 1);
 }
 
 bool IoTT_DigitraxBuffers::saveToFile(String fileName)
