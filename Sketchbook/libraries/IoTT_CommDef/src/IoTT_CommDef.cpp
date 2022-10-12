@@ -72,3 +72,32 @@ void untokstr(char* strList[], uint8_t listLen, char* inpStr, const char* token)
 	}	
 	strList[numStr] = NULL;
 }
+
+rmsBuffer::rmsBuffer(uint8_t bufSize)
+{
+	Serial.printf("Buffer %i\n", bufSize);
+	bufferSize = bufSize;
+	rmsData = (float_t*) realloc(rmsData, bufSize * sizeof(float_t));
+}
+
+void rmsBuffer::addVal(uint16_t newVal)
+{
+	float_t thisVal = sq((float_t)newVal);
+	rmsData[wrIndex] = thisVal;
+	wrIndex = (wrIndex + 1) % bufferSize;
+}
+
+float_t rmsBuffer::getRMSVal()
+{
+	float_t sumVal = 0;
+	for (uint8_t i = 0; i < bufferSize; i++)
+		sumVal += rmsData[i]; 
+	return sqrt(sumVal / bufferSize);
+}
+
+void rmsBuffer::clrBuffer()
+{
+	for (uint8_t i = 0; i < bufferSize; i++)
+		rmsData[i] = 0;
+}
+

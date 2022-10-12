@@ -260,6 +260,32 @@ function setColorData(sender)
 	}
 }
 
+function changeLEDNr(chgVal)
+{
+	var startLED = parseInt(document.getElementById("ledAdjNr").value);
+	if (isNaN(startLED))
+		alert("Please enter a valid LED number to start with");
+	else
+		 if (chgVal + startLED >= 0)
+		{
+			var isChanged = false;
+			for (var i = 0; i < configData[2].LEDDefs.length; i++)
+			{
+				for (var j = 0; j < configData[2].LEDDefs[i].LEDNums.length; j++)
+					if (configData[2].LEDDefs[i].LEDNums[j] >= startLED)
+					{
+						configData[2].LEDDefs[i].LEDNums[j] = (parseInt(configData[2].LEDDefs[i].LEDNums[j]) + chgVal).toString();
+						isChanged = true;
+					}
+			}
+			if (isChanged)
+				loadLEDTable(ledDefTable, configData[2].LEDDefs);
+		}
+		else
+			alert("Starting LED can't be zero!");
+}
+
+
 function setLEDData(sender)
 {
 	function adjustCmdLines(currentRow)
@@ -995,6 +1021,12 @@ function constructPageContent(contentTab)
 		createPageTitle(colorTableDiv, "div", "tile-1", "", "h2", "Color Definitions");
 		colorTable = createDataTable(colorTableDiv, "tile-1_2", ["Pos","Color Name", "Select Color", "Add/Delete/Move Color"], "colorconfig", "");
 
+		createPageTitle(colorTableDiv, "div", "tile-1", "", "h2", "Chain Adjustments");
+		tempObj = createEmptyDiv(colorTableDiv, "div", "tile-1", "");
+			createButton(tempObj, "", "LED++", "btnIncr", "changeLEDNr(1)");
+			createButton(tempObj, "", "LED--", "btnDecr", "changeLEDNr(-1)");
+			createTextInput(tempObj, "tile-1_4", "Starting with LED:", "n/a", "ledAdjNr", "");
+		
 		createPageTitle(colorTableDiv, "div", "tile-1", "", "h2", "LED Settings");
 
 		ledDefTable = createDataTable(colorTableDiv, "tile-1", ["Pos","IF THIS: (LED/Input Selector)", "THEN THAT: (LED Command Sequence Editor)"], "ledconfig", "");

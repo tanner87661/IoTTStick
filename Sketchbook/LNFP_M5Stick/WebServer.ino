@@ -598,8 +598,14 @@ void processWsMessage(char * newMsg, int msgLen, AsyncWebSocketClient * client)
               uint16_t cFlags = doc["Filter"];
               digitraxBuffer->getRedHatConfig(cFlags);
             }
+          if (subCmd == "GetCurrent")
+          {
+            uint8_t trackId = doc["OpCode"];
+            digitraxBuffer->sendTrackCurrent(trackId);
+          }
         }
       }
+      
     }
   } 
   else

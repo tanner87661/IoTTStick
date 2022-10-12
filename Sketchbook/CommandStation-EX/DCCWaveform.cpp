@@ -11,7 +11,7 @@
  *  This is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
  *  the Free Software Foundation, either version 3 of the License, or
- *  (at your option) any later version.g
+ *  (at your option) any later version.
  *
  *  It is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -24,11 +24,11 @@
 
 #include <Arduino.h>
 
-#include "StringFormatter.h"
 #include "DCCWaveform.h"
 #include "DCCTimer.h"
 #include "DIAG.h"
 #include "freeMemory.h"
+#include "CommandDistributor.h"
 
 DCCWaveform  DCCWaveform::mainTrack(PREAMBLE_BITS_MAIN, true);
 DCCWaveform  DCCWaveform::progTrack(PREAMBLE_BITS_PROG, false);
@@ -53,8 +53,7 @@ void DCCWaveform::begin(MotorDriver * mainDriver, MotorDriver * progDriver) {
   MotorDriver::usePWM= mainDriver->isPWMCapable() && progDriver->isPWMCapable();
   DIAG(F("Signal pin config: %S accuracy waveform"),
 	 MotorDriver::usePWM ? F("high") : F("normal") );
-  DCCTimer::begin(DCCWaveform::interruptHandler);  
-//  DCCCurrentSensor::begin();   
+  DCCTimer::begin(DCCWaveform::interruptHandler);     
 }
 
 void DCCWaveform::loop(bool ackManagerActive) {
@@ -110,7 +109,6 @@ DCCWaveform::DCCWaveform( byte preambleBits, bool isMain) {
   sampleDelay = 0;
   lastSampleTaken = millis();
   ackPending=false;
-  sendCurrentSample = false;
 }
 
 POWERMODE DCCWaveform::getPowerMode() {
@@ -137,15 +135,17 @@ void DCCWaveform::checkPowerOverload(bool ackManagerActive) {
   switch (powerMode) {
     case POWERMODE::OFF:
       sampleDelay = POWER_SAMPLE_OFF_WAIT;
-      if (sendCurrentSample)
-        StringFormatter::send(outStream, F("<a %d %d>\n"), isMainTrack ? 0 : 1, 0);
+      if (sendCurrentSample) // || (accuSize > 0))
+        CommandDistributor::broadcastCurrent(isMainTrack ? 0 : 1, 0);
       break;
     case POWERMODE::ON:
       // Check current
       lastCurrent=motorDriver->getCurrentRaw();
-      if (sendCurrentSample)
-        StringFormatter::send(outStream, F("<a %d %d>\n"), isMainTrack ? 0 : 1, getCurrentmA());
-
+      if (sendCurrentSample) // || (accuSize > 0))
+        CommandDistributor::broadcastCurrent(isMainTrack ? 0 : 1, getCurrentmA());
+//      else
+//        if (accuSize > 0)
+//          currAccu = (currAccu * accuFact) + (sq((float)getCurrentmA()));
       if (lastCurrent < 0) {
 	  // We have a fault pin condition to take care of
 	  lastCurrent = -lastCurrent;

@@ -3,8 +3,16 @@ var mainScrollBox;
 var tabConfig;
 var tabInputs;
 var tabButtons;
+var tabGauges;
+
+var updateCurrent = false;
+var currTrack = 0;
+
+var trackGauge;
+var progGauge;
 
 var ConfigOptionPanel;
+var CurrentOptionPanel;
 var InputPanel;
 var ButtonPanel;
 
@@ -34,7 +42,7 @@ function setPanelVisibility()
 
 function constructPageContent(contentTab)
 {
-	var menueStr = ["Options", "Inputs", "Turnouts"];
+	var menueStr = ["Options", "Inputs", "Turnouts", "Monitor"];
 	var tempObj;
 	mainScrollBox = createEmptyDiv(contentTab, "div", "pagetopicboxscroll-y", "btnconfigdiv");
 
@@ -99,6 +107,15 @@ function constructPageContent(contentTab)
 					createDropdownselector(tempObj, "tile-1_4", "DCC Speed Steps:", ["128 Steps","28 Steps"], "OpSw_20", "setOpSwDD(this)");
 					createDispText(tempObj, "tile-1_4", "DCC++ Refresh Slots:", "n/a", "refreshslots");
 				 tempObj= createEmptyDiv(ConfigOptionPanel, "div", "tile-1", "");
+					createPageTitle(tempObj, "div", "tile-1", "BasicCfg_Title", "h2", "Current Measurement Settings");
+					createCheckbox(tempObj, "tile-1_4", "Report Main Track", "reportmain", "setCurrentOptions(this)");
+					createCheckbox(tempObj, "tile-1_4", "Report Prog Track", "reportprog", "setCurrentOptions(this)");
+				 tempObj= createEmptyDiv(ConfigOptionPanel, "div", "tile-1", "");
+					createTextInput(tempObj, "tile-1_4", "Buffer Size:", "n/a", "currbuffsize", "setCurrentOptions(this)");
+					createTextInput(tempObj, "tile-1_4", "Max. Value:", "n/a", "currmaxval", "setCurrentOptions(this)");
+				 tempObj= createEmptyDiv(ConfigOptionPanel, "div", "tile-1", "");
+					createTextInput(tempObj, "tile-1_4", "Major Ticks:", "n/a", "majorticks", "setCurrentOptions(this)");
+				 tempObj= createEmptyDiv(ConfigOptionPanel, "div", "tile-1", "");
 					createPageTitle(tempObj, "div", "tile-1", "BasicCfg_Title", "h2", "Programming Track Options");
 					createTextInput(tempObj, "tile-1_4", "Min. ACK Pulse [mA]:", "n/a", "proglimit", "setProgOptions(this)");
 					createTextInput(tempObj, "tile-1_4", "Min. ACK Time [\xB5s]:", "n/a", "progpulsemin", "setProgOptions(this)");
@@ -126,6 +143,54 @@ function constructPageContent(contentTab)
 				tempObj = createEmptyDiv(ButtonPanel, "div", "tile-1", "");
 					createSimpleText(tempObj,"tile-1", "(!) Not recommended. Use VPIN instead", "zpinwarning");
 					createCheckbox(tempObj, "tile-1_4", "Store Turnout/Pin Settings to EEPROM", "turnouteeprom", "setProgOptions(this)");
+		tabGauges = createEmptyDiv(mainScrollBox, "div", "tile-1", "");
+			GaugePanel = createEmptyDiv(tabGauges, "div", "tile-1", "");
+				subGaugePanel1 = createEmptyDiv(GaugePanel, "div", "tile-1_4", "");
+				subGaugePanel2 = createEmptyDiv(GaugePanel, "div", "tile-1_4", "");
+
+			var trackCanvas = document.createElement("CANVAS");
+			trackCanvas.setAttribute("id","trackCanvas"); 
+			trackCanvas.setAttribute("style","tile-1_4"); 
+			subGaugePanel1.append(trackCanvas);
+//			var ctx = trackCanvas.getContext("2d");
+//			ctx.fillStyle = "#FF0000";
+//			ctx.fillRect(20, 20, 150, 100);
+			trackGauge = new RadialGauge(
+				{width: 200, 
+				height: 200, 
+				units: 'mA', 
+				renderTo: "trackCanvas",
+				title: "Main",
+				value: 0,
+				minValue: 0,
+				maxValue: 3000,
+				majorTicks: [0],
+				minorTicks: 2,
+				
+				}).draw();
+
+			var progCanvas = document.createElement("CANVAS");
+			progCanvas.setAttribute("id","progCanvas"); 
+			progCanvas.setAttribute("style","tile-1_4"); 
+			subGaugePanel2.append(progCanvas);
+//			var ctx = progCanvas.getContext("2d");
+//			ctx.fillStyle = "#00FF00";
+//			ctx.fillRect(20, 20, 150, 100);
+			progGauge = new RadialGauge(
+				{width: 200, 
+				height: 200, 
+				units: 'mA', 
+				renderTo: "progCanvas",
+				title: "Prog",
+				value: 0,
+				minValue: 0,
+				maxValue: 3000,
+				majorTicks: [0],
+				minorTicks: 2,
+				
+				}).draw();
+			setVisibility(false, trackCanvas);
+			setVisibility(false, progCanvas);
 
 
 /*
@@ -152,10 +217,12 @@ function constructPageContent(contentTab)
 	tempObj = createEmptyDiv(mainScrollBox, "div", "tile-1", "");
 		createButton(tempObj, "", "Save & Restart", "btnSave", "saveEEPROMSettings(this)");
 		createButton(tempObj, "", "Cancel", "btnCancel", "cancelSettings(this)");
+//		createButton(tempObj, "", "Request", "btnReq", "requestCurrent(this)");
 	tempObj = createEmptyDiv(mainScrollBox, "div", "tile-1", "");
 			createButton(tempObj, "", "Save to File", "btnDownload", "downloadSettings(this)");
 	setVisibility(false, tabInputs);
 	setVisibility(false, tabButtons);
+	setVisibility(false, tabGauges);
 
 }
 
@@ -176,6 +243,21 @@ function saveEEPROMSettings(sender)
 		ws.send("{\"Cmd\":\"SetDCCPP\", \"SubCmd\":\"SendCmd\",\"OpCode\": \"E\"}");
 	}
 	saveSettings(sender);
+}
+
+function requestCurrent(sender)
+{
+	try 
+	{
+		ws.send("{\"Cmd\":\"SetDCCPP\", \"SubCmd\":\"GetCurrent\",\"OpCode\": " + currTrack + "}");
+	}
+	catch  (error) 
+	{
+		console.error(error);
+	}
+	currTrack = Math.abs(currTrack - 1);
+	if (updateCurrent)
+		setTimeout(function(){requestCurrent(null)}, 500);
 }
 
 function progDefault(sender)
@@ -222,6 +304,28 @@ function setFCTime(timeVal, clockRate)
 //	if (sender.id == "withrottleport")
 //		configData[workCfg].ServerSettings.wiThrottle.Port = verifyNumber(sender.value, configData[workCfg].ServerSettings.wiThrottle.Port); 
 //}
+
+function setCurrentOptions(sender)
+{
+	if (sender.id == "reportmain")
+		configData[workCfg].CurrentTracker.ReportMode = sender.checked ? configData[workCfg].CurrentTracker.ReportMode | 0x01 : configData[workCfg].CurrentTracker.ReportMode & ~0x01; 
+	if (sender.id == "reportprog")
+		configData[workCfg].CurrentTracker.ReportMode = sender.checked ? configData[workCfg].CurrentTracker.ReportMode | 0x02 : configData[workCfg].CurrentTracker.ReportMode & ~0x02; 
+	if (sender.id == "currbuffsize")
+		configData[workCfg].CurrentTracker.SampleSize = verifyNumber(sender.value, configData[workCfg].CurrentTracker.SampleSize); 
+	if (sender.id == "currmaxval")
+		configData[workCfg].CurrentTracker.MaxVal = verifyNumber(sender.value, configData[workCfg].CurrentTracker.MaxVal); 
+	if (sender.id == "majorticks")
+	{
+		var newArray = verifyNumArray(sender.value, ",");
+		if (newArray.length > 0)
+		{
+			configData[workCfg].CurrentTracker.MainTicks = []; //make sure this is an array
+			for (var i = 0; i < newArray.length; i++)
+				configData[workCfg].CurrentTracker.MainTicks.push(newArray[i]);
+		}
+	}
+}
 
 function setProgOptions(sender)
 {
@@ -290,7 +394,10 @@ function setPageMode(sender)
 	setVisibility(false, tabConfig);
 	setVisibility(false, tabInputs);
 	setVisibility(false, tabButtons);
-
+	setVisibility(false, tabGauges);
+	setVisibility(false, document.getElementById("trackCanvas"));
+	setVisibility(false, document.getElementById("progCanvas"));
+	updateCurrent = false;
 	switch (sender.id)
 	{
 		case "cbsetup_0":
@@ -305,6 +412,13 @@ function setPageMode(sender)
 //			writeRBInputField("cbsetup", 2);
 			setVisibility(true, tabButtons);
 			break;
+		case "cbsetup_3":
+			updateCurrent = true;
+			setVisibility(true, tabGauges);
+			setVisibility((configData[workCfg].CurrentTracker.ReportMode & 0x02) > 0, document.getElementById("progCanvas"));
+			setVisibility((configData[workCfg].CurrentTracker.ReportMode & 0x01) > 0, document.getElementById("trackCanvas"));
+			setTimeout(function(){requestCurrent(sender) }, 1000);
+			break;
 	}
 	updateMenueTabs("RedHatSub", sender.id, "grey");
 }
@@ -312,11 +426,11 @@ function setPageMode(sender)
 function verifyUniqueID(thisID)
 {
 //	console.log("check ", thisID);
-	for (var i = 0; i < configData[2].InputSettings.InpPins.length; i++)
-		if (thisID == configData[2].InputSettings.InpPins[i].Id)
+	for (var i = 0; i < configData[workCfg].InputSettings.InpPins.length; i++)
+		if (thisID == configData[workCfg].InputSettings.InpPins[i].Id)
 			return false;
-	for (var i = 0; i < configData[2].TurnoutSettings.OutPins.length; i++)
-		if (thisID == configData[2].TurnoutSettings.OutPins[i].Id)
+	for (var i = 0; i < configData[workCfg].TurnoutSettings.OutPins.length; i++)
+		if (thisID == configData[workCfg].TurnoutSettings.OutPins[i].Id)
 			return false;
 //	console.log(i, " is unique");
 	return true;
@@ -794,6 +908,22 @@ function loadDataFields(jsonData)
 				}
 	loadSensorTable(sensorTable, jsonData.InputSettings.InpPins, true);
 	loadTurnoutTable(turnoutTable, jsonData.TurnoutSettings.OutPins, true);
+
+	trackGauge.update({
+				maxValue: jsonData.CurrentTracker.MaxVal,
+				majorTicks: jsonData.CurrentTracker.MainTicks,
+	});
+	progGauge.update({
+				maxValue: jsonData.CurrentTracker.MaxVal,
+				majorTicks: jsonData.CurrentTracker.MainTicks,
+	});
+	document.getElementById("currbuffsize").value = jsonData.CurrentTracker.SampleSize;
+	document.getElementById("currmaxval").value = jsonData.CurrentTracker.MaxVal;
+	document.getElementById("majorticks").value = jsonData.CurrentTracker.MainTicks;
+	document.getElementById("reportmain").checked = (jsonData.CurrentTracker.ReportMode & 0x01) > 0;
+	document.getElementById("reportprog").checked = (jsonData.CurrentTracker.ReportMode & 0x02) > 0;
+
+
 	setPanelVisibility();
 	cmdStr = "{\"Cmd\":\"SetDCCPP\", \"SubCmd\":\"GetConfig\",\"Filter\": 0}";
 //	console.log(cmdStr);
@@ -828,10 +958,21 @@ function processDCCPPInput(jsonData)
 	}
 }
 
+function processTrackDataInput(jsonData)
+{
+//	console.log(jsonData);
+	var dispVal = 0;
+	if ((jsonData.Data.Value >= 0) && (jsonData.Data.Value < 5000))
+		dispVal = jsonData.Data.Value;
+	if (jsonData.Data.Track == 0)
+		trackGauge.value = dispVal;
+	else
+		progGauge.value = dispVal;
+}
+
 function processFCInput(jsonData)
 {
-//	console.log("processFCInput");
-	console.log(jsonData);
+//	console.log(jsonData);
 	document.getElementById("fcrate").selectedIndex = jsonData.Data.Rate;
 	var hrStr = Math.trunc(jsonData.Data.Time / 3600) % 24;
 	var minStr = Math.trunc(jsonData.Data.Time / 60) % 60;

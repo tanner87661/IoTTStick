@@ -93,4 +93,18 @@ bool getXORCheck(uint8_t * msgData, uint8_t targetLen = 0);
 //void dispSlot(uint8_t * slotBytes);
 //bool verifySyntax(uint8_t * msgData);
 void untokstr(char* strList[], uint8_t listLen, char* inpStr, const char* token); 
+
+class rmsBuffer
+{
+	public:
+		rmsBuffer(uint8_t bufSize);
+		void addVal(uint16_t newVal);
+		float_t getRMSVal();
+		void clrBuffer();
+	private:
+		float_t* rmsData = NULL;
+		uint8_t bufferSize;
+		uint8_t wrIndex = 0;
+};
+
 #endif

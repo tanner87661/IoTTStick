@@ -67,7 +67,6 @@ void check_if_exist_I2C()
         Serial.print("0");
       Serial.print(address, HEX);
       Serial.println("  !");
-
       nDevices++;
     } else if (error == 4) {
       Serial.print("Unknow error at address 0x");

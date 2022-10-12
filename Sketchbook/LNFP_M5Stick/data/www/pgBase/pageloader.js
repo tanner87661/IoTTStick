@@ -453,13 +453,18 @@ function loadInitData()
 //	console.log("loadInitData");
 	if (wsInitNode)
 	{
-		if (scriptList.Pages[currentPage].ID != "pgNodeCfg")
+		if (scriptList != undefined)
 		{
-			ws.send("{\"Cmd\":\"CfgData\", \"Type\":\"pgNodeCfg\", \"FileName\": \"node\"}");
-//			console.log("{\"Cmd\":\"CfgData\", \"Type\":\"pgNodeCfg\", \"FileName\": \"node\"}");
+			if (scriptList.Pages[currentPage].ID != "pgNodeCfg")
+			{
+				ws.send("{\"Cmd\":\"CfgData\", \"Type\":\"pgNodeCfg\", \"FileName\": \"node\"}");
+//				console.log("{\"Cmd\":\"CfgData\", \"Type\":\"pgNodeCfg\", \"FileName\": \"node\"}");
+			}
+			else
+				wsInitNode = false;
 		}
-		else
-			wsInitNode = false;
+//		else
+//			console.log("Waiting for Script List");
 		setTimeout(loadInitData, 1000);
 	}
 	else
@@ -543,6 +548,8 @@ function startWebsockets()
  			processDCCPPInput(myArr);
   		if ((myArr.Cmd == "FC") && (scriptList.Pages[currentPage].ID == "pgRedHatCfg"))
  			processFCInput(myArr);
+  		if ((myArr.Cmd == "DCCAmp") && (scriptList.Pages[currentPage].ID == "pgRedHatCfg"))
+ 			processTrackDataInput(myArr);
 
   		if (myArr.Cmd == "CfgFiles")
   		{

@@ -29,6 +29,7 @@
 #define purgeLimitShort 30 //count for 300 s purge time
 #define purgeLimitLong 60 // and for 60 sec
 #define purgeInterval 10000 //run purge timer every 10 seconds
+#define statusInterval 1000 //run status timer every 5 seconds
 #define queryInterval 1000
 
 //Digitrax CS
@@ -185,6 +186,7 @@ class IoTT_DigitraxBuffers
 //		void addActor(uint16_t Id, uint8_t pinType, uint8_t pinNr, uint8_t flags);
 		void sendDCCCmdToWeb(ppElement * myParams);
 		void sendFCCmdToWeb();
+		void sendTrackCurrent(uint8_t trackId);
 		uint16_t receiveDCCGeneratorFeedback(lnTransmitMsg txData);
 		//LocoNet Management functions mainly for Command Station mode
 		//from incoming DCC command
@@ -266,6 +268,7 @@ class IoTT_DigitraxBuffers
 		uint32_t fcRefresh = millis();
 		uint32_t fcLastBroadCast = millis();
 		uint32_t purgeSlotTimer = millis();
+		uint32_t getStatusTimer = millis();
 		slotData progSlot;
 		uint8_t rxPin = 36;
 		uint8_t txPin = 26; 
@@ -286,6 +289,11 @@ class IoTT_DigitraxBuffers
 		bool    progBoost = false;
 		bool    configPeripheralsPwrUp = true;
 		uint32_t webTimeout = millis();
+		uint8_t currReportMode = 0;
+		uint8_t currBuffSize = 50;
+		rmsBuffer* trackData = NULL;
+		rmsBuffer* progData = NULL;
+		
 };
 
 extern IoTT_DigitraxBuffers* digitraxBuffer; //pointer to DigitraxBuffers
