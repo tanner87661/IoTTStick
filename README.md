@@ -1,6 +1,10 @@
 # IoTTStick
 This is the code repository for the IoTT Stick, port modules and hat devices with the source code for the latest release. 
 
+2022/10/12 1.5.17
+- Version 1.5.17
+- Added Current gauges to RedHat to display track current (requires special version of DCC EX)
+
 2022/09/18 1.5.16
 - Version 1.5.16
 - Improved webpage loading (bugfix for timeout problem)
