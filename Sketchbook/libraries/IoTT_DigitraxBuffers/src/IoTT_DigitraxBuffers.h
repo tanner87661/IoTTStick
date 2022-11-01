@@ -115,6 +115,13 @@ typedef struct
 	outputType lnType;
 } arduinoPins;
 
+typedef struct
+{
+	int8_t currUsePin = 0; //4MSB ture/false 4LSB analog pinNr
+	float_t currMultiplier = 1.0;
+	float_t currOffset = 0.0;
+	uint8_t currBuffSize = 40;
+} trackerData;
 
 uint32_t millisElapsed(uint32_t since);
 uint32_t microsElapsed(uint32_t since);
@@ -289,10 +296,10 @@ class IoTT_DigitraxBuffers
 		bool    progBoost = false;
 		bool    configPeripheralsPwrUp = true;
 		uint32_t webTimeout = millis();
-		uint8_t currReportMode = 0;
-		uint8_t currBuffSize = 50;
-		rmsBuffer* trackData = NULL;
-		rmsBuffer* progData = NULL;
+		uint8_t trackGaugesLen = 0;
+		trackerData* trackGauges = NULL;
+		rmsBuffer** trackData = NULL;
+//		rmsBuffer* progData = NULL;
 		
 };
 

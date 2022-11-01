@@ -457,8 +457,36 @@ void IoTT_DigitraxBuffers::loadRHCfgJSON(DynamicJsonDocument doc)
 	}
 	if (doc.containsKey("CurrentTracker"))
 	{
-		currBuffSize = doc["CurrentTracker"]["SampleSize"];
-		currReportMode = doc["CurrentTracker"]["ReportMode"];
+		JsonArray trackerArray = doc["CurrentTracker"];
+		if (trackerArray.isNull())
+		{
+			trackGaugesLen = 2;
+			trackGauges = (trackerData*) realloc (trackGauges, trackGaugesLen * sizeof(trackerData));
+			uint8_t repMode = doc["CurrentTracker"]["ReportMode"];
+			for (int i=0; i<2;i++)
+			{
+				trackGauges[i].currUsePin = i;
+				if (repMode & (0x01 << i))
+					trackGauges[i].currUsePin |= 0x10;
+				trackGauges[i].currOffset = 0;
+				trackGauges[i].currBuffSize = doc["CurrentTracker"]["SampleSize"];
+				trackGauges[i].currMultiplier = doc["CurrentTracker"]["Multiplier"];
+			}
+		}
+		else
+		{
+			trackGaugesLen = trackerArray.size();
+			trackGauges = (trackerData*) realloc (trackGauges, trackGaugesLen * sizeof(trackerData));
+			for (int i=0; i<trackGaugesLen;i++)
+			{
+				trackGauges[i].currUsePin = trackerArray[i]["PinNr"];
+				if (trackerArray[i]["ShowGauge"])
+					trackGauges[i].currUsePin |= 0x10;
+				trackGauges[i].currOffset = trackerArray[i]["Offset"];
+				trackGauges[i].currBuffSize = trackerArray[i]["SampleSize"];
+				trackGauges[i].currMultiplier = trackerArray[i]["Multiplier"];
+			}
+		}
 	}
 }
 
@@ -523,10 +551,19 @@ void IoTT_DigitraxBuffers::setRedHatMode(txFct lnReply, DynamicJsonDocument doc)
         dccPort->loadLNCfgJSON(doc); //loads baudrate and invert information
         dccPort->setProtType(DCCEx); //DCC++Ex DCC Generator
         dccPort->setTxCallback(dccGeneratorCallback);
-        if ((currReportMode & 0x01) > 0)
-			trackData = new	rmsBuffer(currBuffSize);
-        if ((currReportMode & 0x02) > 0)
-			progData = new	rmsBuffer(currBuffSize);
+//		Serial.printf("Track Gauge %i\n", trackGaugesLen);
+		if (trackGaugesLen > 0)
+		{
+			trackData = (rmsBuffer**) realloc (trackData, trackGaugesLen * sizeof(rmsBuffer*));
+			for (int i=0; i < trackGaugesLen; i++)
+			{
+				if (trackGauges[i].currUsePin & 0x10)
+				{
+//					Serial.printf("Track Data %i\n", i);
+					trackData[i] = new	rmsBuffer(trackGauges[i].currBuffSize);
+				}
+			}
+		}
 	}
 /**
 	if (isRedHat && (rhButtons == NULL)) //buttons are only available if RedHat hardware is used
@@ -608,7 +645,7 @@ void IoTT_DigitraxBuffers::initArduinoBoard()
 		purgeLimit = purgeLimitLong;
 	else
 		purgeLimit = purgeLimitShort;
-	setCurrReportMode(currReportMode & 0x01, currReportMode >> 1);
+	setCurrReportMode((trackGauges[0].currUsePin & 0x10) >> 4, (trackGauges[1].currUsePin & 0x10) >> 4);
 }
 
 bool IoTT_DigitraxBuffers::saveToFile(String fileName)
@@ -989,12 +1026,10 @@ void IoTT_DigitraxBuffers::sendTrackCurrent(uint8_t trackId)
 		doc["Cmd"] = "DCCAmp";
 		JsonObject Data = doc.createNestedObject("Data");
 		Data["Track"] = trackId;		
-		if (trackId == 0)
-			Data["Value"] = trackData ? trackData->getRMSVal() : 0;
-		else
-			Data["Value"] = progData ? progData->getRMSVal() : 0;
+		Data["Value"] = (trackGauges[trackId].currUsePin & 0x10) > 0 ? trackData[trackId]->getRMSVal() * trackGauges[trackId].currMultiplier : 0;
 		serializeJson(doc, myMqttMsg);
 		globalClient->text(myMqttMsg);
+//		Serial.println(myMqttMsg);
 	}
 }
 
@@ -1061,11 +1096,7 @@ uint16_t IoTT_DigitraxBuffers::receiveDCCGeneratorFeedback(lnTransmitMsg txData)
 			if (myParams[0].numParams == 3) // <a TRACK VALUE>
 			{
 				uint8_t trackID = myParams[1].payload.longVal;
-				switch (trackID)
-				{
-					case 0: if (trackData) trackData->addVal(myParams[2].payload.longVal); break;
-					case 1: if (progData) progData->addVal(myParams[2].payload.longVal); break;
-				}
+				if ((trackGauges[trackID].currUsePin & 0x10) > 0) trackData[trackID]->addVal(myParams[2].payload.longVal); break;
 			}
 			break;
 		case 'c': 
@@ -1697,8 +1728,8 @@ void IoTT_DigitraxBuffers::localPowerStatusChange(uint8_t newStatus)
 		uint8_t destTrack = 0;
 		if (newStatus == 0x83)
 			destTrack = getOpSw(opSwProgIsMain, 1) ? 3 : 0;
+		setCurrReportMode((trackGauges[0].currUsePin & 0x10) >> 4, (trackGauges[1].currUsePin & 0x10) >> 4);
 		setDCCPowerOutMsg(newStatus, destTrack);
-//		Serial.println("1642");
 	}
 }
 
@@ -2106,6 +2137,7 @@ bool IoTT_DigitraxBuffers::processDCCGenerator(lnReceiveBuffer * newData)
 			uint8_t destTrack = 0;
 			if (newData->lnData[0] == 0x83)
 				destTrack = getOpSw(opSwProgIsMain, 1) ? 3 : 0;
+			setCurrReportMode((trackGauges[0].currUsePin & 0x10) >> 4, (trackGauges[1].currUsePin & 0x10) >> 4);
 			setDCCPowerOutMsg(newData->lnData[0], destTrack);
 //		Serial.println("2051");
 			break;

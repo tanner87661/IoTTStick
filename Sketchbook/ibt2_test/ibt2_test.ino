@@ -1,6 +1,6 @@
 #include <OneDimKalman.h>
 
-#define useNano
+//#define useNano
 
 uint16_t pinValA = 0;
 uint16_t pinValB = 0;
@@ -28,10 +28,15 @@ int sensorPinB = A1;    // select the input pin for the potentiometer
 int ledPin = 13;      // select the pin for the LED
 int pwmPin = 9;      // select the pin for the PWM output
 #else
+#include <avr/io.h>        // Adds useful constants
+#include <util/delay.h>    // Adds delay_ms and delay_us functions
+#include <PWM.h>
+
 int sensorPinA = A2;    // select the input pin for the potentiometer
-int ledPin = 1;      // select the pin for the LED
+int sensorPinB = A1;    // select the input pin for the potentiometer
+int ledPin = 0;      // select the pin for the LED
 int pwmPin = 1;      // select the pin for the LED
-int ctrPin = 0;      // select the pin for the LED
+int ctrPin = 3;      // select the pin for the LED
 #endif
 
 void setup() {
@@ -52,7 +57,13 @@ void setup() {
   chBAvg = chBMin;
 }
 
+int pos = 0;
 void loop() { //AtTiny85: ca. 3300 runs per second
+  analogWrite(ledPin, pos);
+  analogWrite(pwmPin, 255 - pos);
+  pos = (pos + 1) % 255;
+  delay(100);
+  return;
   pinValA = analogRead(sensorPinA);
   pinValB = analogRead(sensorPinB);
 //  sensorValueA = filterA->getEstimate(4.15 * (double)pinValA); // 5 / 1024 * analogRead(sensorPinA) / 10000 * 8500; //mA
@@ -90,6 +101,7 @@ void loop() { //AtTiny85: ca. 3300 runs per second
   if (millis() > (timePoint))
   {
     timePoint += 100;
+    uint16_t pwmOut;
     #ifdef useNano    
       Serial.print(counter);
       Serial.print(" ");
@@ -120,7 +132,7 @@ void loop() { //AtTiny85: ca. 3300 runs per second
       Serial.print(avgA);
       Serial.print(" ");
       double avgB = nzcounterB > 0 ? sqrt(chBAvg/nzcounterB) : 0;
-      uint16_t pwmOut = round((max(avgA, avgB) * 255) / 2000);
+      pwmOut = round((max(avgA, avgB) * 255) / 2000);
       double sampleRatio = max(avgA, avgB) / (double)(nzcounterA + nzcounterB);
       Serial.print(avgB);
       Serial.print(" ");

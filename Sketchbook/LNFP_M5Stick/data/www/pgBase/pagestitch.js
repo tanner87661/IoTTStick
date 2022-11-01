@@ -66,6 +66,41 @@ var ServerList = [{"Name":"MQTT Broker Gateway","ServerId":0,"InterfaceList":[1,
 	return jsonData;
 }
 
+function upgradeJSONVersionRedHat(jsonData)
+{
+	jsonFileVersion = "1.0.1";
+	var thisVersion = jsonData.Version;
+	console.log(thisVersion);
+	if (thisVersion == jsonFileVersion)
+		return jsonData;
+	if (thisVersion == undefined)
+	{
+		//upgrade from noversion to 1.0.0
+		console.log("upgrade RedHat Config from noversion to 1.0.0");
+		jsonData.Version = "1.0.0";
+	}
+	if (jsonData.Version == "1.0.0")
+	{
+		console.log("upgrade RedHat Config from 1.0.0 to 1.0.1");
+		console.log(jsonData.CurrentTracker);
+		var oldTracker = JSON.parse(JSON.stringify(jsonData.CurrentTracker));
+		var Gauges = ["Main", "Prog"];
+		jsonData.CurrentTracker = [];
+		for (var i = 0; i < 2; i++)
+		{
+			var newTracker = JSON.parse(JSON.stringify(oldTracker));
+			newTracker.GaugeName = Gauges[i];
+			newTracker.ShowGauge = (newTracker.ReportMode & (1<<i)) > 0 ? true : false;
+			newTracker.PinNr = i;
+			newTracker.Offset = 0;
+			delete newTracker.ReportMode;
+			jsonData.CurrentTracker.push(newTracker); 
+		}
+		jsonData.Version = "1.0.1";
+	}
+	return jsonData;
+}
+
 function upgradeJSONVersionPurpleHat(jsonData)
 {
 	jsonFileVersion = "1.0.1";
@@ -89,7 +124,6 @@ function upgradeJSONVersionPurpleHat(jsonData)
 	}
 	return jsonData;
 }
-
 function upgradeJSONVersionLBServer(jsonData)
 {
 	jsonFileVersion = "1.0.1";
@@ -124,22 +158,6 @@ function upgradeJSONVersionGH(jsonData)
 	{
 		//upgrade from noversion to 1.1.1
 		console.log("upgrade GreenHat from noversion to 1.0.0");
-		jsonData.Version = "1.0.0";
-	}
-	return jsonData;
-}
-
-function upgradeJSONVersionRH(jsonData)
-{
-	jsonFileVersion = "1.0.0";
-	var thisVersion = jsonData.Version;
-	console.log(thisVersion);
-	if (thisVersion == jsonFileVersion)
-		return jsonData;
-	if ((isNaN(thisVersion)) || (thisVersion = undefined))
-	{
-		//upgrade from noversion to 1.0.0
-		console.log("upgrade RedHat from noversion to 1.0.0");
 		jsonData.Version = "1.0.0";
 	}
 	return jsonData;

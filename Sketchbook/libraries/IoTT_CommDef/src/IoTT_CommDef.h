@@ -104,7 +104,7 @@ class rmsBuffer
 	private:
 		float_t* rmsData = NULL;
 		uint8_t bufferSize;
-		uint8_t wrIndex = 0;
+		int8_t wrIndex = -1;
 };
 
 #endif

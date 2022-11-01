@@ -8,7 +8,7 @@
 #include <M5UnitOLED.h>
 #include <M5Unified.h>
 
-String BBVersion = "1.5.16";
+String BBVersion = "1.5.17";
 
 //#define measurePerformance //uncomment this to display the number of loop cycles per second
 //#define useAI
@@ -19,7 +19,7 @@ String BBVersion = "1.5.16";
 
 //#include <Wiroe.h>
 //#include <esp_int_wdt.h>
-//#include <esp_task_wdt.>
+//#include <esp_task_wdt.h>
 
 #include <WiFi.h>
 #include <ArduinoUniqueID.h>
