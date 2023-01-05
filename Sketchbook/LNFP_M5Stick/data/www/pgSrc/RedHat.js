@@ -960,17 +960,15 @@ function processTrackDataInput(jsonData)
 {
 //	console.log(jsonData);
 	var dispVal = 0;
-	if ((jsonData.Data.Value >= 0) && (jsonData.Data.Value < 5000))
-		dispVal = jsonData.Data.Value;
-	if (dispVal >= 0)
-		for (var i = 0; i < trackGauges.length; i++)
+	for (var i = 0; i < trackGauges.length; i++)
+	{
+		if (configData[workCfg].CurrentTracker[i].PinNr == jsonData.Data.Track)
 		{
-			if (configData[workCfg].CurrentTracker[i].PinNr == jsonData.Data.Track)
-				trackGaugeDefs[i].value = dispVal;
-//			else
-//				if (trackGauges[i].ShowGauge < 0)
-//					setVisibility(false, trackGauges[i]);
+			dispVal = Math.min(jsonData.Data.Value, configData[workCfg].CurrentTracker[i].MaxVal);
+			trackGaugeDefs[i].value = dispVal;
+			break;
 		}
+	}
 }
 
 function processFCInput(jsonData)

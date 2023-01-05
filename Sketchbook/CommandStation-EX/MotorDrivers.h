@@ -46,10 +46,15 @@
 // (HIGH == release brake)
 //
 // Arduino standard Motor Shield
-#define STANDARD_MOTOR_SHIELD F("STANDARD_MOTOR_SHIELD"),                                                 \
-                              new MotorDriver(3, 12, UNUSED_PIN, UNUSED_PIN, A0, 41.54, 5000, UNUSED_PIN), \
-                              new MotorDriver(11, 13, UNUSED_PIN, UNUSED_PIN, A1, 41.54, 5000, UNUSED_PIN)
 
+#define STANDARD_MOTOR_SHIELD F("STANDARD_MOTOR_SHIELD"),                                                \
+                              new MotorDriver(3, 12, UNUSED_PIN, UNUSED_PIN, A0, 8.31, 6500, UNUSED_PIN), \
+                              new MotorDriver(11, 13, UNUSED_PIN, 10, A1, 8.31, 6500, UNUSED_PIN)
+
+// IoTT IBT-2 PowerShield (any usable pin can be selected and configured on the PowerShield board)
+#define IoTT_POWER_SHIELD F("STANDARD_MOTOR_SHIELD"),                                                \
+                              new MotorDriver(3, 12, UNUSED_PIN, UNUSED_PIN, A0, 8.31, 6500, UNUSED_PIN), \
+                              new MotorDriver(11, 13, UNUSED_PIN, 10, A1, 8.31, 6500, UNUSED_PIN)
 // Pololu Motor Shield
 #define POLOLU_MOTOR_SHIELD F("POLOLU_MOTOR_SHIELD"),                                                 \
                             new MotorDriver( 9, 7, UNUSED_PIN,         -4, A0, 18, 3000, 12), \

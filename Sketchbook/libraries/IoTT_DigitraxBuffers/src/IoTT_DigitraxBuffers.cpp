@@ -316,6 +316,13 @@ void setDCCPowerOutMsg(uint8_t trStatus, uint8_t trType)
 	txBuffer.lnData[txBuffer.lnMsgSize] = 0;
 //	Serial.printf("try: %s\n", outStr);
 	dccPort->lnWriteMsg(txBuffer);
+
+	strcpy(outStr, "= C DC 55");
+	txBuffer.lnMsgSize = strlen(outStr);
+	txBuffer.lnData[txBuffer.lnMsgSize] = 0;
+//	Serial.printf("try: %s\n", outStr);
+	dccPort->lnWriteMsg(txBuffer);
+
 }
 
 void setCurrReportMode(uint8_t mainMode, uint8_t progMode)
@@ -502,7 +509,7 @@ void IoTT_DigitraxBuffers::setLocoNetMode(bool newMode)
 
 void IoTT_DigitraxBuffers::clearSlotBuffer(bool hardReset)
 {
-	Serial.println("Clear Slots");
+//	Serial.println("Clear Slots");
 	for (int i = 0; i < numSlots; i++)
 	{
 		if (hardReset)
@@ -581,9 +588,9 @@ void IoTT_DigitraxBuffers::setRedHatMode(txFct lnReply, DynamicJsonDocument doc)
 */
 	//send RedHat configuration commands
 	lnTransmitMsg txBuffer;
-//	Serial.println("RedHat HW Initialization");  
 	if (isCommandStation)
 	{
+		enableFCRefresh(true, 60);
 		initArduinoBoard();
 	}
 }
@@ -645,7 +652,8 @@ void IoTT_DigitraxBuffers::initArduinoBoard()
 		purgeLimit = purgeLimitLong;
 	else
 		purgeLimit = purgeLimitShort;
-	setCurrReportMode((trackGauges[0].currUsePin & 0x10) >> 4, (trackGauges[1].currUsePin & 0x10) >> 4);
+	if (trackGaugesLen > 0)
+		setCurrReportMode((trackGauges[0].currUsePin & 0x10) >> 4, (trackGauges[1].currUsePin & 0x10) >> 4);
 }
 
 bool IoTT_DigitraxBuffers::saveToFile(String fileName)
@@ -816,18 +824,19 @@ void IoTT_DigitraxBuffers::processLoop()
 
 	}
 	
-	if (millis() - fcRefresh > fcRefreshInterval)
+	if ((millis() - fcRefresh) > fcRefreshInterval)
 	{
 		//refresh fast clock slot
 		setFCTime(getFCTime() + slotBuffer[0x7B][0], false); //call every second, so just add the fc rate
 		fcRefresh += fcRefreshInterval;
 	}
 	
-	if (millis() - fcLastBroadCast > fcBroadcastInterval)
+	if ((millis() - fcLastBroadCast) > fcBroadcastInterval)
 	{
 		prepSlotWriteMsg(&txBuffer, 0x7B);
-		lnOutFct(txBuffer);
-		fcLastBroadCast += fcBroadcastInterval;
+		if (broadcastFC)
+			lnOutFct(txBuffer);
+		fcLastBroadCast = millis(); //+= fcBroadcastInterval;
 //		Serial.printf(" Broadcast FC %i:%i -> %i\n", trunc(intFastClock/3600), trunc((intFastClock % 3600)/60), intFastClock);
 	}
 
@@ -1026,7 +1035,8 @@ void IoTT_DigitraxBuffers::sendTrackCurrent(uint8_t trackId)
 		doc["Cmd"] = "DCCAmp";
 		JsonObject Data = doc.createNestedObject("Data");
 		Data["Track"] = trackId;		
-		Data["Value"] = (trackGauges[trackId].currUsePin & 0x10) > 0 ? trackData[trackId]->getRMSVal() * trackGauges[trackId].currMultiplier : 0;
+		Data["Value"] = (trackGauges[trackId].currUsePin & 0x10) > 0 ? trackData[trackId]->getRMSVal() : 0;
+//		Data["Value"] = (trackGauges[trackId].currUsePin & 0x10) > 0 ? trackData[trackId]->getRMSVal() * trackGauges[trackId].currMultiplier : 0;
 		serializeJson(doc, myMqttMsg);
 		globalClient->text(myMqttMsg);
 //		Serial.println(myMqttMsg);
@@ -1096,7 +1106,16 @@ uint16_t IoTT_DigitraxBuffers::receiveDCCGeneratorFeedback(lnTransmitMsg txData)
 			if (myParams[0].numParams == 3) // <a TRACK VALUE>
 			{
 				uint8_t trackID = myParams[1].payload.longVal;
-				if ((trackGauges[trackID].currUsePin & 0x10) > 0) trackData[trackID]->addVal(myParams[2].payload.longVal); break;
+				if ((trackGauges[trackID].currUsePin & 0x10) > 0) 
+				{
+					uint16_t newVal = round(trackGauges[trackID].currMultiplier * myParams[2].payload.longVal);
+					if (newVal > trackGauges[trackID].currOffset)
+						newVal = round(newVal - trackGauges[trackID].currOffset);
+					else
+						newVal = 0;
+					trackData[trackID]->addVal(newVal); 
+					break;
+				}
 			}
 			break;
 		case 'c': 
@@ -1353,7 +1372,10 @@ void IoTT_DigitraxBuffers::setFCTime(uint32_t newTime, bool updateLN)
 	sysMin %= 60;
 	slotBuffer[0x7B][3] = 0x44 + sysMin;
 	if (updateLN)
-		fcLastBroadCast = millis() - fcBroadcastInterval;
+		if (millis() > fcBroadcastInterval)
+			fcLastBroadCast = millis() - fcBroadcastInterval;
+		else
+			fcLastBroadCast = millis();
 }
 
 void IoTT_DigitraxBuffers::setFCRate(uint8_t newRate, bool updateLN)
@@ -1361,12 +1383,21 @@ void IoTT_DigitraxBuffers::setFCRate(uint8_t newRate, bool updateLN)
 //	Serial.printf("New rate: %i\n", newRate);
 	slotBuffer[0x7B][0] = newRate;
 	if (updateLN)
-		fcLastBroadCast = millis() - fcBroadcastInterval;
+		if (millis() > fcBroadcastInterval)
+			fcLastBroadCast = millis() - fcBroadcastInterval;
+		else
+			fcLastBroadCast = millis();
 }
 
 void IoTT_DigitraxBuffers::enableLissyMod(bool enableLissy)
 {
 	translateLissy = enableLissy;
+}
+
+void IoTT_DigitraxBuffers::enableFCRefresh(bool useFC, uint16_t fcRefreshRate)
+{
+	broadcastFC = useFC;
+	fcBroadcastInterval = 1000 * fcRefreshRate; //secs to msecs
 }
 
 void IoTT_DigitraxBuffers::awaitFocusSlot(int16_t dccAddr, bool simulOnly)
@@ -1728,7 +1759,8 @@ void IoTT_DigitraxBuffers::localPowerStatusChange(uint8_t newStatus)
 		uint8_t destTrack = 0;
 		if (newStatus == 0x83)
 			destTrack = getOpSw(opSwProgIsMain, 1) ? 3 : 0;
-		setCurrReportMode((trackGauges[0].currUsePin & 0x10) >> 4, (trackGauges[1].currUsePin & 0x10) >> 4);
+		if (trackGaugesLen > 0)
+			setCurrReportMode((trackGauges[0].currUsePin & 0x10) >> 4, (trackGauges[1].currUsePin & 0x10) >> 4);
 		setDCCPowerOutMsg(newStatus, destTrack);
 	}
 }
@@ -2137,7 +2169,8 @@ bool IoTT_DigitraxBuffers::processDCCGenerator(lnReceiveBuffer * newData)
 			uint8_t destTrack = 0;
 			if (newData->lnData[0] == 0x83)
 				destTrack = getOpSw(opSwProgIsMain, 1) ? 3 : 0;
-			setCurrReportMode((trackGauges[0].currUsePin & 0x10) >> 4, (trackGauges[1].currUsePin & 0x10) >> 4);
+			if (trackGaugesLen > 0)
+				setCurrReportMode((trackGauges[0].currUsePin & 0x10) >> 4, (trackGauges[1].currUsePin & 0x10) >> 4);
 			setDCCPowerOutMsg(newData->lnData[0], destTrack);
 //		Serial.println("2051");
 			break;

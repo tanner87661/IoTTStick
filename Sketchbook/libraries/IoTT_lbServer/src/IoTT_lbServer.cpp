@@ -271,6 +271,20 @@ locoDef* tcpDef::getLocoBySlot(locoDef* startAt, uint8_t slotAddr, char thID)
 	return NULL;
 }
 
+locoDef* tcpDef::getLocoFromList(locoDef* startAt, char thID)
+{
+	bool trigOK = (startAt == NULL);
+	for (uint8_t i = 0; i < slotList.size(); i++)
+	{
+		if (!trigOK)
+			trigOK = &slotList[i] == startAt;
+		else
+			if ((slotList[i].throttleID == thID) || (thID == '*'))
+				return &slotList[i];
+	}
+	return NULL;
+}
+
 void tcpDef::setLocoAction(uint16_t locoAddr, char thID, const char* ActionCode)
 {
 //	Serial.printf("Loco Action Throttle %c Addr %i %s\n", thID, locoAddr, ActionCode);
@@ -603,6 +617,9 @@ void IoTT_LBServer::handleNewClient(AsyncClient* client)
 	client->onDisconnect(&handleTopDisconnect, this);
 	client->onTimeout(&handleTopTimeOut, this);
 //	Serial.println(String(ESP.getFreeHeap()));
+	updateClientList();
+	if (!isWiThrottle)
+		sendLNClientText(client, "VERSION", LNTCPVersion);
 }
 
  /* clients events */
@@ -628,6 +645,7 @@ void IoTT_LBServer::handleDisconnect(AsyncClient* client)
 		}
 	}
 	Serial.printf("Client disconnected. %i clients remaining \n", clients.size());
+	updateClientList();
 //	Serial.println(String(ESP.getFreeHeap()));
 	yield();
 }
@@ -666,6 +684,8 @@ void IoTT_LBServer::loadLBServerCfgJSON(DynamicJsonDocument doc)
 			turnoutSupport.push_back((uint16_t) turnoutList[i]);
 		}
 	}
+//	if (doc.containsKey("UpdateFC"))
+//		fcUpdate = doc["UpdateFC"];
 }
 
 uint8_t IoTT_LBServer::getConnectionStatus()
@@ -902,6 +922,7 @@ bool IoTT_LBServer::processWIServerMessage(AsyncClient* client, char * c)
 								{
 									currClient->addLoco(locoAddr, throttleID);
 								} 
+								updateClientList();
 								return true;
 							case '-': //Remove Locomotive
 								{
@@ -909,9 +930,11 @@ bool IoTT_LBServer::processWIServerMessage(AsyncClient* client, char * c)
 //									strcat(c, "<;>");
 //									sendWIClientMessage(currClient->thisClient, c);
 								}
+								updateClientList();
 								return true;
 							case 'S': //Steal Locomotive	
 								currClient->stealLoco(locoAddr, throttleID);
+								updateClientList();
 								return true;
 						}
 					}
@@ -946,6 +969,7 @@ bool IoTT_LBServer::processWIServerMessage(AsyncClient* client, char * c)
 					{
 						currClient->wiDeviceName = (char*) realloc(currClient->wiDeviceName, len);
 						strcpy(&currClient->wiDeviceName[0], &c[1]);
+						updateClientList();
 					}
 					sendWIServerMessageString(currClient->thisClient, 9); //ping time
 //					Serial.printf("Device Name: %s\n", currClient->wiDeviceName);
@@ -964,6 +988,7 @@ bool IoTT_LBServer::processWIServerMessage(AsyncClient* client, char * c)
 							{
 								currClient->wiHWIdentifier = (char*) realloc(currClient->wiHWIdentifier, len);
 								strcpy(&currClient->wiHWIdentifier[0], &c[2]);
+								updateClientList();
 							}
 //							Serial.printf("Hardware Identifier: %s", currClient->wiHWIdentifier);
 							return true;
@@ -1458,6 +1483,26 @@ bool IoTT_LBServer::sendWIClientMessage(AsyncClient * thisClient, String cmdMsg)
 		return false;
 }
 
+bool IoTT_LBServer::sendLNClientText(AsyncClient * thisClient, String cmdMsg, String txtMsg)
+{
+	if (thisClient)
+		if (thisClient->canSend())
+		{
+			String lnStr = cmdMsg + " " + txtMsg;
+			lnStr += '\r';
+			lnStr += '\n';
+//			Serial.print(thisClient->space());
+			if (thisClient->space() > strlen(lnStr.c_str())+2)
+			{
+//				Serial.println(lnStr);
+				thisClient->add(lnStr.c_str(), strlen(lnStr.c_str()));
+				nextPingPoint = millis() + pingInterval - random(500);
+				return thisClient->send();
+			}
+		}
+	return false;
+}
+
 bool IoTT_LBServer::sendLNClientMessage(AsyncClient * thisClient, String cmdMsg, lnReceiveBuffer thisMsg)
 {
 	if (thisClient)
@@ -1517,6 +1562,7 @@ void IoTT_LBServer::processLoopWI() //process function for WiThrottle
 				else
 					if (trunc(clients[i]->lastFC/60) != trunc(digitraxBuffer->getFCTime()/60))
 					{
+//						if (fcUpdate)
 						sendWIServerMessageString(clients[i]->thisClient, 10);
 						clients[i]->lastFC = digitraxBuffer->getFCTime();
 					}
@@ -1785,5 +1831,42 @@ void IoTT_LBServer::sendLNPing()
 	txData.lnData[1] = 0x7E;
 	lnWriteMsg(&txData);
 	pingSent = true;
+}
+
+void IoTT_LBServer::updateClientList()
+{
+	if (globalClient)
+	{
+		DynamicJsonDocument doc(800);
+		char myMqttMsg[800];
+		doc["Cmd"] = "ClientList";
+		JsonObject Data = doc.createNestedObject("Data");
+		Data["WIType"] = isWiThrottle;
+		JsonArray clArray = Data.createNestedArray("cl");
+		for (int i = 0; i < clients.size(); i++)
+		{
+			clArray[i]["ip"] = clients[i]->thisClient->remoteIP();
+			if (isWiThrottle)
+			{
+				clArray[i]["name"] = clients[i]->wiDeviceName;
+				locoDef* thisLoco = clients[i]->getLocoFromList(NULL, '*');
+				JsonArray t0List = clArray[i].createNestedArray("t0");
+				JsonArray t1List = clArray[i].createNestedArray("t1");
+				while (thisLoco)
+				{
+					if (thisLoco->throttleID == '0')
+						t0List.add(thisLoco->locoAddr);
+					else
+						if (thisLoco->throttleID == '1')
+						t1List.add(thisLoco->locoAddr);
+//				Serial.printf("LN Slot: %i ThID: %c Addr: %i\n", thisLoco->slotNum, thisLoco->throttleID, thisLoco->locoAddr);
+				thisLoco = clients[i]->getLocoFromList(thisLoco, '*');
+				}
+			}
+		}
+		serializeJson(doc, myMqttMsg);
+//		Serial.println(myMqttMsg);
+		globalClient->text(myMqttMsg);
+	}
 }
 

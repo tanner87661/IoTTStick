@@ -101,6 +101,15 @@ body, html {
   background:white;
 }
 
+.clientbox {
+//  float: left; 
+  width: 100%-20px; 
+  height: 150px;
+  overflow-y: scroll;
+  padding:5px;
+  background:white;
+}
+
 .colorpicker {
   float: left; 
   width: 100px; 

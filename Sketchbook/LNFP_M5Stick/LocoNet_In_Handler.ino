@@ -51,7 +51,7 @@ void processLNValidMsg(lnReceiveBuffer * newData)
   if (usbSerial)
     if (usbSerial->getMsgType() != DCCEx)
     {
-      Serial.println("USB");
+//      Serial.println("USB");
       usbSerial->lnWriteMsg(*newData);
     }
 //  if (secElHandlerList) secElHandlerList->processLocoNetMsg(newData); //do not call this before buffer processing as it will read new buffer values

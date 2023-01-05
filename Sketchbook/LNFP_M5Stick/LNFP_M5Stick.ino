@@ -8,7 +8,7 @@
 #include <M5UnitOLED.h>
 #include <M5Unified.h>
 
-String BBVersion = "1.5.17";
+String BBVersion = "1.5.19";
 
 //#define measurePerformance //uncomment this to display the number of loop cycles per second
 //#define useAI
@@ -132,6 +132,7 @@ constexpr gpio_num_t groveTxCAN = GPIO_NUM_32; //for OpenLCB CAN
 #define hatSDA 26 //changes between input and output by I2C master
 #define hatSCL 0 //pull SCL low while sending non I2C data over SDA
 #define hatRxD 0
+#define hatRxDAlt 36 //read only Input
 #define hatTxD 26
 #define hatInputPin 36 //25+ //36
 #define hatDataPin 26 //26 used to send LED data from FastLED to BlueHat. First, set to output low, then call show
@@ -350,6 +351,14 @@ void setup()
         digitraxBuffer->enableLissyMod(true); //defined in IoTT_DigitraxBuffers.h
       else
         digitraxBuffer->enableLissyMod(false);
+    if (jsonConfigObj->containsKey("broadcastFC"))
+    {
+      bool fcStat = (*jsonConfigObj)["broadcastFC"];
+      uint16_t fcRate = (*jsonConfigObj)["broadcastFCRate"];
+      digitraxBuffer->enableFCRefresh(fcStat, fcRate); //defined in IoTT_DigitraxBuffers.h
+    }
+    else
+      digitraxBuffer->enableFCRefresh(true, 75);
 
     //load the interface type
     if (jsonConfigObj->containsKey("InterfaceTypeList") && jsonConfigObj->containsKey("InterfaceIndex"))
@@ -709,7 +718,7 @@ void setup()
       if (jsonDataObj != NULL)
       {
         Serial.printf("Load Serial communication interface %i\n", useInterface.devId); 
-        usbSerial = new IoTT_SerInjector(hatRxD, hatTxD, false, 1);
+        usbSerial = new IoTT_SerInjector(hatRxDAlt, hatTxD, false, 1);
         usbSerial->setTxCallback(sendMsg);
         usbSerial->loadLNCfgJSON(*jsonDataObj);
         switch (useInterface.devId)
