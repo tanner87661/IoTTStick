@@ -1,6 +1,8 @@
 var mainScrollBox;
 var pingDelay;
 var wiConfigOptions;
+var listActiveClients;
+var clientDisplay;
 
 function upgradeJSONVersion(jsonData)
 {
@@ -19,6 +21,14 @@ function downloadSettings(sender)
 		downloadConfig(0x0400); //send just this for lbServer
 	if (currentPage == 6)
 		downloadConfig(0x4000); //send just this for WiThrottle
+}
+
+function getClientList()
+{
+	if (currentPage == 5)
+		ws.send("{\"Cmd\":\"GetClients\", \"SubCmd\":\"LN\"}");
+	if (currentPage == 6)
+		ws.send("{\"Cmd\":\"GetClients\", \"SubCmd\":\"WI\"}");
 }
 
 function setLbServer(sender)
@@ -47,6 +57,11 @@ function setTurnoutList(sender)
 //	console.log(configData[workCfg].Turnouts);
 	writeInputField("turnoutlist", configData[2].Turnouts.toString());
 }
+
+//function setFC(sender)
+//{
+//	configData[workCfg].UpdateFC = sender.checked;
+//}
 
 function setPowerMode(sender, id)
 {
@@ -93,15 +108,62 @@ function constructPageContent(contentTab)
 			createRadiobox(tempObj, "tile-1_2", "Allow Power Commands:", ["Display only", "Toggle ON - Idle", "Toggle ON - OFF"], "selectpowermode", "setPowerMode(this, id)");
 			tempObj = createEmptyDiv(wiConfigOptions, "div", "tile-1", "");
 			createTextInput(tempObj, "tile-1_2", "Include Turnouts:", "n/a", "turnoutlist", "setTurnoutList(this)");
+//			tempObj = createEmptyDiv(wiConfigOptions, "div", "tile-1", "");
+//			createCheckbox(tempObj, "tile-1_4", "Update FastClock", "cbUpdateFC", "setFC(this)");
 
-		tempObj = createEmptyDiv(mainScrollBox, "div", "tile-1", "");
+		clientDisplay = createEmptyDiv(mainScrollBox, "div", "tile-1", "");
+			var leftDiv = createEmptyDiv(clientDisplay, "div", "tile-1_2", "leftside");
+				createPageTitle(leftDiv, "div", "tile-1", "", "h2", "Connected Clients");
+				listActiveClients = createListViewer(leftDiv, "clientbox", "ClientList");
 
 		tempObj = createEmptyDiv(mainScrollBox, "div", "tile-1", "");
 			createButton(tempObj, "", "Save & Restart", "btnSave", "saveSettings(this)");
 			createButton(tempObj, "", "Cancel", "btnCancel", "cancelSettings(this)");
 		tempObj = createEmptyDiv(mainScrollBox, "div", "tile-1", "");
 			createButton(tempObj, "", "Save to File", "btnDownload", "downloadSettings(this)");
+		setVisibility(false, clientDisplay);
+}
 
+function processClientList(jsonData)
+{
+//	console.log(jsonData);
+	setVisibility(true, clientDisplay);
+	if (((currentPage == 5) && !jsonData.WIType) || ((currentPage == 6) && jsonData.WIType))
+	{
+		while (listActiveClients.childNodes.length > 0)
+			listActiveClients.removeChild(listActiveClients.childNodes[0]);
+		for (var i=0; i < jsonData.cl.length; i++)
+		{
+			newLine = document.createElement("li");
+			newLine.innerHTML = jsonData.cl[i].ip;
+			if (jsonData.WIType)
+			{
+				newLine.innerHTML += " - " + jsonData.cl[i].name;
+				if (jsonData.cl[i].t0.length > 0)
+				{
+					newLine.innerHTML += " Th 1: ";
+					for (var j = 0; j < jsonData.cl[i].t0.length; j++)
+					{
+						if (j > 0)
+							newLine.innerHTML += ", ";
+						newLine.innerHTML += jsonData.cl[i].t0[j].toString();
+					}
+				}
+				if (jsonData.cl[i].t1.length > 0)
+				{
+					newLine.innerHTML += " Th 2: ";
+					for (var j = 0; j < jsonData.cl[i].t1.length; j++)
+					{
+						if (j > 0)
+							newLine.innerHTML += ", ";
+						newLine.innerHTML += jsonData.cl[i].t1[j].toString();
+					}
+				}
+				
+			}
+			listActiveClients.append(newLine);
+		}
+	}
 }
 
 function loadNodeDataFields(jsonData)
@@ -120,6 +182,11 @@ function loadDataFields(jsonData)
 	else
 		writeInputField("serverport", jsonData.PortNr);
 	writeInputField("serverip", jsonData.ServerIP);
+//	try
+//	{
+//		document.getElementById("cbUpdateFC").checked = configData[workCfg].UpdateFC;
+//	}
+//	catch (error) {};
 	try
 	{
 		writeRBInputField("selectpowermode", configData[2].PowerMode);
@@ -139,4 +206,6 @@ function loadDataFields(jsonData)
 	setVisibility(([12].indexOf(thisIntfID) >= 0) && (pageParam == 'c'), document.getElementById("ClientTitle"));
 	setVisibility(([17].indexOf(thisIntfID) >= 0) && (pageParam == 'c'), document.getElementById("WiClientTitle"));
 	setVisibility(((configData[nodeCfg].ServerIndex.indexOf(2) >= 0) && (pageParam == 's') && (currentPage == 6)), wiConfigOptions);
+
+	getClientList();
 }

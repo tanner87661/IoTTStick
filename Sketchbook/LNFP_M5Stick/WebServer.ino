@@ -580,6 +580,17 @@ void processWsMessage(char * newMsg, int msgLen, AsyncWebSocketClient * client)
           digitraxBuffer->setFCRate(newRate, true);
         }
       }
+      if (thisCmd == "GetClients")
+        if (doc.containsKey("SubCmd"))
+        {
+          String subCmd = doc["SubCmd"];
+          if (subCmd == "WI")
+            if (wiServer)
+              wiServer->updateClientList();
+          if (subCmd == "LN")
+            if (lbServer)
+              lbServer->updateClientList();
+        }
       if (thisCmd == "GetFC")
         digitraxBuffer->sendFCCmdToWeb();
       if (thisCmd == "SetDCCPP")  

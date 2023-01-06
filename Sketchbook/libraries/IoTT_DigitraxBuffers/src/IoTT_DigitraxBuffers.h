@@ -25,7 +25,7 @@
 #define switchProtLen 20
 #define progTimeout 10000
 #define fcRefreshInterval 1000
-#define fcBroadcastInterval 75000
+//#define fcBroadcastInterval 75000
 #define purgeLimitShort 30 //count for 300 s purge time
 #define purgeLimitLong 60 // and for 60 sec
 #define purgeInterval 10000 //run purge timer every 10 seconds
@@ -115,6 +115,13 @@ typedef struct
 	outputType lnType;
 } arduinoPins;
 
+typedef struct
+{
+	int8_t currUsePin = 0; //4MSB ture/false 4LSB analog pinNr
+	float_t currMultiplier = 1.0;
+	float_t currOffset = 0.0;
+	uint8_t currBuffSize = 40;
+} trackerData;
 
 uint32_t millisElapsed(uint32_t since);
 uint32_t microsElapsed(uint32_t since);
@@ -181,6 +188,7 @@ class IoTT_DigitraxBuffers
 		void setFCTime(uint32_t newTime, bool updateLN);
 		void setFCRate(uint8_t newRate, bool updateLN);
 		void enableLissyMod(bool enableLissy);
+		void enableFCRefresh(bool useFC, uint16_t fcRefreshRate);
 		uint8_t getUpdateReqStatus();
 		void clearUpdateReqFlag(uint8_t clrFlagMask);
 //		void addActor(uint16_t Id, uint8_t pinType, uint8_t pinNr, uint8_t flags);
@@ -255,6 +263,8 @@ class IoTT_DigitraxBuffers
 //		bool useLocoNet = true;
 		bool bushbyWatch = false;
 		bool translateLissy = true;
+		bool broadcastFC = true;
+		uint32_t fcBroadcastInterval = 75000; //msecs
 		int8_t focusSlot = -1; //used by purple hat to identify slot to be monitored
 		bool   focusNextAddr = false;
 		uint8_t swWrPtr = 0;
@@ -289,10 +299,10 @@ class IoTT_DigitraxBuffers
 		bool    progBoost = false;
 		bool    configPeripheralsPwrUp = true;
 		uint32_t webTimeout = millis();
-		uint8_t currReportMode = 0;
-		uint8_t currBuffSize = 50;
-		rmsBuffer* trackData = NULL;
-		rmsBuffer* progData = NULL;
+		uint8_t trackGaugesLen = 0;
+		trackerData* trackGauges = NULL;
+		rmsBuffer** trackData = NULL;
+//		rmsBuffer* progData = NULL;
 		
 };
 

@@ -8,13 +8,14 @@ var tabGauges;
 var updateCurrent = false;
 var currTrack = 0;
 
-var trackGauge;
-var progGauge;
+var trackGauges = [];
+var trackGaugeDefs = [];
 
 var ConfigOptionPanel;
 var CurrentOptionPanel;
 var InputPanel;
 var ButtonPanel;
+var GaugePanel;
 
 var sensorTable;
 var turnoutTable;
@@ -23,6 +24,11 @@ var turnoutTableDiv;
  
 var newSensorTemplate = {"Id": 0, "PinNr": 1,"PNType": 0, "LNType": 0, "Logic": 1, "Par1": 0, "Par2": 0, "LNAddr": 1};
 var newTurnoutTemplate = {"Id": 0,"PinNr": 1,"TOType": 3,"LNType": 0,"Logic": 1,"Startup": 0, "Par1": 0,"Par2": 0, "Prof": 2, "LNAddr": 1};
+
+function upgradeJSONVersion(jsonData)
+{
+	return upgradeJSONVersionRedHat(jsonData);
+}
 
 function saveConfigFileSettings()
 {
@@ -108,12 +114,17 @@ function constructPageContent(contentTab)
 					createDispText(tempObj, "tile-1_4", "DCC++ Refresh Slots:", "n/a", "refreshslots");
 				 tempObj= createEmptyDiv(ConfigOptionPanel, "div", "tile-1", "");
 					createPageTitle(tempObj, "div", "tile-1", "BasicCfg_Title", "h2", "Current Measurement Settings");
-					createCheckbox(tempObj, "tile-1_4", "Report Main Track", "reportmain", "setCurrentOptions(this)");
-					createCheckbox(tempObj, "tile-1_4", "Report Prog Track", "reportprog", "setCurrentOptions(this)");
+					createDropdownselector(tempObj, "tile-1_4", "Select Gauge:", ["Main","Prog"], "currgaugeselector", "setCurrentOptions(this)"); //add buttons later
+				 tempObj= createEmptyDiv(ConfigOptionPanel, "div", "tile-1", "");
+					createTextInput(tempObj, "tile-1_4", "Gauge Name:", "n/a", "currgaugename", "setCurrentOptions(this)");
+					createCheckbox(tempObj, "tile-1_4", "Display Gauge", "showgauge", "setCurrentOptions(this)");
+					createTextInput(tempObj, "tile-1_4", "Analog Pin:", "n/a", "currinppin", "setCurrentOptions(this)");
 				 tempObj= createEmptyDiv(ConfigOptionPanel, "div", "tile-1", "");
 					createTextInput(tempObj, "tile-1_4", "Buffer Size:", "n/a", "currbuffsize", "setCurrentOptions(this)");
-					createTextInput(tempObj, "tile-1_4", "Max. Value:", "n/a", "currmaxval", "setCurrentOptions(this)");
+					createTextInput(tempObj, "tile-1_4", "Multiplier:", "n/a", "currmultiplier", "setCurrentOptions(this)");
+					createTextInput(tempObj, "tile-1_4", "Offset:", "n/a", "curroffset", "setCurrentOptions(this)");
 				 tempObj= createEmptyDiv(ConfigOptionPanel, "div", "tile-1", "");
+					createTextInput(tempObj, "tile-1_4", "Max. Value:", "n/a", "currmaxval", "setCurrentOptions(this)");
 					createTextInput(tempObj, "tile-1_4", "Major Ticks:", "n/a", "majorticks", "setCurrentOptions(this)");
 				 tempObj= createEmptyDiv(ConfigOptionPanel, "div", "tile-1", "");
 					createPageTitle(tempObj, "div", "tile-1", "BasicCfg_Title", "h2", "Programming Track Options");
@@ -145,74 +156,6 @@ function constructPageContent(contentTab)
 					createCheckbox(tempObj, "tile-1_4", "Store Turnout/Pin Settings to EEPROM", "turnouteeprom", "setProgOptions(this)");
 		tabGauges = createEmptyDiv(mainScrollBox, "div", "tile-1", "");
 			GaugePanel = createEmptyDiv(tabGauges, "div", "tile-1", "");
-				subGaugePanel1 = createEmptyDiv(GaugePanel, "div", "tile-1_4", "");
-				subGaugePanel2 = createEmptyDiv(GaugePanel, "div", "tile-1_4", "");
-
-			var trackCanvas = document.createElement("CANVAS");
-			trackCanvas.setAttribute("id","trackCanvas"); 
-			trackCanvas.setAttribute("style","tile-1_4"); 
-			subGaugePanel1.append(trackCanvas);
-//			var ctx = trackCanvas.getContext("2d");
-//			ctx.fillStyle = "#FF0000";
-//			ctx.fillRect(20, 20, 150, 100);
-			trackGauge = new RadialGauge(
-				{width: 200, 
-				height: 200, 
-				units: 'mA', 
-				renderTo: "trackCanvas",
-				title: "Main",
-				value: 0,
-				minValue: 0,
-				maxValue: 3000,
-				majorTicks: [0],
-				minorTicks: 2,
-				
-				}).draw();
-
-			var progCanvas = document.createElement("CANVAS");
-			progCanvas.setAttribute("id","progCanvas"); 
-			progCanvas.setAttribute("style","tile-1_4"); 
-			subGaugePanel2.append(progCanvas);
-//			var ctx = progCanvas.getContext("2d");
-//			ctx.fillStyle = "#00FF00";
-//			ctx.fillRect(20, 20, 150, 100);
-			progGauge = new RadialGauge(
-				{width: 200, 
-				height: 200, 
-				units: 'mA', 
-				renderTo: "progCanvas",
-				title: "Prog",
-				value: 0,
-				minValue: 0,
-				maxValue: 3000,
-				majorTicks: [0],
-				minorTicks: 2,
-				
-				}).draw();
-			setVisibility(false, trackCanvas);
-			setVisibility(false, progCanvas);
-
-
-/*
-	ConfigOptionPanel = createEmptyDiv(mainScrollBox, "div", "tile-1", "");
-		createPageTitle(DeviceModePanel, "div", "tile-1", "BasicCfg_Title", "h2", "Device Workmode");
-		tempObj = createEmptyDiv(DeviceModePanel, "div", "tile-1", "");
-			modeSettings = createDropdownselector(tempObj, "tile-1_4", "Output Type:", devOptionsList, "devmode_id", "setDeviceMode(this)");
-			pwrSettings = createDropdownselector(tempObj, "tile-1_4", "Track Power:", pwrOptionsList, "pwrmode_id", "setDeviceMode(this)");
-	tempObj = createEmptyDiv(mainScrollBox, "div", "tile-1", "");
-	CmdStationPanel = createEmptyDiv(mainScrollBox, "div", "tile-1", "");
-		createPageTitle(CmdStationPanel, "div", "tile-1", "BasicCfg_Title", "h2", "Command Station Configuration");
-	tempObj = createEmptyDiv(mainScrollBox, "div", "tile-1", "");
-	DCCPPPanel = createEmptyDiv(mainScrollBox, "div", "tile-1", "");
-		createPageTitle(DCCPPPanel, "div", "tile-1", "DCCExCfg_Title", "h2", "DCC++Ex Arduino Configuration");
-	BoosterPanel = createEmptyDiv(mainScrollBox, "div", "tile-1", "");
-		createPageTitle(BoosterPanel, "div", "tile-1", "BoosterCfg_Title", "h2", "Booster Configuration");
-		createCheckbox(BoosterPanel, "tile-1_4", "Use LocoNet", "incllnreport", "setDeviceMode(this)");
-		cbLNMaster = createCheckbox(BoosterPanel, "tile-1_4", "as Limited Master", "islnmaster", "setDeviceMode(this)");
-	LocoNetPanel = createEmptyDiv(mainScrollBox, "div", "tile-1", "");
-		createPageTitle(LocoNetPanel, "div", "tile-1", "BasicCfg_Title", "h2", "LocoNet Device Configuration");
-
-*/
 
 	tempObj = createEmptyDiv(mainScrollBox, "div", "tile-1", "");
 		createButton(tempObj, "", "Save & Restart", "btnSave", "saveEEPROMSettings(this)");
@@ -223,6 +166,7 @@ function constructPageContent(contentTab)
 	setVisibility(false, tabInputs);
 	setVisibility(false, tabButtons);
 	setVisibility(false, tabGauges);
+	setVisibility(false, document.getElementById("cbsetup_3")); //only show menu item if needed
 
 }
 
@@ -289,7 +233,7 @@ function setFCTime(timeVal, clockRate)
 {
 //	console.log("setFCTime");
 	cmdStr = "{\"Cmd\":\"SetFC\", \"FCTime\":\"" + timeVal + "\",\"FCRate\": \"" + clockRate + "\"}";
-	console.log(cmdStr);
+//	console.log(cmdStr);
 	ws.send(cmdStr);
 }
 
@@ -305,24 +249,53 @@ function setFCTime(timeVal, clockRate)
 //		configData[workCfg].ServerSettings.wiThrottle.Port = verifyNumber(sender.value, configData[workCfg].ServerSettings.wiThrottle.Port); 
 //}
 
+function loadGaugeData(gaugeNr)
+{
+	if (gaugeNr < 0)
+		gaugeNr = document.getElementById("currgaugeselector").selectedIndex;
+	if (gaugeNr >= 0)
+	{
+		document.getElementById("showgauge").checked = configData[workCfg].CurrentTracker[gaugeNr].ShowGauge;
+		document.getElementById("currgaugename").value = configData[workCfg].CurrentTracker[gaugeNr].GaugeName;
+		document.getElementById("currinppin").value = configData[workCfg].CurrentTracker[gaugeNr].PinNr;
+		document.getElementById("currbuffsize").value = configData[workCfg].CurrentTracker[gaugeNr].SampleSize;
+		document.getElementById("currmultiplier").value = configData[workCfg].CurrentTracker[gaugeNr].Multiplier;
+		document.getElementById("curroffset").value = configData[workCfg].CurrentTracker[gaugeNr].Offset;
+		document.getElementById("currmaxval").value = configData[workCfg].CurrentTracker[gaugeNr].MaxVal;
+		document.getElementById("majorticks").value = configData[workCfg].CurrentTracker[gaugeNr].MainTicks;
+	}
+}
+
 function setCurrentOptions(sender)
 {
-	if (sender.id == "reportmain")
-		configData[workCfg].CurrentTracker.ReportMode = sender.checked ? configData[workCfg].CurrentTracker.ReportMode | 0x01 : configData[workCfg].CurrentTracker.ReportMode & ~0x01; 
-	if (sender.id == "reportprog")
-		configData[workCfg].CurrentTracker.ReportMode = sender.checked ? configData[workCfg].CurrentTracker.ReportMode | 0x02 : configData[workCfg].CurrentTracker.ReportMode & ~0x02; 
-	if (sender.id == "currbuffsize")
-		configData[workCfg].CurrentTracker.SampleSize = verifyNumber(sender.value, configData[workCfg].CurrentTracker.SampleSize); 
-	if (sender.id == "currmaxval")
-		configData[workCfg].CurrentTracker.MaxVal = verifyNumber(sender.value, configData[workCfg].CurrentTracker.MaxVal); 
-	if (sender.id == "majorticks")
+	var activeTrack = document.getElementById("currgaugeselector").selectedIndex;
+	if (activeTrack >= 0)
 	{
-		var newArray = verifyNumArray(sender.value, ",");
-		if (newArray.length > 0)
+		if (sender.id == "currgaugeselector")
+			loadGaugeData(sender.selectedIndex);
+		if (sender.id == "showgauge")
+			configData[workCfg].CurrentTracker[activeTrack].ShowGauge = sender.checked;
+		if (sender.id == "currgaugename")
+			configData[workCfg].CurrentTracker[activeTrack].GaugeName = sender.value; 
+		if (sender.id == "currinppin")
+			configData[workCfg].CurrentTracker[activeTrack].PinNr = verifyNumber(sender.value, configData[workCfg].CurrentTracker[activeTrack].PinNr); 
+		if (sender.id == "currbuffsize")
+			configData[workCfg].CurrentTracker[activeTrack].SampleSize = verifyNumber(sender.value, configData[workCfg].CurrentTracker[activeTrack].SampleSize); 
+		if (sender.id == "currmultiplier")
+			configData[workCfg].CurrentTracker[activeTrack].Multiplier = verifyNumber(sender.value, configData[workCfg].CurrentTracker[activeTrack].Multiplier); 
+		if (sender.id == "curroffset")
+			configData[workCfg].CurrentTracker[activeTrack].Offset = verifyNumber(sender.value, configData[workCfg].CurrentTracker[activeTrack].Offset); 
+		if (sender.id == "currmaxval")
+			configData[workCfg].CurrentTracker[activeTrack].MaxVal = verifyNumber(sender.value, configData[workCfg].CurrentTracker[activeTrack].MaxVal); 
+		if (sender.id == "majorticks")
 		{
-			configData[workCfg].CurrentTracker.MainTicks = []; //make sure this is an array
-			for (var i = 0; i < newArray.length; i++)
-				configData[workCfg].CurrentTracker.MainTicks.push(newArray[i]);
+			var newArray = verifyNumArray(sender.value, ",");
+			if (newArray.length > 0)
+			{
+				configData[workCfg].CurrentTracker[activeTrack].MainTicks = []; //make sure this is an array
+				for (var i = 0; i < newArray.length; i++)
+					configData[workCfg].CurrentTracker[activeTrack].MainTicks.push(newArray[i]);
+			}
 		}
 	}
 }
@@ -395,8 +368,8 @@ function setPageMode(sender)
 	setVisibility(false, tabInputs);
 	setVisibility(false, tabButtons);
 	setVisibility(false, tabGauges);
-	setVisibility(false, document.getElementById("trackCanvas"));
-	setVisibility(false, document.getElementById("progCanvas"));
+	for (var i = 0; i < trackGauges.length; i++)
+		setVisibility(false, trackGauges[i]);
 	updateCurrent = false;
 	switch (sender.id)
 	{
@@ -413,11 +386,18 @@ function setPageMode(sender)
 			setVisibility(true, tabButtons);
 			break;
 		case "cbsetup_3":
-			updateCurrent = true;
-			setVisibility(true, tabGauges);
-			setVisibility((configData[workCfg].CurrentTracker.ReportMode & 0x02) > 0, document.getElementById("progCanvas"));
-			setVisibility((configData[workCfg].CurrentTracker.ReportMode & 0x01) > 0, document.getElementById("trackCanvas"));
-			setTimeout(function(){requestCurrent(sender) }, 1000);
+//			if (configData[workCfg].CurrentTracker.length > 0)
+			if (trackGauges.length > 0)
+			{
+				updateCurrent = true;
+				setVisibility(true, tabGauges);
+//				console.log(trackGauges.length);
+				for (var i = 0; i < trackGauges.length; i++)
+				{
+					setVisibility(configData[workCfg].CurrentTracker[i].ShowGauge, trackGauges[i]);
+				}
+				setTimeout(function(){requestCurrent(sender) }, 1000);
+			}
 			break;
 	}
 	updateMenueTabs("RedHatSub", sender.id, "grey");
@@ -874,14 +854,14 @@ function loadProgOptions(jsonData)
 
 function loadDataFields(jsonData)
 {
-//	console.log(jsonData);
-	configData[workCfg] = upgradeJSONVersionRH(jsonData);
-	loadProgOptions(jsonData);
-	writeCBInputField("sensoreeprom", jsonData.DevSettings.ConfigToEEPROM);
-	writeCBInputField("turnouteeprom", jsonData.DevSettings.ConfigToEEPROM);
-	document.getElementById("fcrate").selectedIndex = jsonData.DevSettings.FCRate;
-	if (jsonData.DevSettings.CfgSlot != undefined)
-		for (var i = 0; i < jsonData.DevSettings.CfgSlot.length; i++)
+	configData[workCfg] = upgradeJSONVersion(jsonData);
+	console.log(configData[workCfg]);
+	loadProgOptions(configData[workCfg]);
+	writeCBInputField("sensoreeprom", configData[workCfg].DevSettings.ConfigToEEPROM);
+	writeCBInputField("turnouteeprom", configData[workCfg].DevSettings.ConfigToEEPROM);
+	document.getElementById("fcrate").selectedIndex = configData[workCfg].DevSettings.FCRate;
+	if (configData[workCfg].DevSettings.CfgSlot != undefined)
+		for (var i = 0; i < configData[workCfg].DevSettings.CfgSlot.length; i++)
 			if (i != 4)
 				for (var j = 0; j < 8; j++)
 				{
@@ -896,32 +876,50 @@ function loadDataFields(jsonData)
 							case "SELECT":
 								var numBits = parseInt((Math.log(guiEl.options.length) / Math.log(2)));
 								var bitMask = Math.pow(2, numBits) - 1;
-								var bitVal = (jsonData.DevSettings.CfgSlot[i] >> j) & bitMask;
+								var bitVal = (configData[workCfg].DevSettings.CfgSlot[i] >> j) & bitMask;
 							
 //								console.log(numBits, bitVal, bitMask);
 								guiEl.selectedIndex = bitVal;
 								break;
 							case "INPUT":
-								guiEl.checked = ((jsonData.DevSettings.CfgSlot[i] & (0x01 << j)) > 0);
+								guiEl.checked = ((configData[workCfg].DevSettings.CfgSlot[i] & (0x01 << j)) > 0);
 								break;
 						}
 				}
-	loadSensorTable(sensorTable, jsonData.InputSettings.InpPins, true);
-	loadTurnoutTable(turnoutTable, jsonData.TurnoutSettings.OutPins, true);
+	loadSensorTable(sensorTable, configData[workCfg].InputSettings.InpPins, true);
+	loadTurnoutTable(turnoutTable, configData[workCfg].TurnoutSettings.OutPins, true);
 
-	trackGauge.update({
-				maxValue: jsonData.CurrentTracker.MaxVal,
-				majorTicks: jsonData.CurrentTracker.MainTicks,
-	});
-	progGauge.update({
-				maxValue: jsonData.CurrentTracker.MaxVal,
-				majorTicks: jsonData.CurrentTracker.MainTicks,
-	});
-	document.getElementById("currbuffsize").value = jsonData.CurrentTracker.SampleSize;
-	document.getElementById("currmaxval").value = jsonData.CurrentTracker.MaxVal;
-	document.getElementById("majorticks").value = jsonData.CurrentTracker.MainTicks;
-	document.getElementById("reportmain").checked = (jsonData.CurrentTracker.ReportMode & 0x01) > 0;
-	document.getElementById("reportprog").checked = (jsonData.CurrentTracker.ReportMode & 0x02) > 0;
+	trackGauges = [];
+	trackGaugeDefs = [];
+	while (GaugePanel.lastElementChild) 
+		GaugePanel.removeChild(GaugePanel.lastElementChild);
+
+	for (var i = 0; i < configData[workCfg].CurrentTracker.length; i++)
+	{
+		var subGaugePanel = createEmptyDiv(GaugePanel, "div", "tile-1_4", "");
+		var trackCanvas = document.createElement("CANVAS");
+		trackCanvas.setAttribute("id","trackCanvas_" + i.toString()); 
+		trackCanvas.setAttribute("style","tile-1_4"); 
+		subGaugePanel.append(trackCanvas);
+		trackGauges.push(trackCanvas);
+		var trackGauge = new RadialGauge(
+			{width: 200, 
+			height: 200, 
+			units: 'mA', 
+			renderTo: "trackCanvas_" + i.toString(),
+			title: configData[workCfg].CurrentTracker[i].GaugeName,
+			value: 0,
+			minValue: 0,
+			maxValue: configData[workCfg].CurrentTracker[i].MaxVal,
+			majorTicks: configData[workCfg].CurrentTracker[i].MainTicks,
+			minorTicks: 2,
+		}).draw();
+		trackGaugeDefs.push(trackGauge);
+	}
+
+	document.getElementById("currgaugeselector").selectedIndex = 0;
+	loadGaugeData(0);
+	setVisibility(true, document.getElementById("cbsetup_3")); //only show menu item if needed
 
 
 	setPanelVisibility();
@@ -962,12 +960,15 @@ function processTrackDataInput(jsonData)
 {
 //	console.log(jsonData);
 	var dispVal = 0;
-	if ((jsonData.Data.Value >= 0) && (jsonData.Data.Value < 5000))
-		dispVal = jsonData.Data.Value;
-	if (jsonData.Data.Track == 0)
-		trackGauge.value = dispVal;
-	else
-		progGauge.value = dispVal;
+	for (var i = 0; i < trackGauges.length; i++)
+	{
+		if (configData[workCfg].CurrentTracker[i].PinNr == jsonData.Data.Track)
+		{
+			dispVal = Math.min(jsonData.Data.Value, configData[workCfg].CurrentTracker[i].MaxVal);
+			trackGaugeDefs[i].value = dispVal;
+			break;
+		}
+	}
 }
 
 function processFCInput(jsonData)

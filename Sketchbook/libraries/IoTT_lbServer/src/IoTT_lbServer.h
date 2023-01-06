@@ -37,6 +37,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
 #define lbs_reconnectStartVal 10000
 #define queBufferSize 50 //messages that can be written in one burst before buffer overflow
+#define LNTCPVersion "IoTT lbServer 1.0.2"
 
 extern IoTT_DigitraxBuffers * digitraxBuffer;
 extern void prepSlotReadMsg(lnTransmitMsg * msgData, uint8_t slotNr);
@@ -78,6 +79,7 @@ public:
 	void setTurnout(char pos, char* addr);
 	locoDef* getLocoByAddr(locoDef* startAt, uint16_t locoAddr, char thID);
 	locoDef* getLocoBySlot(locoDef* startAt, uint8_t slotAddr, char thID);
+	locoDef* getLocoFromList(locoDef* startAt, char thID);
 	void setLocoAction(uint16_t locoAddr, char thID, const char* ActionCode);
 	void setTrackPowerStatus(uint8_t newStatus);
 public:
@@ -121,6 +123,7 @@ public:
     void handleLNPoll(AsyncClient *client);        //every 125ms when connected
     void handleWIPoll(AsyncClient *client);        //every 125ms when connected
 	void handleDisconnect(AsyncClient* client);
+	void updateClientList();
   
 private:
    // Member functions
@@ -142,6 +145,7 @@ private:
 	uint32_t lastReconnectAttempt = millis();
 	lnReceiveBuffer transmitQueue[queBufferSize];
 	uint8_t que_rdPos = 0, que_wrPos = 0;
+	bool sendLNClientText(AsyncClient * thisClient, String cmdMsg, String txtMsg);
     bool sendLNClientMessage(AsyncClient * thisClient, String cmdMsg, lnReceiveBuffer thisMsg);
 	String getWIMessageString(AsyncClient * thisClient, lnReceiveBuffer thisMsg);
 	bool sendWIServerMessageString(AsyncClient * thisClient, uint8_t replyType);
@@ -166,6 +170,7 @@ private:
 	bool pingSent = false;
 	bool sendID = false;
 	bool isWiThrottle = false;
+//	bool fcUpdate = true;
 	int16_t currentWIDCC = 0;
 	uint16_t pingInterval = 10000; //ping every 5-10 secs if there is no other traffic
 

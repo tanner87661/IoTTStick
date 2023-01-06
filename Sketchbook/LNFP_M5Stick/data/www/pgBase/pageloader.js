@@ -550,6 +550,8 @@ function startWebsockets()
  			processFCInput(myArr);
   		if ((myArr.Cmd == "DCCAmp") && (scriptList.Pages[currentPage].ID == "pgRedHatCfg"))
  			processTrackDataInput(myArr);
+  		if ((myArr.Cmd == "ClientList") && ((scriptList.Pages[currentPage].ID == "pgWiCfg") || (scriptList.Pages[currentPage].ID == "pgLBSCfg")))
+ 			processClientList(myArr.Data);
 
   		if (myArr.Cmd == "CfgFiles")
   		{

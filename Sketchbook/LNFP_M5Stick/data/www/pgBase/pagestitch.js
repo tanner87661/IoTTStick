@@ -66,6 +66,46 @@ var ServerList = [{"Name":"MQTT Broker Gateway","ServerId":0,"InterfaceList":[1,
 	return jsonData;
 }
 
+function upgradeJSONVersionRedHat(jsonData)
+{
+	var DefaultTracker = {"MaxVal": 6000, "Multiplier": 1, "MainTicks": [ 0, 1000, 2000, 3000, 4000, 5000, 6000], "SampleSize": 50, "ShowGauge": false};
+	jsonFileVersion = "1.0.1";
+	var thisVersion = jsonData.Version;
+	console.log(thisVersion);
+	if (thisVersion == jsonFileVersion)
+		return jsonData;
+	if (thisVersion == undefined)
+	{
+		//upgrade from noversion to 1.0.0
+		console.log("upgrade RedHat Config from noversion to 1.0.0");
+		jsonData.Version = "1.0.0";
+	}
+	if (jsonData.Version == "1.0.0")
+	{
+		console.log("upgrade RedHat Config from 1.0.0 to 1.0.1");
+		console.log(jsonData.CurrentTracker);
+		var oldTracker;
+		if (jsonData.CurrentTracker == undefined)
+			oldTracker = JSON.parse(JSON.stringify(DefaultTracker));
+		else
+			oldTracker = JSON.parse(JSON.stringify(jsonData.CurrentTracker));
+		var Gauges = ["Main", "Prog"];
+		jsonData.CurrentTracker = [];
+		for (var i = 0; i < 2; i++)
+		{
+			var newTracker = JSON.parse(JSON.stringify(oldTracker));
+			newTracker.GaugeName = Gauges[i];
+			newTracker.ShowGauge = (newTracker.ReportMode & (1<<i)) > 0 ? true : false;
+			newTracker.PinNr = i;
+			newTracker.Offset = 0;
+			delete newTracker.ReportMode;
+			jsonData.CurrentTracker.push(newTracker); 
+		}
+		jsonData.Version = "1.0.1";
+	}
+	return jsonData;
+}
+
 function upgradeJSONVersionPurpleHat(jsonData)
 {
 	jsonFileVersion = "1.0.1";
@@ -73,7 +113,7 @@ function upgradeJSONVersionPurpleHat(jsonData)
 	console.log(thisVersion);
 	if (thisVersion == jsonFileVersion)
 		return jsonData;
-	if ((isNaN(thisVersion)) || (thisVersion = undefined))
+	if (thisVersion == undefined)
 	{
 		//upgrade from noversion to 1.0.0
 		console.log("upgrade PurpleHat Config from noversion to 1.0.0");
@@ -92,12 +132,12 @@ function upgradeJSONVersionPurpleHat(jsonData)
 
 function upgradeJSONVersionLBServer(jsonData)
 {
-	jsonFileVersion = "1.0.1";
+	jsonFileVersion = "1.0.2";
 	var thisVersion = jsonData.Version;
 	console.log(thisVersion);
 	if (thisVersion == jsonFileVersion)
 		return jsonData;
-	if ((isNaN(thisVersion)) || (thisVersion = undefined))
+	if (thisVersion == undefined)
 	{
 		//upgrade from noversion to 1.0.0
 		console.log("upgrade LBServer Config from noversion to 1.0.0");
@@ -105,10 +145,26 @@ function upgradeJSONVersionLBServer(jsonData)
 	}
 	if (jsonData.Version == "1.0.0")
 	{
-		
-		console.log("upgrade LBServer Config from noversion to 1.0.1");
+		console.log("upgrade LBServer Config from 1.0.0 to 1.0.1");
 		jsonData.ServerPortNr = 1234;
 		jsonData.Version = "1.0.1";
+	}
+	if (jsonData.Version == "1.0.1")
+	{
+		console.log("upgrade LBServer Config from 1.0.1 to 1.0.2");
+		if (jsonData.PowerMode == undefined) //lbServer
+			jsonData.ServerType = 0;
+		else
+			jsonData.ServerType = 1;
+		switch (jsonData.ServerType)
+		{
+			case 1: 
+				jsonData.UpdateFC = true;
+				break;
+			default: break;
+		}
+		jsonData.Version = "1.0.2";
+		
 	}
 	return jsonData;
 }
@@ -120,26 +176,11 @@ function upgradeJSONVersionGH(jsonData)
 	console.log(thisVersion);
 	if (thisVersion == jsonFileVersion)
 		return jsonData;
-	if ((isNaN(thisVersion)) || (thisVersion = undefined))
+	if (thisVersion == undefined)
+//	if ((isNaN(thisVersion)) || (thisVersion = undefined))
 	{
 		//upgrade from noversion to 1.1.1
 		console.log("upgrade GreenHat from noversion to 1.0.0");
-		jsonData.Version = "1.0.0";
-	}
-	return jsonData;
-}
-
-function upgradeJSONVersionRH(jsonData)
-{
-	jsonFileVersion = "1.0.0";
-	var thisVersion = jsonData.Version;
-	console.log(thisVersion);
-	if (thisVersion == jsonFileVersion)
-		return jsonData;
-	if ((isNaN(thisVersion)) || (thisVersion = undefined))
-	{
-		//upgrade from noversion to 1.0.0
-		console.log("upgrade RedHat from noversion to 1.0.0");
 		jsonData.Version = "1.0.0";
 	}
 	return jsonData;
@@ -152,7 +193,8 @@ function upgradeJSONVersionSwitch(jsonData)
 //	console.log(thisVersion);
 	if (thisVersion == jsonFileVersion)
 		return jsonData;
-	if ((isNaN(thisVersion)) || (thisVersion = undefined))
+	if (thisVersion == undefined)
+//	if ((isNaN(thisVersion)) || (thisVersion = undefined))
 	{
 		//upgrade from noversion to 1.1.1
 		console.log("upgrade Switches from noversion to 1.0.0");
@@ -179,7 +221,8 @@ function upgradeJSONVersionLED(jsonData)
 	var thisVersion = jsonData.Version;
 	if (thisVersion == jsonFileVersion)
 		return jsonData;
-	if ((isNaN(thisVersion)) || (thisVersion == undefined))
+	if (thisVersion == undefined)
+//	if ((isNaN(thisVersion)) || (thisVersion == undefined))
 	{
 		//upgrade from noversion to 1.1.0
 		console.log("upgrading LEDs to 1.1.0");
@@ -223,7 +266,8 @@ function upgradeJSONVersionBtn(jsonData)
 	var thisVersion = jsonData.Version;
 	if (thisVersion == jsonFileVersion)
 		return jsonData;
-	if ((isNaN(thisVersion)) || (thisVersion = undefined))
+	if (thisVersion == undefined)
+//	if ((isNaN(thisVersion)) || (thisVersion = undefined))
 	{
 		//upgrade from noversion to 1.1.1
 		console.log("upgrade buttons from noversion to 1.1.1");

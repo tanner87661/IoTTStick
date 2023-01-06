@@ -285,34 +285,6 @@ function changeLEDNr(chgVal)
 			alert("Starting LED can't be zero!");
 }
 
-
-function setLEDData(sender)
-{
-	function adjustCmdLines(currentRow)
-	{
-		var numCmds;
-		var numAddr = 1;
-		if (Array.isArray(configData[2].LEDDefs[currentRow].CtrlAddr))
-			numAddr = configData[2].LEDDefs[currentRow].CtrlAddr.length;
-		switch (ledCtrlType.indexOf(configData[2].LEDDefs[currentRow].CtrlSource))
-		{
-//			case 9 : ; //used to be static signal, now switch
-			case 0 : numCmds = Math.pow(2, numAddr); break; //switch
-			case 1 : numCmds = 2 * numAddr; break; //signaldyn
-			case 2 : numCmds = 1; break; //signal
-			case 3 : numCmds = 5; break; //button
-			case 4 : numCmds = 1; break; //analog
-			case 5 : numCmds = Math.pow(2, numAddr); break; //block
-			case 6 : numCmds = 2; break; //transponder
-			case 7 : numCmds = 3; break; //power
-			case 8 : numCmds = 1; break; //constant
-		}
-		while (configData[2].LEDDefs[currentRow].LEDCmd.length < numCmds)
-			configData[2].LEDDefs[currentRow].LEDCmd.push(JSON.parse(JSON.stringify(newCmdTemplate)));
-		while (configData[2].LEDDefs[currentRow].LEDCmd.length > numCmds)
-			configData[2].LEDDefs[currentRow].LEDCmd.splice(configData[2].LEDDefs[currentRow].LEDCmd.length-1, 1);
-	}
-	
 	function adjustColorEntries(currentRow)
 	{
 		function verifyArray(thisArray, newLen, initVal)
@@ -374,11 +346,39 @@ function setLEDData(sender)
 			}
 		}
 	}
+
+function setLEDData(sender)
+{
+	function adjustCmdLines(currentRow)
+	{
+		var numCmds;
+		var numAddr = 1;
+		if (Array.isArray(configData[2].LEDDefs[currentRow].CtrlAddr))
+			numAddr = configData[2].LEDDefs[currentRow].CtrlAddr.length;
+		switch (ledCtrlType.indexOf(configData[2].LEDDefs[currentRow].CtrlSource))
+		{
+//			case 9 : ; //used to be static signal, now switch
+			case 0 : numCmds = Math.pow(2, numAddr); break; //switch
+			case 1 : numCmds = 2 * numAddr; break; //signaldyn
+			case 2 : numCmds = 1; break; //signal
+			case 3 : numCmds = 5; break; //button
+			case 4 : numCmds = 1; break; //analog
+			case 5 : numCmds = Math.pow(2, numAddr); break; //block
+			case 6 : numCmds = 2; break; //transponder
+			case 7 : numCmds = 3; break; //power
+			case 8 : numCmds = 1; break; //constant
+		}
+		while (configData[2].LEDDefs[currentRow].LEDCmd.length < numCmds)
+			configData[2].LEDDefs[currentRow].LEDCmd.push(JSON.parse(JSON.stringify(newCmdTemplate)));
+		while (configData[2].LEDDefs[currentRow].LEDCmd.length > numCmds)
+			configData[2].LEDDefs[currentRow].LEDCmd.splice(configData[2].LEDDefs[currentRow].LEDCmd.length-1, 1);
+		adjustColorEntries(currentRow);
+	}
+	
 	
 	var thisRow = parseInt(sender.getAttribute("row"));
 	var thisCol = parseInt(sender.getAttribute("col"));
 	var thisIndex = parseInt(sender.getAttribute("index"));
-//	console.log(thisRow, thisCol, thisIndex);
 	switch (thisCol)
 	{
 		case -1: //empty table, create first entry
@@ -435,7 +435,7 @@ function setLEDData(sender)
 							alert(sender.value + " is not a valid number or array. Please verify");
 					}
 					break;
-				case 6:
+				case 6: //ind. col. checkbox
 					{
 						configData[2].LEDDefs[thisRow].MultiColor = sender.checked; 
 						adjustColorEntries(thisRow);
@@ -449,7 +449,7 @@ function setLEDData(sender)
 							adjustCmdLines(thisRow);
 					}
 					break;
-				case 8:
+				case 8: //Addr
 					{
 						var newArray = verifyNumArray(sender.value, ",");
 						if (newArray.length > 0)
@@ -467,7 +467,6 @@ function setLEDData(sender)
 								while (newArray.length > 1)
 									newArray.pop();
 							sender.value = newArray;
-//							console.log(newArray);
 							if (newArray.length != oldLen)
 								adjustCmdLines(thisRow);
 //							console.log(sender.value);
@@ -545,6 +544,7 @@ function setLEDCmdData(sender)
 	{
 		case 1: //new Cmd Entry
 			configData[2].LEDDefs[thisRow].LEDCmd.splice(thisCmdLine+1, 0, JSON.parse(JSON.stringify(newCmdTemplate)));
+			adjustColorEntries(thisRow);
 			loadLEDTable(ledDefTable, configData[2].LEDDefs);
 			break;
 		case 2: //delete Cmd Entry

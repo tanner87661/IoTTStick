@@ -90,8 +90,9 @@ function setDisplayOptions()
 	setVisibility(configData[2].useNTP, configNTPBox);
 	setVisibility((configData[2].wifiMode & 0x01) > 0, configDHCPSection);
 	setVisibility(configData[2].useStaticIP, configDHCPBox);
-	setVisibility([4,5,6,7,8,9,10,11,12].indexOf(configData[2].InterfaceIndex) >= 0, configLNOptBox);
-	setVisibility([4,7,8,9].indexOf(configData[2].InterfaceIndex) >= 0, configSubnetBox);
+	setVisibility([4,5,6].indexOf(configData[2].InterfaceIndex) >= 0, configLNOptBox);
+	setVisibility(([4,5,6].indexOf(configData[2].InterfaceIndex) >= 0) && ([5].indexOf(configData[2].HatIndex) < 0), configFCBox);
+	setVisibility(([4].indexOf(configData[2].InterfaceIndex) >= 0) && ([5].indexOf(configData[2].HatIndex) < 0), configSubnetBox);
 
 	for (var i = 0; i < configData[2].ALMTypeList.length; i++)
 	{
@@ -315,6 +316,14 @@ function setUseLissyBit(sender)
 	configData[2].useLissy = sender.checked ? 1:0;
 }
 
+function setFastClock(sender)
+{
+	if (sender.id == "cbUseFastClock")
+		configData[workCfg].broadcastFC = sender.checked;
+	if (sender.id == "fcrefresh")
+		configData[workCfg].broadcastFCRate = verifyNumber(sender.value, configData[workCfg].broadcastFCRate); 
+}
+
 function setSubnet(sender)
 {
 	configData[2].subnetMode = sender.checked ? 1:0;
@@ -340,6 +349,9 @@ function constructPageContent(contentTab)
 		tempObj = createEmptyDiv(mainScrollBox, "div", "tile-1", "configLNOptBox");
 			createCheckbox(tempObj, "tile-1_4", "respect Bushby Bit", "cbUseBushbyBit", "setUseBushbyBit(this)");
 			createCheckbox(tempObj, "tile-1_4", "Support Uhlenbrock Track display commands", "cbUseLissyBit", "setUseLissyBit(this)");
+		tempObj = createEmptyDiv(mainScrollBox, "div", "tile-1", "configFCBox");
+			createCheckbox(tempObj, "tile-1_4", "Support FastClock", "cbUseFastClock", "setFastClock(this)");
+			createTextInput(tempObj, "tile-1_4", "Refresh Rate [Sec.]:", "75", "fcrefresh", "setFastClock(this)");
 		
 		createPageTitle(mainScrollBox, "div", "tile-1", "", "h2", "Communication Servers");
 		tempObj = createEmptyDiv(mainScrollBox, "div", "tile-1", "ServerBox");
@@ -483,6 +495,16 @@ function loadDataFields(jsonData)
 	writeCBInputField("cbUseBushbyBit", jsonData.useBushby);
 	if (typeof jsonData.useLissy !== 'undefined')
 		writeCBInputField("cbUseLissyBit", jsonData.useLissy);
+	if (typeof jsonData.broadcastFC !== 'undefined')
+	{
+		writeCBInputField("cbUseFastClock", jsonData.broadcastFC);
+		writeInputField("fcrefresh", jsonData.broadcastFCRate);
+	}
+	else
+	{
+		writeCBInputField("cbUseFastClock", true);
+		writeInputField("fcrefresh", 75);
+	}
 	
 	writeCBInputField("cbUseNTP", jsonData.useNTP);
 	setVisibility(jsonData.useNTP, configNTPBox);

@@ -169,10 +169,10 @@ void IoTT_SerInjector::processLNReceive()
 			if (bitRecStatus == 1) //awaiting data bytes but received OpCode
 			{
 				//incomplete message
-//			Serial.println("Old Command not complete");
 				lnInBuffer.lnMsgSize = lnBufferPtr;
 				lnBufferPtr = 0;
-				processLNMsg(&lnInBuffer); //get rid of previous message
+				Serial.println("Ignored incomplete message");
+//				processLNMsg(&lnInBuffer); //get rid of previous message
 			}
 			bitRecStatus = 1; //await data bytes
 			lnInBuffer.reqID = 0;
@@ -200,28 +200,32 @@ void IoTT_SerInjector::processLNReceive()
 				if ((lnBufferPtr == 1) && (lnExpLen == 0xFF))
 					lnExpLen  = (inData & 0x007F); //updating expected length for long message
 				lnBufferPtr++; 
+				lnXOR ^= inData;
 				if (lnBufferPtr == lnExpLen) //message length received
 				{
-//			Serial.println("Command complete, sending");
+//					Serial.printf("Command complete, sending %02X", lnXOR);
 					lnInBuffer.lnMsgSize = lnBufferPtr;  
 					lnInBuffer.reqID = 0;
 					lnInBuffer.reqRecTime = 0;
-					processLNMsg(&lnInBuffer);
+					if (lnXOR == 0xFF)
+						processLNMsg(&lnInBuffer);
+					else
+						Serial.printf("Ignore invalid message (XOR check %02X)", lnXOR);
 					lnBufferPtr = 0;
 					bitRecStatus = 0; //awaiting OpCode
 				}  
-				else
-					lnXOR ^= inData;
+//				else
+//				{}
 			}
 			else
 			{
-//			Serial.println("LN unexpected data byte while waiting for OpCode");
 			//unexpected data byte while waiting for OpCode
 				lnInBuffer.lnMsgSize = 1;
 				lnInBuffer.reqID = 0;
 				lnInBuffer.reqRecTime = 0;
 				lnBufferPtr = 0;
-				processLNMsg(&lnInBuffer); 
+				Serial.println("Ignored unexpected data byte while waiting for OpCode");
+//				processLNMsg(&lnInBuffer); 
 			}
 		}    
 	}
