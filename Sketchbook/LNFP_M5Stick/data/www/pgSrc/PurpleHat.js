@@ -71,11 +71,11 @@ function loadTableData(thisTable, thisData)
 
 function setButtonStatus()
 {
-//	console.log(configData[nodeCfg].InterfaceIndex, configData[work].InterfaceIndex);
-	setVisibility([3, 12,17].indexOf(thisIntfID) >= 0, document.getElementById("btnAssign"));
+//	console.log("Btn Stat", configData[nodeCfg].InterfaceIndex, configData[workCfg].InterfaceIndex, thisIntfID);
+	setVisibility([3, 12].indexOf(thisIntfID) >= 0, document.getElementById("btnAssign"));
 	setVisibility([3, 12,17].indexOf(thisIntfID) >= 0, document.getElementById("dccaddr").parentElement);
 	setVisibility([3, 12,17].indexOf(thisIntfID) >= 0, document.getElementById("dccstep").parentElement);
-	setVisibility([3, 12,17].indexOf(thisIntfID) >= 0, document.getElementById("btnAssignsp"));
+	setVisibility([3, 12].indexOf(thisIntfID) >= 0, document.getElementById("btnAssignsp"));
 	setVisibility([3, 12,17].indexOf(thisIntfID) >= 0, document.getElementById("dccaddrsp").parentElement);
 	setVisibility([3, 12,17].indexOf(thisIntfID) >= 0, document.getElementById("dccaddrtbl").parentElement);
 
@@ -89,7 +89,7 @@ function setButtonStatus()
 
 	setVisibility(!validLocoDef && [17,12].indexOf(thisIntfID) >= 0, cvTableNative);
 	setVisibility(validLocoDef, cvTableJMRI);
-	setVisibility([3, 12,17].indexOf(thisIntfID) >= 0, tabProgrammer);
+	setVisibility([3, 12].indexOf(thisIntfID) >= 0, tabProgrammer);
 
 	setVisibility(validLocoDef || [3, 12,17].indexOf(thisIntfID) >= 0, techSpeedDiv);
 	setVisibility(validTechSpeedDef, speedTableDiv);
@@ -1080,7 +1080,7 @@ function processSpeedTableInput(jsonData)
 
 function processSensorInput(jsonData)
 {
-//	console.log(jsonData);
+	console.log(jsonData);
 
 	var dirStr = jsonData.Speed > 0 ? " Forward" : jsonData.Speed < 0 ? " Backward" : "";
 	writeTextField("speed", Math.abs(jsonData.Speed).toFixed(2) + dirStr);
@@ -1107,8 +1107,14 @@ function processSensorInput(jsonData)
 	{
 		writeTextField("radius", dirStr);
 		writeTextField("heading", (180 * jsonData.EulerVect[0] / 3.1415).toFixed(2));
-		writeTextField("roll", jsonData.Banking.toFixed(1)); //(180 * jsonData.EulerVect[1] / 3.141).toFixed(2));
-		writeTextField("pitch", jsonData.Slope.toFixed(1)); //(180 * jsonData.EulerVect[2] / 3.1415).toFixed(2));
+		if (jsonData.Banking)
+			writeTextField("roll", jsonData.Banking.toFixed(1)); //(180 * jsonData.EulerVect[1] / 3.141).toFixed(2));
+		else
+			writeTextField("roll", "n/a"); //(180 * jsonData.EulerVect[1] / 3.141).toFixed(2));
+		if (jsonData.Slope)
+			writeTextField("pitch", jsonData.Slope.toFixed(1)); //(180 * jsonData.EulerVect[2] / 3.1415).toFixed(2));
+		else
+			writeTextField("pitch", "n/a"); //(180 * jsonData.EulerVect[2] / 3.1415).toFixed(2));
 		addEntryToArray(lineGraphHeading, jsonData.TS , ((180 * jsonData.EulerVect[0]) / 3.1415), speedGraph.MaxXRange * 1000);
 		addEntryToArray(lineGraphGrade, jsonData.TS , ((180 * jsonData.EulerVect[2]) / 3.1415), speedGraph.MaxXRange * 1000);
 		addEntryToArray(lineGraphElevation, jsonData.TS , ((180 * jsonData.EulerVect[1]) / 3.1415), speedGraph.MaxXRange * 1000);

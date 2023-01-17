@@ -58,7 +58,7 @@ extern uint16_t sendMsg(lnTransmitMsg txData);
 #define accel2Steps 500 //start sampling
 #define maxSampleTime 8000000 //sampling complete after micros()
 #define minTestWheelTurns	6 //a successful sampling must last at least x wheel turns
-#define crawlTurns 3 //wheel turns per second for crawl speed
+#define crawlTurns 5 //wheel turns per second for crawl speed
 
 #define queBufferSize 50 //messages that can be written in one burst before buffer overflow
 #define measuringInterval 5 //ms 200 samples per second

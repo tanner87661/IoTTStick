@@ -138,28 +138,27 @@ function processClientList(jsonData)
 			newLine.innerHTML = jsonData.cl[i].ip;
 			if (jsonData.WIType)
 			{
-				newLine.innerHTML += " - " + jsonData.cl[i].name;
-				if (jsonData.cl[i].t0.length > 0)
+				newLine.innerHTML += " - " + jsonData.cl[i].name + " ";
+
+//				console.log(jsonData.cl[i].devs);
+//				console.log(jsonData.cl[i].devs.length);
+
+				if (jsonData.cl[i].devs.length > 0) //non empty throttle list
 				{
-					newLine.innerHTML += " Th 1: ";
-					for (var j = 0; j < jsonData.cl[i].t0.length; j++)
+					for (var j = 0; j < jsonData.cl[i].devs.length; j++)
 					{
 						if (j > 0)
 							newLine.innerHTML += ", ";
-						newLine.innerHTML += jsonData.cl[i].t0[j].toString();
+						newLine.innerHTML += jsonData.cl[i].devs[j].thID + ": ";
+						for (var k = 0; k < jsonData.cl[i].devs[j].addr.length; k++)
+						{
+							if (k > 0)
+								newLine.innerHTML += ", ";
+							newLine.innerHTML += jsonData.cl[i].devs[j].addr[k];
+						}
+						
 					}
 				}
-				if (jsonData.cl[i].t1.length > 0)
-				{
-					newLine.innerHTML += " Th 2: ";
-					for (var j = 0; j < jsonData.cl[i].t1.length; j++)
-					{
-						if (j > 0)
-							newLine.innerHTML += ", ";
-						newLine.innerHTML += jsonData.cl[i].t1[j].toString();
-					}
-				}
-				
 			}
 			listActiveClients.append(newLine);
 		}

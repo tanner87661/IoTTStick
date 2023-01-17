@@ -528,8 +528,7 @@ void processWsMessage(char * newMsg, int msgLen, AsyncWebSocketClient * client)
             if (trainSensor)
             {
               int16_t dccAddr = doc["Addr"];
-              Serial.println(dccAddr);
-              trainSensor->reqDCCAddrWatch(globalClient, dccAddr, useInterface.devId == 17);
+              trainSensor->reqDCCAddrWatch(globalClient, dccAddr, useInterface.devId == 17); //17: WiThrottle Client
             }
           if (subCmd == "RunTest")
             if (trainSensor)

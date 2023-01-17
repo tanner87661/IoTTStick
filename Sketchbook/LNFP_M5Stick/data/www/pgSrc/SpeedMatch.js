@@ -364,6 +364,7 @@ function loadThrottle(sender)
         try 
         {
 			throttleDef = JSON.parse(reader.result);
+			throttleDef.GraphData.DimY = (configData[workCfg].Units == 0) ? "km/h" : "mph";
 			throttleDef.FileName = fileName.name;
 		}
 		catch(err) 

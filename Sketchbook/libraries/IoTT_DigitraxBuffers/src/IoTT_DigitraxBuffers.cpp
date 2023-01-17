@@ -43,6 +43,17 @@ void prepTurnoutMsg(lnTransmitMsg * msgData, bool useACK, uint16_t swiAddr, uint
 	setXORByte(&msgData->lnData[0]);
 }
 
+void prepTurnoutReportMsg(lnTransmitMsg * msgData, uint16_t swiAddr, uint8_t swiPos)
+{
+	if (swiPos == 2)
+		swiPos = (digitraxBuffer->getSwiPosition(swiAddr) >> 5) ^ 0x01;
+	msgData->lnData[0] = 0xBC; //OPC_SW_STATE
+	msgData->lnData[1] = swiAddr & 0x7F;
+	msgData->lnData[2] = ((swiAddr >> 7) & 0x0F) + (swiPos << 5);
+	msgData->lnMsgSize = 4;
+	setXORByte(&msgData->lnData[0]);
+}
+
 void prepSlotStat1Msg(lnTransmitMsg * msgData, uint8_t slotNr, uint8_t stat)
 {
 	msgData->lnData[0] = 0xB5; //OPC_SLOT_STAT1
@@ -732,14 +743,15 @@ void IoTT_DigitraxBuffers::loadFromFile(String fileName)
 
 //			setPowerStatus(0x83); //track power on after startup
 		}
-		else
-		{
-			clearSlotBuffer(true);
+//		else
+//		{
+//			Serial.println("Clear Slot buffer from file");
+//			clearSlotBuffer(true);
 //			resetComm();
-		}
+//		}
 
 //clear MU links
-		for (int i = 0; i < maxSlots; i++)
+//		for (int i = 0; i < maxSlots; i++)
 		{
 //			slotBuffer[i][0] &= 0xB7; //clear links
 //			slotBuffer[i][TRK] = 0; //clear purge counter
@@ -1084,7 +1096,7 @@ uint16_t IoTT_DigitraxBuffers::receiveDCCGeneratorFeedback(lnTransmitMsg txData)
 	{
 		switch (myParams[i].dataType)
 		{
-			case 0: return 0;
+			case 0: continue; //return 0;
 			case 10: Serial.printf("Param %i %i Int = %i\n", i, myParams[i].paramNr, myParams[i].payload.longVal); break;
 			case 20: Serial.printf("Param %i %i Float = %.2f\n", i, myParams[i].paramNr, myParams[i].payload.floatVal); break;
 			default: 
@@ -1122,23 +1134,42 @@ uint16_t IoTT_DigitraxBuffers::receiveDCCGeneratorFeedback(lnTransmitMsg txData)
 //			Serial.println(myParams[2].payload.longVal);
 			break;
 		case 'H': //turnout info
-//			if (myParams[0].numParams == 5) // <H ID ADDRESS SUBADDRESS THROWN> for each defined DCC Accessory Turnout in return to <T>
-			if (myParams[2].dataType < 5) //string type
+			if (myParams[0].numParams == 3) // <H ID STATE> for each defined DCC Accessory Turnout in return to <T>
 			{
 				arduinoPins * thisActor = findPeripherialItemById(turnoutOutputs, turnoutOutputLen, 0x80, myParams[1].payload.longVal); //looking for ardID
-				char tType[5] = {0,0,0,0,0};
-				memcpy(&tType, &myParams[2].payload.strVal, myParams[2].dataType);
 				if (thisActor)
 				{
 					if (thisActor->ardType > 0)
 						thisActor->confOK = true;
-//					Serial.printf("Defined Turnout %i Type %s on Pin %i Position %i\n", myParams[1].payload.longVal, tType, myParams[3].payload.longVal, myParams[4].payload.longVal);
+//					Serial.printf("Defined Turnout %i Addr %i Position %i\n", myParams[1].payload.longVal, thisActor->lnAddr, myParams[2].payload.longVal);
+					setSwiStatus(thisActor->lnAddr, myParams[2].payload.longVal == 0 ? 1 : 0, 0); //DCC EX uses reverse status than Loconet
+//					if ()
+					{
+						lnTransmitMsg thisBuffer;
+						prepTurnoutReportMsg(&thisBuffer, thisActor->lnAddr, myParams[2].payload.longVal == 0? 1: 0);
+						lnOutFct(thisBuffer);
+					}
 				}
 //				else
-//					Serial.printf("Undefined Turnout %i Type %s on Pin %i Position %i\n", myParams[1].payload.longVal, tType, myParams[3].payload.longVal, myParams[4].payload.longVal);
-//					addActor(myParams[1].payload.longVal, 0, myParams[3].payload.longVal, myParams[4].payload.longVal);
-				sendToWeb = true;
+//					Serial.printf("Undefined Turnout %i Position %i\n", myParams[1].payload.longVal, myParams[2].payload.longVal);
 			}
+			else
+				if (myParams[2].dataType < 5) //string type
+				{
+					arduinoPins * thisActor = findPeripherialItemById(turnoutOutputs, turnoutOutputLen, 0x80, myParams[1].payload.longVal); //looking for ardID
+					char tType[5] = {0,0,0,0,0};
+					memcpy(&tType, &myParams[2].payload.strVal, myParams[2].dataType);
+					if (thisActor)
+					{
+						if (thisActor->ardType > 0)
+							thisActor->confOK = true;
+//						Serial.printf("Defined Turnout %i Type %s on Pin %i Position %i\n", myParams[1].payload.longVal, tType, myParams[3].payload.longVal, myParams[4].payload.longVal);
+					}
+//					else
+//						Serial.printf("Undefined Turnout %i Type %s on Pin %i Position %i\n", myParams[1].payload.longVal, tType, myParams[3].payload.longVal, myParams[4].payload.longVal);
+//						addActor(myParams[1].payload.longVal, 0, myParams[3].payload.longVal, myParams[4].payload.longVal);
+					sendToWeb = true;
+				}
 			break;
 		case 'l': //loco info  <l CAB SLOT SPEED/DIR FUNC>
 		{
@@ -1404,8 +1435,10 @@ void IoTT_DigitraxBuffers::awaitFocusSlot(int16_t dccAddr, bool simulOnly)
 {
 	focusNextAddr = true;
 	focusSlot = -1;
+//	Serial.println("Await");
 	if (dccAddr > 0)
 	{
+//		Serial.println("Transmit");
 		lnTransmitMsg txBuffer;
 		prepLocoAddrReqMsg(&txBuffer, dccAddr);
 		lnOutFct(txBuffer);
@@ -1421,7 +1454,7 @@ void IoTT_DigitraxBuffers::processBufferUpdates(lnReceiveBuffer * newData) //pro
 {
 //  this is the main procedure for handling LN if not command station
 //  if cmd stn mode buffer is updated after slot manager and before DCC command generator 
-//	Serial.println("processBufferUpdates");
+//	Serial.printf("processBufferUpdates %2X\n", newData->lnData[0]);
 	switch (newData->lnData[0])
 	{
 		case 0x82:; //OPC_OFF
@@ -1442,17 +1475,22 @@ void IoTT_DigitraxBuffers::processBufferUpdates(lnReceiveBuffer * newData) //pro
 			{
 				if (!isCommandStation) //unused slot, send slot request to command station
 				{
+//					Serial.println("Get Slot Info");
 					lnTransmitMsg thisBuffer;
 					prepSlotRequestMsg(&thisBuffer, newData->lnData[1]);
 					lnOutFct(thisBuffer);
 				}
 				else
 				{
+//					Serial.println("Ignore");
 					//ignore
 				}
 			}
 			else
+			{
+//				Serial.println("Update");
 				setSlotDirfSpeed(newData); //update slot, send DCC commands, if command station
+			}
 		}
 		break;
         case 0xB1: //OPC_SW_REP from e.g. switch decoder
@@ -1689,7 +1727,7 @@ void IoTT_DigitraxBuffers::processBufferUpdates(lnReceiveBuffer * newData) //pro
 						uint8_t slotNr = newData->lnData[2];
 						slotData * newSlot = &slotBuffer[slotNr];
 						newData->reqID = ((*newSlot)[0] ^ newData->lnData[3]) & 0x007F; //identify changes in slot status
-//						Serial.printf("RDWR %i %i %i\n", (*newSlot)[0], newData->lnData[3], newData->reqID);
+//						Serial.printf("RDWR %i %i %i %i\n", slotNr, (*newSlot)[0], newData->lnData[3], newData->reqID);
 						memcpy(newSlot[0], &newData->lnData[3], 10);
 						switch (slotNr)
 						{
@@ -1723,6 +1761,8 @@ void IoTT_DigitraxBuffers::processBufferUpdates(lnReceiveBuffer * newData) //pro
 										focusNextAddr = false;
 //										Serial.printf("Set focus Slot %i\n", focusSlot);
 									}
+//									else
+//									Serial.println("no focusNextAddr");
 								}
 						} 
 						break;
@@ -2305,7 +2345,7 @@ void IoTT_DigitraxBuffers::setSlotDirfSpeed(lnReceiveBuffer * newData)
 			{
 				focusSlot = newData->lnData[1];
 				focusNextAddr = false;
-//				Serial.printf("Set focus Slot %i\n", focusSlot);
+				Serial.printf("Set focus Slot %i\n", focusSlot);
 			}
 //			else
 //				Serial.printf("Slot %i not initialized\n", focusSlot);

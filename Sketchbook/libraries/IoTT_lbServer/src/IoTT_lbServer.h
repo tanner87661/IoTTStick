@@ -80,8 +80,9 @@ public:
 	locoDef* getLocoByAddr(locoDef* startAt, uint16_t locoAddr, char thID);
 	locoDef* getLocoBySlot(locoDef* startAt, uint8_t slotAddr, char thID);
 	locoDef* getLocoFromList(locoDef* startAt, char thID);
-	void setLocoAction(uint16_t locoAddr, char thID, const char* ActionCode);
+	void setLocoAction(uint16_t locoAddr, char thID, const char* ActionCode, uint16_t extFctMask =0);
 	void setTrackPowerStatus(uint8_t newStatus);
+	uint8_t getThrottleIDList(char * addHere);
 public:
 	AsyncClient * thisClient = NULL;
 	char * wiHWIdentifier = NULL;

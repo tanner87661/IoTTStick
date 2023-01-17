@@ -154,7 +154,7 @@ function loadTableData(thisTable, thisData)
 	var tb = document.getElementById(buttonTable.id + "_body");
 	var numCols = th.childNodes[0].children.length;
 	
-	var pinNr = [0,26,26];
+	var pinNr = [0,26,36];
 
 	createDataTableLines(thisTable, [tfPos,tfText,tfText,tfNumeric, tfText, tfBtnEvtMask], thisData.length, "setButtonData(this)");	
 	for (var i=0; i<thisData.length;i++)
