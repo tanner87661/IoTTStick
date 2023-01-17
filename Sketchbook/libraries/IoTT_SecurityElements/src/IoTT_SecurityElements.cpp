@@ -941,7 +941,6 @@ void IoTT_SecurityElementList::freeObjects()
 
 void IoTT_SecurityElementList::processLoop()
 {
-//	return;
 	for (int i = 0; i < numSecModel; i++)
 	{
 		IoTT_SecurityElementModel * thisModel = secModelList[i];

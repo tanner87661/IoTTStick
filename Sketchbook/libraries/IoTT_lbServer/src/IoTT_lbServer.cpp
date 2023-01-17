@@ -285,10 +285,10 @@ locoDef* tcpDef::getLocoFromList(locoDef* startAt, char thID)
 	return NULL;
 }
 
-void tcpDef::setLocoAction(uint16_t locoAddr, char thID, const char* ActionCode)
+void tcpDef::setLocoAction(uint16_t locoAddr, char thID, const char* ActionCode, uint16_t extFctMask)
 {
 //	Serial.printf("Loco Action Throttle %c Addr %i %s\n", thID, locoAddr, ActionCode);
-	char replBuf[100] = {'\0'};
+	char replBuf[800] = {'\0'};
 	char* nextBuf = &replBuf[0]; 
 	locoDef * thisLoco = NULL;
 	if (locoAddr != 0xFFFF)
@@ -395,8 +395,11 @@ void tcpDef::setLocoAction(uint16_t locoAddr, char thID, const char* ActionCode)
 								break;
 							case 'F': 
 								{
+//									uint16_t currFct = slotList[i].dirFct;
 									uint16_t currFct = (digitraxBuffer->slotBuffer[thisLoco->slotNum][3] << 8) + digitraxBuffer->slotBuffer[thisLoco->slotNum][7];
-									uint16_t fctChgMask = currFct ^ slotList[i].dirFct;
+									uint16_t fctChgMask = (currFct ^ slotList[i].dirFct);
+									if (extFctMask) 
+										fctChgMask = (extFctMask & 0x1F0F);
 									uint16_t bitMaskF = 0x0100;
 									uint16_t bitMaskS = 0x0001;
 //									Serial.printf("Fct: %2X Curr: %2X Chg: %2X\n", currFct, slotList[i].dirFct, fctChgMask);
@@ -426,7 +429,7 @@ void tcpDef::setLocoAction(uint16_t locoAddr, char thID, const char* ActionCode)
 				{
 //					Serial.print(thisClient->remoteIP());
 //					Serial.print(" Out: ");
-//					Serial.println(replBuf);
+//					Serial.println(strlen(replBuf));
 					thisClient->add(replBuf, strlen(replBuf));
 					thisClient->send();
 				}
@@ -487,6 +490,21 @@ void tcpDef::setTrackPowerStatus(uint8_t newStatus)
 	lnTransmitMsg txData;
 	prepTrackPowerMsg(&txData, newStatus);
 	sendMsg(txData);
+}
+
+uint8_t tcpDef::getThrottleIDList(char * addHere)
+{
+	uint8_t numTh = 0;
+	for (uint8_t i = 0; i < slotList.size(); i++)
+	{
+		if (strchr(addHere, slotList[i].throttleID) == NULL)
+		{
+			addHere[numTh] = slotList[i].throttleID;
+			numTh++;
+			addHere[numTh] = 0;
+		}
+	}
+	return numTh;
 }
 
 /*
@@ -559,7 +577,7 @@ void IoTT_LBServer::initMDNS()
 		Serial.println("mDNS responder started");
 		// Add service to MDNS-SD
         MDNS.addService("withrottle", "tcp", lbs_Port);
-        Serial.println("mDNS WiThrottle Service added");
+//        Serial.println("mDNS WiThrottle Service added");
 	}
 	else
 		Serial.println("Error setting up MDNS responder");
@@ -1045,6 +1063,8 @@ bool IoTT_LBServer::processWIServerMessage(AsyncClient* client, char * c)
 //this is called when data is received in client mode
 bool IoTT_LBServer::processWIClientMessage(AsyncClient* client, char * c)
 {
+//	Serial.print("In: ");
+//	Serial.println(c);
 	uint16_t len = strlen(c);
 	if (lntcpClient == client)  //client mode, handle message from server
 	{
@@ -1082,6 +1102,22 @@ bool IoTT_LBServer::processWIClientMessage(AsyncClient* client, char * c)
 		{
 //		Serial.println("Process Route List");
 //        processTrackPower(c+3, len-3);
+			return true;
+		}
+		else if (len > 4 && c[0]=='P' && c[1]=='T' && c[2]=='A') 
+		{
+			uint8_t newStat = c[3] - c['0'];
+			if ((newStat == 2) || (newStat == 4))
+			{
+				uint16_t swiAddr = 0;
+				uint8_t startPtr = 4;
+				while ((c[startPtr] >= '0') && (c[startPtr] <= '9') && (startPtr < len))
+				{
+					swiAddr = (10 * swiAddr) + (c[startPtr] - '0');
+					startPtr++;
+				}
+				digitraxBuffer->setSwiStatus(swiAddr, newStat == 4, false); //true if thrown
+			}
 			return true;
 		}
 		else if (len > 3 && c[0]=='P' && c[1]=='T' && c[2]=='L') 
@@ -1189,7 +1225,11 @@ bool IoTT_LBServer::processWIClientMessage(AsyncClient* client, char * c)
 			{
 				currentWIDCC = dccAddr;
 				if (thisSlot)
+				{
+					(*thisSlot)[1] = dccAddr & 0x7F;
+					(*thisSlot)[6] = (dccAddr >> 7);
 					(*thisSlot)[0] = 0x33; //set slot status to in use, refreshed
+				}
 //			Serial.printf("Process Add %i \n", dccAddr);
 			}
 			else
@@ -1198,6 +1238,7 @@ bool IoTT_LBServer::processWIClientMessage(AsyncClient* client, char * c)
 				if (thisSlot)
 					(*thisSlot)[0] = 0x03; //set slot status to not in use, not refreshed
 //			Serial.printf("Process Remove %i \n", dccAddr);
+			return true;
 			}
 			if (thisSlot)
 			{
@@ -1636,6 +1677,13 @@ void IoTT_LBServer::processLoopWI() //process function for WiThrottle
 											while (thisLoco)
 											{
 												clients[i]->confirmLoco(transmitQueue[hlpQuePtr].lnData[2], locoAddr, thisLoco->throttleID, transmitQueue[hlpQuePtr].lnData[3], transmitQueue[hlpQuePtr].lnData[5], (transmitQueue[hlpQuePtr].lnData[6]<<8) + transmitQueue[hlpQuePtr].lnData[10]);
+//												Serial.printf("Send Loco %i Throttle %c\n", thisLoco->locoAddr, thisLoco->throttleID);
+												//send dir, speed, fcts
+												clients[i]->setLocoAction(thisLoco->locoAddr, thisLoco->throttleID, "qV");
+												clients[i]->setLocoAction(thisLoco->locoAddr, thisLoco->throttleID, "qR");
+												clients[i]->setLocoAction(thisLoco->locoAddr, thisLoco->throttleID, "qF", 0xFFFF);
+//												Serial.println("Send Loco UpData done");
+												
 												thisLoco = clients[i]->getLocoByAddr(thisLoco, locoAddr, '*');
 											}
 										}
@@ -1686,8 +1734,6 @@ void IoTT_LBServer::processLoopWI() //process function for WiThrottle
 		else
 			if (que_wrPos != que_rdPos)
 			{
-//				Serial.println("Send message to server");
-
 				if (lntcpClient->canSend())
 				{
 					int hlpQuePtr = (que_rdPos + 1) % queBufferSize;
@@ -1697,6 +1743,8 @@ void IoTT_LBServer::processLoopWI() //process function for WiThrottle
 							que_rdPos = hlpQuePtr; 
 						else
 							return; //if not successful, we try next time
+					else
+						que_rdPos = hlpQuePtr; //invalid message, ignore
 				}
 			}
 			else // periodic pinging of server
@@ -1810,15 +1858,14 @@ void IoTT_LBServer::processLoopLN() //process function for LN over TCP
 
 void IoTT_LBServer::sendWIPing()
 {
-//	Serial.println("send WI ping");
-    String hlpStr = "IoTT_Stick_M5_" + String((uint32_t)ESP.getEfuseMac());
+	extern String deviceName;
+//    String hlpStr = "IoTT_Stick_M5_" + String((uint32_t)ESP.getEfuseMac());
+	sendWIClientMessage(lntcpClient, "N" + 	deviceName);
     if (sendID)
     {
 		sendID = false;
-		sendWIClientMessage(lntcpClient, "N" + WiFi.localIP().toString() + '\r' + '\n' + "HU" + hlpStr);
+		sendWIClientMessage(lntcpClient, "HU" + WiFi.localIP().toString());
 	}
-	else
-		sendWIClientMessage(lntcpClient, "N" + WiFi.localIP().toString());
 	pingSent = true;
 }
 
@@ -1849,24 +1896,31 @@ void IoTT_LBServer::updateClientList()
 			if (isWiThrottle)
 			{
 				clArray[i]["name"] = clients[i]->wiDeviceName;
-				locoDef* thisLoco = clients[i]->getLocoFromList(NULL, '*');
-				JsonArray t0List = clArray[i].createNestedArray("t0");
-				JsonArray t1List = clArray[i].createNestedArray("t1");
-				while (thisLoco)
+				JsonArray thList = clArray[i].createNestedArray("devs");
+				char throttleIDList[10] = {0,0,0,0,0,0,0,0,0,0};
+				uint8_t numThrottles = clients[i]->getThrottleIDList(&throttleIDList[0]);
+//				Serial.println(throttleIDList);
+				
+				char arrayName[3] = {'T',0,0};
+				for (uint8_t j = 0; j < numThrottles; j++)
 				{
-					if (thisLoco->throttleID == '0')
+					arrayName[1]= throttleIDList[j];
+					JsonObject tObj = thList.createNestedObject();
+					tObj["thID"] = arrayName;
+					JsonArray t0List = tObj.createNestedArray("addr");
+					locoDef* thisLoco = clients[i]->getLocoFromList(NULL, throttleIDList[j]);
+					while (thisLoco)
+					{
 						t0List.add(thisLoco->locoAddr);
-					else
-						if (thisLoco->throttleID == '1')
-						t1List.add(thisLoco->locoAddr);
-//				Serial.printf("LN Slot: %i ThID: %c Addr: %i\n", thisLoco->slotNum, thisLoco->throttleID, thisLoco->locoAddr);
-				thisLoco = clients[i]->getLocoFromList(thisLoco, '*');
+						thisLoco = clients[i]->getLocoFromList(thisLoco, throttleIDList[j]);
+					}
 				}
 			}
 		}
 		serializeJson(doc, myMqttMsg);
 //		Serial.println(myMqttMsg);
 		globalClient->text(myMqttMsg);
+//		Serial.println("Done");
 	}
 }
 

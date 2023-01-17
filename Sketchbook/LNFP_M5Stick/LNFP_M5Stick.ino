@@ -8,11 +8,11 @@
 #include <M5UnitOLED.h>
 #include <M5Unified.h>
 
-String BBVersion = "1.5.19";
+String BBVersion = "1.5.20";
 
 //#define measurePerformance //uncomment this to display the number of loop cycles per second
 //#define useAI
-//#define useSecEl
+#define useSecEl
 
 //Arduino published libraries. Install using the Arduino IDE or download from Github and install manually
 #include <Math.h>
@@ -217,7 +217,10 @@ uint16_t sendMsg(lnTransmitMsg txData)
     case 3: if (lnMQTTClient) return lnMQTTClient->lnWriteMsg(&txData); break;
     case 17:; //WiThrottle
     case 12:if (lbClient) //LocoNet over TCP or WiClient
-               return lbClient->lnWriteMsg(&txData); break; //this is message to lbServer or WiServer
+            {
+//               Serial.println("Send to lbServer");
+               return lbClient->lnWriteMsg(&txData); break; //this is message to lbServer or WiServer 
+            }
 /*            
     case 5: //OpenLCB
             if (olcbSerial) olcbSerial->lnWriteMsg(txData);
@@ -899,10 +902,13 @@ void setup()
         delete(jsonDataObj); 
         Serial.println("DCC++Ex loaded"); 
       }
+      digitraxBuffer->clearSlotBuffer(false); //do not erase, just fix problems
     }
     else
+    {
       Serial.println("DCC++Ex not activated");
-    digitraxBuffer->clearSlotBuffer(false); //do not erase, just fix problems
+      digitraxBuffer->clearSlotBuffer(true); //erase slot data (slave)
+    }
 
 //------------------------------------------------------------------------------------------------------------------------------------------------------------------
 //Initialize ALMs

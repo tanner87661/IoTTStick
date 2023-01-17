@@ -116,7 +116,7 @@ function getPlainMsgText(lnData)
             p1 = ((lnData[1] & 0x7F) + ((lnData[2] & 0x0F)<<7));
             retMsg = "Force set switch " + p1.toString()  + " to " + (((lnData[2] & 0x20)>0) ? "closed":"thrown") + " with coil " + (((lnData[2] & 0x10)>0) ? "ON":"OFF"); 
             break;
-        case 0xBF : retMsg = "Request slot information for loco addr " + lnData[2].toString(); break;
+        case 0xBF : retMsg = "Request slot information for loco addr " + ((lnData[1]<<7) + lnData[2]).toString(); break;
         case 0xD0 : retMsg = decodeMultiSenseMsg(lnData); break;
         case 0xD4 : retMsg = "OPC_UHLI-FUN"; break;
         case 0xD7 : retMsg = "OPC_PANEL_RESPONSE"; break;

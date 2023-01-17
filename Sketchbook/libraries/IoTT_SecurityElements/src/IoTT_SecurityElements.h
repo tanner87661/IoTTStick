@@ -7,7 +7,7 @@
 
 enum sigAddrType : uint8_t  {swiDyn=0, swiStat=1, sigNMRA=3};
 enum ctrlType: int8_t {manual=-1, ABSS=0, ABSD=1, APB=2, CTC=3};
-enum fallbackMode: int8_t {nofallback = 0, fbOnEnter = 1, fbOnExitPrev = 2, fbOnExit = 3};
+enum fallbackMode: int8_t {nofallback = 0, fbOnEnter = 1, fbOnExitPrev = 2, fbOnExit = 3}; //trigger for signal fallback
 
 typedef struct{
 	char entryName[30];

@@ -381,8 +381,8 @@ int IoTT_SerInjector::parseDCCExParam(char** startAt, uint8_t ppNum, ppElement *
 					decPtCtr++;
 				else
 				{
-					Serial.print("COMMENT "); //invalid char
-					Serial.println(**startAt);
+//					Serial.print("COMMENT "); //invalid char
+//					Serial.println(**startAt);
 					return 0;
 				}
 		*startAt += 1;

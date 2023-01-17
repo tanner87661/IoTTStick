@@ -9,7 +9,7 @@
 		{"Menue":"WiThrottle Server", "ProdSel":[], "CommSel":[], "ServerSel":[2], "ALMSel":[],  "WebPage": "WiThrottle.htm", "URLParam":"s", "ID":"pgWiCfg", "FileName": "wiclient"}, 
 		{"Menue":"USB Serial", "ProdSel":[2], "CommSel":[], "ServerSel":[], "ALMSel":[],  "WebPage": "USBSerial.htm", "ID":"pgUSBCfg", "FileName": "usb"}, 
 		{"Menue":"Event Handler Setup", "ProdSel":[], "CommSel":[], "ServerSel":[], "ALMSel":[0],  "WebPage": "BtnHdlrCfg.htm", "ID":"pgBtnHdlrCfg", "FileName": "btnevt"}, 
-		{"Menue":"Security Elements Setup", "ProdSel":[], "CommSel":[], "ServerSel":[], "ALMSel":[],  "WebPage": "SecElCfg.htm", "ID":"pgSecElCfg", "FileName": "secel"},
+		{"Menue":"Security Elements Setup", "ProdSel":[], "CommSel":[], "ServerSel":[], "ALMSel":[1],  "WebPage": "SecElCfg.htm", "ID":"pgSecElCfg", "FileName": "secel"},
 		{"Menue":"Voice Watcher Setup", "ProdSel":[], "CommSel":[], "ServerSel":[], "ALMSel":[],  "WebPage": "VoiceWatch.htm", "ID":"pgVoiceWCfg", "FileName": "vwcfg"}, 
 		{"Menue":"RedHat++", "ProdSel":[6], "CommSel":[], "ServerSel":[], "ALMSel":[],  "WebPage": "RedHat.htm", "ID":"pgRedHatCfg", "FileName": "rhcfg"}, 
 		{"Menue":"PurpleHat", "ProdSel":[7], "CommSel":[], "ServerSel":[], "ALMSel":[],  "WebPage": "PurpleHat.htm", "ID":"pgPrplHatCfg", "FileName": "phcfg"}, 

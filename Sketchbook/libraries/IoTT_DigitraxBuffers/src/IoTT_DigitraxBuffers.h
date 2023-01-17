@@ -175,7 +175,7 @@ class IoTT_DigitraxBuffers
 		uint8_t getSwiPosition(uint16_t swiNum);
 		uint8_t getSwiCoilStatus(uint16_t swiNum);
 		uint8_t getSwiStatus(uint16_t swiNum);
-		void setSwiStatus(uint16_t swiNum, bool swiPos, bool coilStatus); //called from DCC noitification
+		void setSwiStatus(uint16_t swiNum, bool swiPos, bool coilStatus); //called from DCC or WiThrottle notification
 		uint32_t getLastSwiActivity(uint16_t swiNum);
 		uint8_t getSignalAspect(uint16_t sigNum);
 		void setSignalAspect(uint16_t sigNum, uint8_t sigAspect);

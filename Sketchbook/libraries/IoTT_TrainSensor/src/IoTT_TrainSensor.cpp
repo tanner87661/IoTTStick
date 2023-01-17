@@ -426,7 +426,7 @@ void IoTT_TrainSensor::setRepRate(AsyncWebSocketClient * newClient, int newRate)
 
 void IoTT_TrainSensor::reqDCCAddrWatch(AsyncWebSocketClient * newClient, int16_t dccAddr, bool simulOnly)
 {
-//	Serial.println("reqDCCAddrWatch");
+	Serial.printf("reqDCCAddrWatch %i\n", dccAddr);
 //	globalClient = newClient;
 	digitraxBuffer->awaitFocusSlot(dccAddr, simulOnly); //set DigitraxBuffers to watch for next speed or fct command and memorize loco
 	waitForNewDCCAddr = true;
@@ -452,7 +452,10 @@ void IoTT_TrainSensor::startTest(float_t trackLen, float_t vMax, uint8_t pMode)
 	int8_t currSlot = digitraxBuffer->getFocusSlotNr();
 	if ((currSlot > 0) || (digitraxBuffer->getLocoNetMode() == false))
 	{
-		speedSample.adminData.testTrackLen = 10 * trackLen; //comes in cm or inches. Change web page
+//		if (workData.dispDim == 1) //imperial
+//			speedSample.adminData.testTrackLen = 25.4 * trackLen; //change inch to millimters
+//		else
+		speedSample.adminData.testTrackLen = 10 * trackLen; //change cm to mm
 		speedSample.adminData.sampleMinDistance = wheelDia * PI * minTestWheelTurns; //always mm
 		speedSample.adminData.crawlSpeedMax = wheelDia * PI * crawlTurns; //always mm/s
 //		Serial.printf("%.2f \n", speedSample.adminData.crawlSpeedMax);
@@ -478,10 +481,6 @@ void IoTT_TrainSensor::startTest(float_t trackLen, float_t vMax, uint8_t pMode)
 		speedSample.adminData.currSpeedStep = 0;
 		speedSample.adminData.validSample = false;
 		speedSample.adminData.speedTestRunning = true;
-		if (workData.dispDim == 1) //imperial
-		{
-			speedSample.adminData.testTrackLen *= 2.54; //change to millimters
-		}
 	}
 	else
 		Serial.println("No focus slot assigned");
@@ -795,7 +794,7 @@ void IoTT_TrainSensor::sendSensorDataToWeb()
 			if (currSlot)
 			{
 				uint16_t thisAddr = (((*currSlot)[6] & 0x7F) << 7) + ((*currSlot)[1] & 0x7F); //from IoTT_DigitraxBuffers.h
-//				Serial.println(thisAddr);
+				Serial.printf("Slot: %i Addr %i\n", currSlotNr, thisAddr);
 				if (thisAddr > 0)
 				{
 					Data["DCCAddr"] = thisAddr;
@@ -828,7 +827,14 @@ void IoTT_TrainSensor::processLoop()
 			{
 				slotData * currSlot = digitraxBuffer->getSlotData(currSlotNr);
 				if (currSlot)
-					sendSensorDataToWeb();
+				{
+					uint16_t thisAddr = (((*currSlot)[6] & 0x7F) << 7) + ((*currSlot)[1] & 0x7F); //from IoTT_DigitraxBuffers.h
+					if (thisAddr > 0)
+					{
+						Serial.printf("Slot: %i Addr %i\n", currSlotNr, thisAddr);
+						sendSensorDataToWeb();
+					}
+				}
 			}
 		}
 	
