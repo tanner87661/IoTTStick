@@ -1,1 +1,0 @@
-The STL file for the enclosure is currently under review. It will be back soon.
