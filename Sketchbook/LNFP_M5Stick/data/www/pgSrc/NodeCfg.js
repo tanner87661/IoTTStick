@@ -92,7 +92,7 @@ function setDisplayOptions()
 	setVisibility(configData[2].useStaticIP, configDHCPBox);
 	setVisibility([4,5,6].indexOf(configData[2].InterfaceIndex) >= 0, configLNOptBox);
 	setVisibility(([4,5,6].indexOf(configData[2].InterfaceIndex) >= 0) && ([5].indexOf(configData[2].HatIndex) < 0), configFCBox);
-	setVisibility(([4].indexOf(configData[2].InterfaceIndex) >= 0) && ([5].indexOf(configData[2].HatIndex) < 0), configSubnetBox);
+//	setVisibility(([4].indexOf(configData[2].InterfaceIndex) >= 0) && ([5].indexOf(configData[2].HatIndex) < 0), configSubnetBox);
 
 	for (var i = 0; i < configData[2].ALMTypeList.length; i++)
 	{
@@ -324,10 +324,10 @@ function setFastClock(sender)
 		configData[workCfg].broadcastFCRate = verifyNumber(sender.value, configData[workCfg].broadcastFCRate); 
 }
 
-function setSubnet(sender)
-{
-	configData[2].subnetMode = sender.checked ? 1:0;
-}
+//function setSubnet(sender)
+//{
+//	configData[2].subnetMode = sender.checked ? 1:0;
+//}
 
 function constructPageContent(contentTab)
 {
@@ -343,9 +343,9 @@ function constructPageContent(contentTab)
 //			createCheckbox(tempObjP, "", "MQTT Gateway", "cbMQTTGateway", "setGatewayMode(this)");
 //			createCheckbox(tempObjP, "", "LN over TCP Server", "cbTCPServer", "setGatewayMode(this)");
 		tempObj = createEmptyDiv(mainScrollBox, "div", "tile-1_4", "");
-		tempObj = createEmptyDiv(mainScrollBox, "div", "tile-1", "configSubnetBox");
-		tempObj.style.display = "none";
-			createCheckbox(tempObj, "tile-1_4", "LocoNet Subnet", "cbUseSubnet", "setSubnet(this)");
+//		tempObj = createEmptyDiv(mainScrollBox, "div", "tile-1", "configSubnetBox");
+//		tempObj.style.display = "none";
+//			createCheckbox(tempObj, "tile-1_4", "LocoNet Subnet", "cbUseSubnet", "setSubnet(this)");
 		tempObj = createEmptyDiv(mainScrollBox, "div", "tile-1", "configLNOptBox");
 			createCheckbox(tempObj, "tile-1_4", "respect Bushby Bit", "cbUseBushbyBit", "setUseBushbyBit(this)");
 			createCheckbox(tempObj, "tile-1_4", "Support Uhlenbrock Track display commands", "cbUseLissyBit", "setUseLissyBit(this)");
@@ -491,7 +491,7 @@ function loadDataFields(jsonData)
 	writeInputField("ap_ip", jsonData.apConfig.apGateway);
 	writeInputField("ap_password", jsonData.apConfig.apPassword);
 
-	writeCBInputField("cbUseSubnet", jsonData.subnetMode);
+//	writeCBInputField("cbUseSubnet", jsonData.subnetMode);
 	writeCBInputField("cbUseBushbyBit", jsonData.useBushby);
 	if (typeof jsonData.useLissy !== 'undefined')
 		writeCBInputField("cbUseLissyBit", jsonData.useLissy);

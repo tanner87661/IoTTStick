@@ -3,6 +3,8 @@ var pingDelay;
 var wiConfigOptions;
 var listActiveClients;
 var clientDisplay;
+var defLocalSource; //entry fields for turnouts and locomotives
+var rbDefSource; //radiobox for turnouts/locomotive source selection
 
 function upgradeJSONVersion(jsonData)
 {
@@ -49,14 +51,30 @@ function setTurnoutList(sender)
 	var validCount = 0;
 	configData[workCfg].Turnouts = [];
 	for (var i = 0; i < inpData.length; i++)
-		if (!isNaN(inpData[i]))
+		if (!isNaN(parseInt(inpData[i])))
 		{
-			configData[workCfg].Turnouts[validCount] = inpData[i];
+			configData[workCfg].Turnouts[validCount] = parseInt(inpData[i]);
 			validCount++;
 		}
 //	console.log(configData[workCfg].Turnouts);
 	writeInputField("turnoutlist", configData[2].Turnouts.toString());
 }
+
+function setLocoList(sender)
+{
+	var inpData = sender.value.split(',');
+	var validCount = 0;
+	configData[workCfg].Locos = [];
+	for (var i = 0; i < inpData.length; i++)
+		if (!isNaN(parseInt(inpData[i])))
+		{
+			configData[workCfg].Locos[validCount] = parseInt(inpData[i]);
+			validCount++;
+		}
+//	console.log(configData[workCfg].Locos);
+	writeInputField("locolist", configData[2].Locos.toString());
+}
+
 
 //function setFC(sender)
 //{
@@ -72,6 +90,16 @@ function setPowerMode(sender, id)
 		configData[2].PowerMode = 1;
 	if (sender.id == "selectpowermode_2")
 		configData[2].PowerMode = 2;
+}
+
+function setDefinitionMode(sender, id)
+{
+	if (sender.id == "selectdefinitionmode_0")
+		configData[2].DefinitionSource = 0;
+	if (sender.id == "selectdefinitionmode_1")
+		configData[2].DefinitionSource = 1;
+	setVisibility((configData[workCfg].DefinitionSource == 0) || (configData[nodeCfg].HatIndex != 5), defLocalSource);
+	setVisibility((configData[nodeCfg].HatIndex == 5), rbDefSource);
 }
 
 function constructPageContent(contentTab)
@@ -101,13 +129,27 @@ function constructPageContent(contentTab)
 		tempObj.setAttribute("id", "ServerPortDiv");
 			createTextInput(tempObj, "tile-1_4", "Port #:", "n/a", "serverport", "setLbServer(this)");
 
+//		tempObj = createEmptyDiv(mainScrollBox, "div", "tile-1", "");
+//		tempObj.setAttribute("id", "TrainServerPortDiv");
+//			createTextInput(tempObj, "tile-1_4", "Train Server IP:", "n/a", "trainserverip", "setTrainServer(this)");
+//		tempObj.setAttribute("id", "TrainServerPortDiv");
+//			createTextInput(tempObj, "tile-1_4", "Train Server Port #:", "n/a", "trainserverport", "setTrainServerPort(this)");
+
 		wiConfigOptions = createEmptyDiv(mainScrollBox, "div", "tile-1", "");
 			setVisibility(false, wiConfigOptions);
 			tempObj = createPageTitle(wiConfigOptions, "div", "tile-1", "BasicCfg_Title", "h2", "WiThrottle Options");
 			tempObj = createEmptyDiv(wiConfigOptions, "div", "tile-1", "");
 			createRadiobox(tempObj, "tile-1_2", "Allow Power Commands:", ["Display only", "Toggle ON - Idle", "Toggle ON - OFF"], "selectpowermode", "setPowerMode(this, id)");
-			tempObj = createEmptyDiv(wiConfigOptions, "div", "tile-1", "");
-			createTextInput(tempObj, "tile-1_2", "Include Turnouts:", "n/a", "turnoutlist", "setTurnoutList(this)");
+
+			rbDefSource = createEmptyDiv(wiConfigOptions, "div", "tile-1", "");
+			createRadiobox(rbDefSource, "tile-1_2", "Load Definitions from:", ["Manual Entry", "Command Station"], "selectdefinitionmode", "setDefinitionMode(this, id)");
+
+
+			defLocalSource = createEmptyDiv(wiConfigOptions, "div", "tile-1", "");
+			createTextInput(defLocalSource, "tile-1_2", "Include Turnouts:", "n/a", "turnoutlist", "setTurnoutList(this)");
+			createTextInput(defLocalSource, "tile-1_2", "Include Locomotives:", "n/a", "locolist", "setLocoList(this)");
+			setVisibility(false, defLocalSource);
+
 //			tempObj = createEmptyDiv(wiConfigOptions, "div", "tile-1", "");
 //			createCheckbox(tempObj, "tile-1_4", "Update FastClock", "cbUpdateFC", "setFC(this)");
 
@@ -175,7 +217,7 @@ function loadDataFields(jsonData)
 	var error;
 	configData[workCfg] = upgradeJSONVersion(jsonData);
 //	console.log(currentPage);
-//	console.log(configData[nodeCfg]);
+//	console.log(configData[workCfg]);
 	if (pageParam == 's')
 		writeInputField("serverport", jsonData.ServerPortNr);
 	else
@@ -197,6 +239,17 @@ function loadDataFields(jsonData)
 			writeInputField("turnoutlist", configData[2].Turnouts.toString());
 	}
 	catch (error) {};
+	try
+	{
+		if (Array.isArray(configData[2].Locos))
+			writeInputField("locolist", configData[2].Locos.toString());
+	}
+	catch (error) {};
+	try
+	{
+		writeRBInputField("selectdefinitionmode", configData[2].DefinitionSource);
+	}
+	catch (error) {};
 
 	setVisibility((configData[nodeCfg].ServerIndex.indexOf(1) >= 0) && (pageParam == 's') && (currentPage == 5), document.getElementById("ServerTitle"));
 	setVisibility((configData[nodeCfg].ServerIndex.indexOf(2) >= 0) && (pageParam == 's') && (currentPage == 6), document.getElementById("WiServerTitle"));
@@ -205,6 +258,8 @@ function loadDataFields(jsonData)
 	setVisibility(([12].indexOf(thisIntfID) >= 0) && (pageParam == 'c'), document.getElementById("ClientTitle"));
 	setVisibility(([17].indexOf(thisIntfID) >= 0) && (pageParam == 'c'), document.getElementById("WiClientTitle"));
 	setVisibility(((configData[nodeCfg].ServerIndex.indexOf(2) >= 0) && (pageParam == 's') && (currentPage == 6)), wiConfigOptions);
+	setVisibility((configData[workCfg].DefinitionSource == 0) || (configData[nodeCfg].HatIndex != 5), defLocalSource);
+	setVisibility((configData[nodeCfg].HatIndex == 5), rbDefSource);
 
 	getClientList();
 }

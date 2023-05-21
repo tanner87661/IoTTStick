@@ -40,7 +40,7 @@
 //------------------------------------------------------------------------
 
 // Uncomment the following Line to Enable Service Mode CV Programming
-//#define NMRA_DCC_PROCESS_SERVICEMODE
+#define NMRA_DCC_PROCESS_SERVICEMODE
 
 // Uncomment the following line to Enable MultiFunction Decoder Operations
 #define NMRA_DCC_PROCESS_MULTIFUNCTION

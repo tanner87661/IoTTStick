@@ -113,6 +113,7 @@ typedef struct
 	uint16_t numPar2;
 	bool confOK = false;
 	outputType lnType;
+	char Descr[30] = {'\0'};
 } arduinoPins;
 
 typedef struct
@@ -122,6 +123,21 @@ typedef struct
 	float_t currOffset = 0.0;
 	uint8_t currBuffSize = 40;
 } trackerData;
+
+typedef struct
+{
+	uint16_t ID;
+	char automationType[2] = {'\0'};
+	char Descr[50] = {'\0'};
+} automationEntry;
+
+typedef struct
+{
+	uint16_t ID;
+	char Description[50] = {'\0'};
+	char FunctionMap[70] = {'\0'};
+} rosterEntry;
+
 
 uint32_t millisElapsed(uint32_t since);
 uint32_t microsElapsed(uint32_t since);
@@ -161,6 +177,7 @@ class IoTT_DigitraxBuffers
 		void processLocoNetMsg(lnReceiveBuffer * newData); //process incoming Loconet messages
 		void writeProg(uint16_t dccAddr, uint8_t progMode, uint8_t progMethod, uint16_t cvNr, uint8_t cvVal);
 		void readProg(uint16_t dccAddr, uint8_t progMode, uint8_t progMethod, uint16_t cvNr);
+		void readAddrOnly();
 		void setPowerStatus(uint8_t newStatus);
 		void localPowerStatusChange(uint8_t newStatus);
 //		void sendSwiReq(bool useAck, uint16_t swiAddr, uint8_t newPos);
@@ -192,10 +209,11 @@ class IoTT_DigitraxBuffers
 		uint8_t getUpdateReqStatus();
 		void clearUpdateReqFlag(uint8_t clrFlagMask);
 //		void addActor(uint16_t Id, uint8_t pinType, uint8_t pinNr, uint8_t flags);
-		void sendDCCCmdToWeb(ppElement * myParams);
+		void sendDCCCmdToWeb(std::vector<ppElement> * myParams);
 		void sendFCCmdToWeb();
 		void sendTrackCurrent(uint8_t trackId);
-		uint16_t receiveDCCGeneratorFeedback(lnTransmitMsg txData);
+		uint16_t receiveDCCGeneratorFeedbackNew(std::vector<ppElement> * txData);
+//		uint16_t receiveDCCGeneratorFeedback(lnTransmitMsg txData);
 		//LocoNet Management functions mainly for Command Station mode
 		//from incoming DCC command
 		//sensor slot finding functions
@@ -204,6 +222,10 @@ class IoTT_DigitraxBuffers
 		slotData * getSlotData(uint8_t slotNum);
 		int8_t getFocusSlotNr();
 		uint8_t getSlotOfAddr(uint8_t locoAddrLo, uint8_t locoAddrHi);
+		String getRouteInfo(uint16_t id, bool exFormat);
+		String getRosterInfo(uint16_t id, bool exFormat);
+		String getTurnoutInfo(uint16_t id, bool exFormat);
+		String getSensorInfo(uint16_t id, bool exFormat);
 
 	private: //functions
 		//write buffer values
@@ -273,7 +295,9 @@ class IoTT_DigitraxBuffers
 		uint32_t nextBufferUpdate = millis();
 		uint32_t nextSlotUpdate = millis();
 		protocolEntry switchProtocol[switchProtLen];
-		bool progMode = false;
+		bool progModeActive = false;
+		bool readFullAddr = false;
+		std::vector<uint32_t> cvBuffer;
 		uint32_t progSent = millis();
 		uint32_t fcRefresh = millis();
 		uint32_t fcLastBroadCast = millis();
@@ -289,7 +313,12 @@ class IoTT_DigitraxBuffers
 		arduinoPins * sensorInputs = NULL;
 		uint16_t sensorInputLen = 0;
 		arduinoPins * turnoutOutputs = NULL;
+		automationEntry * automationList = NULL;
+//		rosterEntry * rosterList = NULL;
+		std::vector<rosterEntry> rosterList; //a list holding the turnout numbers to be initialized in WiThrottle Server
 		uint16_t turnoutOutputLen = 0;
+		uint16_t routeOutputLen = 0;
+//		uint16_t rosterOutputLen = 0;
 		uint8_t DCCActiveSlots = 20; //number of active slots on the DCC++EX
 		uint16_t progLimit = 50;
 		uint16_t progPulseMin = 200;
@@ -307,7 +336,8 @@ class IoTT_DigitraxBuffers
 };
 
 extern IoTT_DigitraxBuffers* digitraxBuffer; //pointer to DigitraxBuffers
-extern AsyncWebSocketClient * globalClient;
+//extern AsyncWebSocketClient * globalClient;
+extern std::vector<wsClientInfo> globalClients; // a list to hold all clients when in server mode
 
 #endif
 
@@ -331,3 +361,6 @@ extern void sendAnalogCommand(uint16_t btnNr, uint16_t analogVal) __attribute__ 
 extern void sendButtonCommand(uint16_t btnNr, uint8_t  btnEvent) __attribute__ ((weak)); //button command
 extern void sendSwiReportMessage(uint16_t inpAddr, uint8_t newPos) __attribute__ ((weak)); //switch report command
 
+//callback function to WiThrottle Server
+extern void wiAddrCallback(std::vector<ppElement>* ppList) __attribute__ ((weak));
+ 

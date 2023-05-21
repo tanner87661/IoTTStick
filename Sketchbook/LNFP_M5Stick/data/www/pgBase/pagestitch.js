@@ -6,10 +6,10 @@ function upgradeJSONVersionNode(jsonData)
 //	var InterfaceList = [{"Name":"none","IntfId":0,"Type":0,"ReqSTA":0},{"Name":"DCC Interface","IntfId":1,"Type":0,"ReqSTA":0},{"Name":"DCC to MQTT","IntfId":9,"Type":0,"ReqSTA":1},{"Name":"DCC from MQTT","IntfId":10,"Type":0,"ReqSTA":1},{"Name":"LocoNet Interface","IntfId":2,"Type":1,"ReqSTA":0},{"Name":"LocoNet Loopback","IntfId":16,"Type":1,"ReqSTA":0},{"Name":"LocoNet over MQTT","IntfId":3,"Type":1,"ReqSTA":1},{"Name":"LocoNet MQTT Gateway","IntfId":4,"Type":2,"ReqSTA":1},{"Name":"LocoNet lbServer","IntfId":11,"Type":2,"ReqSTA":0},{"Name":"LocoNet lbServer / MQTT Gateway","IntfId":13,"Type":2,"ReqSTA":1},{"Name":"LocoNet Loopback lbServer","IntfId":14,"Type":2,"ReqSTA":0},{"Name":"LocoNet Loopback lbServer / MQTT Gateway","IntfId":15,"Type":2,"ReqSTA":1},{"Name":"LocoNet lbServer Client","IntfId":12,"Type":2,"ReqSTA":1},{"Name":"WiThrottle Client","IntfId":17,"Type":2,"ReqSTA":1},{"Name":"MQTT with Topics","IntfId":8,"Type":3,"ReqSTA":1}];
 //	var HatList = [{"Name":"none","HatId":0,"Type":0,"InterfaceList":[0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16]},{"Name":"Blue Hat","HatId":1,"Type":0,"InterfaceList":[0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16]},{"Name":"Brown Hat","HatId":2,"Type":0,"InterfaceList":[0,2,3,4]},{"Name":"Yellow Hat","HatId":3,"Type":0,"InterfaceList":[0,1,2,3,4,5,6,7,8,11,12,13,14,15,16]},{"Name":"Green Hat","HatId":4,"Type":0,"InterfaceList":[0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16]},{"Name":"Red Hat++ CS","HatId":6,"Type":0,"InterfaceList":[2,4,11,13]},{"Name":"Red Hat++ B","HatId":8,"Type":0,"InterfaceList":[2,4,11,13]},{"Name":"Black Hat","HatId":5,"Type":0,"InterfaceList":[0,2,3,4,5,6,7,8]},{"Name":"Purple Hat","HatId":7,"Type":0,"InterfaceList":[0,3,12,16,17]}]
 
-var InterfaceList = [{"Name":"none","IntfId":0,"Type":0,"ReqSTA":0},{"Name":"DCC Interface","IntfId":1,"Type":0,"ReqSTA":0},{"Name":"DCC from MQTT","IntfId":10,"Type":0,"ReqSTA":1},{"Name":"LocoNet Loopback","IntfId":16,"Type":1,"ReqSTA":0},{"Name":"LocoNet Interface","IntfId":2,"Type":1,"ReqSTA":0},{"Name":"LocoNet lbServer Client","IntfId":12,"Type":2,"ReqSTA":1},{"Name":"LocoNet from MQTT","IntfId":3,"Type":1,"ReqSTA":1},{"Name":"WiThrottle Client","IntfId":17,"Type":2,"ReqSTA":1},{"Name":"MQTT with Topics","IntfId":8,"Type":3,"ReqSTA":1}];
-var HatList = [{"Name":"none","HatId":0,"Type":0,"InterfaceList":[0,1,2,3,8,10,12,16,17]},{"Name":"Blue Hat","HatId":1,"Type":0,"InterfaceList":[0,1,2,3,8,10,12,16]},{"Name":"Brown Hat","HatId":2,"Type":0,"InterfaceList":[0,2,3,12]},{"Name":"Yellow Hat","HatId":3,"Type":0,"InterfaceList":[0,1,2,3,8,10,12,16]},{"Name":"Green Hat","HatId":4,"Type":0,"InterfaceList":[0,1,2,3,8,10,12,16]},{"Name":"Red Hat++","HatId":6,"Type":0,"InterfaceList":[2,16]},{"Name":"Black Hat","HatId":5,"Type":0,"InterfaceList":[0,2,3,12,16]},{"Name":"Purple Hat","HatId":7,"Type":0,"InterfaceList":[0,3,12,16,17]}];
-var ALMList = [{"Name": "Event Handler", "ALMId": 0, "Type": 1},{"Name": "Voice Watcher","ALMId": 1,"Type": 1}];
-var ServerList = [{"Name":"MQTT Broker Gateway","ServerId":0,"InterfaceList":[1,2,3,10,12,16],"Type":1},{"Name":"Loconet lbServer","ServerId":1,"InterfaceList":[2,3,12,16],"Type":1},{"Name":"WiThrottle Server","ServerId":2,"InterfaceList":[2,3,12,16],"Type":1}];
+var InterfaceList = [{"Name": "none",	"IntfId": 0,"Type": 0,"ReqSTA": 0}, {"Name": "DCC Interface","IntfId": 1,"Type": 0,"ReqSTA": 0}, {"Name": "DCC from MQTT","IntfId": 10,"Type": 0,"ReqSTA": 1}, {"Name": "LocoNet Loopback","IntfId": 16,"Type": 1,"ReqSTA": 0}, {"Name": "LocoNet Interface","IntfId": 2,"Type": 1,"ReqSTA": 0}, {"Name": "LocoNet lbServer Client","IntfId": 12,"Type": 2,"ReqSTA": 1}, {"Name": "LocoNet from MQTT","IntfId": 3,"Type": 1,"ReqSTA": 1}, {"Name": "WiThrottle Client","IntfId": 17,"Type": 2,"ReqSTA": 1}, {"Name": "MQTT with Topics","IntfId": 8,"Type": 3,"ReqSTA": 1}];
+var HatList = [{"Name": "none","HatId": 0,"Type": 0,"InterfaceList": [0, 1, 2, 3, 8, 10, 12, 16, 17]}, {"Name": "Blue Hat","HatId": 1,"Type": 0,"InterfaceList": [0, 1, 2, 3, 8, 10, 12, 16]}, {"Name": "Brown Hat","HatId": 2,"Type": 0,"InterfaceList": [0, 2, 3, 12]}, {"Name": "Yellow Hat","HatId": 3,"Type": 0,"InterfaceList": [0, 1, 2, 3, 8, 10, 12, 16]}, {"Name": "Green Hat","HatId": 4,"Type": 0,"InterfaceList": [0, 1, 2, 3, 8, 10, 12, 16]}, {"Name": "Red Hat Shield","HatId": 6,"Type": 0,"InterfaceList": [2, 16]}, {"Name": "Black Hat","HatId": 5,"Type": 0,"InterfaceList": [0, 2, 3, 12, 16]}, {"Name": "Purple Hat","HatId": 7,"Type": 0,"InterfaceList": [0, 3, 12, 16,17]}];
+var	ALMList = [{"Name": "Event Handler","ALMId": 0,"InterfaceList": [2, 3, 12, 16],"Type": 1},{"Name": "SecEl Handler","ALMId": 1,"InterfaceList": [],"Type": 1},{"Name": "Voice Watcher","ALMId": 2,"InterfaceList": [],"Type": 1}];
+var	ServerList = [{"Name": "MQTT Broker Gateway","ServerId": 0,"InterfaceList": [1, 2, 3, 10, 12, 16],"Type": 1},{"Name": "Loconet lbServer","ServerId": 1,"InterfaceList": [2, 3, 12, 16],"Type": 1},{"Name": "WiThrottle Server","ServerId": 2,"InterfaceList": [2, 3, 12, 16],"Type": 1},{"Name": "Loconet Subnet","ServerId": 3,"InterfaceList": [3, 12],"Type": 1}];
 
 /* Available command sources: 
  * 0: none
@@ -23,7 +23,7 @@ var ServerList = [{"Name":"MQTT Broker Gateway","ServerId":0,"InterfaceList":[1,
  * 17: WiThrottle client
  * 
 */
-	jsonFileVersion = "1.0.3";
+	jsonFileVersion = "1.0.4";
 	var thisVersion = jsonData.Version;
 //	console.log(thisVersion);
 	if (thisVersion == jsonFileVersion)
@@ -34,7 +34,7 @@ var ServerList = [{"Name":"MQTT Broker Gateway","ServerId":0,"InterfaceList":[1,
 		console.log("upgrade Node Config from noversion to 1.0.0");
 		jsonData.Version = "1.0.0";
 		jsonData.InterfaceTypeList = JSON.parse(JSON.stringify(InterfaceList));
-		jsonData.InterfaceIndex = 1;
+		jsonData.InterfaceIndex = 0;
 		jsonData.HatTypeList = JSON.parse(JSON.stringify(HatList));
 		jsonData.HatIndex = 0;
 	}
@@ -63,13 +63,22 @@ var ServerList = [{"Name":"MQTT Broker Gateway","ServerId":0,"InterfaceList":[1,
 		jsonData.Version = "1.0.3";
 		console.log("upgrade Node Config from version 1.0.2 to 1.0.3");
 	}
+	if (jsonData.Version == "1.0.3")
+	{
+		jsonData.InterfaceTypeList = JSON.parse(JSON.stringify(InterfaceList));
+		jsonData.HatTypeList = JSON.parse(JSON.stringify(HatList));
+		jsonData.ALMTypeList = JSON.parse(JSON.stringify(ALMList));
+		jsonData.ServerTypeList = JSON.parse(JSON.stringify(ServerList));
+		jsonData.Version = "1.0.4";
+		console.log("upgrade Node Config from version 1.0.3 to 1.0.4");
+	}
 	return jsonData;
 }
 
 function upgradeJSONVersionRedHat(jsonData)
 {
 	var DefaultTracker = {"MaxVal": 6000, "Multiplier": 1, "MainTicks": [ 0, 1000, 2000, 3000, 4000, 5000, 6000], "SampleSize": 50, "ShowGauge": false};
-	jsonFileVersion = "1.0.1";
+	jsonFileVersion = "1.0.2";
 	var thisVersion = jsonData.Version;
 	console.log(thisVersion);
 	if (thisVersion == jsonFileVersion)
@@ -83,7 +92,7 @@ function upgradeJSONVersionRedHat(jsonData)
 	if (jsonData.Version == "1.0.0")
 	{
 		console.log("upgrade RedHat Config from 1.0.0 to 1.0.1");
-		console.log(jsonData.CurrentTracker);
+//		console.log(jsonData.CurrentTracker);
 		var oldTracker;
 		if (jsonData.CurrentTracker == undefined)
 			oldTracker = JSON.parse(JSON.stringify(DefaultTracker));
@@ -102,6 +111,15 @@ function upgradeJSONVersionRedHat(jsonData)
 			jsonData.CurrentTracker.push(newTracker); 
 		}
 		jsonData.Version = "1.0.1";
+	}
+	if (jsonData.Version == "1.0.1")
+	{
+		console.log("upgrade RedHat Config from 1.0.1 to 1.0.2");
+		if (jsonData.AutomationSettings == undefined)
+			jsonData.AutomationSettings = JSON.parse(JSON.stringify({"Routes": []}));
+		if (jsonData.RosterSettings == undefined)
+			jsonData.RosterSettings = JSON.parse(JSON.stringify({"Locos": []}));
+		jsonData.Version = "1.0.2";
 	}
 	return jsonData;
 }
@@ -132,9 +150,9 @@ function upgradeJSONVersionPurpleHat(jsonData)
 
 function upgradeJSONVersionLBServer(jsonData)
 {
-	jsonFileVersion = "1.0.2";
+	jsonFileVersion = "1.0.3";
 	var thisVersion = jsonData.Version;
-	console.log(thisVersion);
+//	console.log(thisVersion);
 	if (thisVersion == jsonFileVersion)
 		return jsonData;
 	if (thisVersion == undefined)
@@ -164,6 +182,18 @@ function upgradeJSONVersionLBServer(jsonData)
 			default: break;
 		}
 		jsonData.Version = "1.0.2";
+		
+	}
+	if (jsonData.Version == "1.0.2")
+	{
+		console.log("upgrade LBServer Config from 1.0.2 to 1.0.3");
+		if (jsonData.Locos == undefined) //radiobox local list vs command station
+			jsonData.Locos == []; //local roster list
+		if (jsonData.Locos == undefined) //radiobox local list vs command station
+			jsonData.DefinitionSource = 0;
+		if (jsonData.TrainServerIP == undefined) //TrainServer
+			jsonData.TrainServerIP = "192.168.0.1";
+		jsonData.Version = "1.0.3";
 		
 	}
 	return jsonData;

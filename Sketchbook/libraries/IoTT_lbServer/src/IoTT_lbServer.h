@@ -38,6 +38,8 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #define lbs_reconnectStartVal 10000
 #define queBufferSize 50 //messages that can be written in one burst before buffer overflow
 #define LNTCPVersion "IoTT lbServer 1.0.2"
+#define WiTVersion "IoTT WiThServer 1.0.3"
+#define EDExDispStr "Engine Driver DCC EX Mode"
 
 extern IoTT_DigitraxBuffers * digitraxBuffer;
 extern void prepSlotReadMsg(lnTransmitMsg * msgData, uint8_t slotNr);
@@ -49,9 +51,12 @@ extern void prepSlotDirFMsg(lnTransmitMsg * msgData, uint8_t slotNr, uint8_t dir
 extern void prepSlotSndMsg(lnTransmitMsg * msgData, uint8_t slotNr, uint8_t snddata);
 extern void prepTurnoutMsg(lnTransmitMsg * msgData, bool useACK, uint16_t swiAddr, uint8_t swiPos);
 extern void prepTrackPowerMsg(lnTransmitMsg * msgData, uint8_t pwrStatus);
+//extern void writeProg(uint16_t dccAddr, uint8_t progMode, uint8_t progMethod, uint16_t cvNr, uint8_t cvVal);
+//extern void readProg(uint16_t dccAddr, uint8_t progMode, uint8_t progMethod, uint16_t cvNr);
 
 extern void callbackLocoNetMessage(lnReceiveBuffer * newData);
 extern uint16_t sendMsg(lnTransmitMsg txData);
+extern std::vector<wsClientInfo> globalClients; // a list to hold all clients when in server mode
 
 typedef struct
 {
@@ -90,6 +95,7 @@ public:
 	uint32_t nextPing = millis();
 	int8_t sendInitSeq = -1;
 	uint32_t lastFC = 0;
+	int8_t useExCmd = -1;
 private:	
 	uint8_t currSpeed;
 	std::vector<locoDef> slotList;
@@ -107,6 +113,7 @@ public:
 	void startServer();
 	void processLoop();
 	void initMDNS();
+	void wiAddrCallback(std::vector<ppElement>* ppList);
 	uint16_t lnWriteMsg(lnTransmitMsg* txData);
 	uint16_t lnWriteMsg(lnReceiveBuffer* txData);
 //	void setLNCallback(cbFct newCB);
@@ -145,12 +152,13 @@ private:
 	
 	uint32_t lastReconnectAttempt = millis();
 	lnReceiveBuffer transmitQueue[queBufferSize];
-	uint8_t que_rdPos = 0, que_wrPos = 0;
+	uint8_t que_rdPos = 0, que_wrPos = 0, lastOutMsg = 0;
 	bool sendLNClientText(AsyncClient * thisClient, String cmdMsg, String txtMsg);
     bool sendLNClientMessage(AsyncClient * thisClient, String cmdMsg, lnReceiveBuffer thisMsg);
 	String getWIMessageString(AsyncClient * thisClient, lnReceiveBuffer thisMsg);
-	bool sendWIServerMessageString(AsyncClient * thisClient, uint8_t replyType);
-    bool sendWIClientMessage(AsyncClient * thisClient, String cmdMsg);
+	bool sendWIServerMessageStringEX(AsyncClient * thisClient, uint8_t replyType);
+	bool sendWIServerMessageStringWI(AsyncClient * thisClient, uint8_t replyType);
+    bool sendWIClientMessage(AsyncClient * thisClient, String cmdMsg, bool useEXFormat);
     void sendLNPing();
 	void sendWIPing();
 	void clearWIThrottle(AsyncClient * thisClient);
@@ -163,6 +171,7 @@ private:
 	uint32_t respTime;
 	uint8_t  respOpCode;
 	uint16_t respID;
+	uint16_t lastSwiAddr = 0xFFFF; //used for storing swi addr while waiting for LACK
 	
 	uint16_t clientTxIndex = 0;
 	bool clientTxConfirmation = false;
@@ -177,18 +186,25 @@ private:
 
 	std::vector<tcpDef*> clients; // a list to hold all clients when in server mode
 	std::vector<uint16_t> turnoutSupport; //a list holding the turnout numbers to be initialized in WiThrottle Server
+	std::vector<uint16_t> locoSupport; //a list holding the turnout numbers to be initialized in WiThrottle Server
 
 	IPAddress lbs_IP;
 	uint16_t lbs_Port = 1234; // = LocoNet over TCP port number, must be set the same in JMRI or other programs
 	uint16_t lbs_ServerPort = 1234; // = LocoNet over TCP port number, must be set the same in JMRI or other programs
+
+	IPAddress trains_IP; //IP of remote train server for WiThrottle Server
+	uint16_t trains_Port = 1234; // port of remote train server for WiThrottle Server
 
 	uint16_t wiVersion = 0;
 	char * wiServerType = NULL;
 	char * wiServerMessage = NULL;
 	char * wiServerDescription = NULL;
 	uint8_t allowPwrChg = 0;
+	uint8_t defSource = 0; //0 = local list, 1 = command station; 2 = train server
 	AsyncClient * lastTxClient = NULL; 
 	lnReceiveBuffer lastTxData;
 };
+
+extern IoTT_LBServer* wiServer; //pointer to wiServer
 
 #endif

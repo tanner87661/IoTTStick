@@ -36,13 +36,13 @@ EthernetInterface * EthernetInterface::singleton=NULL;
  */
 void EthernetInterface::setup()
 {
-  if (Ethernet.hardwareStatus() == EthernetNoHardware) {
-    if (singleton!=NULL)
-      DIAG(F("Prog Error!"));
-  } else {
-    singleton=new EthernetInterface();
+  if (singleton!=NULL) {
+    DIAG(F("Prog Error!"));
+    return;
   }
-  DIAG(F("Ethernet shield %sfound"), singleton==NULL ? "not " : "");
+  if ((singleton=new EthernetInterface()))
+    return;
+  DIAG(F("Ethernet not initialized"));
 };
 
 
@@ -67,6 +67,16 @@ EthernetInterface::EthernetInterface()
         return;
     } 
     #endif       
+    if (Ethernet.hardwareStatus() == EthernetNoHardware)
+      DIAG(F("Ethernet shield not detected or is a W5100"));
+
+    unsigned long startmilli = millis();
+    while ((millis() - startmilli) < 5500) { // Loop to give time to check for cable connection
+      if (Ethernet.linkStatus() == LinkON)
+	break;
+      DIAG(F("Ethernet waiting for link (1sec) "));
+      delay(1000);
+    }
 }
 
 /**
@@ -111,7 +121,7 @@ void EthernetInterface::loop() {
  * @return true when cable is connected, false otherwise
  */
 bool EthernetInterface::checkLink() {
-  if (Ethernet.linkStatus() == LinkON) {
+  if (Ethernet.linkStatus() != LinkOFF) { // check for not linkOFF instead of linkON as the W5100 does return LinkUnknown
     //if we are not connected yet, setup a new server
     if(!connected) {
       DIAG(F("Ethernet cable connected"));

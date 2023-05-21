@@ -3,6 +3,8 @@
 
 #include <arduino.h>
 #include <inttypes.h>
+#include <AsyncTCP.h>
+#include <ESPAsyncWebServer.h>
 
 //Error Flags
 #define errorCollision    0x01
@@ -15,6 +17,12 @@
 #define msgXORCheck       0x40
 #define msgStrayData	  0x80	
 
+#define dirUpstream 	  0x0200
+
+#define fromLNSubnet	  0x1000
+#define fromMQTTGW		  0x2000
+#define fromWiServer	  0x3000
+#define fromLBServer	  0x4000
 
 #define lnMaxMsgSize 48 //this is the maximum length of LocoNet Messages as defined by the standard. Do not change.
 
@@ -26,7 +34,21 @@ typedef struct {
 	messageType msgType = LocoNet;
     uint8_t    lnMsgSize = 0;
     uint8_t    lnData[lnMaxMsgSize];
-    uint16_t   reqID = 0; //temporarily store reqID while waiting for message to get to head of buffer
+    uint16_t   requestID = 0; //temporarily store reqID while waiting for message to get to head of buffer Bits 0..7 are random number, bits 8..11 are ctrl flags, bits 12..15 encode message origin
+/*
+ * Ctrl Flags
+ * 	0x0200 Upstream message
+ *  everything else reserved
+ * 
+ * Message Origin
+ * 	0x0000 not set
+ *  0x1000 Loconet Subnet
+ *  0x2000 MQTT Gateway
+ *  0x3000 WiServer
+ *  0x4000 lbServer
+ *  everything else reserved
+*/ 
+				//Loconet Subnet: 1; MQTT: 2; WiServer: 3; LNTCP: 4;
     uint32_t   reqRecTime = 0;
 } lnTransmitMsg;
 
@@ -35,7 +57,7 @@ typedef struct {
 	messageType msgType = LocoNet;
     uint8_t    lnMsgSize = 0;
     uint8_t    lnData[lnMaxMsgSize];
-    uint16_t   reqID = 0; //contains reqID if echo or response to previous request
+    uint16_t   requestID = 0; //contains reqID if echo or response to previous request
 							//also used as change mask for DCC Generator in IoTT_DigitraxBuffers
     uint32_t   reqRecTime = 0;
     uint32_t   echoTime = 0; //time in microsecs between request and echo (same) message
@@ -70,6 +92,7 @@ typedef union
 	int 	 longVal;
 	float_t  floatVal;
 	char     strVal[4];	
+	char *   strPtr;	
 } ppParam;
 
 typedef struct
@@ -80,19 +103,30 @@ typedef struct
 	ppParam payload;
 } ppElement;
 
-//typedef ppElement paramArray[sizeof(ppElement)]; 
+typedef struct
+{
+	char pageName[50];
+	AsyncWebSocketClient * wsClient;
+} wsClientInfo;
+
+bool parseDCCExNew(char* inpStr, lnTransmitMsg* inpStatus, std::vector<ppElement> * paramList);
+int  parseDCCExParamNew(lnTransmitMsg* thisEntry, std::vector<ppElement> * paramList);
 
 typedef uint16_t (*txFct) (lnTransmitMsg);
 typedef void (*cbFct) (lnReceiveBuffer *);
 typedef void (*mqttFct) (char*, byte*, unsigned int);
 typedef void (*mqttTxFct) (byte, char*, char*); //mode (0:send, 1:subscribe), topic, payload
+typedef void (*dccCbFct) (std::vector<ppElement>*);
 
 void setXORByte(uint8_t * msgData);
 bool getXORCheck(uint8_t * msgData, uint8_t targetLen = 0);
+int8_t getWSClient(int8_t withID);
+int8_t getWSClientByPage(uint8_t startFrom, char * toWebPage);
 //void dispMsg(uint8_t * msgData, uint8_t targetLen = 0);
 //void dispSlot(uint8_t * slotBytes);
 //bool verifySyntax(uint8_t * msgData);
 void untokstr(char* strList[], uint8_t listLen, char* inpStr, const char* token); 
+bool isSameMsg(lnReceiveBuffer* msgA, lnReceiveBuffer* msgB);
 
 class rmsBuffer
 {

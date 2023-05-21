@@ -656,6 +656,12 @@ void setStatusPage()
       modList += ", ";
     modList += "WiTh";
   }
+  if (lnSubnet)
+  {
+    if (modList.length() > 1)
+      modList += ", ";
+    modList += "SbNet";
+  }
   
   modList += "]";
   drawText(&modList[0], 50, lineY[2], 2); 
@@ -987,7 +993,7 @@ void processDCCtoM5(bool oneTime, String dispText)
   {
     dccViewerPage();
     drawText(&dispText[0], 5, 20, 1);
-    Serial.println(dispText);
+//    Serial.println(dispText);
   }
 }
 

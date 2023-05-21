@@ -1,6 +1,9 @@
 #ifndef IoTT_LEDChain_h
 #define IoTT_LEDChain_h
 
+#define FASTLED_INTERRUPT_RETRY_COUNT 1
+//#define FASTLED_ALLOW_INTERRUPTS 0
+
 #include <Arduino.h>
 #include <Wire.h>
 #include <FastLED.h>

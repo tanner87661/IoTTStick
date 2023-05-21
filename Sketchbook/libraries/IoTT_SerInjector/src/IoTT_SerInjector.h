@@ -62,6 +62,7 @@ public:
 	uint16_t lnWriteMsg(lnReceiveBuffer txData);
 
 	void setTxCallback(txFct newCB);
+	void setDCCCallback(dccCbFct newDCCCB);
 	void loadLNCfgJSON(DynamicJsonDocument doc);
 
 private:
@@ -69,6 +70,7 @@ private:
    // Member functions
 	void handleLNIn(uint8_t inData, uint8_t inFlags = 0);
 	void processLNMsg(lnTransmitMsg* recData);
+	void processDCCEXMsg(std::vector<ppElement> * recData);
 	void processLNReceive();
 	void processLNTransmit();
 	void processLCBReceive();
@@ -76,13 +78,15 @@ private:
 	void processDCCExReceive();
 	void processDCCExTransmit();
 //	void processDCCExTransmit2();
-	int parseDCCExParam(char** startAt, uint8_t ppNum, ppElement * outBuffer);
-	bool parseDCCEx(lnTransmitMsg* thisEntry, lnTransmitMsg* txBuffer);
+//	int parseDCCExParam(char** startAt, uint8_t ppNum, ppElement * outBuffer);
+//	bool parseDCCEx(lnTransmitMsg* thisEntry, lnTransmitMsg* txBuffer);
 	
    // Member variables
    lnTransmitMsg transmitQueue[queInjBufferSize];
    uint8_t que_rdPos, que_wrPos = 0;
    lnTransmitMsg lnInBuffer;
+//   char exInBuffer[512] = '\0';
+   std::vector<ppElement> ppList;
    int m_rxPin, m_txPin;
    bool m_invert = true;
    uint8_t m_uart = 1;
@@ -98,8 +102,10 @@ private:
 
    bool progTrackActive = false;
    
-   uint8_t    bitRecStatus = 0;    	//LocoNet 0: waiting for OpCode; 1: waiting for package data
-									//OLCB:	0: await start char 1: await frame type 2: await ID 3: await end char
+//   uint8_t    bitRecStatus = 0x00;    	//LocoNet 0: waiting for OpCode; 1: waiting for package data
+										//OLCB:	0: await start char 1: await frame type 2: await ID 3: await end char
+										//DCC EX Awaiting param nr, 0xFF after completion
+	//now use lnInBuffer.reqRecTime instead
 
    uint8_t    lnBufferPtr = 0; //index of next msg buffer location to read
    uint8_t    lnXOR = 0;

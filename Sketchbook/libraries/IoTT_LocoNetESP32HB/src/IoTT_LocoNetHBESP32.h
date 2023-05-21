@@ -50,6 +50,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 //#define queReplyBufferSize 5 //messages to that queue get sent high priority
 
 extern void callbackLocoNetMessage(lnReceiveBuffer * newData);
+extern void callbackLocoNetMessageUpstream(lnReceiveBuffer * newData); //this is the landing point for incoming LocoNet messages from LN Subnet
 
 class LocoNetESPSerial : public HardwareSerial
 {
@@ -64,6 +65,7 @@ public:
 	uint16_t lnWriteMsg(lnTransmitMsg* txData);
 	uint16_t lnWriteMsg(lnReceiveBuffer* txData);
 	uint16_t lnWriteReply(lnTransmitMsg* txData);
+	void setUpstreamMode(bool newMode);
 //	void setLNCallback(cbFct newCB);
 //	int cdBackoff();
 	bool carrierOK();
@@ -79,6 +81,7 @@ private:
    void processLNReceive();
    void processLNTransmit();
    void processLoopBack();
+	void execLNCallback(lnReceiveBuffer * recData);
 
 //   void sendBreakSequence();
    uint8_t getXORCheck(uint8_t * msgData, uint8_t * msgLen);
@@ -105,6 +108,7 @@ private:
 //   uint16_t rx_buffer[rxBufferSize];
 //   uint8_t tx_buffer[txBufferSize];
 
+	bool upStreamMode = false; 
 	
    uint8_t    bitRecStatus = 0;    //0: waiting for OpCode; 1: waiting for package data
    uint8_t    lnBufferPtr = 0; //index of next msg buffer location to read

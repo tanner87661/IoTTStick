@@ -26,6 +26,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #include <HardwareSerial.h>
 
 txFct usbCallback = NULL;
+dccCbFct dccCallback = NULL;
 
 class IoTT_DigitraxBuffers;
 
@@ -84,7 +85,7 @@ uint16_t IoTT_SerInjector::lnWriteMsg(lnTransmitMsg txData)
     {
 //		Serial.printf("put to transmitQueue TxMsg %i\n", hlpQuePtr);
 		transmitQueue[hlpQuePtr].lnMsgSize = txData.lnMsgSize;
-		transmitQueue[hlpQuePtr].reqID = txData.reqID;
+		transmitQueue[hlpQuePtr].requestID = txData.requestID;
 		transmitQueue[hlpQuePtr].reqRecTime = micros();
 		memcpy(transmitQueue[hlpQuePtr].lnData, txData.lnData, txData.lnMsgSize+1);
 //		Serial.println();
@@ -111,7 +112,7 @@ uint16_t IoTT_SerInjector::lnWriteMsg(lnReceiveBuffer txData)
     {
 		transmitQueue[hlpQuePtr].msgType = txData.msgType;
 		transmitQueue[hlpQuePtr].lnMsgSize = txData.lnMsgSize;
-		transmitQueue[hlpQuePtr].reqID = txData.reqID;
+		transmitQueue[hlpQuePtr].requestID = txData.requestID;
 		transmitQueue[hlpQuePtr].reqRecTime = micros();
 		memcpy(transmitQueue[hlpQuePtr].lnData, txData.lnData, lnMaxMsgSize); //txData.lnMsgSize);
 		que_wrPos = hlpQuePtr;
@@ -124,10 +125,25 @@ uint16_t IoTT_SerInjector::lnWriteMsg(lnReceiveBuffer txData)
 	}
 }
 
-
 void IoTT_SerInjector::setTxCallback(txFct newCB)
 {
+	lnInBuffer.reqRecTime = 0;
 	usbCallback = newCB;
+}
+
+void IoTT_SerInjector::setDCCCallback(dccCbFct newDCCCB)
+{
+	
+	lnInBuffer.reqRecTime = 0xFF;
+	if (ppList.size() == 0)
+	{
+		Serial.println("Init Param");
+		ppElement newParam;
+		newParam.dataType = 0xFF;
+		newParam.paramNr = 0;
+		ppList.push_back(newParam);
+	}
+	dccCallback = newDCCCB;
 }
 
 
@@ -136,6 +152,13 @@ void IoTT_SerInjector::processLNMsg(lnTransmitMsg* recData)
 //	Serial.println("send to PC/USB");
 	if (usbCallback)
 		usbCallback(*recData);
+}
+
+void IoTT_SerInjector::processDCCEXMsg(std::vector<ppElement> * recData)
+{
+//	Serial.println("send to PC/USB");
+	if (dccCallback)
+		dccCallback(recData);
 }
 
 void IoTT_SerInjector::handleLNIn(uint8_t inData, uint8_t inFlags) //called for stuff that comes in through the HW uart
@@ -166,7 +189,7 @@ void IoTT_SerInjector::processLNReceive()
 		if (inData >= 0x80) //OpCode, start of new message
 		{
 //			Serial.println("New Command");
-			if (bitRecStatus == 1) //awaiting data bytes but received OpCode
+			if (lnInBuffer.reqRecTime == 1) //awaiting data bytes but received OpCode
 			{
 				//incomplete message
 				lnInBuffer.lnMsgSize = lnBufferPtr;
@@ -174,9 +197,9 @@ void IoTT_SerInjector::processLNReceive()
 				Serial.println("Ignored incomplete message");
 //				processLNMsg(&lnInBuffer); //get rid of previous message
 			}
-			bitRecStatus = 1; //await data bytes
-			lnInBuffer.reqID = 0;
-			lnInBuffer.reqRecTime = micros(); 
+			lnInBuffer.reqRecTime = 1; //await data bytes
+			lnInBuffer.requestID = 0;
+//			lnInBuffer.reqRecTime = micros(); 
 			lnBufferPtr = 0;
 			uint8_t swiByte = (inData & 0x60) >> 5;
 			switch (swiByte)
@@ -193,7 +216,7 @@ void IoTT_SerInjector::processLNReceive()
 		}
 		else //received regular data byte
 		{
-			if (bitRecStatus == 1) //collecting data
+			if (lnInBuffer.reqRecTime == 1) //collecting data
 			{
 //			Serial.println("Collecting Data");
 				lnInBuffer.lnData[lnBufferPtr] = inData;
@@ -205,14 +228,14 @@ void IoTT_SerInjector::processLNReceive()
 				{
 //					Serial.printf("Command complete, sending %02X", lnXOR);
 					lnInBuffer.lnMsgSize = lnBufferPtr;  
-					lnInBuffer.reqID = 0;
+					lnInBuffer.requestID = 0;
 					lnInBuffer.reqRecTime = 0;
 					if (lnXOR == 0xFF)
 						processLNMsg(&lnInBuffer);
 					else
 						Serial.printf("Ignore invalid message (XOR check %02X)", lnXOR);
 					lnBufferPtr = 0;
-					bitRecStatus = 0; //awaiting OpCode
+					lnInBuffer.reqRecTime = 0; //awaiting OpCode
 				}  
 //				else
 //				{}
@@ -221,7 +244,7 @@ void IoTT_SerInjector::processLNReceive()
 			{
 			//unexpected data byte while waiting for OpCode
 				lnInBuffer.lnMsgSize = 1;
-				lnInBuffer.reqID = 0;
+				lnInBuffer.requestID = 0;
 				lnInBuffer.reqRecTime = 0;
 				lnBufferPtr = 0;
 				Serial.println("Ignored unexpected data byte while waiting for OpCode");
@@ -264,17 +287,17 @@ void IoTT_SerInjector::processLCBReceive()
 		switch (inData)
 		{
 			case ':' : //start new message
-				if (bitRecStatus != 0) //receiving in progress, something is wrong
+				if (lnInBuffer.reqRecTime != 0) //receiving in progress, something is wrong
 				{
 //					Serial.println("Old Command not complete");
 					lnInBuffer.lnMsgSize = lnExpLen;
-					lnInBuffer.reqID = 0xFF; //invalid message
+					lnInBuffer.requestID = 0xFF; //invalid message
 					lnBufferPtr = 0;
 					processLNMsg(&lnInBuffer); //get rid of previous (invalid) message
 				}
-				bitRecStatus = 1; //await data bytes
-				lnInBuffer.reqID = 0;
-				lnInBuffer.reqRecTime = micros(); 
+				lnInBuffer.reqRecTime = 1; //await data bytes
+				lnInBuffer.requestID = 0;
+//				lnInBuffer.reqRecTime = micros(); 
 				lnInBuffer.msgType = OpenLCB;
 				lnBufferPtr = 0;
 				lnInBuffer.lnData[lnBufferPtr] = inData;
@@ -285,19 +308,19 @@ void IoTT_SerInjector::processLCBReceive()
 				lnInBuffer.lnMsgSize = lnExpLen; //this is # of nibbles, so 2x byte length
 				lnBufferPtr = 0;
 				processLNMsg(&lnInBuffer); //get rid of previous (invalid) message
-				bitRecStatus = 0;
+				lnInBuffer.reqRecTime = 0;
 //				Serial.println(inData);
 				break;
 			case 'X' : //if on Pos 1 -> extended frame
 			case 'S' : //if on Pos 1 -> standard frame	
-				bitRecStatus = 2;
+				lnInBuffer.reqRecTime = 2;
 				lnInBuffer.lnData[lnBufferPtr] = inData;
 				lnBufferPtr++; 
 				break;
 			case 'N' : //if on pos 6 or pos 10 based on X/S -> normal frame
 			case 'R' : //if on pos 6 or pos 10 based on X/S -> remote frame
 				lnExpLen = 0;
-				bitRecStatus = 3;
+				lnInBuffer.reqRecTime = 3;
 				lnInBuffer.lnData[lnBufferPtr] = inData;
 				lnBufferPtr++; 
 				break;
@@ -347,150 +370,14 @@ void IoTT_SerInjector::processLCBTransmit()
 020 * @author Andrew Crosland Copyright (C) 2008
 021 */
 
-int IoTT_SerInjector::parseDCCExParam(char** startAt, uint8_t ppNum, ppElement * outBuffer) //ret is also ppElement.dataType; values 0: invalid; 1-4 # of chars in str; 10: int; 20: float; everything else invalid
-{
-	uint8_t posCtr = 0;
-	uint8_t decPtCtr = 0;
-	uint8_t charCtr = 0;
-	uint8_t digitsCtr = false;
-	bool negLead = false;
-	bool hexLead = false;
-	outBuffer->dataType = 0; //invalid data
-	outBuffer->paramNr = ppNum;
-	while ((**startAt == ' ') || (**startAt == '|'))
-		*startAt += 1; //skip leading blanks and |
-	char * origPtr = *startAt;
-	while ((**startAt != ' ') && (**startAt != '|') && (**startAt != '>'))
-	{
-//		Serial.printf("Testing: %c\n", **startAt);
-		if (posCtr == 0)
-		{
-			hexLead = (**startAt == '0');
-			negLead = (**startAt == '-');
-		}
-		if (posCtr == 1)
-			hexLead = hexLead && ((**startAt == 'x') || (**startAt == 'X'));
-//		if ((isAlpha(**startAt)) || (**startAt == '#'))
-		if ((!isDigit(**startAt)) && (**startAt != '*')) //filter out comments and numbers
-			charCtr++;
-		else
-			if (isDigit(**startAt))
-				digitsCtr++;
-			else
-				if (**startAt == '.')
-					decPtCtr++;
-				else
-				{
-//					Serial.print("COMMENT "); //invalid char
-//					Serial.println(**startAt);
-					return 0;
-				}
-		*startAt += 1;
-		posCtr++;
-		if (ppNum == 0) //first param is OpCode and only 1 char long
-			break;
-	}
-	if (decPtCtr > 1) return 0; //can't be a float with more than 1 dec pt
-	uint8_t msgLen = *startAt - origPtr;
-
-// ret = strtol(str, &ptr, 16); //hex conversion
-	if ((negLead) & (charCtr > 0)) charCtr--;
-	
-//	Serial.printf("neg: %i chr: %i dig: %i \n", negLead, charCtr, digitsCtr);
-	
-	if (charCtr > 0) //this is a string param, we return max 4 chars. It can have some digits as well
-	{
-		msgLen = min((uint8_t)4, msgLen);
-		strncpy(&outBuffer->payload.strVal[0], origPtr, msgLen);
-		outBuffer->dataType = msgLen;
-	}
-	else
-		if (digitsCtr > 0) //this is numeric but no chars
-		{
-			char tempBuf[10] = "";
-			strncpy(&tempBuf[0], origPtr, msgLen);
-			tempBuf[msgLen] = 0;
-			if (decPtCtr == 0) //integer
-			{
-				int thisRes = atoi(tempBuf);
-				outBuffer->payload.longVal = thisRes;
-				outBuffer->dataType = 10;
-			}
-			else //float
-			{
-				outBuffer->payload.floatVal = atof(tempBuf);
-				outBuffer->dataType = 20;
-			}
-		}
-		return outBuffer->dataType;
-}
-
-bool IoTT_SerInjector::parseDCCEx(lnTransmitMsg* thisEntry, lnTransmitMsg* txBuffer)
-{
-//	Serial.println("Parse DCC++ Message ");
-
-	for (uint8_t i = 0; i < lnMaxMsgSize; i++)
-		txBuffer->lnData[i] = 0;
-	char* readPtr = (char*) &thisEntry->lnData[0];
-	txBuffer->lnMsgSize = lnMaxMsgSize;
-	while ((*readPtr == '<') || (*readPtr == ' ') || (*readPtr == '|'))
-		readPtr += 1;	//set read pointer to the first byte with data
-	uint8_t paramCtr = 0;
-
-	ppElement * thisData = (ppElement*) &(txBuffer->lnData[0]);
-
-	while ((parseDCCExParam(&readPtr, paramCtr, &thisData[paramCtr])) && (paramCtr < 5)) //max 48 bytes
-		paramCtr += 1;
-	thisData[0].numParams = paramCtr;
-	return paramCtr > 0 ? true : false;
-}	
-	
 void IoTT_SerInjector::processDCCExReceive()
 {
 	while (available()) //read GridConnect protocol and package by message
 	{
 		char inData = read();
 //		Serial.print(inData);
-		switch (inData)
-		{
-			case '<' : //start new message
-				if (bitRecStatus != 0) //receiving in progress, something is wrong
-				{
-					Serial.println("Old Command not complete");
-					lnInBuffer.lnMsgSize = lnBufferPtr;
-					lnInBuffer.reqID = 0xFF; //invalid message
-//					processLNMsg(&lnInBuffer); //get rid of previous (invalid) message
-				}
-				bitRecStatus = 1; //await data bytes
-				lnInBuffer.reqID = 0;
-				lnInBuffer.reqRecTime = micros(); 
-				lnInBuffer.msgType = DCCEx;
-				lnBufferPtr = 0;
-				lnInBuffer.lnData[lnBufferPtr] = inData;
-				lnBufferPtr++; 
-				break;
-			case '>' : //terminate message
-				{
-					lnInBuffer.lnData[lnBufferPtr] = inData; //leave terminator intact
-					lnInBuffer.lnData[lnBufferPtr+1] = 0; //terminating 0 for char* interpretation
-					lnInBuffer.lnMsgSize = lnBufferPtr; //this is # of nibbles, so 2x byte length
-					lnBufferPtr = 0;
-					lnTransmitMsg txOutBuffer;
-//					Serial.println();
-					if (parseDCCEx(&lnInBuffer, &txOutBuffer))
-						processLNMsg(&txOutBuffer);
-					bitRecStatus = 0;
-				}
-				break;
-			default  : //must be data (max 8 bytes)
-				if (lnBufferPtr > 0) //ignore CRLF and any char before <
-				{
-					lnInBuffer.lnData[lnBufferPtr] = inData;
-					if (lnBufferPtr < lnMaxMsgSize)
-						lnBufferPtr++; 
-				} 
-				break;
-		}
+		if (parseDCCExNew(&inData, &lnInBuffer, &ppList))
+			processDCCEXMsg(&ppList);
 	}
 }
 
