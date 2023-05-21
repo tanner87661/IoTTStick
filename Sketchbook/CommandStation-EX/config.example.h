@@ -41,11 +41,10 @@ The configuration file for DCC-EX Command Station
 //  FIREBOX_MK1           : The Firebox MK1                    
 //  FIREBOX_MK1S          : The Firebox MK1S
 //  IBT_2_WITH_ARDUINO    : Arduino Motor Shield for PROG and IBT-2 for MAIN
-//  IoTT_POWER_SHIELD     : IBT-2 interface board for MAIN and PROG
 //   |
 //   +-----------------------v
 //
-#define MOTOR_SHIELD_TYPE IoTT_POWER_SHIELD
+#define MOTOR_SHIELD_TYPE STANDARD_MOTOR_SHIELD
 /////////////////////////////////////////////////////////////////////////////////////
 //
 // The IP port to talk to a WIFI or Ethernet shield.

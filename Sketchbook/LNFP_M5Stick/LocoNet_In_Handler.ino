@@ -2,10 +2,26 @@
 //it should decode valid messages, update any status buffer and call event handlers as needed
 //LocoNet messages coming in from Communication module side, e.g. LN Driver, MQTT, or Gateway
 
+void callbackLocoNetMessageUpstream(lnReceiveBuffer * newData) //this is the landing point for incoming LocoNet messages
+                                                       //from LocoNet interfaces
+{
+//  Serial.printf("Receive downstream Callback ID %2X %2X\n", newData->requestID, newData->errorFlags);
+  if (lnSubnet) //if subnet is active, it first needs to go to the main Loconet via ln over tcp or mqtt, then being handled as echo
+  {
+//    if ((newData->errorFlags & (msgEcho)) == 0) //filter out echo messages
+    if (newData->errorFlags == 0) //filter out echo messages
+    {
+      newData->requestID = random(0xFF) + fromLNSubnet;
+//      Serial.printf("Forward to Upstream Loconet ID %2X %2X\n", newData->requestID, newData->errorFlags);
+      sendMsg(*(lnTransmitMsg*)newData);
+    }
+  }
+}
+
 void callbackLocoNetMessage(lnReceiveBuffer * newData) //this is the landing point for incoming LocoNet messages
                                                        //from LocoNet interfaces
 {
-//  Serial.printf("Loconet Callback ID %2X %2X\n", newData->reqID, newData->errorFlags);
+//  Serial.printf("Loconet Callback ID %2X %2X\n", newData->requestID, newData->errorFlags);
   if ((newData->errorFlags & (~msgEcho)) == 0) //filter out echo flag
     processLNValidMsg(newData);
   else
@@ -14,10 +30,10 @@ void callbackLocoNetMessage(lnReceiveBuffer * newData) //this is the landing poi
 
 void processLNError(lnReceiveBuffer * newData)
 {
-//   Serial.printf("LN Msg %i ReqID %i with %i bytes requested %i: ", newData->errorFlags, newData->reqID, newData->lnMsgSize, newData->reqRecTime); 
+//   Serial.printf("LN Msg %i ReqID %2X with %i bytes requested %i: ", newData->errorFlags, newData->requestID, newData->lnMsgSize, newData->reqRecTime); 
 //   for (int i=0; i<newData->lnMsgSize; i++)
 //     Serial.printf("0x%02X ", newData->lnData[i]);
-//   Serial.println();
+//   Serial.println();requestID
 
   if ((newData->errorFlags & errorCollision) > 0)
     Serial.println("LocoNet Error: LocoNet Collision detected");
@@ -34,18 +50,17 @@ void processLNError(lnReceiveBuffer * newData)
   if ((newData->errorFlags & msgStrayData) > 0)
     Serial.println("LocoNet Error: unexpected data received");
   if ((newData->errorFlags & msgEcho) > 0)
-    Serial.println("LocoNet/MQTT Echo message");
+    Serial.println("LocoNet/MQTT/TCP Echo message");
 }
 
 void processLNValidMsg(lnReceiveBuffer * newData)
 {
-//   Serial.printf("LN Msg %i ReqID %i with %i bytes requested %i: ", newData->errorFlags, newData->reqID, newData->lnMsgSize, newData->reqRecTime); 
+//   Serial.printf("LN Msg %i ReqID %2x with %i bytes requested %i: ", newData->errorFlags, newData->requestID, newData->lnMsgSize, newData->reqRecTime); 
 //   for (int i=0; i<newData->lnMsgSize; i++)
 //     Serial.printf("0x%02X ", newData->lnData[i]);
 //   Serial.println();
   digitraxBuffer->processLocoNetMsg(newData); //send it to DigitraxBuffers
-  if (globalClient != NULL)
-    processDataToWebClient("LN", newData);
+  processDataToWebClient("LN", newData);
   if (useM5Viewer == 1)
     processLNtoM5(newData);
   if (usbSerial)
@@ -57,7 +72,7 @@ void processLNValidMsg(lnReceiveBuffer * newData)
 //  if (secElHandlerList) secElHandlerList->processLocoNetMsg(newData); //do not call this before buffer processing as it will read new buffer values
   if (lbServer)
     lbServer->lnWriteMsg(newData);
-  if ((lnMQTTServer) && ((newData->reqID & 0x2000) == 0)) //not coming from MQTT Gateway
+  if ((lnMQTTServer) && ((newData->requestID & fromMQTTGW) == 0)) //not coming from MQTT Gateway
   {
 //    Serial.println("MQTT Callback");
     lnMQTTServer->lnWriteMsg(newData);
@@ -65,11 +80,20 @@ void processLNValidMsg(lnReceiveBuffer * newData)
   if (wiServer)
     wiServer->lnWriteMsg(newData);
 //   Serial.println("Done");
+  if (lnSubnet && ((newData->requestID & fromLNSubnet) != fromLNSubnet)) //not originally from the subnet
+  {
+    Serial.println("Send to Subnet");
+    newData->requestID = random(0xFF);
+    lnSubnet->lnWriteMsg(newData);
+  }
 }
 
 void processDataToWebClient(String thisCmd, lnReceiveBuffer * newData)  //if a web browser is conneted, all LN messages are sent via Websockets
                                                                         //this is the hook for a web based LcooNet viewer
 {
+  int8_t currClient = getWSClientByPage(0, "pgLNViewer");
+  if (currClient >= 0)
+  {
     DynamicJsonDocument doc(1200);
     char myMqttMsg[400];
     doc["Cmd"] = thisCmd;
@@ -77,8 +101,13 @@ void processDataToWebClient(String thisCmd, lnReceiveBuffer * newData)  //if a w
     for (byte i=0; i < newData->lnMsgSize; i++)
       data.add(newData->lnData[i]);
     serializeJson(doc, myMqttMsg);
-    globalClient->text(myMqttMsg);
+    while (currClient >= 0)
+    {
+      globalClients[currClient].wsClient->text(myMqttMsg);
+      currClient = getWSClientByPage(currClient+1, "pgLNViewer");
+    }
     lastWifiUse = millis();
+  }
 }
 
 //the following event handlers are called from processLocoNetMsg after decoding incoming LocoNet messages. Normally it is not necessary to use an event handler for status related data, e.g. inputs, switch, etc. The only

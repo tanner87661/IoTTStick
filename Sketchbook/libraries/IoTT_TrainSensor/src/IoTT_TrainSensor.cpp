@@ -421,13 +421,11 @@ void IoTT_TrainSensor::setRepRate(AsyncWebSocketClient * newClient, int newRate)
 //	Serial.println("setRepRate");
 	refreshRate = newRate;
 	lastWebRefresh = millis();
-//	globalClient = newClient;
 }
 
 void IoTT_TrainSensor::reqDCCAddrWatch(AsyncWebSocketClient * newClient, int16_t dccAddr, bool simulOnly)
 {
 	Serial.printf("reqDCCAddrWatch %i\n", dccAddr);
-//	globalClient = newClient;
 	digitraxBuffer->awaitFocusSlot(dccAddr, simulOnly); //set DigitraxBuffers to watch for next speed or fct command and memorize loco
 	waitForNewDCCAddr = true;
 	clrSpeedTable();
@@ -710,7 +708,8 @@ void IoTT_TrainSensor::programmerReturn(uint8_t * programmerSlot)
 	uint16_t cvNr = ((programmerSlot[5] & 0x30)<<4) + ((programmerSlot[5] & 0x01)<<7) + (programmerSlot[6] & 0x7F) + 1;
 	uint8_t cvVal = (programmerSlot[7] & 0x7F) + ((programmerSlot[5] & 0x02)<<6);
 //	Serial.printf("Prog Stat: %i ps: %i CV: %i Val: %i\n", programmerSlot[1], opsAddr, cvNr, cvVal);
-	if (globalClient)
+	int8_t currClient = getWSClientByPage(0, "pgPrplHatCfg");
+	if (currClient >= 0)
 	{
 		DynamicJsonDocument doc(200);
 		char myMqttMsg[200];
@@ -722,7 +721,11 @@ void IoTT_TrainSensor::programmerReturn(uint8_t * programmerSlot)
 		Data["CVVal"]= cvVal;
 		serializeJson(doc, myMqttMsg);
 //		Serial.println(myMqttMsg);
-		globalClient->text(myMqttMsg);
+		while (currClient >= 0)
+		{
+			globalClients[currClient].wsClient->text(myMqttMsg);
+			currClient = getWSClientByPage(currClient + 1, "pgPrplHatCfg");
+		}
 	}
 	else
 		Serial.println("No global");
@@ -730,7 +733,8 @@ void IoTT_TrainSensor::programmerReturn(uint8_t * programmerSlot)
 
 void IoTT_TrainSensor::sendSpeedTableDataToWeb(bool isFinal)
 {
-	if (globalClient)
+	int8_t currClient = getWSClientByPage(0, "pgPrplHatCfg");
+	if (currClient >= 0)
 	{
 		DynamicJsonDocument doc(6000);
 		char myMqttMsg[2000];
@@ -749,7 +753,11 @@ void IoTT_TrainSensor::sendSpeedTableDataToWeb(bool isFinal)
 		}
 		serializeJson(doc, myMqttMsg);
 //		Serial.println(myMqttMsg);
-		globalClient->text(myMqttMsg);
+		while (currClient >= 0)
+		{
+			globalClients[currClient].wsClient->text(myMqttMsg);
+			currClient = getWSClientByPage(currClient + 1, "pgPrplHatCfg");
+		}
 	}	
 }	
 
@@ -761,7 +769,8 @@ void IoTT_TrainSensor::sendSensorDataToWeb()
 //	Serial.println();
 
 
-	if (globalClient)
+	int8_t currClient = getWSClientByPage(0, "pgPrplHatCfg");
+	if (currClient >= 0)
 	{
 		sensorData cpyData = getSensorData();
 		DynamicJsonDocument doc(400);
@@ -805,7 +814,11 @@ void IoTT_TrainSensor::sendSensorDataToWeb()
 			}
 		}
 		serializeJson(doc, myMqttMsg);
-		globalClient->text(myMqttMsg);
+		while (currClient >= 0)
+		{
+			globalClients[currClient].wsClient->text(myMqttMsg);
+			currClient = getWSClientByPage(currClient + 1, "pgPrplHatCfg");
+		}
 		lastWebRefresh += refreshRate;
 	}
 }

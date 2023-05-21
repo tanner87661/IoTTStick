@@ -4,6 +4,8 @@ var tabConfig;
 var tabInputs;
 var tabButtons;
 var tabGauges;
+var tabAutomation;
+var tabRoster;
 
 var updateCurrent = false;
 var currTrack = 0;
@@ -16,14 +18,23 @@ var CurrentOptionPanel;
 var InputPanel;
 var ButtonPanel;
 var GaugePanel;
+var AutomationPanel;
+var RosterPanel;
 
 var sensorTable;
 var turnoutTable;
+var automationTable;
+var rosterTable;
+
 var sensorTableDiv;
 var turnoutTableDiv;
+var automationTableDiv;
+var rosterTableDiv;
  
-var newSensorTemplate = {"Id": 0, "PinNr": 1,"PNType": 0, "LNType": 0, "Logic": 1, "Par1": 0, "Par2": 0, "LNAddr": 1};
-var newTurnoutTemplate = {"Id": 0,"PinNr": 1,"TOType": 3,"LNType": 0,"Logic": 1,"Startup": 0, "Par1": 0,"Par2": 0, "Prof": 2, "LNAddr": 1};
+var newSensorTemplate = {"Id": 0, "PinNr": 1,"PNType": 0, "LNType": 0, "Logic": 1, "Par1": 0, "Par2": 0, "LNAddr": 1, "Descr":""};
+var newTurnoutTemplate = {"Id": 0,"PinNr": 1,"TOType": 3,"LNType": 0,"Logic": 1,"Startup": 0, "Par1": 0,"Par2": 0, "Prof": 2, "LNAddr": 1, "Descr":"IoTT"};
+var newRouteTemplate = {"ID": 0, "Type": "","Descr": ""};
+var newLocoTemplate = {"DCCAddr": 0, "Descr": "","FNMap": ""};
 
 function upgradeJSONVersion(jsonData)
 {
@@ -48,7 +59,7 @@ function setPanelVisibility()
 
 function constructPageContent(contentTab)
 {
-	var menueStr = ["Options", "Inputs", "Turnouts", "Monitor"];
+	var menueStr = ["Options", "Inputs", "Turnouts", "Routes", "Locomotives", "Monitor"];
 	var tempObj;
 	mainScrollBox = createEmptyDiv(contentTab, "div", "pagetopicboxscroll-y", "btnconfigdiv");
 
@@ -143,17 +154,28 @@ function constructPageContent(contentTab)
 			InputPanel = createEmptyDiv(tabInputs, "div", "tile-1", "");
 				sensorTableDiv = createEmptyDiv(InputPanel, "div", "tile-1", "");
 					createPageTitle(sensorTableDiv, "div", "tile-1", "BasicCfg_Title", "h2", "Arduino Input Pins");
-					sensorTable = createDataTable(sensorTableDiv, "tile-1_2", ["Pos","Add/Delete/Move", "ID", "DCC++", "Pin Nr", "Logic", "Message Type", "LocoNet Addr"], "sensorconfig", "");
+					sensorTable = createDataTable(sensorTableDiv, "tile-1_2", ["Pos","Add/Delete/Move", "ID", "DCC EX", "Pin Nr", "Logic", "Message Type", "LocoNet Addr"], "sensorconfig", "");
 				tempObj = createEmptyDiv(InputPanel, "div", "tile-1", "");
 					createCheckbox(tempObj, "tile-1_4", "Store Input Settings to EEPROM", "sensoreeprom", "setProgOptions(this)");
 		tabButtons = createEmptyDiv(mainScrollBox, "div", "tile-1", "");
 			ButtonPanel = createEmptyDiv(tabButtons, "div", "tile-1", "");
 				turnoutTableDiv = createEmptyDiv(ButtonPanel, "div", "tile-1", "");
 					createPageTitle(turnoutTableDiv, "div", "tile-1", "BasicCfg_Title", "h2", "Defined Turnouts and Pins");
-					turnoutTable = createDataTable(turnoutTableDiv, "tile-1_2", ["Pos","Add/Delete/Move", "ID", "DCC++", "Turnout Address", "Turnout Type", "Logic", "Start-up", "Pin Nr", "Min. Position", "Max. Position", "Profile"], "turnoutconfig", "");
+					turnoutTable = createDataTable(turnoutTableDiv, "tile-1_2", ["Pos","Add/Delete/Move", "ID", "DCC EX", "Turnout Address", "Turnout Type", "Logic", "Start-up", "Pin Nr", "Min. Position", "Max. Position", "Profile", "Description"], "turnoutconfig", "");
 				tempObj = createEmptyDiv(ButtonPanel, "div", "tile-1", "");
 					createSimpleText(tempObj,"tile-1", "(!) Not recommended. Use VPIN instead", "zpinwarning");
 					createCheckbox(tempObj, "tile-1_4", "Store Turnout/Pin Settings to EEPROM", "turnouteeprom", "setProgOptions(this)");
+		tabAutomation = createEmptyDiv(mainScrollBox, "div", "tile-1", "");
+			AutomationPanel = createEmptyDiv(tabAutomation, "div", "tile-1", "");
+				automationTableDiv = createEmptyDiv(AutomationPanel, "div", "tile-1", "");
+					createPageTitle(automationTableDiv, "div", "tile-1", "BasicCfg_Title", "h2", "Routes");
+					automationTable = createDataTable(automationTableDiv, "tile-1_2", ["Pos", "Delete", "DCC EX", "ID", "Type", "Description"], "automationconfig", "");
+		tabRoster = createEmptyDiv(mainScrollBox, "div", "tile-1", "");
+			RosterPanel = createEmptyDiv(tabRoster, "div", "tile-1", "");
+				rosterTableDiv = createEmptyDiv(RosterPanel, "div", "tile-1", "");
+					createPageTitle(rosterTableDiv, "div", "tile-1", "BasicCfg_Title", "h2", "Locomotives");
+//					rosterTable = createDataTable(rosterTableDiv, "tile-1_2", ["Pos","Add/Delete/Move", "DCC Addr", "Description", "Function Map"], "rosterconfig", "");
+					rosterTable = createDataTable(rosterTableDiv, "tile-1_2", ["Pos", "Delete", "DCC EX", "DCC Addr", "Description", "Function Map"], "rosterconfig", "");
 		tabGauges = createEmptyDiv(mainScrollBox, "div", "tile-1", "");
 			GaugePanel = createEmptyDiv(tabGauges, "div", "tile-1", "");
 
@@ -166,7 +188,9 @@ function constructPageContent(contentTab)
 	setVisibility(false, tabInputs);
 	setVisibility(false, tabButtons);
 	setVisibility(false, tabGauges);
-	setVisibility(false, document.getElementById("cbsetup_3")); //only show menu item if needed
+	setVisibility(false, tabAutomation);
+	setVisibility(false, tabRoster);
+	setVisibility(false, document.getElementById("cbsetup_5")); //only show menu item if needed
 
 }
 
@@ -367,6 +391,8 @@ function setPageMode(sender)
 	setVisibility(false, tabConfig);
 	setVisibility(false, tabInputs);
 	setVisibility(false, tabButtons);
+	setVisibility(false, tabAutomation);
+	setVisibility(false, tabRoster);
 	setVisibility(false, tabGauges);
 	for (var i = 0; i < trackGauges.length; i++)
 		setVisibility(false, trackGauges[i]);
@@ -386,6 +412,15 @@ function setPageMode(sender)
 			setVisibility(true, tabButtons);
 			break;
 		case "cbsetup_3":
+//			writeRBInputField("cbsetup", 2);
+			setVisibility(true, tabAutomation);
+			break;
+		case "cbsetup_4":
+//			writeRBInputField("cbsetup", 2);
+			setVisibility(true, tabRoster);
+			break;
+			
+		case "cbsetup_5":
 //			if (configData[workCfg].CurrentTracker.length > 0)
 			if (trackGauges.length > 0)
 			{
@@ -501,6 +536,49 @@ function setSensorConfig(sender)
 				}
 			break;
 		case 7: configData[workCfg].InputSettings.InpPins[thisRow].LNAddr = verifyNumber(sender.value, configData[workCfg].InputSettings.InpPins[thisRow].LNAddr); 
+			break;
+	}
+}
+
+function setRosterConfig(sender)
+{
+	var thisRow = parseInt(sender.getAttribute("row"));
+	var thisCol = parseInt(sender.getAttribute("col"));
+	var thisIndex = parseInt(sender.getAttribute("index"));
+	switch (thisCol)
+	{
+		case 1:
+			switch (thisIndex)
+			{
+				case 2:
+					configData[2].RosterSettings.Locos.splice(thisRow, 1);
+					break;
+				default:
+					alert("Roster entries are read only and must be defined in EX RAIL"); 
+			}
+			loadRosterTable(rosterTable, configData[2].RosterSettings.Locos);
+			break;
+	}
+}
+
+function setAutomationConfig(sender)
+{
+	var thisRow = parseInt(sender.getAttribute("row"));
+	var thisCol = parseInt(sender.getAttribute("col"));
+	var thisIndex = parseInt(sender.getAttribute("index"));
+//	console.log(thisRow, thisCol, thisIndex);
+	switch (thisCol)
+	{
+		case 1:
+			switch (thisIndex)
+			{
+				case 2:
+					configData[2].AutomationSettings.Routes.splice(thisRow, 1);
+					break;
+				default:
+					alert("Routes and Automations are read only and must be defined in EX RAIL"); 
+			}
+			loadAutomationTable(automationTable, configData[2].AutomationSettings.Routes);
 			break;
 	}
 }
@@ -687,7 +765,7 @@ function loadTurnoutTable(thisTable, thisData, clrConf)
 	var tb = document.getElementById(thisTable.id + "_body");
 	var numCols = th.childNodes[0].children.length;
 
-	createDataTableLines(thisTable, [tfPos,tfManipulatorBox, tfNumeric, tfText, tfNumeric, tfTurnoutTypeSel, tfEnablePosNegSel, tfStartupSel, tfNumeric, tfNumeric, tfNumeric, tfNumeric], thisData.length, "setTurnoutConfig(this)");	
+	createDataTableLines(thisTable, [tfPos,tfManipulatorBox, tfNumeric, tfText, tfNumeric, tfTurnoutTypeSel, tfEnablePosNegSel, tfStartupSel, tfNumeric, tfNumeric, tfNumeric, tfNumeric, tfText], thisData.length, "setTurnoutConfig(this)");	
 	for (var i=0; i<thisData.length;i++)
 	{
 		var e = document.getElementById(thisTable.id + "_" + i.toString() + "_" + "2");
@@ -712,40 +790,54 @@ function loadTurnoutTable(thisTable, thisData, clrConf)
 		e.childNodes[0].value = thisData[i].Par2;
 		var e = document.getElementById(thisTable.id + "_" + i.toString() + "_" + "11");
 		e.childNodes[0].value = thisData[i].Prof;
+		var e = document.getElementById(thisTable.id + "_" + i.toString() + "_" + "12");
+		e.childNodes[0].innerHTML = thisData[i].Descr;
 	}
 }
 
-/*
-function loadPinTable(thisTable, thisData)
+function loadAutomationTable(thisTable, thisData, clrConf)
 {
 	var th = document.getElementById(thisTable.id + "_head");
 	var tb = document.getElementById(thisTable.id + "_body");
 	var numCols = th.childNodes[0].children.length;
 
-	var lineCount = 0;
+	createDataTableLines(thisTable, [tfPos, tfManipulatorBox, tfText, tfText, tfText, tfText], thisData.length, "setAutomationConfig(this)");	
 	for (var i=0; i<thisData.length;i++)
-		if (thisData[i].TOType > 0)
-			lineCount++;
-
-	createDataTableLines(thisTable, [tfPos,tfManipulatorBox, tfNumericLong,tfNumericLong, tfNumericLong, tfNumericLong, tfNumericLong], lineCount, "setColorData(this)");	
-	for (var i=0; i<thisData.length;i++)
-		if (thisData[i].TOType == 0)
-		{
-			var e = document.getElementById(thisTable.id + "_" + i.toString() + "_" + "2");
-			e.childNodes[0].value = thisData[i].Id;
-			var e = document.getElementById(thisTable.id + "_" + i.toString() + "_" + "3");
-			e.childNodes[0].value = thisData[i].LNAddr;
-			var e = document.getElementById(thisTable.id + "_" + i.toString() + "_" + "4");
-			e.childNodes[0].value = thisData[i].TOType;
-			var e = document.getElementById(thisTable.id + "_" + i.toString() + "_" + "5");
-			e.childNodes[0].value = thisData[i].Logic;
-			var e = document.getElementById(thisTable.id + "_" + i.toString() + "_" + "6");
-			e.childNodes[0].value = thisData[i].PinNr;
-			var e = document.getElementById(thisTable.id + "_" + i.toString() + "_" + "7");
-			e.childNodes[0].value = thisData[i].Par1;
-		}
+	{
+		var e = document.getElementById(thisTable.id + "_" + i.toString() + "_" + "2");
+		if (clrConf)
+			thisData[i].confirmed = false;
+		e.childNodes[0].innerHTML = thisData[i].confirmed ? "ok" : "not set";
+		var e = document.getElementById(thisTable.id + "_" + i.toString() + "_" + "3");
+		e.childNodes[0].innerHTML = thisData[i].ID;
+		var e = document.getElementById(thisTable.id + "_" + i.toString() + "_" + "4");
+		e.childNodes[0].innerHTML = thisData[i].Type;
+		var e = document.getElementById(thisTable.id + "_" + i.toString() + "_" + "5");
+		e.childNodes[0].innerHTML = thisData[i].Descr;
+	}
 }
-*/
+
+function loadRosterTable(thisTable, thisData, clrConf)
+{
+	var th = document.getElementById(thisTable.id + "_head");
+	var tb = document.getElementById(thisTable.id + "_body");
+	var numCols = th.childNodes[0].children.length;
+
+	createDataTableLines(thisTable, [tfPos, tfManipulatorBox, tfText, tfText, tfText, tfText], thisData.length, "setRosterConfig(this)");	
+	for (var i=0; i<thisData.length;i++)
+	{
+		var e = document.getElementById(thisTable.id + "_" + i.toString() + "_" + "2");
+		if (clrConf)
+			thisData[i].confirmed = false;
+		e.childNodes[0].innerHTML = thisData[i].confirmed ? "ok" : "not set";
+		var e = document.getElementById(thisTable.id + "_" + i.toString() + "_" + "3");
+		e.childNodes[0].innerHTML = thisData[i].DCCAddr;
+		var e = document.getElementById(thisTable.id + "_" + i.toString() + "_" + "4");
+		e.childNodes[0].innerHTML = thisData[i].Descr;
+		var e = document.getElementById(thisTable.id + "_" + i.toString() + "_" + "5");
+		e.childNodes[0].innerHTML = thisData[i].FNMap;
+	}
+}
 
 function confirmSensorPin(jsonData)
 {
@@ -837,6 +929,56 @@ function confirmTurnoutPin(jsonData)
 	loadTurnoutTable(turnoutTable, configData[workCfg].TurnoutSettings.OutPins);
 }
 
+function confirmTurnout(jsonData)
+{
+	var turnoutId = jsonData.Data.Msg[2].d;
+	var turnoutPos = configData[workCfg].TurnoutSettings.OutPins.findIndex(element => element.Id == turnoutId);
+	
+	if (turnoutPos < 0)
+	{
+		turnoutPos = configData[2].TurnoutSettings.OutPins.push(JSON.parse(JSON.stringify(newTurnoutTemplate))) - 1;
+		configData[workCfg].TurnoutSettings.OutPins[turnoutPos].Id = turnoutId;
+	}
+//	configData[workCfg].TurnoutSettings.OutPins[turnoutPos].Type = jsonData.Data.Msg[3].d;
+	configData[workCfg].TurnoutSettings.OutPins[turnoutPos].Descr = jsonData.Data.Msg[4].d;
+	configData[workCfg].TurnoutSettings.OutPins[turnoutPos].confirmed = true;
+	loadTurnoutTable(turnoutTable, configData[workCfg].TurnoutSettings.OutPins);
+}
+
+function confirmAutomation(jsonData)
+{
+//	console.log(jsonData);
+	var routeID = jsonData.Data.Msg[2].d;
+	var routePos = configData[workCfg].AutomationSettings.Routes.findIndex(element => element.ID == routeID);
+	
+	if (routePos < 0)
+	{
+		routePos = configData[2].AutomationSettings.Routes.push(JSON.parse(JSON.stringify(newRouteTemplate))) - 1;
+		configData[workCfg].AutomationSettings.Routes[routePos].ID = routeID;
+	}
+	configData[workCfg].AutomationSettings.Routes[routePos].Type = jsonData.Data.Msg[3].d;
+	configData[workCfg].AutomationSettings.Routes[routePos].Descr = jsonData.Data.Msg[4].d;
+	configData[workCfg].AutomationSettings.Routes[routePos].confirmed = true;
+	loadAutomationTable(automationTable, configData[workCfg].AutomationSettings.Routes, false);
+}
+
+function confirmRoster(jsonData)
+{
+//	console.log(jsonData);
+	var locoID = jsonData.Data.Msg[2].d;
+	var locoPos = configData[workCfg].RosterSettings.Locos.findIndex(element => element.DCCAddr == locoID);
+	
+	if (locoPos < 0)
+	{
+		locoPos = configData[2].RosterSettings.Locos.push(JSON.parse(JSON.stringify(newLocoTemplate))) - 1;
+		configData[workCfg].RosterSettings.Locos[locoPos].DCCAddr = locoID;
+	}
+	configData[workCfg].RosterSettings.Locos[locoPos].Descr = jsonData.Data.Msg[3].d;
+	configData[workCfg].RosterSettings.Locos[locoPos].FNMap = jsonData.Data.Msg[4].d;
+	configData[workCfg].RosterSettings.Locos[locoPos].confirmed = true;
+	loadRosterTable(rosterTable, configData[workCfg].RosterSettings.Locos, false);
+}
+
 function loadNodeDataFields(jsonData)
 {
 //	console.log(jsonData);
@@ -886,9 +1028,26 @@ function loadDataFields(jsonData)
 								break;
 						}
 				}
-	loadSensorTable(sensorTable, configData[workCfg].InputSettings.InpPins, true);
-	loadTurnoutTable(turnoutTable, configData[workCfg].TurnoutSettings.OutPins, true);
-
+	try
+	{
+		loadSensorTable(sensorTable, configData[workCfg].InputSettings.InpPins, true);
+	}
+	catch (error) {};
+	try
+	{
+		loadTurnoutTable(turnoutTable, configData[workCfg].TurnoutSettings.OutPins, true);
+	}
+	catch (error) {};
+	try
+	{
+		loadAutomationTable(automationTable, configData[workCfg].AutomationSettings.Routes, true);
+	}
+	catch (error) {};
+	try
+	{
+		loadRosterTable(rosterTable, configData[workCfg].RosterSettings.Locos, true);
+	}
+	catch (error) {};
 	trackGauges = [];
 	trackGaugeDefs = [];
 	while (GaugePanel.lastElementChild) 
@@ -919,7 +1078,7 @@ function loadDataFields(jsonData)
 
 	document.getElementById("currgaugeselector").selectedIndex = 0;
 	loadGaugeData(0);
-	setVisibility(true, document.getElementById("cbsetup_3")); //only show menu item if needed
+	setVisibility(true, document.getElementById("cbsetup_5")); //only show menu item if needed
 
 
 	setPanelVisibility();
@@ -951,6 +1110,21 @@ function processDCCPPInput(jsonData)
 		if (opCode == 'Y') //ZPin
 		{
 			confirmTurnoutPin(jsonData);
+		}
+		if (opCode == 'j') //Automation or Roster
+		{
+			if (jsonData.Data.Msg[1].d == 'T') //Automation
+			{
+				confirmTurnout(jsonData);
+			}
+			if (jsonData.Data.Msg[1].d == 'A') //Automation
+			{
+				confirmAutomation(jsonData);
+			}
+			if (jsonData.Data.Msg[1].d == 'R') //Automation
+			{
+				confirmRoster(jsonData);
+			}
 		}
 		
 	}

@@ -135,7 +135,7 @@ typedef struct
 	float_t bw[maxSpeedSteps];
 } speedTable;
 
-extern AsyncWebSocketClient * globalClient;
+extern std::vector<wsClientInfo> globalClients; // a list to hold all clients when in server mode
 
 class IoTT_TrainSensor
 {
@@ -195,7 +195,6 @@ private:
 	sensorData dispData;
 //	OneDimKalman * speedEstimate = NULL;
 	OneDimKalman * relMoveEstimate = NULL;
-//	AsyncWebSocketClient * globalClient = NULL;
 	uint16_t refreshRate = 0;
 	uint32_t lastWebRefresh = millis();
 	bool waitForNewDCCAddr = false; //flag to listen for a DCC address

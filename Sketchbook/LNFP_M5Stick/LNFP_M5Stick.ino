@@ -8,14 +8,14 @@
 #include <M5UnitOLED.h>
 #include <M5Unified.h>
 
-String BBVersion = "1.5.20";
+String BBVersion = "1.6.0";
 
 //#define measurePerformance //uncomment this to display the number of loop cycles per second
 //#define useAI
 #define useSecEl
 
 //Arduino published libraries. Install using the Arduino IDE or download from Github and install manually
-#include <Math.h>
+#include <math.h>
 
 //#include <Wiroe.h>
 //#include <esp_int_wdt.h>
@@ -60,7 +60,9 @@ DNSServer * dnsServer = NULL;
 //WiFiClientSecure * wifiClientSec = NULL;
 WiFiClient * wifiClient = NULL;
 AsyncWebSocket * ws = NULL; //("/ws");
-AsyncWebSocketClient * globalClient = NULL;
+//AsyncWebSocketClient * globalClient = NULL;
+std::vector<wsClientInfo> globalClients; // a list to hold all clients when in server mode
+
 uint32_t wsBufferSize = 16384;
 uint32_t wsRxReadPtr = 0;
 uint32_t wsRxWritePtr = 0;
@@ -101,6 +103,7 @@ IoTT_SecurityElementList * secElHandlerList = NULL;
   IoTT_VoiceControl * voiceWatcher = NULL;
 #endif
 LocoNetESPSerial * lnSerial = NULL;
+LocoNetESPSerial * lnSubnet = NULL;
 nodeType subnetMode = standardMode;
 IoTT_SerInjector * usbSerial = NULL;
 IoTT_LBServer * lbClient = NULL;
@@ -202,7 +205,7 @@ uint16_t sendMsg(lnTransmitMsg txData)
 //  if (!verifySyntax(&txData.lnData[0]))
 //  {
 //    Serial.printf("ERROR: Call sendMsg to %i: %i, %2X, %2X, %2X, %2X \n", useInterface.devId, txData.lnMsgSize, txData.lnData[0], txData.lnData[1], txData.lnData[2], txData.lnData[3]);
-//    Serial.printf("Outgoing Callback to %i ID %2X\n", useInterface.devId, txData.reqID);
+//    Serial.printf("Outgoing Callback to %i ID %2X\n", useInterface.devId, txData.requestID);
 //    return 0;
 //  }
   switch (useInterface.devId)
@@ -218,7 +221,7 @@ uint16_t sendMsg(lnTransmitMsg txData)
     case 17:; //WiThrottle
     case 12:if (lbClient) //LocoNet over TCP or WiClient
             {
-//               Serial.println("Send to lbServer");
+//               Serial.printf("Send to lbServer ID %2X\n", txData.requestID);
                return lbClient->lnWriteMsg(&txData); break; //this is message to lbServer or WiServer 
             }
 /*            
@@ -227,7 +230,7 @@ uint16_t sendMsg(lnTransmitMsg txData)
             break;
 */            
   }
-  Serial.println("nada");
+  Serial.printf("nada %i\n", useInterface.devId);
   return 0;
 }
 
@@ -276,6 +279,7 @@ void setup()
   M5.begin(cfg);
 
   initDisplay();
+  digitalWrite(stickLED, 0);
   getRTCTime();
   char time_output[30];
   strftime(time_output, 30, "%a  %d-%m-%y %T", localtime(&now));
@@ -379,13 +383,14 @@ void setup()
       useInterface.devCommMode = 1;
       useInterface.devId = 2;
     }
+/*    
     if (jsonConfigObj->containsKey("subnetMode")) //applicable for Loconet interface only
     {
       uint8_t newMode = (*jsonConfigObj)["subnetMode"];
       if (newMode > 0)
         subnetMode = limitedMaster;
     }
-    
+*/    
    //load the hat type
     strcpy(useHat.devName, "none");
     bool validHat = false;
@@ -483,6 +488,7 @@ void setup()
       digitraxBuffer->setLocoNetMode(false);
       myDcc = new NmraDcc();
       pinMode(groveTxD, OUTPUT);
+      digitalWrite(groveTxD, 0);
       // Setup which External Interrupt, the Pin it's associated with that we're using and enable the Pull-Up 
       myDcc->pin(groveRxD, 1);
       // Call the main DCC Init function to enable the DCC Receiver
@@ -493,12 +499,10 @@ void setup()
     else 
       Serial.println("DCC Interface not activated");
 
-//    if ((useInterface.devId == 2) || (useInterface.devId == 4) || (useInterface.devId == 11) || (useInterface.devId == 13) || (useInterface.devId == 14)  || (useInterface.devId == 15) || (useInterface.devId == 16)) //LocoNet or Gateway with LocoNet or LocoNet with lbServer or MQTT/TCP
     if ((useInterface.devId == 2) || (useInterface.devId == 16)) //LocoNet or LocoNet Loopback
     {
       Serial.println("Init LocoNet");  
       lnSerial = new LocoNetESPSerial(); //UART2 by default
-//      if ((useInterface.devId == 14) || (useInterface.devId == 15) || (useInterface.devId == 16))
       if (useInterface.devId == 16)
       {
         lnSerial->begin(); //Initialize as Loopback
@@ -602,7 +606,7 @@ void setup()
         switch (useInterface.devId)
         {
           case 1:;
-          case 10: lnMQTTServer->initializeMQTT(1); break; //no callback as DCC is one way only
+          case 10: lnMQTTServer->initializeMQTT(4); break; //no callback as DCC is one way only
 //          case 7: lnMQTTServer->setMQTTCallback(callbackOpenLCBMessage); break;
           case 2:;
           case 3:;
@@ -649,6 +653,24 @@ void setup()
     }
     else 
       Serial.println("WIThrottle Server not activated");
+
+    if ((useServer & 0x08) && ((useInterface.devId == 3) || (useInterface.devId == 12))) //Loconet Subnet goes with lnClient or MQTTClient
+    {
+      Serial.println("Install Loconet Subnet");  
+      subnetMode = fullMaster;
+      lnSubnet = new LocoNetESPSerial(); //UART2 by default
+      if (lnSubnet)
+      {
+        lnSubnet->begin(groveRxD, groveTxD, true, true); //true is inverted signals on Rx, Tx
+        digitraxBuffer->setLocoNetMode(false); //switch off Slot query
+        lnSubnet->setNetworkType(subnetMode); 
+        lnSubnet->setUpstreamMode(true);
+        lnSubnet->setBusyLED(stickLED, false);
+        Serial.printf("LocoNet Prio Mode: %i\n", subnetMode);
+      }
+    }
+    else 
+      Serial.println("Loconet Subnet not installed");
 //------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
     if ((useHat.devId == 7) || (useHat.devId == 3) || (useHat.devId == 4)) //PurpleHat or YellowHat or GreenHat
@@ -698,16 +720,16 @@ void setup()
           if (myChain->colTypeNum == 0x66)
           {
             if (useHat.devId == 1) //BlueHat
-              FastLED.addLeds<WS2811, hatDataPin, GRB>(myChain->getChain(), myChain->getChainLength()); 
+              FastLED.addLeds<WS2812B, hatDataPin, GRB>(myChain->getChain(), myChain->getChainLength()); 
             else
-              FastLED.addLeds<WS2811, rhDataPin, GRB>(myChain->getChain(), myChain->getChainLength()); 
+              FastLED.addLeds<WS2812B, rhDataPin, GRB>(myChain->getChain(), myChain->getChainLength()); 
           }
           if (myChain->colTypeNum == 0x0C)
           {
             if (useHat.devId == 1) //BlueHat
-              FastLED.addLeds<WS2811, hatDataPin, RGB>(myChain->getChain(), myChain->getChainLength()); 
+              FastLED.addLeds<WS2812B, hatDataPin, RGB>(myChain->getChain(), myChain->getChainLength()); 
             else
-              FastLED.addLeds<WS2811, rhDataPin, RGB>(myChain->getChain(), myChain->getChainLength()); 
+              FastLED.addLeds<WS2812B, rhDataPin, RGB>(myChain->getChain(), myChain->getChainLength()); 
           }
         }
       }
@@ -785,11 +807,10 @@ void setup()
           lnSerial->setBusyLED(stickLED, false);
 //          lnSerial->setLNCallback(callbackLocoNetMessage);
         } 
-/*
-        Wire.begin(hatSDA, hatSCL);//, 400000); //initialize the I2C interface
-        delay(10);
-        Wire.setClock(400000);
-*/        
+        uint8_t numBoards = 0;
+        while (checkI2CPort(0x33 - numBoards) == 0)
+          numBoards++;
+        Serial.printf("Detected %i GreenHat Modules\n", numBoards);
         jsonDataObj = getDocPtr("/configdata/greenhat.cfg", true);
         if (jsonDataObj != NULL)
           if (jsonDataObj->containsKey("Modules"))
@@ -972,7 +993,7 @@ void setup()
       Serial.println("Initialize VoiceWatcher");  
       voiceWatcher = new(IoTT_VoiceControl);
       voiceWatcher->beginKeywordRecognition();
-      voiceWatcher->setTxCallback(sendMsg);
+      voiceWatchlnclienter->setTxCallback(sendMsg);
       jsonDataObj = getDocPtr("/configdata/vwcfg.cfg", false);
       if (jsonDataObj != NULL)
       {
@@ -1056,6 +1077,7 @@ void loop()
     if (lbServer) lbServer->processLoop(); //drives the LocoNet over TCP interface server traffic
     if (wiServer) wiServer->processLoop(); //drives the WiThrottle interface server traffic
     if (lnSerial) lnSerial->processLoop(); //handling all LocoNet communication
+    if (lnSubnet) lnSubnet->processLoop(); //handling all LocoNet Subnet communication
 //    if (olcbSerial) olcbSerial->processLoop(); //handling all OpenLCB communication
     if (trainSensor) trainSensor->processLoop(); //getting the data fromn the speed sensor
 
@@ -1123,7 +1145,7 @@ void loop()
     sendKeepAlive();
   }
   if (subnetMode != standardMode)
-    if (lnSerial) lnSerial->processLoop(); //enable all LocoNet communication
+    if (lnSerial) lnSerial->processLoop(); //increase frequency to reduce time lag
   M5.update();
   processDisplay();
   

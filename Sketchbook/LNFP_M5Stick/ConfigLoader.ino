@@ -87,6 +87,16 @@ uint32_t readFileToBuffer(String fileName, char * thisBuffer, uint32_t maxSize)
   return bytesRead;
 }
 
+void prepTempStorage()
+{
+  
+}
+
+void installTempStorage()
+{
+  
+}
+
 bool writeJSONFile(String fileName, DynamicJsonDocument * writeThis)
 {
   String fileStr;
@@ -152,6 +162,15 @@ DynamicJsonDocument * getDocPtr(String cmdFile, bool duplData)
       Serial.println("File read error");
       return NULL;
   }
+}
+
+byte checkI2CPort(byte i2cAddress)
+{
+  if (i2cAddress > 127)
+    return i2cAddress;
+  Wire.beginTransmission(i2cAddress);
+  delay(10);
+  return Wire.endTransmission();
 }
 
 void prepareShutDown()

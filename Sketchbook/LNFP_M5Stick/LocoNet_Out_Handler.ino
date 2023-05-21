@@ -4,9 +4,10 @@
 
 void sendSwitchCommand(uint8_t opCode, uint16_t swiNr, uint8_t swiTargetPos, uint8_t coilStatus)
 {
+//  Serial.printf("Req: %2X %i %i\n", opCode, swiNr, swiTargetPos);
   uint8_t currPos = digitraxBuffer->getSwiStatus(swiNr); //((swiPos[swiNr >> 2] >> (2 * (swiNr % 4))) & 0x03) << 4);
   lnTransmitMsg txData;
-  txData.lnData[0] = opCode; //OPC_SW_REQ, OPC_SW_REP, OPC_SW_ACK
+  txData.lnData[0] = opCode;
   txData.lnData[1] = swiNr & 0x007F;
   txData.lnData[2] = (swiNr & 0x0780)>>7;
   switch (opCode)
@@ -36,9 +37,10 @@ void sendSwitchCommand(uint8_t opCode, uint16_t swiNr, uint8_t swiTargetPos, uin
     }
     break;
   }
-//  Serial.printf("LN Out: %i %i %i %i\n", txData.lnData[0],txData.lnData[1],txData.lnData[2],txData.lnData[3]);
   txData.lnMsgSize = 4;
+//  Serial.printf("LN Out: 1 %2X 2 %2X 3 %2X 4 %2X\n", txData.lnData[0],txData.lnData[1],txData.lnData[2],txData.lnData[3]);
   setXORByte(&txData.lnData[0]);
+//  Serial.printf("LN Out: 1 %2X 2 %2X 3 %2X 4 %2X\n", txData.lnData[0],txData.lnData[1],txData.lnData[2],txData.lnData[3]);
   sendMsg(txData);
 }
 
@@ -237,7 +239,8 @@ void onAnalogData(uint16_t inpNr, uint16_t analogValue )
 
 void onBtnDiagnose(uint8_t evtType, uint8_t portNr, uint16_t inpAddr, uint16_t btnValue)
 {
-  if (globalClient != NULL)
+  int8_t currClient = getWSClientByPage(0, "pgHWBtnCfg");
+  if (currClient >= 0)
   {
 //    Serial.printf("Button %i Diagnose %i alias %i has value %i.\n", evtType, portNr, inpAddr, btnValue);
     DynamicJsonDocument doc(1200);
@@ -250,7 +253,11 @@ void onBtnDiagnose(uint8_t evtType, uint8_t portNr, uint16_t inpAddr, uint16_t b
     data.add(inpAddr);
     data.add(btnValue);
     serializeJson(doc, myMqttMsg);
-    globalClient->text(myMqttMsg);
+    while (currClient >= 0)
+    {
+      globalClients[currClient].wsClient->text(myMqttMsg);
+      currClient = getWSClientByPage(currClient + 1, "pgHWBtnCfg");
+    }
 //    Serial.println(myMqttMsg);
     lastWifiUse = millis();
   }

@@ -17,10 +17,17 @@ txFct lnReplyFct = NULL;
 txFct lnOutFct = NULL;
 //txFct dccOutFct = NULL;
 
+void dccGeneratorCallbackNew(std::vector<ppElement> * txData)
+{
+	digitraxBuffer->receiveDCCGeneratorFeedbackNew(txData);
+}
+
+/*
 uint16_t dccGeneratorCallback(lnTransmitMsg txData)
 {
 	return digitraxBuffer->receiveDCCGeneratorFeedback(txData);
 }
+*/
 
 //LocoNet functions for preparing reply messages
 void prepLACKMsg(lnTransmitMsg * msgData, uint8_t ackCode, uint8_t ackData)
@@ -252,24 +259,30 @@ void setDCCProgrammingCmd(uint8_t progCmd, uint16_t OpsAddr, uint16_t CVNr, uint
 {
 	lnTransmitMsg txBuffer;
 	char* outStr = (char*)&txBuffer.lnData[0];
-	switch (progCmd & 0x64)
-	{
-//		case 0x00: //Read bit on Prog
-//		case 0x04: //Read bit on main
-		case 0x20: //read byte on Prog
-			sprintf(outStr, "R %i %i %i", CVNr+1, id0, id1);
-			break;
-//		case 0x24: //read byte on main
-//		case 0x40: //write bit on Prog
-//		case 0x44: //write bit on main
-		case 0x60: //write byte on Prog
-			sprintf(outStr, "W %i %i", CVNr+1, CVVal);
-			break;
-		case 0x64: //write byte on main
-			sprintf(outStr, "w %i %i %i", OpsAddr, CVNr+1, CVVal);
-			break;
-		default: return;
-	}
+	if (progCmd == 0xFF)
+		sprintf(outStr, "R");
+	else
+		switch (progCmd & 0x64)
+		{
+//			case 0x00: //Read bit on Prog
+//			case 0x04: //Read bit on main
+			case 0x10: //read full Address
+				sprintf(outStr, "R");
+				break;
+			case 0x20: //read byte on Prog
+				sprintf(outStr, "R %i %i %i", CVNr+1, id0, id1);
+				break;
+//			case 0x24: //read byte on main
+//			case 0x40: //write bit on Prog
+//			case 0x44: //write bit on main
+			case 0x60: //write byte on Prog
+				sprintf(outStr, "W %i %i", CVNr+1, CVVal);
+				break;
+			case 0x64: //write byte on main
+				sprintf(outStr, "w %i %i %i", OpsAddr, CVNr+1, CVVal);
+				break;
+			default: return;
+		}
 	txBuffer.lnMsgSize = strlen(outStr);
 	dccPort->lnWriteMsg(txBuffer);
 //	Serial.println(outStr);
@@ -293,6 +306,36 @@ void setDCCSwitchById(uint16_t swiId, uint8_t swiPos, uint8_t coilStatus)
 	txBuffer.lnMsgSize = strlen(outStr);
 	dccPort->lnWriteMsg(txBuffer);
 //	Serial.println(outStr);
+}
+
+void reqSwitchInfo(uint16_t swiId)
+{
+	lnTransmitMsg txBuffer;
+	char* outStr = (char*)&txBuffer.lnData[0];
+	sprintf(outStr, "T %i X", swiId);
+	txBuffer.lnMsgSize = strlen(outStr);
+	dccPort->lnWriteMsg(txBuffer);
+	sprintf(outStr, "JT %i", swiId);
+	txBuffer.lnMsgSize = strlen(outStr);
+	dccPort->lnWriteMsg(txBuffer);
+}
+
+void reqRouteInfo(uint16_t rteId)
+{
+	lnTransmitMsg txBuffer;
+	char* outStr = (char*)&txBuffer.lnData[0];
+	sprintf(outStr, "JA %i", rteId);
+	txBuffer.lnMsgSize = strlen(outStr);
+	dccPort->lnWriteMsg(txBuffer);
+}
+
+void reqRosterInfo(uint16_t locoId)
+{
+	lnTransmitMsg txBuffer;
+	char* outStr = (char*)&txBuffer.lnData[0];
+	sprintf(outStr, "JR %i", locoId);
+	txBuffer.lnMsgSize = strlen(outStr);
+	dccPort->lnWriteMsg(txBuffer);
 }
 
 void setDCCPinById(uint16_t pinId, uint8_t pinState)
@@ -412,7 +455,7 @@ IoTT_DigitraxBuffers::~IoTT_DigitraxBuffers()
 
 void IoTT_DigitraxBuffers::loadRHCfgJSON(DynamicJsonDocument doc)
 {
-	Serial.println("Load JSON");
+//	Serial.println("Load JSON");
 	if (doc.containsKey("RxD"))
 		rxPin = doc["RxD"];
 	if (doc.containsKey("TxD"))
@@ -471,8 +514,38 @@ void IoTT_DigitraxBuffers::loadRHCfgJSON(DynamicJsonDocument doc)
 			turnoutOutputs[i].lnType = btnArray[i]["LNType"];
 			turnoutOutputs[i].posLogic = btnArray[i]["Logic"];
 			turnoutOutputs[i].lnAddr = btnArray[i]["LNAddr"];
+			strcpy(turnoutOutputs[i].Descr, btnArray[i]["Descr"]);
+//			if (btnArray[i]["Descr"])
+//				turnoutOutputs[i].Descr = btnArray[i]["Descr"];
+//			else
+//				turnoutOutputs[i].Descr = "IoTT";
 		}
 	}
+	if (doc.containsKey("AutomationSettings"))
+	{
+		JsonArray rteArray = doc["AutomationSettings"]["Routes"];
+		routeOutputLen = rteArray.size();
+        automationList = (automationEntry*) realloc (automationList, routeOutputLen * sizeof(automationEntry));
+		for (int i=0; i<routeOutputLen;i++)
+		{
+			automationList[i].ID = rteArray[i]["ID"];
+			strcpy(automationList[i].automationType, rteArray[i]["Type"]);
+			strcpy(automationList[i].Descr, rteArray[i]["Descr"]);
+		}
+	}
+	if (doc.containsKey("RosterSettings"))
+	{
+		JsonArray locoArray = doc["RosterSettings"]["Locos"];
+		for (int i=0; i<locoArray.size();i++)
+		{
+			rosterEntry newLoco;
+			newLoco.ID = locoArray[i]["DCCAddr"];
+			strcpy(newLoco.Description, locoArray[i]["Descr"]);
+			strcpy(newLoco.FunctionMap, locoArray[i]["FNMap"]);
+			rosterList.push_back(newLoco);
+		}
+	}
+
 	if (doc.containsKey("CurrentTracker"))
 	{
 		JsonArray trackerArray = doc["CurrentTracker"];
@@ -568,7 +641,8 @@ void IoTT_DigitraxBuffers::setRedHatMode(txFct lnReply, DynamicJsonDocument doc)
 		dccPort = new IoTT_SerInjector(rxPin, txPin, false, 1);
         dccPort->loadLNCfgJSON(doc); //loads baudrate and invert information
         dccPort->setProtType(DCCEx); //DCC++Ex DCC Generator
-        dccPort->setTxCallback(dccGeneratorCallback);
+//        dccPort->setTxCallback(dccGeneratorCallback);
+        dccPort->setDCCCallback(dccGeneratorCallbackNew);
 //		Serial.printf("Track Gauge %i\n", trackGaugesLen);
 		if (trackGaugesLen > 0)
 		{
@@ -654,11 +728,7 @@ void IoTT_DigitraxBuffers::initArduinoBoard()
 	reqDCCPeripheralList(outStr);
 	if (progBoost)
 		reqDCCPeripheralList("D PROGBOOST");
-
-	reqDCCPeripheralList("T");
-	reqDCCPeripheralList("S");
-	reqDCCPeripheralList("Z");
-	reqDCCPeripheralList("#");
+	getRedHatConfig(0);
 	if (getOpSw(opSwPurgeTimeExt, 1))
 		purgeLimit = purgeLimitLong;
 	else
@@ -796,7 +866,6 @@ void IoTT_DigitraxBuffers::processLoop()
 		}
 		nextSlotUpdate += slotRequestInterval + random(500);
 	}
-	
 	if (isCommandStation)
 	{
 		if (millis() > queryDelay)
@@ -823,7 +892,8 @@ void IoTT_DigitraxBuffers::processLoop()
 			purgeSlotTimer += purgeInterval;
 		}
 
-		if (progMode) //prog command set, waiting for reply
+		if (progModeActive) //prog command set, waiting for reply
+		{
 			if ((millis() - progSent) > (uint32_t)progTimeout)
 			{
 //				Serial.printf("Prog timeout");
@@ -831,11 +901,65 @@ void IoTT_DigitraxBuffers::processLoop()
 				slotBuffer[0x7C][1] = 0x04;
 				prepSlotReadMsg(&txBuffer, 0x7C);
 				lnOutFct(txBuffer);
-				progMode = false;
+				progModeActive = false;
 			}
-
+		}
 	}
-	
+	else
+	{
+		if (!progModeActive) //prog track available
+			if (readFullAddr)
+			{
+				std::vector<ppElement> ppList;
+				ppElement newData;
+				newData.dataType = 1;
+				newData.paramNr = 0;
+				newData.numParams = 2;
+				strcpy(&newData.payload.strVal[0], "R");
+				ppList.push_back(newData);
+				newData.dataType = 10;
+				newData.paramNr = 1;
+				switch (cvBuffer.size())
+				{
+					case 0: break;
+					case 1: if (cvBuffer.at(0) & 0x0020) 
+								readProg(0,0,0,17); 
+							else 
+								readProg(0,0,0,1); 
+							break;
+					case 2: if (cvBuffer.at(0) & 0x0020)
+								readProg(0,0,0,18); 
+							else 
+							{
+//								Serial.println("OK"); 
+								if (wiAddrCallback !=  NULL)
+								{
+									newData.payload.longVal = cvBuffer.at(1) & 0x00FF;
+									ppList.push_back(newData);
+									wiAddrCallback(&ppList);
+								}
+								readFullAddr = false; 
+							}
+							break;
+					case 3: 
+							{
+//								Serial.println("OK"); 
+								char outBuf[10];
+								if (wiAddrCallback !=  NULL)
+								{
+									newData.payload.longVal = ((cvBuffer.at(1) & 0x003F) << 8) + (cvBuffer.at(2) & 0x00FF);
+									ppList.push_back(newData);
+									wiAddrCallback(&ppList);
+									
+								}
+								readFullAddr = false;
+							}
+							break;
+					default: Serial.printf("Reset %i\n", cvBuffer.size()); readFullAddr = false; break;
+				}
+			}
+	}
+
 	if ((millis() - fcRefresh) > fcRefreshInterval)
 	{
 		//refresh fast clock slot
@@ -863,8 +987,8 @@ void IoTT_DigitraxBuffers::processLoop()
 //			Serial.println("Init report");
 			requestInpStatusUpdate = 0xFF;
 		}
-
 }
+
 //all incoming Loconet messages, update buffers and handle if command station mode
 void IoTT_DigitraxBuffers::processLocoNetMsg(lnReceiveBuffer * newData) 
 {
@@ -896,6 +1020,7 @@ void IoTT_DigitraxBuffers::writeProg(uint16_t dccAddr, uint8_t progMode, uint8_t
 	(*prSlot)[7] = cvVal & 0x7F;
 	prepSlotWriteMsg(&txBuffer, 0x7C);
 	lnOutFct(txBuffer);
+	progModeActive = true;
 }
 
 void IoTT_DigitraxBuffers::readProg(uint16_t dccAddr, uint8_t progMode, uint8_t progMethod, uint16_t cvNr)
@@ -920,6 +1045,17 @@ void IoTT_DigitraxBuffers::readProg(uint16_t dccAddr, uint8_t progMode, uint8_t 
 	(*prSlot)[7] = 0;
 	prepSlotWriteMsg(&txBuffer, 0x7C);
 	lnOutFct(txBuffer);
+	progModeActive = true;
+}
+
+void IoTT_DigitraxBuffers::readAddrOnly()
+{
+	cvBuffer.clear();
+	readFullAddr = true;
+	if (isCommandStation)
+		setDCCProgrammingCmd(0xFF, 0, 0, 0, 0, 0);
+	else
+		readProg(0,0, 0, 29);
 }
 
 
@@ -1025,7 +1161,8 @@ void IoTT_DigitraxBuffers::addActor(uint16_t Id, uint8_t pinType, uint8_t pinNr,
 
 void IoTT_DigitraxBuffers::sendFCCmdToWeb()
 {
-	if (globalClient)
+	int8_t currClient = getWSClientByPage(0, "pgRedHatCfg");
+	if (currClient >= 0)
 	{
 		DynamicJsonDocument doc(200);
 		char myMqttMsg[100];
@@ -1034,13 +1171,18 @@ void IoTT_DigitraxBuffers::sendFCCmdToWeb()
 		Data["Time"] = getFCTime();
 		Data["Rate"] = getFCRate();
 		serializeJson(doc, myMqttMsg);
-		globalClient->text(myMqttMsg);
+		while (currClient >= 0)
+		{
+			globalClients[currClient].wsClient->text(myMqttMsg);
+			currClient = getWSClientByPage(currClient + 1, "pgRedHatCfg");
+		}
 	}
 }
 
 void IoTT_DigitraxBuffers::sendTrackCurrent(uint8_t trackId)
 {
-	if (globalClient)
+	int8_t currClient = getWSClientByPage(0, "pgRedHatCfg");
+	if (currClient >= 0)
 	{
 		DynamicJsonDocument doc(200);
 		char myMqttMsg[100];
@@ -1050,77 +1192,84 @@ void IoTT_DigitraxBuffers::sendTrackCurrent(uint8_t trackId)
 		Data["Value"] = (trackGauges[trackId].currUsePin & 0x10) > 0 ? trackData[trackId]->getRMSVal() : 0;
 //		Data["Value"] = (trackGauges[trackId].currUsePin & 0x10) > 0 ? trackData[trackId]->getRMSVal() * trackGauges[trackId].currMultiplier : 0;
 		serializeJson(doc, myMqttMsg);
-		globalClient->text(myMqttMsg);
+		while (currClient >= 0)
+		{
+			globalClients[currClient].wsClient->text(myMqttMsg);
+			currClient = getWSClientByPage(currClient + 1, "pgRedHatCfg");
+		}
 //		Serial.println(myMqttMsg);
 	}
 }
 
-void IoTT_DigitraxBuffers::sendDCCCmdToWeb(ppElement * myParams)
+//void IoTT_DigitraxBuffers::sendDCCCmdToWeb(ppElement * myParams)
+void IoTT_DigitraxBuffers::sendDCCCmdToWeb(std::vector<ppElement> * myParams)
 {
-	if (globalClient)
+	int8_t currClient = getWSClientByPage(0, "pgRedHatCfg");
+	if (currClient >= 0)
 	{
+		uint8_t paramCount = myParams->at(0).numParams;
 		DynamicJsonDocument doc(600);
 		char myMqttMsg[300];
 		doc["Cmd"] = "DCCPP";
 		JsonObject Data = doc.createNestedObject("Data");
 		JsonArray msgArray = Data.createNestedArray("Msg");
-		for (uint8_t i = 0; i < myParams[0].numParams; i++)
+		for (uint8_t i = 0; i < paramCount; i++)
 		{
 			char nodeName[5];
-			msgArray[i]["t"] = myParams[i].dataType;
-			switch (myParams[i].dataType)
+			msgArray[i]["t"] = myParams->at(i).dataType;
+			switch (myParams->at(i).dataType)
 			{
-				case 10: msgArray[i]["d"] = myParams[i].payload.longVal ; break;
-				case 20: msgArray[i]["d"] = myParams[i].payload.floatVal; break;
-				default: memcpy(&nodeName[0], &myParams[i].payload.strVal[0], myParams[i].dataType);
-						 nodeName[myParams[i].dataType] = '\0';
+				case 10: msgArray[i]["d"] = myParams->at(i).payload.longVal ; break;
+				case 20: msgArray[i]["d"] = myParams->at(i).payload.floatVal; break;
+				default: if (myParams->at(i).dataType == 0)
+							msgArray[i]["d"] = myParams->at(i).payload.strPtr;
+						 else
+							msgArray[i]["d"] = myParams->at(i).payload.strVal;
+//		  				 memcpy(&nodeName[0], &myParams[i].payload.strVal[0], myParams[i].dataType);
+//						 nodeName[myParams->at(i).dataType] = '\0';
 //						 nodeName[myParams[i].dataType] = 0; 
-						 msgArray[i]["d"] = nodeName;
+//						 msgArray[i]["d"] = nodeName;
 						 break;
 			}
 		}
 		serializeJson(doc, myMqttMsg);
-		globalClient->text(myMqttMsg);
+		while (currClient >= 0)
+		{
+			globalClients[currClient].wsClient->text(myMqttMsg);
+			currClient = getWSClientByPage(currClient + 1, "pgRedHatCfg");
+		}
 //		Serial.println(myMqttMsg);
 	}
 }
 
-uint16_t IoTT_DigitraxBuffers::receiveDCCGeneratorFeedback(lnTransmitMsg txData)
+uint16_t IoTT_DigitraxBuffers::receiveDCCGeneratorFeedbackNew(std::vector<ppElement> * txData)
 {
 	lnTransmitMsg txBuffer;
 	bool sendToWeb = false;
-	ppElement* myParams = (ppElement*) &(txData.lnData[0]);
-	
-/*
-	for (uint8_t i = 0; i < 6; i++)
+	uint8_t paramCount = txData->at(0).numParams;
+	char opCode = txData->at(0).payload.strVal[0];
+
+/*	
+	for (uint8_t i = 0; i < paramCount; i++)
 	{
-		switch (myParams[i].dataType)
+		switch (txData->at(i).dataType)
 		{
-			case 0: continue; //return 0;
-			case 10: Serial.printf("Param %i %i Int = %i\n", i, myParams[i].paramNr, myParams[i].payload.longVal); break;
-			case 20: Serial.printf("Param %i %i Float = %.2f\n", i, myParams[i].paramNr, myParams[i].payload.floatVal); break;
-			default: 
-				{
-					char myBuf[5];
-					memcpy(&myBuf, &myParams[i].payload.strVal[0], myParams[i].dataType);
-					myBuf[myParams[i].dataType] = 0;
-					Serial.printf("Param %i %i String = ", i, myParams[i].paramNr);
-					Serial.println(myBuf); 
-					break;
-				}
+			case 0:  Serial.printf("Param %i %i String %s \n", i, txData->at(i).paramNr, txData->at(i).payload.strPtr); break;
+			case 10: Serial.printf("Param %i %i Int = %i\n", i, txData->at(i).paramNr, txData->at(i).payload.longVal); break;
+			case 20: Serial.printf("Param %i %i Float = %.2f\n", i, txData->at(i).paramNr, txData->at(i).payload.floatVal); break;
+			default: Serial.printf("Param %i %i Short String %s\n", i, txData->at(i).paramNr, txData->at(i).payload.strVal); break;
 		}
 	}
 */
-
-	switch (myParams[0].payload.strVal[0])
+	switch (opCode)
 	{
 		case 'a': //current reporting
-			if (myParams[0].numParams == 3) // <a TRACK VALUE>
+			if (paramCount == 3) // <a TRACK VALUE>
 			{
-				uint8_t trackID = myParams[1].payload.longVal;
+				uint8_t trackID = txData->at(1).payload.longVal;
 				if ((trackGauges[trackID].currUsePin & 0x10) > 0) 
 				{
-					uint16_t newVal = round(trackGauges[trackID].currMultiplier * myParams[2].payload.longVal);
+					uint16_t newVal = round(trackGauges[trackID].currMultiplier * txData->at(2).payload.longVal);
 					if (newVal > trackGauges[trackID].currOffset)
 						newVal = round(newVal - trackGauges[trackID].currOffset);
 					else
@@ -1131,22 +1280,22 @@ uint16_t IoTT_DigitraxBuffers::receiveDCCGeneratorFeedback(lnTransmitMsg txData)
 			}
 			break;
 		case 'c': 
-//			Serial.println(myParams[2].payload.longVal);
+//			Serial.println(txData->at(2).payload.longVal);
 			break;
 		case 'H': //turnout info
-			if (myParams[0].numParams == 3) // <H ID STATE> for each defined DCC Accessory Turnout in return to <T>
+			if (paramCount == 3) // <H ID STATE> for each defined DCC Accessory Turnout in return to <T>
 			{
-				arduinoPins * thisActor = findPeripherialItemById(turnoutOutputs, turnoutOutputLen, 0x80, myParams[1].payload.longVal); //looking for ardID
+				arduinoPins * thisActor = findPeripherialItemById(turnoutOutputs, turnoutOutputLen, 0x80, txData->at(1).payload.longVal); //looking for ardID
 				if (thisActor)
 				{
 					if (thisActor->ardType > 0)
 						thisActor->confOK = true;
 //					Serial.printf("Defined Turnout %i Addr %i Position %i\n", myParams[1].payload.longVal, thisActor->lnAddr, myParams[2].payload.longVal);
-					setSwiStatus(thisActor->lnAddr, myParams[2].payload.longVal == 0 ? 1 : 0, 0); //DCC EX uses reverse status than Loconet
+					setSwiStatus(thisActor->lnAddr, txData->at(2).payload.longVal == 0 ? 1 : 0, 0); //DCC EX uses reverse status than Loconet
 //					if ()
 					{
 						lnTransmitMsg thisBuffer;
-						prepTurnoutReportMsg(&thisBuffer, thisActor->lnAddr, myParams[2].payload.longVal == 0? 1: 0);
+						prepTurnoutReportMsg(&thisBuffer, thisActor->lnAddr, txData->at(2).payload.longVal == 0? 1: 0);
 						lnOutFct(thisBuffer);
 					}
 				}
@@ -1154,11 +1303,11 @@ uint16_t IoTT_DigitraxBuffers::receiveDCCGeneratorFeedback(lnTransmitMsg txData)
 //					Serial.printf("Undefined Turnout %i Position %i\n", myParams[1].payload.longVal, myParams[2].payload.longVal);
 			}
 			else
-				if (myParams[2].dataType < 5) //string type
+				if (txData->at(2).dataType < 5) //string type
 				{
-					arduinoPins * thisActor = findPeripherialItemById(turnoutOutputs, turnoutOutputLen, 0x80, myParams[1].payload.longVal); //looking for ardID
-					char tType[5] = {0,0,0,0,0};
-					memcpy(&tType, &myParams[2].payload.strVal, myParams[2].dataType);
+					arduinoPins * thisActor = findPeripherialItemById(turnoutOutputs, turnoutOutputLen, 0x80, txData->at(1).payload.longVal); //looking for ardID
+//					char tType[5] = {0,0,0,0,0};
+//					memcpy(&tType, &txData->at(2).payload.strVal, txData->at(2).dataType);
 					if (thisActor)
 					{
 						if (thisActor->ardType > 0)
@@ -1166,14 +1315,74 @@ uint16_t IoTT_DigitraxBuffers::receiveDCCGeneratorFeedback(lnTransmitMsg txData)
 //						Serial.printf("Defined Turnout %i Type %s on Pin %i Position %i\n", myParams[1].payload.longVal, tType, myParams[3].payload.longVal, myParams[4].payload.longVal);
 					}
 //					else
+//					{
 //						Serial.printf("Undefined Turnout %i Type %s on Pin %i Position %i\n", myParams[1].payload.longVal, tType, myParams[3].payload.longVal, myParams[4].payload.longVal);
-//						addActor(myParams[1].payload.longVal, 0, myParams[3].payload.longVal, myParams[4].payload.longVal);
+//						addActor(txData->at(1).payload.longVal, 0, txData->at(3).payload.longVal, txData->at(4).payload.longVal);
+//					}	
 					sendToWeb = true;
 				}
 			break;
+		case 'j': 
+			switch (txData->at(1).payload.strVal[0])
+			{
+				case 'T': 
+					if (paramCount > 2)
+					{
+						bool isList = (paramCount < 4) ? true : txData->at(3).dataType == 10; //integer
+						if (isList)
+						{
+//							Serial.printf("Turnout List of %i\n", paramCount-2);
+							for (uint16_t i = 2; i < paramCount; i++)
+								reqSwitchInfo(txData->at(i).payload.longVal);
+						}
+						else
+						{
+							sendToWeb = true;
+//							Serial.printf("Process Turnout %i\n", txData->at(2).payload.longVal);
+						}
+					}
+					break;
+				case 'A': 
+					if (paramCount > 2)
+					{
+						bool isList = (paramCount < 4) ? true : txData->at(3).dataType == 10; //integer
+						if (isList)
+						{
+//							Serial.printf("Route List of %i\n", paramCount-2);
+							for (uint16_t i = 2; i < paramCount; i++)
+								reqRouteInfo(txData->at(i).payload.longVal);
+						}
+						else
+						{
+//							Serial.printf("Route Entry of %i\n", txData->at(2).payload.longVal);
+							//process JA info
+							sendToWeb = true;
+						}
+					}
+					break;
+				case 'R': 
+					if (paramCount > 2)
+					{
+						bool isList = (paramCount < 4) ? true : txData->at(3).dataType == 10; //integer
+						if (isList)
+						{
+//							Serial.printf("Roster List of %i\n", paramCount-2);
+							for (uint16_t i = 2; i < paramCount; i++)
+								reqRosterInfo(txData->at(i).payload.longVal);
+						}
+						else
+						{
+//							Serial.printf("Roster Entry of %i\n", txData->at(2).payload.longVal);
+							//process JR info
+							sendToWeb = true;
+						}
+					}
+					break;
+			}
+			break;
 		case 'l': //loco info  <l CAB SLOT SPEED/DIR FUNC>
 		{
-			uint16_t dccAddr = myParams[1].payload.longVal;
+			uint16_t dccAddr = txData->at(1).payload.longVal;
 			uint8_t thisSlot = getSlotOfAddr(dccAddr & 0x7F, dccAddr >> 7);
 //			Serial.printf("<l> Loco %i Speed %i Dir %i Functions %2X\n", myParams[1].payload.longVal, myParams[3].payload.longVal & 0x7F, (myParams[3].payload.longVal & 0x80)>>7, myParams[4].payload.longVal);
 		}
@@ -1181,7 +1390,7 @@ uint16_t IoTT_DigitraxBuffers::receiveDCCGeneratorFeedback(lnTransmitMsg txData)
 		case 'p': //Power Report
 		{
 //			Serial.printf("Power Report %i\n", myParams[1].payload.longVal);
-			switch (myParams[1].payload.longVal)
+			switch (txData->at(1).payload.longVal)
 			{ 
 				case 0: if ((trackByte &0x01) != 0) localPowerStatusChange(0x82); //OFF
 					break;
@@ -1197,43 +1406,53 @@ uint16_t IoTT_DigitraxBuffers::receiveDCCGeneratorFeedback(lnTransmitMsg txData)
 		case 'q':;
 		case 'Q': //sensor input
 		{
-			arduinoPins * thisSensor = findPeripherialItemById(sensorInputs, sensorInputLen, 0x80, myParams[1].payload.longVal); //looking for ardID
+			arduinoPins * thisSensor = findPeripherialItemById(sensorInputs, sensorInputLen, 0x80, txData->at(1).payload.longVal); //looking for ardID
 			if (thisSensor)
 			{
-				if (myParams[0].numParams == 4) //<Q ID PIN PULLUP> for each defined sensor as return to <S>
+				if (paramCount == 4) //<Q ID PIN PULLUP> for each defined sensor as return to <S>
 				{
 					thisSensor->confOK = true;
 //					Serial.printf("Defined Sensor %i on Pin %i Pullup %i\n", myParams[1].payload.longVal, myParams[2].payload.longVal, myParams[3].payload.longVal);
 				}
-				if (myParams[0].numParams == 2) //<Q ID > for sensor event report
-					processDCCInput(myParams[1].payload.longVal, (myParams[0].payload.strVal[0] == 'Q') ? true: false);
+				if (paramCount == 2) //<Q ID > for sensor event report
+					processDCCInput(txData->at(1).payload.longVal, (opCode == 'Q') ? true: false);
 			}
-			if (myParams[0].numParams == 4) //<Q ID PIN PULLUP> for each defined sensor as return to <S>
+			if (paramCount == 4) //<Q ID PIN PULLUP> for each defined sensor as return to <S>
 				sendToWeb = true;
 			break;
 		}
 		case 'r': //programmer callback on read/write cv bit/byte on prog
 		{
+//<r Value> //Address Read return. Can be long address
 //<r CV Value> //write CV value return
 //<r CALLBACKNUM|CALLBACKSUB|CV Value>
 //<r CALLBACKNUM|CALLBACKSUB|CV BIT VALUE> not used
 //<r CALLBACKNUM|CALLBACKSUB|CV VALUE> //read cv value
-			uint8_t dtaOfs = (myParams[0].numParams == 2) ? 1 : 3;
-			uint16_t cvNr = myParams[dtaOfs].payload.longVal - 1;
-			int16_t cvVal = myParams[dtaOfs+1].payload.longVal;
-			memcpy(&slotBuffer[0x7C][0], &progSlot[0], 10);
-			if (cvVal < 0)
-				slotBuffer[0x7C][1] = 0x07;
-			else
+
+			switch (paramCount)
 			{
-				slotBuffer[0x7C][1] = 0x00;
-				slotBuffer[0x7C][5] = ((cvNr >> 7) & 0x01) + ((cvNr >> 4) & 0x30) + ((cvVal & 0x80)>>6); //high 3 of 10 bits + MSB of data
-				slotBuffer[0x7C][6] = cvNr & 0x7F; //low 7 of 10 bits
-				slotBuffer[0x7C][7] = cvVal & 0x7F;
+				case 2: if (wiAddrCallback !=  NULL) wiAddrCallback(txData); return 0; break;
+				case 6: break; //bit mode not used
+				default:
+				{
+					uint16_t cvNr = txData->at(paramCount - 2).payload.longVal - 1;
+					int16_t cvVal = txData->at(paramCount - 1).payload.longVal;
+					memcpy(&slotBuffer[0x7C][0], &progSlot[0], 10);
+					if (cvVal < 0)
+						slotBuffer[0x7C][1] = 0x07;
+					else
+					{
+						slotBuffer[0x7C][1] = 0x00;
+						slotBuffer[0x7C][5] = ((cvNr >> 7) & 0x01) + ((cvNr >> 4) & 0x30) + ((cvVal & 0x80)>>6); //high 3 of 10 bits + MSB of data
+						slotBuffer[0x7C][6] = cvNr & 0x7F; //low 7 of 10 bits
+						slotBuffer[0x7C][7] = cvVal & 0x7F;
+					}
+				}
+				break;
 			}
 			prepSlotReadMsg(&txBuffer, 0x7C);
 			lnOutFct(txBuffer);
-			progMode = false;
+			progModeActive = false;
 //			Serial.printf("Send Programmer final task reply CV %i Val %i \n", cvNr+1, cvVal);
 		}
 		break;
@@ -1242,9 +1461,9 @@ uint16_t IoTT_DigitraxBuffers::receiveDCCGeneratorFeedback(lnTransmitMsg txData)
 		break;
 		
 		case 'Y': //<Y ID IN IFLAG STATE> for each defined output pin in return to <Z>
-			if (myParams[0].numParams == 5) // <Y ID PIN IFLAG STATE> for each defined pin as return to <Z>
+			if (paramCount == 5) // <Y ID PIN IFLAG STATE> for each defined pin as return to <Z>
 			{
-				arduinoPins * thisActor = findPeripherialItemById(turnoutOutputs, turnoutOutputLen, 0x80, myParams[1].payload.longVal); //looking for ardID
+				arduinoPins * thisActor = findPeripherialItemById(turnoutOutputs, turnoutOutputLen, 0x80, txData->at(1).payload.longVal); //looking for ardID
 				if (thisActor)
 				{
 					if (thisActor->ardType == 0)
@@ -1262,7 +1481,7 @@ uint16_t IoTT_DigitraxBuffers::receiveDCCGeneratorFeedback(lnTransmitMsg txData)
 		break;
 	
 		case '#': //slot # report
-			DCCActiveSlots = myParams[1].payload.longVal;
+			DCCActiveSlots = txData->at(1).payload.longVal;
 			sendToWeb = true;
 //			Serial.printf("DCC++EX has %i refresh slots\n", myParams[1].payload.longVal);
 		break;
@@ -1271,7 +1490,7 @@ uint16_t IoTT_DigitraxBuffers::receiveDCCGeneratorFeedback(lnTransmitMsg txData)
 	}
 	if (sendToWeb)
 		if (millis() < webTimeout)
-			sendDCCCmdToWeb(myParams);
+			sendDCCCmdToWeb(txData);
 	return 0; //not really needed
 }
 
@@ -1279,8 +1498,9 @@ void IoTT_DigitraxBuffers::sendRedHatCmd(char * cmdStr)
 {
 //	Serial.println(cmdStr);
 	reqDCCPeripheralList(cmdStr);
-	webTimeout = millis() + 3000;
+	webTimeout = millis() + 3000; //time window to process reply to web page 
 }
+
 
 void IoTT_DigitraxBuffers::getRedHatConfig(uint16_t filterMask)
 {
@@ -1288,6 +1508,9 @@ void IoTT_DigitraxBuffers::getRedHatConfig(uint16_t filterMask)
 	reqDCCPeripheralList("S");
 	reqDCCPeripheralList("Z");
 	reqDCCPeripheralList("#");
+	reqDCCPeripheralList("JT");
+	reqDCCPeripheralList("JA");
+	reqDCCPeripheralList("JR");
 	webTimeout = millis() + 3000;
 }
 
@@ -1726,7 +1949,7 @@ void IoTT_DigitraxBuffers::processBufferUpdates(lnReceiveBuffer * newData) //pro
 					{
 						uint8_t slotNr = newData->lnData[2];
 						slotData * newSlot = &slotBuffer[slotNr];
-						newData->reqID = ((*newSlot)[0] ^ newData->lnData[3]) & 0x007F; //identify changes in slot status
+						newData->requestID = ((*newSlot)[0] ^ newData->lnData[3]) & 0x007F; //identify changes in slot status
 //						Serial.printf("RDWR %i %i %i %i\n", slotNr, (*newSlot)[0], newData->lnData[3], newData->reqID);
 						memcpy(newSlot[0], &newData->lnData[3], 10);
 						switch (slotNr)
@@ -1745,8 +1968,28 @@ void IoTT_DigitraxBuffers::processBufferUpdates(lnReceiveBuffer * newData) //pro
 								break;
 							case 0x7C: //Programmer
 								if (newData->lnData[0] == 0xE7) //final programmer reply
+								{
+									if (readFullAddr)
+									{
+										uint8_t * progSlot = newSlot[0];
+										if (progSlot[1] == 0)
+										{
+											uint16_t cvNr = ((progSlot[5] & 0x30)<<4) + ((progSlot[5] & 0x01)<<7) + (progSlot[6] & 0x7F);
+											uint8_t cvVal = ((progSlot[5] & 0x02)<<6) +  progSlot[7];
+											uint32_t progData = (cvNr << 16) + cvVal;
+											cvBuffer.push_back(progData);
+											progModeActive = false;
+//  Serial.printf("Prog Stat: %i CV: %i Val: %i Long: %u\n", progSlot[1], cvNr+1, cvVal, progData);
+										}
+										else
+											readFullAddr = false;
+
+
+
+									}
 									if (handleProgrammerEvent)
 										handleProgrammerEvent(newSlot[0]);
+								}
 								break;
 							case 0x7F: //System Configuration
 //								Serial.printf("Bushby Bit is %i \n", getBushbyStatus());
@@ -1935,6 +2178,143 @@ uint8_t IoTT_DigitraxBuffers::getSlotOfAddr(uint8_t locoAddrLo, uint8_t locoAddr
 		return firstFree;
 	}
 	return 0xFF; //no slot available
+}
+
+String IoTT_DigitraxBuffers::getTurnoutInfo(uint16_t id, bool exFormat)
+{
+	char tempBuf[10];
+	char outBuf[150];
+	if (exFormat)
+	{
+		strcpy(outBuf, "jT");
+		if (id == 0)
+		{
+			for (uint16_t i = 0; i < turnoutOutputLen; i++)
+			{
+				sprintf(tempBuf, " %i", turnoutOutputs[i].lnAddr);
+				strcat(outBuf, tempBuf);
+			}
+		}
+		else
+		{
+			for (uint16_t i = 0; i < turnoutOutputLen; i++)
+				if (turnoutOutputs[i].lnAddr == id)
+				{
+					sprintf(outBuf, "jT %i T \"Turnout %i\"", turnoutOutputs[i].lnAddr, turnoutOutputs[i].ardID);
+					break;
+				}
+		}
+		return String(outBuf);
+	}
+	else
+	{
+		String retStr = "";
+		if (turnoutOutputLen > 0)
+		{
+			retStr = "PTL";
+			for (uint16_t i = 0; i < turnoutOutputLen; i++)
+				retStr += "]\\[" + String(turnoutOutputs[i].lnAddr) + "}|{" + String(turnoutOutputs[i].Descr) + "}|{" + ((digitraxBuffer->getSwiPosition(turnoutOutputs[i].lnAddr) > 0) ? "4" : "2");
+//				retStr += "]\\[" + String(turnoutOutputs[i].lnAddr) + "}|{" + ((turnoutOutputs[i].Descr != NULL) ? String(turnoutOutputs[i].Descr) : "IoTT") + "}|{" + ((digitraxBuffer->getSwiPosition(turnoutOutputs[i].lnAddr) > 0) ? "2" : "4");
+		}
+		return retStr;
+	}
+}
+
+String IoTT_DigitraxBuffers::getRouteInfo(uint16_t id, bool exFormat)
+{
+	char tempBuf[10];
+	char outBuf[150];
+	if (exFormat)
+	{
+		if (id == 0)
+		{
+			strcpy(outBuf, "jA");
+			for (uint16_t i = 0; i < routeOutputLen; i++)
+			{
+				sprintf(tempBuf, " %i", automationList[i].ID);
+				strcat(outBuf, tempBuf);
+			}
+		}
+		else
+		{
+			sprintf(outBuf, "jA %i X \"\"", id);
+			for (uint16_t i = 0; i < routeOutputLen; i++)
+				if (automationList[i].ID == id)
+				{
+					sprintf(outBuf, "jA %i %s %s", automationList[i].ID, automationList[i].automationType, automationList[i].Descr);
+					break;
+				}
+		return String(outBuf);
+		}
+	}
+	else
+	{
+		String retStr = "";
+		if (routeOutputLen > 0)
+		{
+			retStr = "PRL" + String(routeOutputLen);
+			for (uint16_t i = 0; i < routeOutputLen; i++)
+			{
+				sprintf(outBuf, "]\\[%i}|{%s}|{1", automationList[i].ID, automationList[i].Descr);
+				retStr += String(outBuf);
+			}
+		}
+		return retStr;
+	}
+}
+
+String IoTT_DigitraxBuffers::getRosterInfo(uint16_t id, bool exFormat)
+{
+	char tempBuf[10];
+	char outBuf[150];
+	if (exFormat)
+	{
+		if (id == 0)
+		{
+			strcpy(outBuf, "jR");
+			for (uint16_t i = 0; i < rosterList.size(); i++)
+			{
+				sprintf(tempBuf, " %i", rosterList[i].ID);
+				strcat(outBuf, tempBuf);
+			}
+		}
+		else
+		{
+//			sprintf(outBuf, "jR %i \"unknown\" \"loco\"", id);
+			for (uint16_t i = 0; i < rosterList.size(); i++)
+				if (rosterList[i].ID == id)
+				{
+					sprintf(outBuf, "jR %i %s %s", rosterList[i].ID, rosterList[i].Description, rosterList[i].FunctionMap);
+					break;
+				}
+		}
+		return String(outBuf);
+	}
+	else
+	{
+		String retStr = "RL" + String(rosterList.size());
+		if (rosterList.size() > 0)
+			for (uint16_t i = 0; i < rosterList.size(); i++)
+			{
+				sprintf(outBuf, "]\\[%s}|{%i}|{%c", rosterList[i].Description, rosterList[i].ID, rosterList[i].ID > 127 ? 'L' : 'S');
+				retStr += String(outBuf);
+			}
+		return retStr;
+	}
+}
+
+String IoTT_DigitraxBuffers::getSensorInfo(uint16_t id, bool exFormat)
+{
+	char outBuf[50];
+	if (id == 0xFFFF)
+	{
+		return String(sensorInputLen);
+	}
+	else
+	{
+		sprintf(outBuf, "Q %i %i %i", sensorInputs[id].ardID, sensorInputs[id].ardPin, sensorInputs[id].posLogic);
+		return String(outBuf);
+	}
 }
 
 uint16_t IoTT_DigitraxBuffers::getAddrOfSlot(uint8_t slotNr)
@@ -2148,14 +2528,14 @@ void IoTT_DigitraxBuffers::processSlotManager(lnReceiveBuffer * newData) //proce
 							prepLACKMsg(&txBuffer, 0x6F, 0x7F); //mode not supported
 							break;
 						}
-						if (progMode && ((PCMD & 0x04) == 0))
+						if (progModeActive && ((PCMD & 0x04) == 0))
 						{
 //							Serial.println("prog busy");
 							prepLACKMsg(&txBuffer, 0x6F, 0x00); //programmer track busy
 							break;
 						}
-						progMode = ((PCMD & 0x04) == 0) || ((PCMD & 0x0C) == 0x0C); //only wait for response if SM or Ops with feedback
-						if (progMode)
+						progModeActive = ((PCMD & 0x04) == 0) || ((PCMD & 0x0C) == 0x0C); //only wait for response if SM or Ops with feedback
+						if (progModeActive)
 						{
 							memcpy(&progSlot[0], &newData->lnData[3], 10);
 							progSent = millis();
@@ -2263,6 +2643,7 @@ bool IoTT_DigitraxBuffers::processDCCGenerator(lnReceiveBuffer * newData)
 							{
 //								Serial.printf("Programming task %2X %2X\n", newData->lnData[0],newData->lnData[1]);
 								setDCCProgrammingCmd(newData->lnData[3], ((newData->lnData[5]<<7) + newData->lnData[6]), ((newData->lnData[8] & 0x30)<<4) + ((newData->lnData[8] & 0x01)<< 7) + newData->lnData[9], ((newData->lnData[8] & 0x02)<< 6) + newData->lnData[10], newData->lnData[11], newData->lnData[12]);
+//								progModeActive = true;
 							}
 							break;
 						default: 
@@ -2345,7 +2726,7 @@ void IoTT_DigitraxBuffers::setSlotDirfSpeed(lnReceiveBuffer * newData)
 			{
 				focusSlot = newData->lnData[1];
 				focusNextAddr = false;
-				Serial.printf("Set focus Slot %i\n", focusSlot);
+//				Serial.printf("Set focus Slot %i\n", focusSlot);
 			}
 //			else
 //				Serial.printf("Slot %i not initialized\n", focusSlot);
@@ -2359,16 +2740,16 @@ void IoTT_DigitraxBuffers::setSlotDirfSpeed(lnReceiveBuffer * newData)
 				break;
 			case 0xA1: //OPC_LOCO_DIRF
 			{
-				newData->reqID = ((*thisSlot)[DIRF] ^ newData->lnData[2]) & 0x003F; //mark the bits that change for updating DCC
+				newData->requestID = ((*thisSlot)[DIRF] ^ newData->lnData[2]) & 0x003F; //mark the bits that change for updating DCC
 				(*thisSlot)[DIRF] = (newData->lnData[2] & 0x3F); //update with new data
 				if (isCommandStation)
 				{
-					if ((newData->reqID & 0x20) > 0) //Direction Change
+					if ((newData->requestID & 0x20) > 0) //Direction Change
 					{
 						(*thisSlot)[DIRF] ^= 0x20; //turn back, so it can be turned again
 						iterateMULinks(newData->lnData[1], (*thisSlot)[SPD] | 0x80);
 					}
-					if ((newData->reqID & 0x1F) > 0) //Function Change
+					if ((newData->requestID & 0x1F) > 0) //Function Change
 						if (isCommandStation)
 							setDCCFuncCmd(newData->lnData[1], &newData->lnData[0]); //light and func 1-4
 				}	
@@ -2377,10 +2758,10 @@ void IoTT_DigitraxBuffers::setSlotDirfSpeed(lnReceiveBuffer * newData)
 			}
 			case 0xA2: //OPC_LOCO_SND
 			{
-				newData->reqID = ((*thisSlot)[7] ^ newData->lnData[2]) & 0x000F;
+				newData->requestID = ((*thisSlot)[7] ^ newData->lnData[2]) & 0x000F;
 			    (*thisSlot)[7] = newData->lnData[2] & 0x0F;
 				if (isCommandStation)
-					if ((newData->reqID & 0x0F) > 0) //Function Change
+					if ((newData->requestID & 0x0F) > 0) //Function Change
 						setDCCFuncCmd(newData->lnData[1], &newData->lnData[0]); //light and func 1-4
 				break; 
 			}
@@ -2390,16 +2771,16 @@ void IoTT_DigitraxBuffers::setSlotDirfSpeed(lnReceiveBuffer * newData)
 			}
 			case 0xB5: //OPC_SLOT_STAT1 
 //				Serial.println("slot stat1");
-				newData->reqID = ((*thisSlot)[0] ^ newData->lnData[2]) & 0x007F;
+				newData->requestID = ((*thisSlot)[0] ^ newData->lnData[2]) & 0x007F;
 			    (*thisSlot)[0] = newData->lnData[2];
 				break;
 			case 0xB6: //OPC_CONSIST_FUNC 
 				if ((*thisSlot)[0] & 0x40) //UPLINKED
 				{
-					newData->reqID = ((*thisSlot)[3] ^ newData->lnData[2]) & 0x000F;
+					newData->requestID = ((*thisSlot)[3] ^ newData->lnData[2]) & 0x000F;
 					(*thisSlot)[3] = newData->lnData[2];
 					if (isCommandStation)
-						if ((newData->reqID & 0x0F) > 0) //Function Change
+						if ((newData->requestID & 0x0F) > 0) //Function Change
 							setDCCFuncCmd(newData->lnData[1], &newData->lnData[0]); //light and func 1-4
 				}
 				break;

@@ -71,10 +71,10 @@ bool convertMQTTtoLN(lnReceiveBuffer* recData, char* topic, byte* payload, unsig
 					for (int j=0; j < recData->lnMsgSize; j++)  
 						recData->lnData[j] = doc["Data"][j];
 					if (doc.containsKey("ReqID"))
-						recData->reqID = (uint16_t) doc["ReqID"];
+						recData->requestID = (uint16_t) doc["ReqID"];
 					else
-						recData->reqID = 0;
-					recData->reqID &= 0x0FFF; //clear any bits in the routing space
+						recData->requestID = 0;
+					recData->requestID &= 0xF0FF; //clear any bits in the routing space
 					if (doc.containsKey("ReqRespTime"))
 						recData->reqRespTime = doc["ReqRespTime"];
 					else
@@ -89,17 +89,6 @@ bool convertMQTTtoLN(lnReceiveBuffer* recData, char* topic, byte* payload, unsig
 						recData->echoTime = 0;
 					recData->msgType = doc["MsgType"];
 					recData->errorFlags = 0;
-/*
-					if (strcmp(sentFrom.c_str(), thisNodeName) == 0)
-					{
-						recData->errorFlags |= msgEcho;
-						recData->echoTime = micros() - recData->reqRecTime;
-						recData->reqID &= 0x0FFF; //clear flag to transmit to App
-//						Serial.println(recData->errorFlags);
-					}
-					else
-						recData->reqID |= 0x2000;
-*/
 //					Serial.printf("MQTT Rx %2X\n", recData->lnData[0]);
 					return true;
 				}
@@ -125,11 +114,12 @@ void lnGatewayCallback(char* topic, byte* payload, unsigned int length)
 	if (!brokerTopics) return;
 //	Serial.println("lnGatewayCallback");
 	lnReceiveBuffer recData;
-	recData.reqID &= 0x0FFF;
-	recData.reqID |= 0x2000; //routing flag
+	recData.requestID &= 0x00FF;
+	recData.requestID |= fromMQTTGW;
+	recData.requestID |= dirUpstream;
 	lnTransmitMsg* txData = (lnTransmitMsg*)&recData;
 	if (convertMQTTtoLN(&recData, topic, payload, length, brokerTopics, false))
-		sendMsg(*txData); //MQTT gateway. Send message to Loconet, distribute return inside noe, but not to MQTT
+		sendMsg(*txData); //MQTT gateway. Send message to command source
 }
 
 /*
@@ -251,7 +241,7 @@ void MQTTESP32::loadMQTTCfgJSON(DynamicJsonDocument doc)
 
 void MQTTESP32::sendDCCMsg(char * msgStr)
 {
-	if (workMode == 1)
+	if (workMode == 4) //MQTT DCC Gateway
 		publish(myTopics.dccTopic, msgStr);
 }
 
@@ -262,7 +252,7 @@ bool MQTTESP32::connectToBroker()
 	if (connect(myTopics.thisNodeName, mqtt_user, mqtt_password)) 
 	{
 		// ... and resubscribe
-		if ((workMode == 0) || (workMode == 3))
+		if ((workMode == 0) || (workMode == 1) || (workMode == 3))
 			subscribeTopics();
 		else //or cause main app to have libraries to resubscribe
 			subscriptionsOK = false;
@@ -278,12 +268,17 @@ bool MQTTESP32::connectToBroker()
 
 void MQTTESP32::subscribeTopics()
 {
-	Serial.println("Subscribe topics");
-	if ((workMode == 0) || (workMode == 3)) //LN or DCC from MQTT
+	Serial.printf("Subscribe topics WorkMode %i\n", workMode);
+	if ((workMode == 0) || (workMode == 1) || (workMode == 3)) //LN or DCC from MQTT
 	{
-		subscribe(myTopics.bcTopic);
+		if ((workMode == 0) || (workMode == 3))
+		{
+			subscribe(myTopics.bcTopic);
+			subscribe(myTopics.echoTopic);
+		}
+		else
+			subscribe(myTopics.dccTopic);
 		subscribe(myTopics.pingTopic);
-		subscribe(myTopics.echoTopic);
 	}
 	subscriptionsOK = true;
 }
@@ -306,7 +301,7 @@ int16_t MQTTESP32::lnWriteMsg(lnTransmitMsg* txData)
 //		Serial.println();
 		transmitQueue[hlpQuePtr].msgType = txData->msgType;
 		transmitQueue[hlpQuePtr].lnMsgSize = txData->lnMsgSize;
-		transmitQueue[hlpQuePtr].reqID = txData->reqID;
+		transmitQueue[hlpQuePtr].requestID = txData->requestID;
 		transmitQueue[hlpQuePtr].reqRecTime = micros();
 		memcpy(transmitQueue[hlpQuePtr].lnData, txData->lnData, lnMaxMsgSize); //txData.lnMsgSize);
 		transmitQueue[hlpQuePtr].reqRespTime = 0;
@@ -335,7 +330,7 @@ int16_t MQTTESP32::lnWriteMsg(lnReceiveBuffer* txData)
 //		Serial.println();
 		transmitQueue[hlpQuePtr].msgType = txData->msgType;
 		transmitQueue[hlpQuePtr].lnMsgSize = txData->lnMsgSize;
-		transmitQueue[hlpQuePtr].reqID = txData->reqID;
+		transmitQueue[hlpQuePtr].requestID = txData->requestID;
 		transmitQueue[hlpQuePtr].reqRecTime = micros();
 		memcpy(transmitQueue[hlpQuePtr].lnData, txData->lnData, lnMaxMsgSize); //txData.lnMsgSize);
 		transmitQueue[hlpQuePtr].reqRespTime = txData->reqRespTime;
@@ -395,7 +390,7 @@ bool MQTTESP32::sendMQTTMessage(lnReceiveBuffer txData)
     doc["ReqRecTime"] = txData.reqRecTime;
     doc["ReqRespTime"] = txData.reqRespTime;
     doc["EchoTime"] = txData.echoTime;
-    doc["ReqID"] = txData.reqID & 0x0FFF; //clear routing flags
+    doc["ReqID"] = txData.requestID & 0x00FF; //clear routing flags --- needs more work
     doc["ErrorFlags"] = txData.errorFlags;
     switch (txData.msgType)
     {
@@ -424,12 +419,8 @@ bool MQTTESP32::sendMQTTMessage(lnReceiveBuffer txData)
 //	Serial.println(myMqttMsg);
 
     if (connected())
-    {
-        if (!publish(myTopics.bcTopic, myMqttMsg))
-			return false; //changed from true
-        else 
+        if (publish(myTopics.bcTopic, myMqttMsg))
 			return true;
-    }
 	return false; //changed from true
 }
 
@@ -463,9 +454,9 @@ void MQTTESP32::processLoop()
     } 
     else
     {
-      // Client connected
+      // Client is connected
 		loop();
-		if ((workMode == 0) || (workMode == 3))
+		if ((workMode == 0) || (workMode == 3)) //3
 			if (que_wrPos != que_rdPos)
 			{
 //				Serial.println("sendMQTTMessage");
@@ -484,3 +475,6 @@ void MQTTESP32::processLoop()
 	yield();
 }
 
+/*
+{"From":"LNCTC1197515044","ReqRecTime":328447087,"ReqRespTime":3324,"EchoTime":328446940,"ReqID":3970,"ErrorFlags":16,"MsgType":"LN","Valid":1,"Data":[129,126]}
+*/

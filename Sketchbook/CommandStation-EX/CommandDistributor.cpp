@@ -118,12 +118,6 @@ void  CommandDistributor::broadcastLoco(byte slot) {
 #endif
 }
 
-void CommandDistributor::broadcastCurrent(uint8_t track, uint16_t value)
-{
-  StringFormatter::send(broadcastBufferWriter,F("<a %d %d>\n"), track, value);
-  broadcast(false);
-}
-
 void  CommandDistributor::broadcastPower() {
   bool main=DCCWaveform::mainTrack.getPowerMode()==POWERMODE::ON;
   bool prog=DCCWaveform::progTrack.getPowerMode()==POWERMODE::ON;

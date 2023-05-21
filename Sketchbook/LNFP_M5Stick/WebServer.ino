@@ -7,6 +7,7 @@ uint32_t sendDataTimer = millis(); //timer used for periodic message sent over w
 #define strBufLen 40
 typedef struct
 {
+  AsyncWebSocketClient * targetClient;
   char fileName[strBufLen];
   char fileNameType[strBufLen];
   char cmdType[strBufLen];
@@ -174,7 +175,9 @@ void processStatustoWebClient()
 
   serializeJson(doc, myStatusMsg);
 //  Serial.println(myStatusMsg);
-  globalClient->text(myStatusMsg);
+
+  for (int i = 0; i < globalClients.size(); i++)
+    globalClients[i].wsClient->text(myStatusMsg);
   lastWifiUse = millis();
 //  Serial.println("Keep alive done");
 }
@@ -196,23 +199,25 @@ void sendKeepAlive()
   else
     if (millis() > keepAlive)
     {
-      if (globalClient != NULL)
+      if (globalClients.size() > 0)
         processStatustoWebClient();
       keepAlive += keepAliveInterval;
     }
 }
 
-void sendCTS()
+void sendCTS(AsyncWebSocketClient * client)
 {
-  globalClient->text("{\"Cmd\":\"CTS\"}");
+  client->text("{\"Cmd\":\"CTS\"}");
 }
 
-void sendEndConnection()
+/*
+void sendEndConnection(AsyncWebSocketClient * client)
 {
-  globalClient->text("{\"Cmd\":\"EOT\"}");
+  client->text("{\"Cmd\":\"EOT\"}");
 }
+*/
 
-bool addFileToTx(String fileName, int fileIndex, String cmdType, uint8_t multiModeStatus) //0: single file, 1: add multi file 2: reset multifile list 3: write multifile to disk
+bool addFileToTx(AsyncWebSocketClient * toClient, String fileName, int fileIndex, String cmdType, uint8_t multiModeStatus) //0: single file, 1: add multi file 2: reset multifile list 3: write multifile to disk
 {
   int tmpWrPtr = (fileListWrPtr + 1) % outListLen;
   if (tmpWrPtr != fileListRdPtr) //protect override
@@ -223,6 +228,7 @@ bool addFileToTx(String fileName, int fileIndex, String cmdType, uint8_t multiMo
       thisFileName += String(fileIndex);
     thisFileName += configDotExt;
     outFileList[tmpWrPtr].multiFileMode = multiModeStatus;
+    outFileList[tmpWrPtr].targetClient = toClient;
     cmdType.toCharArray(outFileList[tmpWrPtr].cmdType, strBufLen);
     fileName.toCharArray(outFileList[tmpWrPtr].fileNameType, strBufLen);
 //    Serial.println(thisFileName);
@@ -281,8 +287,9 @@ void sendJSONFile(int thisFileIndex)
   }
   strcat(wsTxBuffer, "}");
 //  Serial.println(wsTxBuffer);
-  if (globalClient != NULL)
-    globalClient->text(wsTxBuffer);
+    outFileList[thisFileIndex].targetClient->text(wsTxBuffer);
+//    for (int8_t i = 0; i < globalClients.size(); i++)
+//      globalClients[i].wsClient->text(wsTxBuffer);
 }
 
 uint32_t createCfgEntryByName(String fileName, String cmdType, char * toBuffer)
@@ -344,8 +351,8 @@ void processWsMessage(char * newMsg, int msgLen, AsyncWebSocketClient * client)
 {
 //  Serial.println(newMsg);
 //  Serial.println(String(ESP.getFreeHeap()));
-  int docSize = 4096;
 //  Serial.println(String(ESP.getMaxAllocHeap()));
+  int docSize = 4096;
   DynamicJsonDocument doc(docSize);
 //  Serial.println(String(ESP.getFreeHeap()));
   char duplMsg[strlen(newMsg) + 1];
@@ -384,69 +391,68 @@ void processWsMessage(char * newMsg, int msgLen, AsyncWebSocketClient * client)
         uint16_t fileSelector = 0xFFFF;
         if (doc.containsKey("Type"))
           fileSelector = doc["Type"];
-        addFileToTx("", 0, "pgStartFile", 2); //reset file list
+        addFileToTx(client, "", 0, "pgStartFile", 2); //reset file list
         if (fileSelector & 0x0001)  
-          addFileToTx("node", 0, "pgNodeCfg", 1); //add file
         if (fileSelector & 0x0002)  
-          addFileToTx("mqtt", 0, "pgMQTTCfg", 1); //add file
+          addFileToTx(client, "mqtt", 0, "pgMQTTCfg", 1); //add file
         if (fileSelector & 0x0004)  
-          addFileToTx("usb", 0, "pgUSBCfg", 1);
+          addFileToTx(client, "usb", 0, "pgUSBCfg", 1);
         if (fileSelector & 0x0010)  
-          addFileToTx("btn", 0, "pgHWBtnCfg", 1);
+          addFileToTx(client, "btn", 0, "pgHWBtnCfg", 1);
         if (fileSelector & 0x0100)  
-          addFileToTx("btn", 0, "pgThrottleCfg", 1);
+          addFileToTx(client, "btn", 0, "pgThrottleCfg", 1);
         int fileCtr = 0;
         if (fileSelector & 0x0200)  
         {
-          if (addFileToTx("greenhat", 0, "pgGreenHatCfg", 1))
+          if (addFileToTx(client, "greenhat", 0, "pgGreenHatCfg", 1))
           {
             uint8_t modNr = 0;
             if (doc.containsKey("ModuleNr"))
               modNr = doc["ModuleNr"];
             String fileNameStr = "gh/" + String(modNr);
-//            addFileToTx(fileNameStr + "/switches", 0, "pgSwitchCfg", 1);
-//            addFileToTx(fileNameStr + "/btn", 0, "pgHWBtnCfg", 1);
+//            addFileToTx(client, fileNameStr + "/switches", 0, "pgSwitchCfg", 1);
+//            addFileToTx(client, fileNameStr + "/btn", 0, "pgHWBtnCfg", 1);
 
             fileCtr = 0;
-            while (addFileToTx(fileNameStr + "/switches", fileCtr, "pgSwitchCfg", 1))
+            while (addFileToTx(client, fileNameStr + "/switches", fileCtr, "pgSwitchCfg", 1))
               fileCtr++;
             fileCtr = 0;
-            while (addFileToTx(fileNameStr + "/btn", fileCtr, "pgHWBtnCfg", 1))
+            while (addFileToTx(client, fileNameStr + "/btn", fileCtr, "pgHWBtnCfg", 1))
               fileCtr++;
             fileCtr = 0;
-            while (addFileToTx(fileNameStr + "/btnevt", fileCtr, "pgBtnHdlrCfg", 1))
+            while (addFileToTx(client, fileNameStr + "/btnevt", fileCtr, "pgBtnHdlrCfg", 1))
               fileCtr++;
-//            addFileToTx(fileNameStr + "/btnevt", 0, "pgBtnHdlrCfg", 1);
+//            addFileToTx(client, fileNameStr + "/btnevt", 0, "pgBtnHdlrCfg", 1);
 
             fileCtr = 0;
-            while (addFileToTx(fileNameStr + "/led", fileCtr, "pgLEDCfg", 1))
+            while (addFileToTx(client, fileNameStr + "/led", fileCtr, "pgLEDCfg", 1))
               fileCtr++;
-//            addFileToTx(fileNameStr + "/led", 0, "pgLEDCfg", 1);
+//            addFileToTx(client, fileNameStr + "/led", 0, "pgLEDCfg", 1);
           }
         }
         if (fileSelector & 0x0400)  
-          addFileToTx("lbserver", 0, "pgLBSCfg", 1);
+          addFileToTx(client, "lbserver", 0, "pgLBSCfg", 1);
         if (fileSelector & 0x0800)  
-          addFileToTx("vwcfg", 0, "pgVoiceWCfg", 1);
+          addFileToTx(client, "vwcfg", 0, "pgVoiceWCfg", 1);
         if (fileSelector & 0x1000)  
-          addFileToTx("rhcfg", 0, "pgRedHatCfg", 1);
+          addFileToTx(client, "rhcfg", 0, "pgRedHatCfg", 1);
         if (fileSelector & 0x2000)  
-          addFileToTx("phcfg", 0, "pgPrplHatCfg", 1);
+          addFileToTx(client, "phcfg", 0, "pgPrplHatCfg", 1);
         if (fileSelector & 0x4000)  
-          addFileToTx("wiclient", 0, "pgWiCfg", 1);
+          addFileToTx(client, "wiclient", 0, "pgWiCfg", 1);
         fileCtr = 0;
         if (fileSelector & 0x0020)  
-          while (addFileToTx("led", fileCtr, "pgLEDCfg", 1))
+          while (addFileToTx(client, "led", fileCtr, "pgLEDCfg", 1))
             fileCtr++;
         fileCtr = 0;
         if (fileSelector & 0x0040)  
-          while (addFileToTx("btnevt", fileCtr, "pgBtnHdlrCfg", 1))
+          while (addFileToTx(client, "btnevt", fileCtr, "pgBtnHdlrCfg", 1))
             fileCtr++;
         fileCtr = 0;
         if (fileSelector & 0x0080)  
-          while (addFileToTx("secel", fileCtr, "pgSecElCfg", 1))
+          while (addFileToTx(client, "secel", fileCtr, "pgSecElCfg", 1))
             fileCtr++;
-        addFileToTx("", 0, "pgWriteFile", 3); //Write file to disk
+        addFileToTx(client, "", 0, "pgWriteFile", 3); //Write file to disk
       }
 
       if (thisCmd == "ReqStats") //Request Technical data
@@ -454,7 +460,13 @@ void processWsMessage(char * newMsg, int msgLen, AsyncWebSocketClient * client)
 
       if (thisCmd == "CfgData") //Config Request Format: {"Cmd":"CfgData", "Type":"pgxxxxCfg", "FileName":"name"}
       {
+//        Serial.println(espconn_tcp_get_max_con_allow());
+//        Serial.println(espconn_tcp_get_max_con());
         String cmdType = doc["Type"];
+        int8_t thisClient = getWSClient(client->id()); 
+        if (thisClient >= 0)
+          strcpy(globalClients[thisClient].pageName, cmdType.c_str());
+//        Serial.printf("%i %s \n", thisClient, cmdType);
         if (cmdType == "pgLNViewer")
           return;
         if (cmdType == "pgDCCViewer")
@@ -464,7 +476,7 @@ void processWsMessage(char * newMsg, int msgLen, AsyncWebSocketClient * client)
 
         String fileName = doc["FileName"];
         int fileCtr = 0;
-        while (addFileToTx(fileName, fileCtr, cmdType, 0))
+        while (addFileToTx(client, fileName, fileCtr, cmdType, 0))
           fileCtr++;
       }
       if (thisCmd == "CfgUpdate") //Config Request Format: {"Cmd":"CfgData", "Type":"pgxxxxCfg", "FileType":"xxxx", "FileName":"nnnnx.cfg", "Data":{}}
@@ -473,13 +485,13 @@ void processWsMessage(char * newMsg, int msgLen, AsyncWebSocketClient * client)
         const char *  cmdType = doc["Type"];
         const char * fileStr = doc["Data"];
         const char *  fileName = doc["FileName"];
-        const char *  fileNameType = doc["FileNameType"];
+        const char *  fileNameType = doc["Fi//leNameType"];
         int fileIndex = doc["Index"];
         if (strcmp(cmdType, "pgDelete") == 0)
         {
           deleteAllFiles(fileNameType, configDir, configExt, false);
           freeObjects();
-          sendCTS();
+          sendCTS(client);
           return;
         }
         writeJSONFile(configDir + "/" + fileName, fileStr);
@@ -488,7 +500,7 @@ void processWsMessage(char * newMsg, int msgLen, AsyncWebSocketClient * client)
           prepareShutDown();
           delay(500);
           Serial.println("Restart ESP");
-          sendCTS();
+          sendCTS(client);
           delay(100);
           ESP.restart(); //configuration update requires restart to be sure dynamic allocation of objects is not messed up
         }
@@ -498,13 +510,13 @@ void processWsMessage(char * newMsg, int msgLen, AsyncWebSocketClient * client)
             prepareShutDown();
             delay(500);
             Serial.println("Reboot ESP");
-            sendCTS();
+            sendCTS(client);
             delay(100);
             ESP.restart(); //configuration update requires restart to be sure dynamic allocation of objects is not messed up
           }
 //          else
 //            Serial.println("No Reboot needed");
-        sendCTS();
+        sendCTS(client);
       }
       if (thisCmd == "SetSensor")  
       {
@@ -522,13 +534,23 @@ void processWsMessage(char * newMsg, int msgLen, AsyncWebSocketClient * client)
             if (trainSensor) 
             {
               uint16_t repRate = doc["Val"];
-              trainSensor->setRepRate(globalClient, repRate);
+              int8_t nextClient = getWSClientByPage(0, "pgPrplHatCfg");
+              while (nextClient >= 0)
+              {
+                trainSensor->setRepRate(globalClients[nextClient].wsClient, repRate);
+                nextClient = getWSClientByPage(nextClient, "pgPrplHatCfg");
+              }
             }
           if (subCmd == "SetDCC")
             if (trainSensor)
             {
               int16_t dccAddr = doc["Addr"];
-              trainSensor->reqDCCAddrWatch(globalClient, dccAddr, useInterface.devId == 17); //17: WiThrottle Client
+              int8_t nextClient = getWSClientByPage(0, "pgPrplHatCfg");
+              while (nextClient >= 0)
+              {
+                trainSensor->reqDCCAddrWatch(globalClients[nextClient].wsClient, dccAddr, useInterface.devId == 17); //17: WiThrottle Client
+                nextClient = getWSClientByPage(nextClient, "pgPrplHatCfg");
+              }
             }
           if (subCmd == "RunTest")
             if (trainSensor)
@@ -615,8 +637,35 @@ void processWsMessage(char * newMsg, int msgLen, AsyncWebSocketClient * client)
           }
         }
       }
-      
-    }
+      if (thisCmd == "LNOut")  
+      {
+//        Serial.println("Send LN");
+        switch (useInterface.devId)
+        {
+          case 2:;
+          case 3:;
+          case 12:;
+          case 16:
+          {
+            JsonArray lnData = doc["Data"];
+            lnTransmitMsg txData;
+            for (int i = 0; i < lnData.size(); i++)
+              txData.lnData[i] = lnData[i];
+            txData.lnMsgSize = ((txData.lnData[0] & 0x60) >> 4) + ((txData.lnData[0] & 0x80) >> 7); //-1 for indexing
+            txData.lnMsgSize++;
+            setXORByte(&txData.lnData[0]);
+
+//  Serial.printf("Msg Len %i\n", txData.lnMsgSize);
+//  for (uint8_t i = 0; i < txData.lnMsgSize; i++)
+//    Serial.printf("%2X ", txData.lnData[i]);
+//  Serial.println();
+            
+            sendMsg(txData);
+          }
+          break;
+        }
+      }
+    } 
   } 
   else
     Serial.printf("processWsMessage deserializeJson() wsProcessing failed: %s\n", error.c_str());
@@ -625,21 +674,31 @@ void processWsMessage(char * newMsg, int msgLen, AsyncWebSocketClient * client)
 
 void onWsEvent(AsyncWebSocket * server, AsyncWebSocketClient * client, AwsEventType type, void * arg, uint8_t *data, size_t len)
 {
+  int8_t currClient = -1;  
+
   lastWifiUse = millis();
 //  Serial.printf("WS Event %i \n", globalClient);
   switch (type)
   {
     case WS_EVT_CONNECT:
       {
-        globalClient = client;
+        wsClientInfo thisClient;
+        thisClient.wsClient = client;
+        thisClient.pageName[0] = '\0'; 
+        globalClients.push_back(thisClient);
         keepAlive = millis() + 500;
         Serial.printf("Websocket client connection received from %u\n", client->id());
         break;
       }
     case WS_EVT_DISCONNECT:
       {
-        globalClient = NULL;
-        Serial.println("Client disconnected");
+//        globalClient = NULL;
+        currClient = getWSClient(client->id());
+        if (currClient >= 0)
+        {
+          Serial.printf("Websocket client disconnected from %u\n", client->id());
+          globalClients.erase(globalClients.begin() + currClient);
+        }
         break;
       }
     case WS_EVT_DATA:

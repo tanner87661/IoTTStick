@@ -82,7 +82,12 @@ void LocoNetESPSerial::begin()
 
 void LocoNetESPSerial::setNetworkType(nodeType newNwType)
 {
-	hybrid_setNetworkType(newNwType);
+	hybrid_setNetworkType(newNwType); //activate insertion of OPC_BUSY
+}
+
+void LocoNetESPSerial::setUpstreamMode(bool newMode)
+{
+	upStreamMode = newMode; //select callback message
 }
 
 void LocoNetESPSerial::loadLNCfgJSON(DynamicJsonDocument doc)
@@ -105,7 +110,7 @@ uint16_t LocoNetESPSerial::lnWriteMsg(lnTransmitMsg* txData)
     if (hlpQuePtr != que_rdPos) //override protection
     {
 		transmitQueue[hlpQuePtr].lnMsgSize = txData->lnMsgSize;
-		transmitQueue[hlpQuePtr].reqID = txData->reqID;
+		transmitQueue[hlpQuePtr].requestID = txData->requestID;
 		transmitQueue[hlpQuePtr].reqRecTime = micros();
 		memcpy(transmitQueue[hlpQuePtr].lnData, txData->lnData, txData->lnMsgSize);
 		if ((!hybrid_getBusyMode()) || (txData->lnData[0] != 0x81)) //do not insert busy commands from outside if in busy mode
@@ -132,7 +137,7 @@ uint16_t LocoNetESPSerial::lnWriteMsg(lnReceiveBuffer* txData)
     if (hlpQuePtr != que_rdPos) //override protection
     {
 		transmitQueue[hlpQuePtr].lnMsgSize = txData->lnMsgSize;
-		transmitQueue[hlpQuePtr].reqID = txData->reqID;
+		transmitQueue[hlpQuePtr].requestID = txData->requestID;
 		transmitQueue[hlpQuePtr].reqRecTime = micros();
 		memcpy(transmitQueue[hlpQuePtr].lnData, txData->lnData, txData->lnMsgSize);
 		if ((!hybrid_getBusyMode()) || (txData->lnData[0] != 0x81)) //do not insert busy commands from outside if in busy mode
@@ -181,12 +186,13 @@ uint16_t LocoNetESPSerial::lnWriteReply(lnTransmitMsg* txData)
 */
 }
 
-/*
-void LocoNetESPSerial::setLNCallback(cbFct newCB)
+void LocoNetESPSerial::execLNCallback(lnReceiveBuffer * recData)
 {
-	lnCallback = newCB;
+	if (upStreamMode)
+		callbackLocoNetMessageUpstream(recData);
+	else
+		callbackLocoNetMessage(recData);
 }
-*/
 
 void LocoNetESPSerial::processLNMsg(lnReceiveBuffer * recData)
 {
@@ -194,7 +200,7 @@ void LocoNetESPSerial::processLNMsg(lnReceiveBuffer * recData)
 //	Serial.printf("LN Rx %2X %i\n", recData->lnData[0], recData->errorFlags);
 //	if (lnCallback != NULL)
 //		lnCallback(recData);
-	callbackLocoNetMessage(recData);
+	execLNCallback(recData);
 }
 
 void LocoNetESPSerial::handleLNIn(uint8_t inData, uint8_t inFlags) //called for stuff that comes in through the HW uart
@@ -225,7 +231,7 @@ void LocoNetESPSerial::handleLNIn(uint8_t inData, uint8_t inFlags) //called for 
     lnInBuffer.echoTime = 0;
 	lnInBuffer.reqRespTime = 0;
 	lnInBuffer.reqRecTime = 0;
-	lnInBuffer.reqID = 0;
+	lnInBuffer.requestID = 0;
     if (bitRecStatus == 1) //awaiting data bytes but received OpCode
     {
       //incomplete message
@@ -284,12 +290,12 @@ void LocoNetESPSerial::handleLNIn(uint8_t inData, uint8_t inFlags) //called for 
 		
 		if (((lnInBuffer.errorFlags & msgEcho) > 0) || (((respOpCode & 0x08) > 0) && ((lnInBuffer.lnData[0]==0xB4) || (lnInBuffer.lnData[0]==0xE7) || (lnInBuffer.lnData[0]==0x81)) && ((lnInBuffer.errorFlags & msgEcho) == 0))) 
 		{
-			lnInBuffer.reqID = respID;
+			lnInBuffer.requestID = respID;
 			lnInBuffer.reqRespTime = micros() - respTime;
 		}
 		else
 		{
-			lnInBuffer.reqID = 0;
+			lnInBuffer.requestID = 0;
 			lnInBuffer.reqRespTime = 0;
 		}
 //		processLNMsg(&lnEchoBuffer);
@@ -297,12 +303,13 @@ void LocoNetESPSerial::handleLNIn(uint8_t inData, uint8_t inFlags) //called for 
 		//if limitedMaster, set flag to insert OPC_BUSY messages while waiting for response from application side (CS or MQTT)
 		if ((hybrid_getNetworkType() != standardMode) && (lnInBuffer.errorFlags & msgEcho) == 0) //received from LocoNet
 			if ((lnInBuffer.lnData[0] & 0x08) > 0)
-				hybrid_setBusyMode(true); //(dataByte[0] & 0x08) > 0); Puts hgybrid in autonmous OPC_BUSY transmit mode while active
+				hybrid_setBusyMode(true); //(dataByte[0] & 0x08) > 0); Puts hybrid in autonmous OPC_BUSY transmit mode while active
 		if ((lnInBuffer.lnData[0] != 0x81) || (hybrid_getNetworkType() == standardMode))
 		{
 			processLNMsg(&lnInBuffer); //don't send OPC_BUSY in  master mode
 		}
         lnBufferPtr = 0;
+        lnInBuffer.errorFlags = 0;
         bitRecStatus = 0; //awaiting OpCode
       }  
     }
@@ -312,7 +319,7 @@ void LocoNetESPSerial::handleLNIn(uint8_t inData, uint8_t inFlags) //called for 
 		lnInBuffer.errorFlags |= msgStrayData;
 		lnInBuffer.lnMsgSize = 1;
 		lnInBuffer.echoTime = 0;
-		lnInBuffer.reqID = 0;
+		lnInBuffer.requestID = 0;
 		lnInBuffer.reqRecTime = 0;
 		lnInBuffer.reqRespTime = micros();
 		lnBufferPtr = 0;
@@ -332,7 +339,7 @@ void LocoNetESPSerial::processLoopBack()
 		que_rdPos = (que_rdPos + 1) % queBufferSize;
 		recData.msgType = LocoNet;
 		recData.lnMsgSize = transmitQueue[que_rdPos].lnMsgSize;
-		recData.reqID = transmitQueue[que_rdPos].reqID;
+		recData.requestID = transmitQueue[que_rdPos].requestID;
 		recData.reqRecTime = micros();
 		recData.errorFlags = msgEcho;
 		memcpy(recData.lnData, transmitQueue[que_rdPos].lnData, transmitQueue[que_rdPos].lnMsgSize);
@@ -397,7 +404,7 @@ void LocoNetESPSerial::processLNTransmit()
 			hybrid_write(&transmitQueue[hlpQuePtr].lnData[0], transmitQueue[hlpQuePtr].lnMsgSize); //send bytes
 //			if (hybrid_getBusyMode())
 			hybrid_setBusyMode(false);
-		    lnEchoBuffer.reqID = transmitQueue[hlpQuePtr].reqID;
+		    lnEchoBuffer.requestID = transmitQueue[hlpQuePtr].requestID;
 			lnEchoBuffer.reqRecTime = transmitQueue[hlpQuePtr].reqRecTime;
 			lnEchoBuffer.reqRespTime = 0;
 			lnEchoBuffer.echoTime = 0;
@@ -406,7 +413,7 @@ void LocoNetESPSerial::processLNTransmit()
 			lnEchoBuffer.lnData[0] = 0; //reset Echo Buffer
 			//store these to look up when a reply comes in
 			respTime = micros();
-			respID = lnEchoBuffer.reqID;
+			respID = lnEchoBuffer.requestID;
 			respOpCode = transmitQueue[hlpQuePtr].lnData[0];
 			transmitTime = micros() + (numWrite * 600) + 500000; //set timeout condition, LocoNet not echoing bytes sent. must be > 500ms to allow network access trys and low processing rate
 			transmitStatus = 2; //set status for verification of echo bytes
