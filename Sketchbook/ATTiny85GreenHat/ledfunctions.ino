@@ -38,7 +38,7 @@ void initLEDChain()
     case 210: strip = new Adafruit_NeoPixel(chainLength, LED_PIN, NEO_BGR + NEO_KHZ800); break;
   }
   strip->begin();
-  strip->setBrightness(10); // set full brightness
+  strip->setBrightness(255); // set full brightness
   strip->show(); // Initialize all pixels to 'off'
   fillStrip(0x000000); //initialize dark
   strip->show(); // Initialize all pixels to 'off'
