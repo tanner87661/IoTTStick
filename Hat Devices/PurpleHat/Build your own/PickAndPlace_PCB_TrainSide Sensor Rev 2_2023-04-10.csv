@@ -1,0 +1,5 @@
+Designator,Footprint,Mid X,Mid Y,Ref X,Ref Y,Pad X,Pad Y,Layer,Rotation,Comment
+C3,C0603,104.52mm,-30.1mm,104.52mm,-30.1mm,105.22mm,-30.1mm,T,180,10uF
+R1,R0603,89.03mm,-30.35mm,89.03mm,-30.35mm,88.27mm,-30.35mm,T,0,4.7k?
+R2,R0603,89.03mm,-32mm,89.03mm,-32mm,88.27mm,-32mm,T,0,4.7k?
+U1,SOT-23-6_L2.9-W1.6-P0.95-LS2.8-BR,104.65mm,-34.16mm,104.65mm,-34.16mm,106.05mm,-35.11mm,T,0,TMAG5273
