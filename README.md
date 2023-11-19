@@ -1,5 +1,12 @@
 # IoTTStick
 This is the code repository for the IoTT Stick, port modules and hat devices with the source code for the latest release. 
+2023/11/19 1.6.5
+- Veersion 1.6.5
+- Improvement of PurpleHat SpeedMagic tab as described in Video #131 https://youtu.be/hhmCFm9BiHA
+- Withrottle bug fixes (MU assignment, DCC EX support for changed <t> command
+- upgrade to latest library versions of several libraries
+- some internal restructuring to reduce main loop cycle time (shorter response times)
+
 2023/5/20 1.6.0
 - Version 1.6.0
 - WiThrottle server can now read turnouts, routes and roster from DCC EX
