@@ -13,7 +13,7 @@ class AXP192 {
    public:
     AXP192();
     void begin(void);
-    void ScreenBreath(uint8_t brightness);
+    void ScreenBreath(int brightness);
     void ScreenSwitch(bool state);
 
     bool GetBatState();
@@ -40,6 +40,7 @@ class AXP192 {
 
     // -- sleep
     void SetSleep(void);
+    void WakeUpDisplayAfterLightSleep(void);
     void DeepSleep(uint64_t time_in_us = 0);
     void LightSleep(uint64_t time_in_us = 0);
     uint8_t GetWarningLeve(void);
@@ -62,6 +63,7 @@ class AXP192 {
     uint8_t GetWarningLevel(void);
     void SetCoulombClear();
     void SetLDO2(bool State);
+    void SetPeripherialsPower(uint8_t state);
 
     // -- Power Off
     void PowerOff();

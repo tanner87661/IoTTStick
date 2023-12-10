@@ -1,16 +1,14 @@
 // Copyright (c) M5Stack. All rights reserved.
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 
-#pragma once
+#ifndef __M5GFX_H__
+#define __M5GFX_H__
 
 // If you want to use a set of functions to handle SD/SPIFFS/HTTP,
 //  please include <SD.h>,<SPIFFS.h>,<HTTPClient.h> before <M5GFX.h>
 // #include <SD.h>
 // #include <SPIFFS.h>
 // #include <HTTPClient.h>
-#if defined (ARDUINO)
-#include <FS.h>
-#endif
 
 #ifdef setFont
 #undef setFont
@@ -26,6 +24,7 @@
 #include "lgfx/v1/LGFX_Button.hpp"
 
 #include <vector>
+#include <memory>
 
 namespace m5gfx
 {
@@ -131,6 +130,13 @@ namespace m5gfx
 
   namespace tft_command
   {
+#ifdef TFT_DISPOFF
+    #undef TFT_DISPOFF
+    #undef TFT_DISPON
+    #undef TFT_SLPIN
+    #undef TFT_SLPOUT
+#endif
+
     static constexpr int TFT_DISPOFF = 0x28;
     static constexpr int TFT_DISPON  = 0x29;
     static constexpr int TFT_SLPIN   = 0x10;
@@ -139,6 +145,7 @@ namespace m5gfx
 
   class M5GFX : public lgfx::LGFX_Device
   {
+  protected:
     static M5GFX* _instance;
 
     struct DisplayState
@@ -149,16 +156,18 @@ namespace m5gfx
       int32_t cursor_x, cursor_y;
     };
 
-    lgfx::Bus_SPI _bus_spi;
-    lgfx::Panel_Device* _panel_last;
-    lgfx::ILight* _light_last;
-    lgfx::ITouch* _touch_last;
+    std::shared_ptr<lgfx::Panel_Device> _panel_last;
+    std::shared_ptr<lgfx::ITouch> _touch_last;
+#if defined ( ESP_PLATFORM )
+    std::shared_ptr<lgfx::IBus> _bus_last;
+    std::shared_ptr<lgfx::ILight> _light_last;
+#endif
     std::vector<DisplayState> _displayStateStack;
 
     bool init_impl(bool use_reset, bool use_clear) override;
     board_t autodetect(bool use_reset = false, board_t board = board_t::board_unknown);
     void _set_backlight(lgfx::ILight* bl);
-    void _set_pwm_backlight(std::int16_t pin, std::uint8_t ch, std::uint32_t freq = 12000, bool invert = false);
+    void _set_pwm_backlight(int16_t pin, uint8_t ch, uint32_t freq = 12000, bool invert = false, uint8_t offset = 0);
 
   public:
     M5GFX(void);
@@ -173,12 +182,14 @@ namespace m5gfx
     void popState(void);
 
     /// draw RGB565 format image.
+    [[deprecated("use pushImage")]] 
     void drawBitmap(int16_t x, int16_t y, int16_t w, int16_t h, const void *data)
     {
       pushImage(x, y, w, h, (const rgb565_t*)data);
     }
 
     /// draw RGB565 format image, with transparent color.
+    [[deprecated("use pushImage")]] 
     void drawBitmap(int16_t x, int16_t y, int16_t w, int16_t h, const void *data, uint16_t transparent)
     {
       pushImage(x, y, w, h, (const rgb565_t*)data, transparent);
@@ -191,12 +202,16 @@ namespace m5gfx
                       , uint16_t output_height  = 0
                       , uint_fast8_t scale_w    = 0
                       , uint_fast8_t scale_h    = 0
+                      , uint32_t pixel_clock    = 74250000
                       )
     {
-#ifdef __M5GFX_M5ATOMDISPLAY__
-      if (getBoard() == board_t::board_M5AtomDisplay)
+#if defined (__M5GFX_M5ATOMDISPLAY__) || defined (__M5GFX_M5MODULEDISPLAY__)
+      auto board = getBoard();
+      if (board == board_t::board_M5AtomDisplay || board == board_t::board_M5ModuleDisplay)
       {
-        bool res = ((Panel_M5HDMI*)panel())->setResolution
+#if defined (SDL_h_)
+#else
+        bool res = ((lgfx::Panel_M5HDMI*)panel())->setResolution
           ( logical_width
           , logical_height
           , refresh_rate
@@ -204,12 +219,22 @@ namespace m5gfx
           , output_height
           , scale_w
           , scale_h
+          , pixel_clock
           );
         setRotation(getRotation());
         return res;
+#endif
       }
 #endif
       return false;
+    }
+
+    using lgfx::LGFX_Device::init;
+
+    bool init(lgfx::Panel_Device* panel)
+    {
+      setPanel(panel);
+      return LGFX_Device::init_impl(true, true);
     }
   };
 
@@ -231,3 +256,9 @@ using namespace m5gfx::tft_command;
 using M5GFX = m5gfx::M5GFX;
 using M5Canvas = m5gfx::M5Canvas;
 using RGBColor = m5gfx::bgr888_t;
+
+#endif
+
+#ifdef USE_M5_FONT_CREATOR
+using EncodeRange = lgfx::EncodeRange;
+#endif

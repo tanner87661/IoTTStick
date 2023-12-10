@@ -20,12 +20,8 @@
 #define StringFormatter_h
 #include <Arduino.h>
 #include "FSH.h"
-#if defined(ARDUINO_ARCH_SAMD)
-   // Some processors use a gcc compiler that renames va_list!!!
-  #include <cstdarg>  
-#endif
-
-#include "LCDDisplay.h"
+#include "RingStream.h"
+#include "Display.h"
 class Diag {
   public:
   static bool ACK;
@@ -48,9 +44,9 @@ class StringFormatter
     static void printEscape(Print * serial, char c);
 
     // DIAG support
-    static Print * diagSerial;
     static void diag( const FSH* input...);
     static void lcd(byte row, const FSH* input...);
+    static void lcd2(uint8_t display, byte row, const FSH* input...);
     static void printEscapes(char * input);
     static void printEscape( char c);
 

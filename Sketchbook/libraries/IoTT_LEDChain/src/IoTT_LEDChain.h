@@ -179,6 +179,7 @@ class IoTT_ledChain
 		uint16_t ledUpdateInterval = 50; //20Hz refresh
 		bool     blinkStatus;
 		uint8_t  pingCtr = 0;
+		uint8_t  fastPin;
 		float_t  globFaderValue;
 		uint16_t colTypeNum = 0;
 		bool needUpdate;
@@ -187,6 +188,7 @@ class IoTT_ledChain
 
 	public: 
 		CRGB *  initChain(word numLEDs);
+		void setFastPin(uint8_t pinNr);
 		void processChain();
 		bool processMQTTCmd(char * topic, DynamicJsonDocument doc);
 		void sendLEDStatusMQTT(uint16_t ledNr);

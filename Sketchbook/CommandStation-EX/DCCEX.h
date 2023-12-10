@@ -32,18 +32,23 @@
 #include "DCCEXParser.h"
 #include "SerialManager.h"
 #include "version.h"
+#ifndef ARDUINO_ARCH_ESP32
 #include "WifiInterface.h"
+#else
+#include "WifiESP32.h"
+#endif
 #if ETHERNET_ON == true
 #include "EthernetInterface.h"
 #endif
-#include "LCD_Implementation.h"
+#include "Display_Implementation.h"
 #include "LCN.h"
-#include "freeMemory.h"
 #include "IODevice.h"
 #include "Turnouts.h"
 #include "Sensors.h"
 #include "Outputs.h"
 #include "CommandDistributor.h"
+#include "TrackManager.h"
+#include "DCCTimer.h"    
 #include "EXRAIL.h"
     
 #endif

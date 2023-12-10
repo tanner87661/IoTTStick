@@ -62,7 +62,7 @@ public:
 	uint16_t lnWriteMsg(lnReceiveBuffer txData);
 
 	void setTxCallback(txFct newCB);
-	void setDCCCallback(dccCbFct newDCCCB);
+	void setDCCCallback(dccCbFct newDCCCB, uint8_t ptrNr);
 	void loadLNCfgJSON(DynamicJsonDocument doc);
 
 private:
@@ -77,15 +77,13 @@ private:
 	void processLCBTransmit();
 	void processDCCExReceive();
 	void processDCCExTransmit();
-//	void processDCCExTransmit2();
-//	int parseDCCExParam(char** startAt, uint8_t ppNum, ppElement * outBuffer);
-//	bool parseDCCEx(lnTransmitMsg* thisEntry, lnTransmitMsg* txBuffer);
+	void processBoosterReceive();
+	void processBoosterTransmit();
 	
    // Member variables
    lnTransmitMsg transmitQueue[queInjBufferSize];
    uint8_t que_rdPos, que_wrPos = 0;
    lnTransmitMsg lnInBuffer;
-//   char exInBuffer[512] = '\0';
    std::vector<ppElement> ppList;
    int m_rxPin, m_txPin;
    bool m_invert = true;
@@ -113,9 +111,4 @@ private:
    
 };
 
-//extern IoTT_DigitraxBuffers* digitraxBuffer; //pointer to DigitraxBuffers
-//extern IoTT_SerInjector* usbSerial;
-
-//this is the callback function. Provide a function of this name and parameter in your application and it will be called when a new message is received
-//extern void onLocoNetMessage(lnReceiveBuffer* recData) __attribute__ ((weak));
 #endif

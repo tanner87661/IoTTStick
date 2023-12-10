@@ -4,6 +4,7 @@ var tabConfig;
 var tabInputs;
 var tabButtons;
 var tabGauges;
+var tabTracks;
 var tabAutomation;
 var tabRoster;
 
@@ -18,6 +19,7 @@ var CurrentOptionPanel;
 var InputPanel;
 var ButtonPanel;
 var GaugePanel;
+var TrackManPanel;
 var AutomationPanel;
 var RosterPanel;
 
@@ -25,16 +27,26 @@ var sensorTable;
 var turnoutTable;
 var automationTable;
 var rosterTable;
+var trackTable;
 
 var sensorTableDiv;
 var turnoutTableDiv;
 var automationTableDiv;
 var rosterTableDiv;
+var trackTableDiv;
  
 var newSensorTemplate = {"Id": 0, "PinNr": 1,"PNType": 0, "LNType": 0, "Logic": 1, "Par1": 0, "Par2": 0, "LNAddr": 1, "Descr":""};
 var newTurnoutTemplate = {"Id": 0,"PinNr": 1,"TOType": 3,"LNType": 0,"Logic": 1,"Startup": 0, "Par1": 0,"Par2": 0, "Prof": 2, "LNAddr": 1, "Descr":"IoTT"};
 var newRouteTemplate = {"ID": 0, "Type": "","Descr": ""};
 var newLocoTemplate = {"DCCAddr": 0, "Descr": "","FNMap": ""};
+
+const newTrackTemplate = {"Status":0, "Addr" : 0};
+const trackModeList = ["NONE", "MAIN", "PROG", "DC", "DCX"];
+
+var swVersion;
+var hwVersion;
+var swDispStr;
+var pageTitleStr = "Command Station Settings ";
 
 function upgradeJSONVersion(jsonData)
 {
@@ -59,7 +71,7 @@ function setPanelVisibility()
 
 function constructPageContent(contentTab)
 {
-	var menueStr = ["Options", "Inputs", "Turnouts", "Routes", "Locomotives", "Monitor"];
+	var menueStr = ["Options", "Inputs", "Turnouts", "Routes", "Locomotives", "Tracks", "Monitor"];
 	var tempObj;
 	mainScrollBox = createEmptyDiv(contentTab, "div", "pagetopicboxscroll-y", "btnconfigdiv");
 
@@ -70,7 +82,7 @@ function constructPageContent(contentTab)
 		tabConfig = createEmptyDiv(mainScrollBox, "div", "tile-1", "");
 			ConfigOptionPanel = createEmptyDiv(tabConfig, "div", "tile-1", "");
 				tempObj= createEmptyDiv(ConfigOptionPanel, "div", "tile-1", "");
-					createPageTitle(tempObj, "div", "tile-1", "BasicCfg_Title", "h2", "Command Station Settings");
+					createPageTitle(tempObj, "div", "tile-1", "BasicCfg_TitleMain", "h2", pageTitleStr);
 					createCheckbox(tempObj, "tile-1_4", "Enable Purging", "OpSw_13", "setOpSwCB(this)");
 				createDropdownselector(tempObj, "tile-1_4", "Purge Delay:", ["300 Sec.","600 Sec."], "OpSw_12", "setOpSwDD(this)");
 					createDropdownselector(tempObj, "tile-1_4", "Purge Speed:", ["No speed change","Force loco to stop"], "OpSw_14", "setOpSwDD(this)");
@@ -101,7 +113,7 @@ function constructPageContent(contentTab)
 					createButton(tempObj, "", "Reset Loco Slots", "btnSlotReset", "resetSlots(this)");
 
 				 tempObj= createEmptyDiv(ConfigOptionPanel, "div", "tile-1", "");
-					createPageTitle(tempObj, "div", "tile-1", "BasicCfg_Title", "h2", "LocoNet Options");
+					createPageTitle(tempObj, "div", "tile-1", "BasicCfg_TitleMainLN", "h2", "LocoNet Options");
 					createCheckbox(tempObj, "tile-1_4", "Switch Echo", "OpSw_56", "setOpSwCB(this)"); //IoTT opSw
 					createCheckbox(tempObj, "tile-1_4", "Input Echo", "OpSw_57", "setOpSwCB(this)"); //IoTT opSw
 					createCheckbox(tempObj, "tile-1_4", "Loco Echo", "OpSw_58", "setOpSwCB(this)"); //IoTT opSw
@@ -111,7 +123,7 @@ function constructPageContent(contentTab)
 //					createCheckbox(tempObj, "tile-1_4", "Disable Standard Switch Command", "OpSw_25", "setOpSwCB(this)");
 
 //				 tempObj= createEmptyDiv(ConfigOptionPanel, "div", "tile-1", "");
-//					createPageTitle(tempObj, "div", "tile-1", "BasicCfg_Title", "h2", "Communication Options");
+//					createPageTitle(tempObj, "div", "tile-1", "BasicCfg_TitleMainComm", "h2", "Communication Options");
 //				 tempObj= createEmptyDiv(ConfigOptionPanel, "div", "tile-1", "");
 //					createCheckbox(tempObj, "tile-1_4", "Provide Loconet TCP Server", "lbserver", "setServerOptions(this)");
 //					createTextInput(tempObj, "tile-1_4", "on port:", "n/a", "lbserverport", "setServerOptions(this)");
@@ -120,11 +132,11 @@ function constructPageContent(contentTab)
 //					createTextInput(tempObj, "tile-1_4", "on port:", "n/a", "withrottleport", "setServerOptions(this)");
 
 				 tempObj= createEmptyDiv(ConfigOptionPanel, "div", "tile-1", "");
-					createPageTitle(tempObj, "div", "tile-1", "BasicCfg_Title", "h2", "DCC Generator Options");
+					createPageTitle(tempObj, "div", "tile-1", "BasicCfg_TitleMainDCC", "h2", "DCC Generator Options");
 					createDropdownselector(tempObj, "tile-1_4", "DCC Speed Steps:", ["128 Steps","28 Steps"], "OpSw_20", "setOpSwDD(this)");
 					createDispText(tempObj, "tile-1_4", "DCC++ Refresh Slots:", "n/a", "refreshslots");
 				 tempObj= createEmptyDiv(ConfigOptionPanel, "div", "tile-1", "");
-					createPageTitle(tempObj, "div", "tile-1", "BasicCfg_Title", "h2", "Current Measurement Settings");
+					createPageTitle(tempObj, "div", "tile-1", "BasicCfg_TitleMainMeas", "h2", "Current Measurement Settings");
 					createDropdownselector(tempObj, "tile-1_4", "Select Gauge:", ["Main","Prog"], "currgaugeselector", "setCurrentOptions(this)"); //add buttons later
 				 tempObj= createEmptyDiv(ConfigOptionPanel, "div", "tile-1", "");
 					createTextInput(tempObj, "tile-1_4", "Gauge Name:", "n/a", "currgaugename", "setCurrentOptions(this)");
@@ -138,7 +150,7 @@ function constructPageContent(contentTab)
 					createTextInput(tempObj, "tile-1_4", "Max. Value:", "n/a", "currmaxval", "setCurrentOptions(this)");
 					createTextInput(tempObj, "tile-1_4", "Major Ticks:", "n/a", "majorticks", "setCurrentOptions(this)");
 				 tempObj= createEmptyDiv(ConfigOptionPanel, "div", "tile-1", "");
-					createPageTitle(tempObj, "div", "tile-1", "BasicCfg_Title", "h2", "Programming Track Options");
+					createPageTitle(tempObj, "div", "tile-1", "BasicCfg_TitleMainProg", "h2", "Programming Track Options");
 					createTextInput(tempObj, "tile-1_4", "Min. ACK Pulse [mA]:", "n/a", "proglimit", "setProgOptions(this)");
 					createTextInput(tempObj, "tile-1_4", "Min. ACK Time [\xB5s]:", "n/a", "progpulsemin", "setProgOptions(this)");
 					createTextInput(tempObj, "tile-1_4", "Max. ACK Time [\xB5s]:", "n/a", "progpulsemax", "setProgOptions(this)");
@@ -153,14 +165,14 @@ function constructPageContent(contentTab)
 		tabInputs = createEmptyDiv(mainScrollBox, "div", "tile-1", "");
 			InputPanel = createEmptyDiv(tabInputs, "div", "tile-1", "");
 				sensorTableDiv = createEmptyDiv(InputPanel, "div", "tile-1", "");
-					createPageTitle(sensorTableDiv, "div", "tile-1", "BasicCfg_Title", "h2", "Arduino Input Pins");
+					createPageTitle(sensorTableDiv, "div", "tile-1", "BasicCfg_TitleInput", "h2", "Arduino Input Pins");
 					sensorTable = createDataTable(sensorTableDiv, "tile-1_2", ["Pos","Add/Delete/Move", "ID", "DCC EX", "Pin Nr", "Logic", "Message Type", "LocoNet Addr"], "sensorconfig", "");
 				tempObj = createEmptyDiv(InputPanel, "div", "tile-1", "");
 					createCheckbox(tempObj, "tile-1_4", "Store Input Settings to EEPROM", "sensoreeprom", "setProgOptions(this)");
 		tabButtons = createEmptyDiv(mainScrollBox, "div", "tile-1", "");
 			ButtonPanel = createEmptyDiv(tabButtons, "div", "tile-1", "");
 				turnoutTableDiv = createEmptyDiv(ButtonPanel, "div", "tile-1", "");
-					createPageTitle(turnoutTableDiv, "div", "tile-1", "BasicCfg_Title", "h2", "Defined Turnouts and Pins");
+					createPageTitle(turnoutTableDiv, "div", "tile-1", "BasicCfg_TitleButton", "h2", "Defined Turnouts and Pins");
 					turnoutTable = createDataTable(turnoutTableDiv, "tile-1_2", ["Pos","Add/Delete/Move", "ID", "DCC EX", "Turnout Address", "Turnout Type", "Logic", "Start-up", "Pin Nr", "Min. Position", "Max. Position", "Profile", "Description"], "turnoutconfig", "");
 				tempObj = createEmptyDiv(ButtonPanel, "div", "tile-1", "");
 					createSimpleText(tempObj,"tile-1", "(!) Not recommended. Use VPIN instead", "zpinwarning");
@@ -168,14 +180,22 @@ function constructPageContent(contentTab)
 		tabAutomation = createEmptyDiv(mainScrollBox, "div", "tile-1", "");
 			AutomationPanel = createEmptyDiv(tabAutomation, "div", "tile-1", "");
 				automationTableDiv = createEmptyDiv(AutomationPanel, "div", "tile-1", "");
-					createPageTitle(automationTableDiv, "div", "tile-1", "BasicCfg_Title", "h2", "Routes");
+					createPageTitle(automationTableDiv, "div", "tile-1", "BasicCfg_TitleAuto", "h2", "Routes");
 					automationTable = createDataTable(automationTableDiv, "tile-1_2", ["Pos", "Delete", "DCC EX", "ID", "Type", "Description"], "automationconfig", "");
+
 		tabRoster = createEmptyDiv(mainScrollBox, "div", "tile-1", "");
 			RosterPanel = createEmptyDiv(tabRoster, "div", "tile-1", "");
 				rosterTableDiv = createEmptyDiv(RosterPanel, "div", "tile-1", "");
-					createPageTitle(rosterTableDiv, "div", "tile-1", "BasicCfg_Title", "h2", "Locomotives");
+					createPageTitle(rosterTableDiv, "div", "tile-1", "BasicCfg_TitleRoster", "h2", "Locomotives");
 //					rosterTable = createDataTable(rosterTableDiv, "tile-1_2", ["Pos","Add/Delete/Move", "DCC Addr", "Description", "Function Map"], "rosterconfig", "");
 					rosterTable = createDataTable(rosterTableDiv, "tile-1_2", ["Pos", "Delete", "DCC EX", "DCC Addr", "Description", "Function Map"], "rosterconfig", "");
+
+		tabTracks = createEmptyDiv(mainScrollBox, "div", "tile-1", "");
+			TrackManPanel = createEmptyDiv(tabTracks, "div", "tile-1", "");
+				trackTableDiv = createEmptyDiv(TrackManPanel, "div", "tile-1", "");
+					createPageTitle(trackTableDiv, "div", "tile-1", "BasicCfg_TitleTrack", "h2", "Track Manager Settings");
+					trackTable = createDataTable(trackTableDiv, "tile-1_2", ["Track", "DCC EX", "Mode", "DCC Addr"], "trackconfig", "");
+
 		tabGauges = createEmptyDiv(mainScrollBox, "div", "tile-1", "");
 			GaugePanel = createEmptyDiv(tabGauges, "div", "tile-1", "");
 
@@ -190,7 +210,11 @@ function constructPageContent(contentTab)
 	setVisibility(false, tabGauges);
 	setVisibility(false, tabAutomation);
 	setVisibility(false, tabRoster);
+	setVisibility(false, tabTracks);
 	setVisibility(false, document.getElementById("cbsetup_5")); //only show menu item if needed
+	setVisibility(false, document.getElementById("cbsetup_6")); //only show menu item if needed
+//	setVisibility(false, document.getElementById("OpSw_46").parentElement); //only show menu item if needed
+	
 
 }
 
@@ -393,6 +417,7 @@ function setPageMode(sender)
 	setVisibility(false, tabButtons);
 	setVisibility(false, tabAutomation);
 	setVisibility(false, tabRoster);
+	setVisibility(false, tabTracks);
 	setVisibility(false, tabGauges);
 	for (var i = 0; i < trackGauges.length; i++)
 		setVisibility(false, trackGauges[i]);
@@ -419,9 +444,12 @@ function setPageMode(sender)
 //			writeRBInputField("cbsetup", 2);
 			setVisibility(true, tabRoster);
 			break;
-			
 		case "cbsetup_5":
-//			if (configData[workCfg].CurrentTracker.length > 0)
+//			writeRBInputField("cbsetup", 2);
+			setVisibility(true, tabTracks);
+			break;
+		case "cbsetup_6":
+//			console.log(configData[workCfg].CurrentTracker);
 			if (trackGauges.length > 0)
 			{
 				updateCurrent = true;
@@ -583,6 +611,24 @@ function setAutomationConfig(sender)
 	}
 }
 
+function setTrackConfig(sender)
+{
+	var thisRow = parseInt(sender.getAttribute("row"));
+	var thisCol = parseInt(sender.getAttribute("col"));
+	var thisIndex = parseInt(sender.getAttribute("index"));
+	switch (thisCol)
+	{
+		case 2:
+			configData[workCfg].TrackSettings.TrackModes[thisRow].Status = sender.selectedIndex;
+			writeTrackToDCC(thisRow);
+			break;
+		case 3:
+			configData[workCfg].TrackSettings.TrackModes[thisRow].Addr = verifyNumber(sender.value, configData[workCfg].TrackSettings.TrackModes[thisRow].Addr);
+			writeTrackToDCC(thisRow);
+			break;
+	}
+}
+
 function setTurnoutConfig(sender)
 {
 	var thisRow = parseInt(sender.getAttribute("row"));
@@ -728,6 +774,20 @@ function DeleteSensorFromDCC(sensorNr)
 	ws.send(cmdStr);
 }
 
+function writeTrackToDCC(trackNr)
+{
+	var trackData = configData[workCfg].TrackSettings.TrackModes[trackNr];
+	var cmdStr = "= " + String.fromCharCode(trackNr+65) + " " + trackModeList[trackData.Status];
+	if (trackData.Status > 2)
+	{
+		cmdStr += " ";
+		cmdStr += trackData.Addr > 0 ? trackData.Addr : 1; //DCC EX only accepting Addr > 0
+	}
+	cmdStr = "{\"Cmd\":\"SetDCCPP\", \"SubCmd\":\"SendCmd\",\"OpCode\": \"" + cmdStr + "\"}";
+//	console.log(cmdStr);
+	ws.send(cmdStr);
+}
+
 function loadSensorTable(thisTable, thisData, clrConf)
 {
 	var th = document.getElementById(thisTable.id + "_head");
@@ -836,6 +896,40 @@ function loadRosterTable(thisTable, thisData, clrConf)
 		e.childNodes[0].innerHTML = thisData[i].Descr;
 		var e = document.getElementById(thisTable.id + "_" + i.toString() + "_" + "5");
 		e.childNodes[0].innerHTML = thisData[i].FNMap;
+	}
+}
+
+function loadTrackTable(thisTable, thisData, clrConf)
+{
+	var th = document.getElementById(thisTable.id + "_head");
+	var tb = document.getElementById(thisTable.id + "_body");
+	var numCols = th.childNodes[0].children.length;
+	if (hwVersion != undefined)
+	{
+		if (hwVersion.indexOf("MEGA") >= 0)
+			createDataTableLines(thisTable, [tfText, tfText, tfTrackSelMEGA, tfNumeric], thisData.length, "setTrackConfig(this)");	
+		else
+			createDataTableLines(thisTable, [tfText, tfText, tfTrackSelUNO, tfText], thisData.length, "setTrackConfig(this)");
+	}	
+	else
+		createDataTableLines(thisTable, [tfPos, tfManipulatorBox, tfText, tfText, tfTrackSelUNO, tfText], thisData.length, "setTrackConfig(this)");	
+	for (var i=0; i<thisData.length;i++)
+	{
+		var e = document.getElementById(thisTable.id + "_" + i.toString() + "_" + "0");
+		e.childNodes[0].innerHTML = String.fromCharCode(i+65);
+
+		var e = document.getElementById(thisTable.id + "_" + i.toString() + "_" + "1");
+		if (clrConf)
+			thisData[i].confirmed = false;
+		e.childNodes[0].innerHTML = thisData[i].confirmed ? "ok" : "not set";
+
+		var e = document.getElementById(thisTable.id + "_" + i.toString() + "_" + "2");
+		e.childNodes[0].selectedIndex = thisData[i].Status;
+		var e = document.getElementById(thisTable.id + "_" + i.toString() + "_" + "3");
+		if (hwVersion != undefined)
+			if (hwVersion.indexOf("MEGA") >= 0)
+				e.childNodes[0].value = thisData[i].Addr;
+		setVisibility(thisData[i].Status > 2, e);
 	}
 }
 
@@ -979,6 +1073,22 @@ function confirmRoster(jsonData)
 	loadRosterTable(rosterTable, configData[workCfg].RosterSettings.Locos, false);
 }
 
+function confirmTrack(jsonData)
+{
+//	console.log(jsonData);
+	var trackID = jsonData.Data.Msg[1].d.charCodeAt(0)-65;
+	var trackMode = jsonData.Data.Msg[2].d;
+	var dccAddr = jsonData.Data.Msg.length > 3 ? jsonData.Data.Msg[3].d : 0; 
+	while (configData[workCfg].TrackSettings.TrackModes.length <= trackID)
+		configData[workCfg].TrackSettings.TrackModes.push(JSON.parse(JSON.stringify(newTrackTemplate)));
+	configData[workCfg].TrackSettings.TrackModes[trackID].Status = trackModeList.indexOf(trackMode);
+	configData[workCfg].TrackSettings.TrackModes[trackID].Addr = dccAddr;
+	configData[workCfg].TrackSettings.TrackModes[trackID].confirmed = true;
+//	console.log(configData[workCfg].TrackSettings.TrackModes[trackID], dccAddr);
+//	console.log("TT B", trackTable.parentNode.parentNode.parentNode.parentNode.parentNode);
+	loadTrackTable(trackTable, configData[workCfg].TrackSettings.TrackModes, false);
+}
+
 function loadNodeDataFields(jsonData)
 {
 //	console.log(jsonData);
@@ -997,7 +1107,7 @@ function loadProgOptions(jsonData)
 function loadDataFields(jsonData)
 {
 	configData[workCfg] = upgradeJSONVersion(jsonData);
-	console.log(configData[workCfg]);
+//	console.log(configData[workCfg]);
 	loadProgOptions(configData[workCfg]);
 	writeCBInputField("sensoreeprom", configData[workCfg].DevSettings.ConfigToEEPROM);
 	writeCBInputField("turnouteeprom", configData[workCfg].DevSettings.ConfigToEEPROM);
@@ -1030,6 +1140,13 @@ function loadDataFields(jsonData)
 				}
 	try
 	{
+//		console.log("TT C", trackTable.parentNode);
+		loadTrackTable(trackTable, configData[workCfg].TrackSettings.TrackModes, true);
+	}
+	catch (error) {console.log(error)};
+
+	try
+	{
 		loadSensorTable(sensorTable, configData[workCfg].InputSettings.InpPins, true);
 	}
 	catch (error) {};
@@ -1048,8 +1165,7 @@ function loadDataFields(jsonData)
 		loadRosterTable(rosterTable, configData[workCfg].RosterSettings.Locos, true);
 	}
 	catch (error) {};
-	trackGauges = [];
-	trackGaugeDefs = [];
+
 	while (GaugePanel.lastElementChild) 
 		GaugePanel.removeChild(GaugePanel.lastElementChild);
 
@@ -1078,7 +1194,7 @@ function loadDataFields(jsonData)
 
 	document.getElementById("currgaugeselector").selectedIndex = 0;
 	loadGaugeData(0);
-	setVisibility(true, document.getElementById("cbsetup_5")); //only show menu item if needed
+	setVisibility(true, document.getElementById("cbsetup_6")); //only show menu item if needed
 
 
 	setPanelVisibility();
@@ -1111,6 +1227,17 @@ function processDCCPPInput(jsonData)
 		{
 			confirmTurnoutPin(jsonData);
 		}
+		if (opCode == 'i') //Arduino info
+		{
+			swDispStr = jsonData.Data.Msg[1].d + " " + jsonData.Data.Msg[2].d + " on Arduino " + jsonData.Data.Msg[4].d;
+			swVersion = jsonData.Data.Msg[2].d;
+			hwVersion = jsonData.Data.Msg[4].d;
+			document.getElementById("BasicCfg_TitleMain").innerHTML = "<h2>" + pageTitleStr + "(" + swDispStr + ")";
+//			setVisibility(swVersion.indexOf("V-4") >= 0, document.getElementById("OpSw_46").parentElement); //only show menu item if needed
+			setVisibility(swVersion.indexOf("V-5") >= 0, document.getElementById("cbsetup_5")); //only show menu item if needed
+//			setVisibility(swVersion.indexOf("V-5") >= 0, tabTracks); //only show menu item if needed
+//			console.log("set Vis tabTracks");
+		}
 		if (opCode == 'j') //Automation or Roster
 		{
 			if (jsonData.Data.Msg[1].d == 'T') //Automation
@@ -1126,7 +1253,10 @@ function processDCCPPInput(jsonData)
 				confirmRoster(jsonData);
 			}
 		}
-		
+		if (opCode == '=') //Track data
+		{
+			confirmTrack(jsonData);
+		}
 	}
 }
 

@@ -56,6 +56,7 @@ void setup() {
   wdtTimer = 0;
 }
 
+uint8_t hue = 0;
 void loop()
 {
   delay(100);

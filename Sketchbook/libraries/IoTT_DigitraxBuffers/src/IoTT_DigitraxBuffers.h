@@ -25,12 +25,14 @@
 #define switchProtLen 20
 #define progTimeout 10000
 #define fcRefreshInterval 1000
+#define fctRefreshInterval 100
 //#define fcBroadcastInterval 75000
 #define purgeLimitShort 30 //count for 300 s purge time
-#define purgeLimitLong 60 // and for 60 sec
+#define purgeLimitLong 60 // and for 600 sec
 #define purgeInterval 10000 //run purge timer every 10 seconds
 #define statusInterval 1000 //run status timer every 5 seconds
 #define queryInterval 1000
+#define reqTimeout 1000 //jT response triggers JT x requests if received shortly after sending JT
 
 //Digitrax CS
 #define opSwPurgeTimeExt 12
@@ -60,6 +62,9 @@
 #define SND 7
 #define ID1 8
 #define ID2 9
+#define FG912 10
+#define FG13 11
+#define FG21 12
 
 //refresh status defines
 #define slotFree 0
@@ -82,7 +87,8 @@ typedef uint8_t signalBuffer[numSigs]; //current status of aspects, 1 per byte v
 typedef uint16_t analogValBuffer[numAnalogVals]; //current status of analog values, 1 per word, running from 0 to 4096
 typedef uint8_t buttonValBuffer[numButtons]; //current status of buttons, 2 per byte, statuses down, up, click, hold, dblclick
 typedef uint8_t powerStatusBuffer;
-typedef uint8_t slotData[10]; //slot data 0 is slot number, this is given by position in array, so we only need 10 bytes
+typedef uint8_t slotData[13]; //slot data 0 is slot number, this is given by position in array, so we only need 10 bytes, plus 3 bytes (8 bit) for extended functions
+							// slot 10: fct 9 - 12 in low nibble; slot 11: fct 13 - 20; slot 12: fct 21-28 (lsb lowest fct)
 typedef slotData slotDataBuffer[numSlots];
 
 extern DynamicJsonDocument * getDocPtr(String cmdFile, bool duplData);
@@ -138,6 +144,12 @@ typedef struct
 	char FunctionMap[70] = {'\0'};
 } rosterEntry;
 
+typedef struct
+{
+	uint8_t trackID;
+	uint8_t trackMode = 0;
+	uint16_t dccAddr;
+} trackEntry;
 
 uint32_t millisElapsed(uint32_t since);
 uint32_t microsElapsed(uint32_t since);
@@ -175,9 +187,11 @@ class IoTT_DigitraxBuffers
 		void loadFromFile(String fileName);
 		void processLoop(); //run loop to see if something needs to be sent out
 		void processLocoNetMsg(lnReceiveBuffer * newData); //process incoming Loconet messages
-		void writeProg(uint16_t dccAddr, uint8_t progMode, uint8_t progMethod, uint16_t cvNr, uint8_t cvVal);
-		void readProg(uint16_t dccAddr, uint8_t progMode, uint8_t progMethod, uint16_t cvNr);
+		void progCVProc(uint16_t dccAddr, uint8_t progInstr, uint16_t cvNr, uint8_t cvVal);
+//		void readProgCV(uint16_t dccAddr, uint8_t progMode, uint8_t progMethod, uint16_t cvNr, uint8_t bitNr = 0);
+		progCmd getProgCmd(uint8_t progCmdName, uint16_t cvNumber, uint8_t cvValue);
 		void readAddrOnly();
+		void writeAddrOnly(uint16_t newAddr);
 		void setPowerStatus(uint8_t newStatus);
 		void localPowerStatusChange(uint8_t newStatus);
 //		void sendSwiReq(bool useAck, uint16_t swiAddr, uint8_t newPos);
@@ -189,6 +203,7 @@ class IoTT_DigitraxBuffers
 		uint8_t getPowerStatus();
 		uint8_t getButtonValue(uint16_t buttonNum);
 		uint8_t getBDStatus(uint16_t bdNum);
+		void setBDStatus(uint16_t bdNum, bool bdStatus);
 		uint8_t getSwiPosition(uint16_t swiNum);
 		uint8_t getSwiCoilStatus(uint16_t swiNum);
 		uint8_t getSwiStatus(uint16_t swiNum);
@@ -198,6 +213,7 @@ class IoTT_DigitraxBuffers
 		void setSignalAspect(uint16_t sigNum, uint8_t sigAspect);
 		uint16_t getAnalogValue(uint16_t analogNum);
 		void setAnalogValue(uint16_t analogNum, uint16_t analogValue);
+		uint32_t getLocoFctStatus(slotData * ofSlot);
 		bool getBushbyWatch();
 		void enableBushbyWatch(bool enableBushby);
 		uint32_t getFCTime();
@@ -206,6 +222,7 @@ class IoTT_DigitraxBuffers
 		void setFCRate(uint8_t newRate, bool updateLN);
 		void enableLissyMod(bool enableLissy);
 		void enableFCRefresh(bool useFC, uint16_t fcRefreshRate);
+		void enableFctRefresh(bool useFctRefresh);
 		uint8_t getUpdateReqStatus();
 		void clearUpdateReqFlag(uint8_t clrFlagMask);
 //		void addActor(uint16_t Id, uint8_t pinType, uint8_t pinNr, uint8_t flags);
@@ -220,21 +237,22 @@ class IoTT_DigitraxBuffers
 		void awaitFocusSlot(int16_t dccAddr, bool simulOnly);
 //		slotData * getFocusSlotData();
 		slotData * getSlotData(uint8_t slotNum);
+		slotData * getSlotDataByAddr(uint16_t dccAddr);
 		int8_t getFocusSlotNr();
 		uint8_t getSlotOfAddr(uint8_t locoAddrLo, uint8_t locoAddrHi);
 		String getRouteInfo(uint16_t id, bool exFormat);
 		String getRosterInfo(uint16_t id, bool exFormat);
 		String getTurnoutInfo(uint16_t id, bool exFormat);
 		String getSensorInfo(uint16_t id, bool exFormat);
-
+		bool isCS();
+		IoTT_SerInjector* getDccPort();
 	private: //functions
 		//write buffer values
 		void processBufferUpdates(lnReceiveBuffer * newData); //process incoming Loconet messages to the buffer
 		void setButtonValue(uint16_t buttonNum, uint8_t buttonValue);
-		void setBDStatus(uint16_t bdNum, bool bdStatus);
 		void setProgStatus(bool progBusy);
 		void processDCCSwitch(uint16_t swiAddr, uint8_t swiPos, uint8_t coilStatus);
-		arduinoPins* findPeripherialItemById(arduinoPins * itemList, uint16_t listLen, uint8_t devType, uint16_t itemID);
+		arduinoPins* findPeripherialItemById(std::vector<arduinoPins> * itemList, uint8_t devType, uint16_t itemID);
 
 		void processDCCInput(uint16_t sensID, bool sensStatus);
 		//LocoNet functions for Cmd Stn Client mode
@@ -296,8 +314,10 @@ class IoTT_DigitraxBuffers
 		uint32_t nextSlotUpdate = millis();
 		protocolEntry switchProtocol[switchProtLen];
 		bool progModeActive = false;
-		bool readFullAddr = false;
-		std::vector<uint32_t> cvBuffer;
+//		bool readFullAddr = false;
+//		bool writeFullAddr = false;
+//		std::vector<uint32_t> cvBuffer;
+		std::vector<progCmd> progBuffer;
 		uint32_t progSent = millis();
 		uint32_t fcRefresh = millis();
 		uint32_t fcLastBroadCast = millis();
@@ -310,14 +330,17 @@ class IoTT_DigitraxBuffers
 		uint8_t progCV = 0;
 		//RedHat                  
 		uint8_t ledLevel = 15; //0-100%
-		arduinoPins * sensorInputs = NULL;
-		uint16_t sensorInputLen = 0;
-		arduinoPins * turnoutOutputs = NULL;
-		automationEntry * automationList = NULL;
-//		rosterEntry * rosterList = NULL;
+//		arduinoPins * sensorInputs = NULL;
+//		uint16_t sensorInputLen = 0;
+//		arduinoPins * turnoutOutputs = NULL;
+//		automationEntry * automationList = NULL;
+		std::vector<arduinoPins> sensorInputs; //a list holding the sensor numbers to be initialized in WiThrottle Server
+		std::vector<arduinoPins> turnoutOutputs; //a list holding the turnout numbers to be initialized in WiThrottle Server
+		std::vector<automationEntry> automationList; //a list holding the turnout numbers to be initialized in WiThrottle Server
 		std::vector<rosterEntry> rosterList; //a list holding the turnout numbers to be initialized in WiThrottle Server
-		uint16_t turnoutOutputLen = 0;
-		uint16_t routeOutputLen = 0;
+		std::vector<trackEntry> trackList; //a list holding the turnout numbers to be initialized in WiThrottle Server
+//		uint16_t turnoutOutputLen = 0;
+//		uint16_t routeOutputLen = 0;
 //		uint16_t rosterOutputLen = 0;
 		uint8_t DCCActiveSlots = 20; //number of active slots on the DCC++EX
 		uint16_t progLimit = 50;
@@ -332,14 +355,19 @@ class IoTT_DigitraxBuffers
 		trackerData* trackGauges = NULL;
 		rmsBuffer** trackData = NULL;
 //		rmsBuffer* progData = NULL;
+		uint32_t lastRHRequest = millis();
+		bool fctRefresh = false;
+		uint32_t lastFctRefresh = millis();
+		uint32_t fctRefreshIntv = fctRefreshInterval;
+		uint16_t fctRefreshSlotIndex = 0;
+		uint32_t fctGroupIndex = 0;
+		uint16_t extFctCtr = 0;
 		
 };
 
 extern IoTT_DigitraxBuffers* digitraxBuffer; //pointer to DigitraxBuffers
-//extern AsyncWebSocketClient * globalClient;
 extern std::vector<wsClientInfo> globalClients; // a list to hold all clients when in server mode
 
-#endif
 
 //callback functions to notify application about buffer updates
 extern void handlePowerStatus() __attribute__ ((weak)); //power status change
@@ -362,5 +390,6 @@ extern void sendButtonCommand(uint16_t btnNr, uint8_t  btnEvent) __attribute__ (
 extern void sendSwiReportMessage(uint16_t inpAddr, uint8_t newPos) __attribute__ ((weak)); //switch report command
 
 //callback function to WiThrottle Server
-extern void wiAddrCallback(std::vector<ppElement>* ppList) __attribute__ ((weak));
+extern void wiAddrCallback(ppElement* ppList) __attribute__ ((weak));
  
+#endif

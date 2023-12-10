@@ -332,7 +332,7 @@ uint8_t IoTT_SecElLeg::getNextSignalDynCtr()
 
 IoTT_SecElLeg * IoTT_SecElLeg::getConnectedLeg()
 {
-	if (parentSE->numLegs <= 1)
+	if (parentSE->connLeg.size() <= 1)
 	{
 //		Serial.printf("Only %i leg, return NULL\n", parentSE->numLegs);
 		return NULL; //isTerminal leg, has no neighbor
@@ -346,23 +346,23 @@ IoTT_SecElLeg * IoTT_SecElLeg::getConnectedLeg()
 		else
 		{
 //			Serial.println("must be Leg A, orig legPos > 0");
-			return parentSE->connLeg[0];
+			return parentSE->connLeg.at(0);
 		}
 	else //legPos == 0
 	{
 //		Serial.println("Looking from A");
-		if (parentSE->numLegs == 2)
+		if (parentSE->connLeg.size() == 2)
 		{
 //			Serial.println("One-legged");
-			return parentSE->connLeg[1]; //there is no C, calling from A, so answer is B
+			return parentSE->connLeg.at(1); //there is no C, calling from A, so answer is B
 		}
 		else
 		{
 //			Serial.println("Check SwiPos");
 			if (parentSE->switchLogic) //calling from A, answer is B or C depending on switch logic and switch position
-				return (digitraxBuffer->getSwiPosition(parentSE->switchAddr) > 0) ? parentSE->connLeg[1]: parentSE->connLeg[2]; 
+				return (digitraxBuffer->getSwiPosition(parentSE->switchAddr) > 0) ? parentSE->connLeg.at(1): parentSE->connLeg.at(2); 
 			else
-				return (digitraxBuffer->getSwiPosition(parentSE->switchAddr) == 0) ?  parentSE->connLeg[1]: parentSE->connLeg[2];
+				return (digitraxBuffer->getSwiPosition(parentSE->switchAddr) == 0) ?  parentSE->connLeg.at(1): parentSE->connLeg.at(2);
 		}
 	}
 }
@@ -370,7 +370,7 @@ IoTT_SecElLeg * IoTT_SecElLeg::getConnectedLeg()
 IoTT_SecElLeg * IoTT_SecElLeg::getOpenLeg() //returns pointer to B or C or NULL
 {
 //	Serial.printf("SE %i with %i legs\n", parentSE->secelID, parentSE->numLegs);
-	switch (parentSE->numLegs) 
+	switch (parentSE->connLeg.size()) 
 	{
 		case 0: return NULL; break;
 		case 1: return NULL; break;
@@ -378,12 +378,12 @@ IoTT_SecElLeg * IoTT_SecElLeg::getOpenLeg() //returns pointer to B or C or NULL
 		case 3: if (parentSE->switchLogic) //answer is B or C depending on switch logic and switch position
 				{
 //					Serial.printf("Open swipos %i leg is %i\n", getSwiPosition(parentSE->switchAddr), (getSwiPosition(parentSE->switchAddr) > 0) ?  1:2);
-					return (digitraxBuffer->getSwiPosition(parentSE->switchAddr) == 0) ?  parentSE->connLeg[1]: parentSE->connLeg[2]; 
+					return (digitraxBuffer->getSwiPosition(parentSE->switchAddr) == 0) ?  parentSE->connLeg.at(1): parentSE->connLeg.at(2); 
 				}
 				else
 				{
 //					Serial.printf("Open swipos %i leg is %i\n", getSwiPosition(parentSE->switchAddr), (getSwiPosition(parentSE->switchAddr) == 0) ?  1:2);
-					return (digitraxBuffer->getSwiPosition(parentSE->switchAddr) > 0) ?  parentSE->connLeg[1]: parentSE->connLeg[2];
+					return (digitraxBuffer->getSwiPosition(parentSE->switchAddr) > 0) ?  parentSE->connLeg.at(1): parentSE->connLeg.at(2);
 				}
 				break;
 	}
@@ -457,37 +457,40 @@ void IoTT_SecurityElement::loadSecElCfgJSON(JsonObject thisObj)
 	if (thisObj.containsKey("Connectors"))
 	{
         JsonArray seConnectors = thisObj["Connectors"];
-        numLegs = seConnectors.size();
-        connLeg = (IoTT_SecElLeg**) realloc (connLeg, numLegs * sizeof(IoTT_SecElLeg*));
-		for (uint16_t i = 0; i < numLegs; i++)
+		for (uint16_t i = 0; i < seConnectors.size(); i++)
 		{
 			IoTT_SecElLeg * thisSELeg = new(IoTT_SecElLeg);
 			thisSELeg->parentSE = this;
 			thisSELeg->loadSELegCfgJSON(seConnectors[i]);
-			connLeg[thisSELeg->getLegPos()] = thisSELeg;
+			thisSELeg->legPos = connLeg.size(); //0==A
+			connLeg.push_back(thisSELeg);
 		}
 	}	
 }
 
 void IoTT_SecurityElement::resolveLegConnectors()
 {
-	if (numLegs > 0)
-		for (uint16_t i = 0; i < numLegs; i++)
+	if (connLeg.size() > 0)
+		for (uint16_t i = 0; i < connLeg.size(); i++)
 		{
+/*
 			connLeg[i]->resolveLegConnector();
 			if ((connLeg[i]->destSE) == NULL)
 				Serial.printf("Allocation of SE %i Leg %i failed\n", secelID, i);
 			else
 				Serial.println("ok");
+*/
 		}
 }
 
 IoTT_SecElLeg * IoTT_SecurityElement::getLegPtr(uint8_t destSELeg)
 {
-	if (destSELeg < numLegs)
+/*
+	if (destSELeg < connLeg.size())
 		return connLeg[destSELeg];
 	else			
 		return NULL;
+*/
 }
 
 /*	
@@ -554,6 +557,7 @@ void IoTT_SecurityElement::processElement()
 
 void IoTT_SecurityElement::processABSS(uint8_t newEvents)
 {
+/*
 	if (numLegs > 0)
 		for (uint16_t i = 0; i < numLegs; i++)
 			if (connLeg[i])
@@ -580,6 +584,7 @@ void IoTT_SecurityElement::processABSS(uint8_t newEvents)
 //				if ((newAspect >= 0) && (newAspect != connLeg[i]->lastSigAspect))
 //					connLeg[i]->sendAspectCommand(newAspect);
 			}
+*/
 }
 
 void IoTT_SecurityElement::processABSD(uint8_t newEvents)
@@ -602,6 +607,7 @@ void IoTT_SecurityElement::processCTC(uint8_t newEvents)
 
 void IoTT_SecurityElement::processManualSE(uint8_t newEvents) //update signal positions when set externally, recalculate dynSpeed, check validity and fallback needs
 {
+/*	
 	if (numLegs > 0)
 	{
 		for (uint16_t i = 0; i < numLegs; i++)
@@ -641,6 +647,7 @@ void IoTT_SecurityElement::processManualSE(uint8_t newEvents) //update signal po
 	}
 //	if (currentBDStatus != lastBDStatus)
 //		lastBDStatus = currentBDStatus;
+*/
 }
 
 void IoTT_SecurityElement::clearDirectionFlags()
@@ -651,6 +658,7 @@ void IoTT_SecurityElement::clearDirectionFlags()
 
 void IoTT_SecurityElement::setDirection(bool inBound)
 {
+/*
 	bool currState = inBound ? dirIn : dirOut;
 	if (!currState) //if direction is already set, do nothing. Means: Clear directions before setting it
 		for (uint16_t i = 0; i < numLegs; i++)
@@ -662,32 +670,35 @@ void IoTT_SecurityElement::setDirection(bool inBound)
 					(connLeg[i])->parentSE->setDirection(!inBound);
 			
 		}
+*/
 }
 
 
 void IoTT_SecurityElement::freeObjects()
 {
-	if (numLegs > 0)
+/*
+ 	if (numLegs > 0)
 	{
 		for (uint16_t i = 0; i < numLegs; i++)
 			delete connLeg[i];
 		numLegs = 0;
 		free(connLeg);
 	}
+*/
 }
 
 
 /*----------------------------------------------------------------------------------------------------------------------*/
-IoTT_SecurityElementModel::IoTT_SecurityElementModel()
+IoTT_SecurityElementSection::IoTT_SecurityElementSection()
 {
 }
 
-IoTT_SecurityElementModel::~IoTT_SecurityElementModel()
+IoTT_SecurityElementSection::~IoTT_SecurityElementSection()
 {
 	freeObjects();
 }
 
-void IoTT_SecurityElementModel::loadSecElCfgJSON(JsonObject thisObj)
+void IoTT_SecurityElementSection::loadSecElCfgJSON(JsonObject thisObj)
 {
 	if (thisObj.containsKey("ModelName"))
 		strcpy(modelName, thisObj["ModelName"]);
@@ -700,34 +711,31 @@ void IoTT_SecurityElementModel::loadSecElCfgJSON(JsonObject thisObj)
 	if (thisObj.containsKey("SecurityElements"))
     {
         JsonArray secElementList = thisObj["SecurityElements"];
-        uint16_t newNumSecElements = secElementList.size();
-        secElList = (IoTT_SecurityElement**) realloc (secElList, (newNumSecElements +  numSecEl) * sizeof(IoTT_SecurityElement*));
-		for (uint16_t i = 0; i < newNumSecElements; i++)
+		for (uint16_t i = 0; i < secElementList.size(); i++)
 		{
 			IoTT_SecurityElement * thisSecurityElement = new(IoTT_SecurityElement);
 			thisSecurityElement->parentSEL = parentSEL;
 			thisSecurityElement->parentSEModel = this;
 			thisSecurityElement->loadSecElCfgJSON(secElementList[i]);
-			secElList[i + numSecEl] = thisSecurityElement;
+			secElList.push_back(thisSecurityElement);
 		}
-		numSecEl += newNumSecElements;
 	}
 	
 }
 
 /*
-void IoTT_SecurityElementModel::processLocoNetMsg(lnReceiveBuffer * newData)
+void IoTT_SecurityElementSection::processLocoNetMsg(lnReceiveBuffer * newData)
 {
 	for (uint16_t i = 0; i < numSecEl; i++)
 		secElList[i]->processLocoNetMsg(newData);
 }
 */
 
-IoTT_SecElLeg * IoTT_SecurityElementModel::getLegPtr(uint16_t destSENr, uint8_t destSELeg)
+IoTT_SecElLeg * IoTT_SecurityElementSection::getLegPtr(uint16_t destSENr, uint8_t destSELeg)
 {
-	for (uint16_t i = 0; i < numSecEl; i++)
+	for (uint16_t i = 0; i < secElList.size(); i++)
 	{
-		IoTT_SecurityElement* thisElement = secElList[i];
+		IoTT_SecurityElement* thisElement = secElList.at(i);
 		if (thisElement->secelID == destSENr)
 		{
 			IoTT_SecElLeg * retPtr = thisElement->getLegPtr(destSELeg);
@@ -738,41 +746,35 @@ IoTT_SecElLeg * IoTT_SecurityElementModel::getLegPtr(uint16_t destSENr, uint8_t 
 	return NULL;
 }
 
-void IoTT_SecurityElementModel::resolveLegConnectors()
+void IoTT_SecurityElementSection::resolveLegConnectors()
 {
-	for (uint16_t i = 0; i < numSecEl; i++)
+	for (uint16_t i = 0; i < secElList.size(); i++)
 	{
-		IoTT_SecurityElement* thisElement = secElList[i];
+		IoTT_SecurityElement* thisElement = secElList.at(i);
 		thisElement->resolveLegConnectors();
 	}
 }
 
-void IoTT_SecurityElementModel::processLoop()
+void IoTT_SecurityElementSection::processLoop()
 {
-	for (int i = 0; i < numSecEl; i++)
+	for (int i = 0; i < secElList.size(); i++)
 	{
-		IoTT_SecurityElement* thisElement = secElList[i];
+		IoTT_SecurityElement* thisElement = secElList.at(i);
 		thisElement->processElement();
 	}
 }
 
-void IoTT_SecurityElementModel::clearDirectionFlags()
+void IoTT_SecurityElementSection::clearDirectionFlags()
 {
 }
 
-void IoTT_SecurityElementModel::setDirection(bool inBound)
+void IoTT_SecurityElementSection::setDirection(bool inBound)
 {
 }
 
-void IoTT_SecurityElementModel::freeObjects()
+void IoTT_SecurityElementSection::freeObjects()
 {
-	if (numSecEl > 0)
-	{
-		for (uint16_t i = 0; i < numSecEl; i++)
-			delete secElList[i];
-		numSecEl = 0;
-		free(secElList);
-	}
+	secElList.clear();
 }
 
 /*----------------------------------------------------------------------------------------------------------------------*/
@@ -794,29 +796,25 @@ void IoTT_SecurityElementList::loadSecElCfgJSON(DynamicJsonDocument doc, bool re
 	if (doc.containsKey("StaticSpeedModelList"))
     {
         JsonArray staticSpeed = doc["StaticSpeedModelList"];
-        uint16_t newNumStaticSets = staticSpeed.size();
-        staticSpeedList = (IoTT_SpeedTable**) realloc (staticSpeedList, (newNumStaticSets +  numStaticSpeedSets) * sizeof(IoTT_SpeedTable*));
-		for (uint16_t i = 0; i < newNumStaticSets; i++)
+		for (uint16_t i = 0; i < staticSpeed.size(); i++)
 		{
 			IoTT_SpeedTable * thisSpeedTable = new(IoTT_SpeedTable);
 			thisSpeedTable->loadSpeedTableEntryJSON(staticSpeed[i]);
-			staticSpeedList[i + numStaticSpeedSets] = thisSpeedTable;
+			staticSpeedList.push_back(thisSpeedTable);
 		}
-		numStaticSpeedSets += newNumStaticSets;
+		Serial.printf("%i static speed sets loaded\n", staticSpeedList.size());
 	}
 
 	if (doc.containsKey("DynSpeedModelList"))
     {
         JsonArray dynamicSpeed = doc["DynSpeedModelList"];
-        uint16_t newNumDynamicSets = dynamicSpeed.size();
-        dynamicSpeedList = (IoTT_SpeedTable**) realloc (dynamicSpeedList, (numDynamicSpeedSets + newNumDynamicSets) * sizeof(IoTT_SpeedTable*));
-		for (uint16_t i = 0; i < newNumDynamicSets; i++)
+		for (uint16_t i = 0; i < dynamicSpeed.size(); i++)
 		{
 			IoTT_SpeedTable * thisSpeedTable = new(IoTT_SpeedTable);
 			thisSpeedTable->loadSpeedTableEntryJSON(dynamicSpeed[i]);
-			dynamicSpeedList[i + numDynamicSpeedSets] = thisSpeedTable;
+			dynamicSpeedList.push_back(thisSpeedTable);
 		}
-		numDynamicSpeedSets += newNumDynamicSets;
+		Serial.printf("%i dynamic speed sets loaded\n", dynamicSpeedList.size());
 	}
 
 //	return;
@@ -824,26 +822,24 @@ void IoTT_SecurityElementList::loadSecElCfgJSON(DynamicJsonDocument doc, bool re
 	if (doc.containsKey("AspectGeneratorList"))
     {
         JsonArray aspectGenerators = doc["AspectGeneratorList"];
-        uint16_t newAspectGenerators = aspectGenerators.size();
-        aspGenList = (IoTT_AspectGenerator**) realloc (aspGenList, (numAspectGenerators + newAspectGenerators) * sizeof(IoTT_AspectGenerator*));
-		for (uint16_t i = 0; i < newAspectGenerators; i++)
+ 		for (uint16_t i = 0; i < aspectGenerators.size(); i++)
 		{
 			IoTT_AspectGenerator * thisAspectGenerator = new(IoTT_AspectGenerator);
 			thisAspectGenerator->loadAspectCfgJSON(aspectGenerators[i]);
-			aspGenList[i + numAspectGenerators] = thisAspectGenerator;
+			aspGenList.push_back(thisAspectGenerator);
 		}
-		numAspectGenerators += newAspectGenerators;
+		Serial.printf("%i aspect generators loaded\n", aspGenList.size());
 	}
 
 
-	if (doc.containsKey("SecurityElementModels"))
+	if (doc.containsKey("SecurityElementSections"))
     {
-        JsonArray secElMods = doc["SecurityElementModels"];
+        JsonArray secElMods = doc["SecurityElementSections"];
         uint16_t newNumSecElModels = secElMods.size();
-        secModelList = (IoTT_SecurityElementModel**) realloc (secModelList, (numSecModel + newNumSecElModels) * sizeof(IoTT_SecurityElementModel*));
+        secModelList = (IoTT_SecurityElementSection**) realloc (secModelList, (numSecModel + newNumSecElModels) * sizeof(IoTT_SecurityElementSection*));
 		for (uint16_t i = 0; i < newNumSecElModels; i++)
 		{
-			IoTT_SecurityElementModel * thisSecElModel = new(IoTT_SecurityElementModel);
+			IoTT_SecurityElementSection * thisSecElModel = new(IoTT_SecurityElementSection);
 			thisSecElModel->parentSEL = this;
 			thisSecElModel->loadSecElCfgJSON(secElMods[i]);
 			secModelList[i + numSecModel] = thisSecElModel;
@@ -874,9 +870,9 @@ IoTT_SecElLeg * IoTT_SecurityElementList::getLegPtr(uint16_t destSENr, uint8_t d
 
 IoTT_AspectGenerator* IoTT_SecurityElementList::getAspectGeneratorByName(String aspName)
 {
-	for (uint16_t i = 0; i < numAspectGenerators; i++)
+	for (uint16_t i = 0; i < aspGenList.size(); i++)
 	{
-		IoTT_AspectGenerator* thisAspGen = aspGenList[i];
+		IoTT_AspectGenerator* thisAspGen = aspGenList.at(i);
 		if (String(thisAspGen->aspectSetName) == aspName)
 			return thisAspGen;
 	}
@@ -886,9 +882,9 @@ IoTT_AspectGenerator* IoTT_SecurityElementList::getAspectGeneratorByName(String 
 
 IoTT_SpeedTable* IoTT_SecurityElementList::getStaticSpeedByName(String speedName)
 {
-	for (uint16_t i = 0; i < numStaticSpeedSets; i++)
+	for (uint16_t i = 0; i < staticSpeedList.size(); i++)
 	{
-		IoTT_SpeedTable* thisSpeedSet = staticSpeedList[i];
+		IoTT_SpeedTable* thisSpeedSet = staticSpeedList.at(i);
 		if (String(thisSpeedSet->speedSetName) == speedName)
 			return thisSpeedSet;
 	}
@@ -897,11 +893,11 @@ IoTT_SpeedTable* IoTT_SecurityElementList::getStaticSpeedByName(String speedName
 
 IoTT_SpeedTable* IoTT_SecurityElementList::getDynamicSpeedByName(String speedName)
 {
-	Serial.print(numDynamicSpeedSets);
+	Serial.print(dynamicSpeedList.size());
 	Serial.println(speedName);
-	for (uint16_t i = 0; i < numDynamicSpeedSets; i++)
+	for (uint16_t i = 0; i < dynamicSpeedList.size(); i++)
 	{
-		IoTT_SpeedTable* thisSpeedSet = dynamicSpeedList[i];
+		IoTT_SpeedTable* thisSpeedSet = dynamicSpeedList.at(i);
 		if (String(thisSpeedSet->speedSetName) == speedName)
 			return thisSpeedSet;
 	}
@@ -913,22 +909,16 @@ void IoTT_SecurityElementList::resolveLinks()
 {
 	for (int i = 0; i < numSecModel; i++)
 	{
-		IoTT_SecurityElementModel * thisModel = secModelList[i];
+		IoTT_SecurityElementSection * thisModel = secModelList[i];
 		thisModel->resolveLegConnectors();
 	}
 }
 
 void IoTT_SecurityElementList::freeObjects()
 {
-	free(staticSpeedList);
-	staticSpeedList = NULL;
-	numStaticSpeedSets = 0;
-	free(dynamicSpeedList);
-	dynamicSpeedList = NULL;
-	numDynamicSpeedSets = 0;
-	free(aspGenList);
-	aspGenList = NULL;
-	numAspectGenerators = 0;
+	staticSpeedList.clear();
+	dynamicSpeedList.clear();
+	aspGenList.clear();
 
 	if (numSecModel > 0)
 	{
@@ -943,7 +933,7 @@ void IoTT_SecurityElementList::processLoop()
 {
 	for (int i = 0; i < numSecModel; i++)
 	{
-		IoTT_SecurityElementModel * thisModel = secModelList[i];
+		IoTT_SecurityElementSection * thisModel = secModelList[i];
 		thisModel->processLoop();
 	}
 }

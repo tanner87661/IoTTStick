@@ -153,7 +153,7 @@ void sendAnalogCommand(uint16_t btnNr, uint16_t analogVal)
 
 void sendPowerCommand(uint8_t cmdType, uint8_t pwrStatus)
 { 
-//  Serial.printf("Power Command %i %i %i\n", cmdType, pwrStatus, getPowerStatus());
+//  Serial.printf("Power Command %i %i %i\n", cmdType, pwrStatus, digitraxBuffer->getPowerStatus());
   lnTransmitMsg txData;
   txData.lnMsgSize = 2;
   if (cmdType == toggleVal)
@@ -178,6 +178,7 @@ void sendPowerCommand(uint8_t cmdType, uint8_t pwrStatus)
   txData.lnMsgSize = 2;
   setXORByte(&txData.lnData[0]);
   sendMsg(txData);
+//  dispMsg(&txData.lnData[0]);
 }
 
 uint16_t sendLocoNetReply(lnTransmitMsg txData)

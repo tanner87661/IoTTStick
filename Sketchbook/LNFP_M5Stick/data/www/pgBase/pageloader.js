@@ -450,7 +450,7 @@ function cancelSettings(sender)
 
 function loadInitData()
 {
-//	console.log("loadInitData");
+//	console.log("loadInitData", wsInitNode, wsInitData);
 	if (wsInitNode)
 	{
 		if (scriptList != undefined)
@@ -463,8 +463,8 @@ function loadInitData()
 			else
 				wsInitNode = false;
 		}
-//		else
-//			console.log("Waiting for Script List");
+		else
+			console.log("Waiting for Script List");
 		setTimeout(loadInitData, 1000);
 	}
 	else
@@ -494,7 +494,7 @@ function startWebsockets()
 	  
     ws.onopen = function() 
     {
-		console.log("websock opening");
+//		console.log("websock opening");
 		
 		if (wsInitData || wsInitNode)
 			setTimeout(loadInitData, 1000);
@@ -503,6 +503,8 @@ function startWebsockets()
 	ws.onclose = function (evt) 
 	{
 		console.log("websock close");
+		wsInitNode = true;
+		wsInitData = true;
 		setTimeout(startWebsockets, 3000);
 //		conStatusError();
 	};
@@ -517,7 +519,15 @@ function startWebsockets()
     {
 //		console.log(evt.data);
 //		console.log(currentPage);
-  		var myArr = JSON.parse(evt.data);
+		try
+		{
+			var myArr = JSON.parse(evt.data);
+		}
+  		catch(err)
+  		{
+			console.log(err.message);
+			return;
+		}
   		if (myArr.Cmd == "CTS")
 			setCTS();
   		
@@ -529,7 +539,7 @@ function startWebsockets()
   		if ((myArr.Cmd == "SensorData") && (scriptList.Pages[currentPage].ID == "pgPrplHatCfg"))
 			processSensorInput(myArr.Data);
   		if ((myArr.Cmd == "SpeedTableData") && (scriptList.Pages[currentPage].ID == "pgPrplHatCfg"))
-			processSpeedTableInput(myArr.Data);
+			processSpeedTableInput(myArr.Data, true); //smoothen curve
   		if ((myArr.Cmd == "ProgReturn") && (scriptList.Pages[currentPage].ID == "pgPrplHatCfg"))
 			processProgrammerInput(myArr.Data);
   		if ((myArr.Cmd == "HWBtn") && (scriptList.Pages[currentPage].ID == "pgHWBtnCfg"))
@@ -550,6 +560,10 @@ function startWebsockets()
  			processFCInput(myArr);
   		if ((myArr.Cmd == "DCCAmp") && (scriptList.Pages[currentPage].ID == "pgRedHatCfg"))
  			processTrackDataInput(myArr);
+  		if ((myArr.Cmd == "DCCAmp") && (scriptList.Pages[currentPage].ID == "pgSilverHatCfg"))
+ 			processTrackDataInput(myArr);
+  		if ((myArr.Cmd == "SVR") && (scriptList.Pages[currentPage].ID == "pgSilverHatCfg"))
+ 			processConfigDataInput(myArr);
   		if ((myArr.Cmd == "ClientList") && ((scriptList.Pages[currentPage].ID == "pgWiCfg") || (scriptList.Pages[currentPage].ID == "pgLBSCfg")))
  			processClientList(myArr.Data);
 
@@ -640,3 +654,14 @@ function startWebsockets()
 		}
 	}
 };
+
+function isInViewport(el) {
+    const rect = el.getBoundingClientRect();
+    return (
+        rect.top >= 0 &&
+        rect.left >= 0 &&
+        rect.bottom <= (window.innerHeight || document.documentElement.clientHeight) &&
+        rect.right <= (window.innerWidth || document.documentElement.clientWidth)
+
+    );
+}

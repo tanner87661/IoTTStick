@@ -27,7 +27,10 @@ void establishWifiConnection(AsyncWebServer * webServer,DNSServer * dnsServer)
         else
         {
           WiFi.setHostname(deviceName.c_str());
-          Serial.println(WiFi.localIP());
+          dyn_ip = WiFi.localIP();
+//          Serial.println(dyn_ip);
+          mySSID = WiFi.SSID();
+          wifiStatus = WiFi.status();
         }
     }
     //AP Mode is fallback position 
@@ -41,7 +44,11 @@ void establishWifiConnection(AsyncWebServer * webServer,DNSServer * dnsServer)
       Serial.print("Local Access Point at ");
       Serial.println(WiFi.softAPIP());
     }
+
+    MDNS.begin(WiFi.getHostname());
+    MDNS.addService("http", "tcp", 80);
     
+    wifiMode = WiFi.getMode();
     wifiCancelled = false; //reset cancellation mode
     lastWifiUse = millis(); //reset timeout timer
     

@@ -17,17 +17,23 @@ Contributors:
 /----------------------------------------------------------------------------*/
 #pragma once
 
-#if __has_include(<rom/lldesc.h>)
- #include <rom/lldesc.h>
-#else
+#if __has_include(<esp32/rom/lldesc.h>)
  #include <esp32/rom/lldesc.h>
+#else
+ #include <rom/lldesc.h>
 #endif
 
 #if __has_include(<freertos/FreeRTOS.h>)
  #include <freertos/FreeRTOS.h>
 #endif
 
-#include <driver/i2s.h>
+#if __has_include(<driver/i2s_std.h>)
+ #include <driver/i2s_std.h>
+#else
+ #include <driver/i2s.h>
+#endif
+
+#include <soc/i2s_struct.h>
 
 #include "../../Bus.hpp"
 #include "../common.hpp"
@@ -43,13 +49,23 @@ namespace lgfx
   public:
     struct config_t
     {
-      i2s_port_t i2s_port = I2S_NUM_0;
+      union {
+        i2s_port_t i2s_port = I2S_NUM_0;
+        int port;
+      };
 
       // max 40MHz , 27MHz , 20MHz , 16MHz , 13.3MHz , 11.43MHz , 10MHz , 8.9MHz  and more ...
       uint32_t freq_write = 16000000;
-      int8_t pin_wr = -1;
-      int8_t pin_rd = -1;
-      int8_t pin_rs = -1;  // D/C
+      union
+      {
+        int8_t pin_ctrl[3] = { -1, -1, -1 };
+        struct
+        {
+          int8_t pin_rd;
+          int8_t pin_wr;
+          int8_t pin_rs;  // D/C
+        };
+      };
       union
       {
         int8_t pin_data[8];

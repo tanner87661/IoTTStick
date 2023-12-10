@@ -4,8 +4,8 @@
  *
  * @Links [Unit Ameter](https://docs.m5stack.com/en/unit/ameter)
  * @Links [Unit Vmeter](https://docs.m5stack.com/en/unit/vmeter)
- * @version  V0.0.1
- * @date  2022-07-11
+ * @version  V0.0.2
+ * @date  2022-08-10
  */
 #ifndef _M5_ADS1115_H_
 #define _M5_ADS1115_H_
@@ -13,8 +13,13 @@
 
 #include "Arduino.h"
 
-#define ADS115_ADDR 0x48
-#define EEPROM_ADDR 0x51
+#define AMETER 0
+#define VMETER 1
+
+#define AMETER_ADDR        0x48
+#define VMETER_ADDR        0x49
+#define AMETER_EEPROM_ADDR 0x51
+#define VMETER_EEPROM_ADDR 0x53
 
 #define ADS1115_RA_CONVERSION 0x00
 #define ADS1115_RA_CONFIG     0x01
@@ -42,7 +47,10 @@
 #define ADS1115_RATE_475 0x06
 #define ADS1115_RATE_860 0x07
 
-#define ADS1115_MUX_P0N1 0x00  // ammeter only support
+#define MEASURING_DIR -1
+#define MEASURING_DIR -1
+
+#define ADS1115_MUX_P0N1 0x00  // ammeter & voltmeter  support
 
 #define ADS1115_COMP_MODE_HYSTERESIS 0x00  // default
 #define ADS1115_COMP_MODE_WINDOW     0x01
@@ -50,16 +58,20 @@
 #define ADS1115_MODE_CONTINUOUS 0x00
 #define ADS1115_MODE_SINGLESHOT 0x01  // default
 
-#define AMMETER_PRESSURE_COEFFICIENT 0.05
+#define AMMETER_PRESSURE_COEFFICIENT   0.05
+#define VOLTMETER_PRESSURE_COEFFICIENT 0.015918958F
 
-#define AMMETER_PAG_6144_CAL_ADDR 208
-#define AMMETER_PAG_4096_CAL_ADDR 216
-#define AMMETER_PAG_2048_CAL_ADDR 224
-#define AMMETER_PAG_1024_CAL_ADDR 232
-#define AMMETER_PAG_512_CAL_ADDR  240
-#define AMMETER_PAG_256_CAL_ADDR  248
+#define ADS1115_PAG_6144_CAL_ADDR 208
+#define ADS1115_PAG_4096_CAL_ADDR 216
+#define ADS1115_PAG_2048_CAL_ADDR 224
+#define ADS1115_PAG_1024_CAL_ADDR 232
+#define ADS1115_PAG_512_CAL_ADDR  240
+#define ADS1115_PAG_256_CAL_ADDR  248
 
-#define AMMETER_MEASURING_DIR -1
+#define ADS1115_MODE_CONTINUOUS 0x00
+#define ADS1115_MODE_SINGLESHOT 0x01  // default
+
+#define VOLTMETER_FILTER_NUMBER 10
 
 typedef enum {
     PAG_6144 = ADS1115_PGA_6144,
@@ -68,7 +80,7 @@ typedef enum {
     PAG_1024 = ADS1115_PGA_1024,
     PAG_512  = ADS1115_PGA_512,
     PAG_256  = ADS1115_PGA_256,
-} ammeterGain_t;
+} ADS1115Gain_t;
 
 typedef enum {
     RATE_8   = ADS1115_RATE_8,
@@ -79,14 +91,14 @@ typedef enum {
     RATE_250 = ADS1115_RATE_250,
     RATE_475 = ADS1115_RATE_475,
     RATE_860 = ADS1115_RATE_860,
-} ammeterRate_t;
+} ADS1115Rate_t;
 
 typedef enum {
     SINGLESHOT = ADS1115_MODE_SINGLESHOT,
     CONTINUOUS = ADS1115_MODE_CONTINUOUS,
-} ammeterMode_t;
+} ADS1115Mode_t;
 
-class Ammeter {
+class ADS1115 {
    private:
     void i2cBegin();
     bool i2cReadBytes(uint8_t addr, uint8_t reg_addr, uint8_t* buff,
@@ -95,21 +107,18 @@ class Ammeter {
                        uint16_t len);
     bool i2cReadU16(uint8_t addr, uint8_t reg_addr, uint16_t* value);
     bool i2cWriteU16(uint8_t addr, uint8_t reg_addr, uint16_t value);
+    float getResolution(bool devices, ADS1115Gain_t gain);
+    uint16_t getCoverTime(ADS1115Rate_t rate);
+    uint8_t getPGAEEEPROMAddr(ADS1115Gain_t gain);
 
-    float getResolution(ammeterGain_t gain);
-    uint16_t getCoverTime(ammeterRate_t rate);
-    uint8_t getPGAEEEPROMAddr(ammeterGain_t gain);
-
+    bool _device;
     uint8_t _ads1115_addr;
     uint8_t _eeprom_addr;
 
-    float pga_256_calibration_5v_value   = 10187;
-    float pga_2048_calibration_25v_value = 6368;
-
    public:
-    ammeterGain_t _gain;
-    ammeterRate_t _rate;
-    ammeterMode_t _mode;
+    ADS1115Gain_t _gain;
+    ADS1115Rate_t _rate;
+    ADS1115Mode_t _mode;
 
     float resolution;
     uint16_t cover_time;
@@ -117,14 +126,15 @@ class Ammeter {
     float calibration_factor;
 
    public:
-    Ammeter(uint8_t ads1115_addr = ADS115_ADDR,
-            uint8_t eeprom_addr  = EEPROM_ADDR);
+    ADS1115(bool devices = VMETER, uint8_t ads1115_addr = VMETER_ADDR,
+            uint8_t eeprom_addr = VMETER_EEPROM_ADDR);
 
-    void setGain(ammeterGain_t gain);
-    void setRate(ammeterRate_t rate);
-    void setMode(ammeterMode_t mode);
+    void setGain(ADS1115Gain_t gain);
+    void setRate(ADS1115Rate_t rate);
+    void setMode(ADS1115Mode_t mode);
 
-    float getCurrent(bool calibration = true);
+    float getValue(bool calibration = true);
+
     int16_t getConversion(uint16_t timeout = 125);
     int16_t getAdcRaw();
 
@@ -134,9 +144,10 @@ class Ammeter {
     bool EEPORMWrite(uint8_t address, uint8_t* buff, uint8_t len);
     bool EEPORMRead(uint8_t address, uint8_t* buff, uint8_t len);
 
-    bool saveCalibration2EEPROM(ammeterGain_t gain, int16_t hope,
+    void setCalibration(int8_t voltage, uint16_t actual);
+    bool saveCalibration2EEPROM(ADS1115Gain_t gain, int16_t hope,
                                 int16_t actual);
-    bool readCalibrationFromEEPROM(ammeterGain_t gain, int16_t* hope,
+    bool readCalibrationFromEEPROM(ADS1115Gain_t gain, int16_t* hope,
                                    int16_t* actual);
 };
 

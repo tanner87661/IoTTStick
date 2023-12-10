@@ -1,11 +1,11 @@
 // ArduinoJson - https://arduinojson.org
-// Copyright © 2014-2022, Benoit BLANCHON
+// Copyright © 2014-2023, Benoit BLANCHON
 // MIT License
 
 #include <ArduinoJson/Memory/MemoryPool.hpp>
 #include <catch.hpp>
 
-using namespace ARDUINOJSON_NAMESPACE;
+using namespace ArduinoJson::detail;
 
 TEST_CASE("MemoryPool::capacity()") {
   char buffer[4096];
@@ -25,7 +25,8 @@ TEST_CASE("MemoryPool::size()") {
   SECTION("Doesn't grow when memory pool is full") {
     const size_t variantCount = sizeof(buffer) / sizeof(VariantSlot);
 
-    for (size_t i = 0; i < variantCount; i++) pool.allocVariant();
+    for (size_t i = 0; i < variantCount; i++)
+      pool.allocVariant();
     size_t size = pool.size();
 
     pool.allocVariant();

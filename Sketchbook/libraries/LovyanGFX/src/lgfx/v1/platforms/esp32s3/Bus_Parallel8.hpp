@@ -43,9 +43,17 @@ namespace lgfx
 
       // max 80MHz.
       uint32_t freq_write = 16000000;
-      int8_t pin_wr = -1;
-      int8_t pin_rd = -1;
-      int8_t pin_rs = -1;  // D/C
+      uint32_t freq_read  =  8000000;
+      union
+      {
+        int8_t pin_ctrl[3] = { -1, -1, -1 };
+        struct
+        {
+          int8_t pin_rd;
+          int8_t pin_wr;
+          int8_t pin_rs;  // D/C
+        };
+      };
       union
       {
         int8_t pin_data[8];
@@ -115,8 +123,10 @@ namespace lgfx
 
     uint32_t _dmadesc_size = 0;
     dma_descriptor_t* _dmadesc = nullptr;
-    gdma_channel_handle_t _dma_chan;
     esp_lcd_i80_bus_handle_t _i80_bus = nullptr;
+    int _dma_ch;
+    volatile uint32_t* _dma_out_link_reg;
+    volatile uint32_t* _dma_outstatus_reg;
   };
 
 //----------------------------------------------------------------------------

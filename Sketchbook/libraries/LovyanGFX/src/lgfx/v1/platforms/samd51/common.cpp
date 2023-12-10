@@ -509,7 +509,7 @@ auto mastermode = SERCOM_SPI_CTRLA_MODE_SPI_MASTER;
 
       //Extract data from clockMode
       sercom->SPI.CTRLA.bit.CPHA = spi_mode & 1;
-      sercom->SPI.CTRLA.bit.CPOL = spi_mode & 2;
+      sercom->SPI.CTRLA.bit.CPOL = (spi_mode >> 1) & 1;
       sercom->SPI.BAUD.reg = FreqToClockDiv(freq);
 
       sercom->SPI.CTRLA.bit.ENABLE = 1;
@@ -863,7 +863,7 @@ Serial.println("restart:ok");
       return res;
     }
 
-    cpp::result<void, error_t> readBytes(int sercom_index, uint8_t *data, size_t length)
+    cpp::result<void, error_t> readBytes(int sercom_index, uint8_t *data, size_t length, bool last_nack = false)
     {
       if ((size_t)sercom_index >= SERCOM_INST_NUM) { return cpp::fail(error_t::invalid_arg); }
 
@@ -873,16 +873,16 @@ Serial.println("restart:ok");
       auto sercomData = samd51::getSercomData(sercom_index);
       auto sercom = reinterpret_cast<Sercom*>(sercomData->sercomPtr);
       auto i2cm = &(sercom->I2CM);
-      do
+      i2cm->CTRLB.bit.ACKACT = 0b0;
+      while (length --)
       {
+        i2cm->CTRLB.bit.ACKACT = (0 == length) && last_nack;   // Prepare Acknowledge
         while( i2cm->INTFLAG.bit.SB == 0 ) {};
         *data++ = i2cm->DATA.bit.DATA;
 
-        i2cm->CTRLB.bit.ACKACT = 0;                     // Prepare Acknowledge
-
         i2cm->CTRLB.bit.CMD = WIRE_MASTER_ACT_READ;     // Prepare the ACK command for the slave
         while (i2cm->SYNCBUSY.bit.SYSOP) {}
-      } while (--length);
+      }
       return {};
 /*
 Serial.println("i2c::readBytes");

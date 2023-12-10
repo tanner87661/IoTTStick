@@ -89,7 +89,7 @@ function writeCBInputField(thisObjID, newValue)
 
 function writeRBInputField(thisObjID, newValue)
 {
-	var thisField = document.getElementById(thisObjID + "_" + newValue.toString());
+	var thisField = document.getElementById(thisObjID + "_" + parseInt(newValue).toString());
 	if (thisField != null)
 		thisField.checked = true;
 }
@@ -338,6 +338,16 @@ function tfColorTypeSel(y, x, id, evtHandler)
 {
 	var selectList = document.createElement("select");
 	createOptions(selectList, ["RGB", "HSV"]);
+	tfSetCoordinate(selectList, y, x, 0, id);
+	selectList.setAttribute("class", "selectorbox");
+	selectList.setAttribute("onchange", evtHandler);
+	return selectList;
+}
+
+function tfFuseCtrlTypeSel(y, x, id, evtHandler)
+{
+	var selectList = document.createElement("select");
+	createOptions(selectList, ["Very Fast", "Fast", "Slow", "Very Slow", "User defined"]);
 	tfSetCoordinate(selectList, y, x, 0, id);
 	selectList.setAttribute("class", "selectorbox");
 	selectList.setAttribute("onchange", evtHandler);

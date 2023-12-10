@@ -7,6 +7,8 @@ var posnegArray = ["positive","negative"];
 var msgTypeArray = ["Input Report", "Switch Report", "Button Down/Up"];
 var turnoutTypeArray = ["ZPIN (!)", "DCC", "Servo", "VPIN"];
 var startupArray = ["restore", "set active", "set inactive"];
+var trackArrayUNO = ["NONE", "MAIN", "PROG"];
+var trackArrayMEGA = ["NONE", "MAIN", "PROG", "DC", "DCX"];
 
 function tfSetCoordinate(element, row, col, index, id)
 {
@@ -126,6 +128,20 @@ function tfMessageTypeSel(y, x, id, evtHandler)
 	return selectList;
 }
 
+function tfTrackSelUNO(y, x, id, evtHandler)
+{
+	var selectList = tfTemplateTypeSel(y, x, id, evtHandler);
+	createOptions(selectList, trackArrayUNO);
+	return selectList;
+}
+
+function tfTrackSelMEGA(y, x, id, evtHandler)
+{
+	var selectList = tfTemplateTypeSel(y, x, id, evtHandler);
+	createOptions(selectList, trackArrayMEGA);
+	return selectList;
+}
+
 function tfBtnEvtSel(y, x, id, evtHandler)
 {
 	var selectList = tfTemplateTypeSel(y, x, id, evtHandler);
@@ -209,6 +225,11 @@ function tfBtnCancel(y, x, id, evtHandler)
 function tfBtnDelete(y, x, id, evtHandler)
 {
 	return tfBtnGen(y,x,id,evtHandler, "Delete");
+}
+
+function tfBtnMeasure(y, x, id, evtHandler)
+{
+	return tfBtnGen(y,x,id,evtHandler, "Measure");
 }
 
 function tfColorPicker(y, x, id, evtHandler)

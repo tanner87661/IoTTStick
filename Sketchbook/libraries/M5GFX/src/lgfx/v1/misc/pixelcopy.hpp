@@ -55,8 +55,8 @@ namespace lgfx
     uint32_t src_x32_add = 1 << FP_SCALE;
     uint32_t src_y32_add = 0;
     uint32_t src_bitwidth = 0;
-    uint32_t src_width = 0;
-    uint32_t src_height = 0;
+    int32_t src_width = 0;
+    int32_t src_height = 0;
     uint32_t transp   = NON_TRANSP;
     union
     {
@@ -111,6 +111,7 @@ namespace lgfx
            : (dst_depth == rgb666_3Byte) ? (std::is_same<bgr666_t, TSrc>::value
                                            ? copy_rgb_affine<bgr888_t, bgr888_t>
                                            : copy_rgb_affine<bgr666_t, TSrc>)
+           : (dst_depth == grayscale_8bit) ? copy_rgb_affine<grayscale_t, TSrc>
            : nullptr;
     }
 
@@ -119,6 +120,7 @@ namespace lgfx
     {
       return (src_depth == rgb565_2Byte) ? copy_rgb_affine<TDst, swap565_t>
            : (src_depth == rgb332_1Byte) ? copy_rgb_affine<TDst, rgb332_t >
+           : (src_depth == grayscale_8bit) ? copy_rgb_affine<TDst, grayscale_t>
            : (src_depth == rgb888_3Byte) ? copy_rgb_affine<TDst, bgr888_t >
                                          : (std::is_same<bgr666_t, TDst>::value)
                                            ? copy_rgb_affine<bgr888_t, bgr888_t>
@@ -132,6 +134,7 @@ namespace lgfx
            : (dst_depth == rgb332_1Byte) ? copy_palette_affine<rgb332_t , TPalette>
            : (dst_depth == rgb888_3Byte) ? copy_palette_affine<bgr888_t , TPalette>
            : (dst_depth == rgb666_3Byte) ? copy_palette_affine<bgr666_t , TPalette>
+           : (dst_depth == grayscale_8bit) ? copy_palette_affine<grayscale_t, TPalette>
            : nullptr;
     }
 
@@ -281,7 +284,10 @@ namespace lgfx
 
         int32_t x = param->src_x;
         int32_t y = param->src_y;
-        if (param->src_x == param->src_xe && param->src_y == param->src_ye && static_cast<uint32_t>(param->src_x) < src_width && static_cast<uint32_t>(param->src_y) < src_height)
+        if (param->src_x == param->src_xe
+         && param->src_y == param->src_ye
+         && static_cast<uint32_t>(param->src_x) < static_cast<uint32_t>(src_width)
+         && static_cast<uint32_t>(param->src_y) < static_cast<uint32_t>(src_height))
         {
           uint32_t i = (x + y * src_bitwidth) * src_bits;
           uint32_t raw = (s[i >> 3] >> (-(int32_t)(i + src_bits) & 7)) & src_mask;
@@ -305,8 +311,8 @@ namespace lgfx
             {
               uint32_t rate = rate_x * rate_y;
               argb[4] += rate;
-              if (static_cast<uint32_t>(y) < src_height
-               && static_cast<uint32_t>(x) < src_width)
+              if (static_cast<uint32_t>(y) < static_cast<uint32_t>(src_height)
+               && static_cast<uint32_t>(x) < static_cast<uint32_t>(src_width))
               {
                 uint32_t k = (i + x) * src_bits;
                 uint32_t raw = (s[k >> 3] >> (-(int32_t)(k + src_bits) & 7)) & src_mask;
@@ -373,7 +379,10 @@ namespace lgfx
         int32_t x = param->src_x;
         int32_t y = param->src_y;
         auto color = &s[x + y * src_width];
-        if (param->src_x == param->src_xe && param->src_y == param->src_ye && static_cast<uint32_t>(param->src_x) < src_width && static_cast<uint32_t>(param->src_y) < src_height)
+        if (param->src_x == param->src_xe
+         && param->src_y == param->src_ye
+        && static_cast<uint32_t>(param->src_x) < static_cast<uint32_t>(src_width)
+        && static_cast<uint32_t>(param->src_y) < static_cast<uint32_t>(src_height))
         {
           if (!(*color == param->transp))
           {
@@ -394,8 +403,8 @@ namespace lgfx
             {
               uint32_t rate = rate_x * rate_y;
               argb[4] += rate;
-              if (static_cast<uint32_t>(y) < src_height
-               && static_cast<uint32_t>(x) < src_width
+              if (static_cast<uint32_t>(y) < static_cast<uint32_t>(src_height)
+               && static_cast<uint32_t>(x) < static_cast<uint32_t>(src_width)
                && !(*color == param->transp))
               {
                 if (std::is_same<TSrc, argb8888_t>::value) { rate *= color->A8(); }

@@ -60,7 +60,7 @@ namespace lgfx
     bool isReadable(void) const override { return true; }
     bool isBusShared(void) const override { return false; }
 
-    uint32_t readCommand(uint_fast8_t, uint_fast8_t, uint_fast8_t) override { return 0; }
+    uint32_t readCommand(uint_fast16_t, uint_fast8_t, uint_fast8_t) override { return 0; }
     uint32_t readData(uint_fast8_t, uint_fast8_t) override { return 0; }
 
 
@@ -114,6 +114,7 @@ namespace lgfx
       setColorDepth(_write_conv.depth);
     }
 
+    LGFX_INLINE LovyanGFX* getParent(void) const { return _parent; }
     LGFX_INLINE void* getBuffer(void) const { return _panel_sprite.getBuffer(); }
     uint32_t bufferLength(void) const { return _panel_sprite.bufferLength(); }
 
@@ -222,7 +223,7 @@ namespace lgfx
 
  #endif
 
-#elif defined (ESP32) || defined (CONFIG_IDF_TARGET_ESP32) || defined (CONFIG_IDF_TARGET_ESP32S2) || defined (ESP_PLATFORM)
+#elif defined (ESP_PLATFORM) || defined(__SAMD51_HARMONY__) || defined(stdin) // ESP-IDF, Harmony, stdio
 
     void createFromBmpFile(const char *path) {
       FileWrapper file;

@@ -1,21 +1,20 @@
 #pragma once
 
-#if defined ( ESP_PLATFORM )
- #include <sdkconfig.h>
-#endif
-
 #define LGFX_USE_V1
 #include <LovyanGFX.hpp>
 
 #if defined ( ARDUINO )
  #include <Arduino.h>
-#elif __has_include( <sdkconfig.h> )
+#endif
+#if __has_include( <sdkconfig.h> )
  #include <sdkconfig.h>
 #endif
 
 #ifndef M5UNITLCD_SDA
  #if defined ( ARDUINO )
   #define M5UNITLCD_SDA SDA
+ #elif defined (CONFIG_IDF_TARGET_ESP32S3)
+  #define M5UNITLCD_SDA 2
  #elif defined (CONFIG_IDF_TARGET_ESP32C3)
   #define M5UNITLCD_SDA 1
  #else
@@ -26,6 +25,8 @@
 #ifndef M5UNITLCD_SCL
  #if defined ( ARDUINO )
   #define M5UNITLCD_SCL SCL
+ #elif defined (CONFIG_IDF_TARGET_ESP32S3)
+  #define M5UNITLCD_SCL 1
  #elif defined (CONFIG_IDF_TARGET_ESP32C3)
   #define M5UNITLCD_SCL 0
  #else

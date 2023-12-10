@@ -2,6 +2,7 @@ uint8_t getI2CAddr()
 {
   return (I2C_SLAVE_ADDRESS & 0x7C) + digitalRead(3) + (2 * digitalRead(4)); 
 }
+
 void initI2C()
 {
   i2cAddr = getI2CAddr();
@@ -155,6 +156,7 @@ void receiveEvent(uint8_t howMany)
           sat = i2cConnection.readProc();
           lval = i2cConnection.readProc();
           lastCol = getColorHSV(hue, sat, lval);
+//          lastCol = getColorHSV(85, 255, 127);
           setSinglePixel(thisData, lastCol);
         }
         break;

@@ -1,7 +1,5 @@
 #include <M5Unified.h>
 
-#include <esp_log.h>
-
 void setup(void)
 {
   M5.begin();
@@ -17,7 +15,7 @@ void setup(void)
 
 void loop(void)
 {
-  vTaskDelay(1);
+  M5.delay(1);
 
   M5.update();
 //------------------- Button test
@@ -47,12 +45,12 @@ void loop(void)
             : M5.BtnPWR.wasClicked() ? 2
             : M5.BtnPWR.wasPressed() ? 3
             : M5.BtnPWR.wasReleased() ? 4
-            : M5.BtnPWR.wasDeciedClickCount() ? 5
+            : M5.BtnPWR.wasDecideClickCount() ? 5
             : 0;
 
   if (state)
   {
-    ESP_LOGI("loop", "BtnPWR:%s  count:%d", names[state], M5.BtnPWR.getClickCount());
+    M5_LOGI("BtnPWR:%s  count:%d", names[state], M5.BtnPWR.getClickCount());
     M5.Display.fillRect(w*0, 0, w-1, h, colors[state]);
   }
 
@@ -61,11 +59,11 @@ void loop(void)
         : M5.BtnA.wasClicked() ? 2
         : M5.BtnA.wasPressed() ? 3
         : M5.BtnA.wasReleased() ? 4
-        : M5.BtnA.wasDeciedClickCount() ? 5
+        : M5.BtnA.wasDecideClickCount() ? 5
         : 0;
   if (state)
   {
-    ESP_LOGI("loop", "BtnA:%s  count:%d", names[state], M5.BtnA.getClickCount());
+    M5_LOGI("BtnA:%s  count:%d", names[state], M5.BtnA.getClickCount());
     M5.Display.fillRect(w*1, 0, w-1, h, colors[state]);
   }
 
@@ -73,11 +71,11 @@ void loop(void)
         : M5.BtnB.wasClicked() ? 2
         : M5.BtnB.wasPressed() ? 3
         : M5.BtnB.wasReleased() ? 4
-        : M5.BtnB.wasDeciedClickCount() ? 5
+        : M5.BtnB.wasDecideClickCount() ? 5
         : 0;
   if (state)
   {
-    ESP_LOGI("loop", "BtnB:%s  count:%d", names[state], M5.BtnB.getClickCount());
+    M5_LOGI("BtnB:%s  count:%d", names[state], M5.BtnB.getClickCount());
     M5.Display.fillRect(w*2, 0, w-1, h, colors[state]);
   }
 
@@ -85,11 +83,11 @@ void loop(void)
         : M5.BtnC.wasClicked() ? 2
         : M5.BtnC.wasPressed() ? 3
         : M5.BtnC.wasReleased() ? 4
-        : M5.BtnC.wasDeciedClickCount() ? 5
+        : M5.BtnC.wasDecideClickCount() ? 5
         : 0;
   if (state)
   {
-    ESP_LOGI("loop", "BtnC:%s  count:%d", names[state], M5.BtnC.getClickCount());
+    M5_LOGI("BtnC:%s  count:%d", names[state], M5.BtnC.getClickCount());
     M5.Display.fillRect(w*3, 0, w-1, h, colors[state]);
   }
 
@@ -97,17 +95,17 @@ void loop(void)
         : M5.BtnEXT.wasClicked() ? 2
         : M5.BtnEXT.wasPressed() ? 3
         : M5.BtnEXT.wasReleased() ? 4
-        : M5.BtnEXT.wasDeciedClickCount() ? 5
+        : M5.BtnEXT.wasDecideClickCount() ? 5
         : 0;
   if (state)
   {
-    ESP_LOGI("loop", "BtnEXT:%s  count:%d", names[state], M5.BtnEXT.getClickCount());
+    M5_LOGI("BtnEXT:%s  count:%d", names[state], M5.BtnEXT.getClickCount());
     M5.Display.fillRect(w*4, 0, w-1, h, colors[state]);
   }
   M5.Display.endWrite();
 }
 
-#if !defined ( ARDUINO )
+#if !defined ( ARDUINO ) && defined ( ESP_PLATFORM )
 extern "C" {
   void loopTask(void*)
   {

@@ -405,7 +405,7 @@ void gfxLoop(LGFX_Device* gfx)
   if (!gfx->displayBusy())
   { // draw volume bar
     static int px;
-    uint8_t v = M5.Speaker.getChannelVolume(m5spk_virtual_channel);
+    uint8_t v = M5.Speaker.getVolume();
     int x = v * (gfx->width()) >> 8;
     if (px != x)
     {
@@ -567,14 +567,24 @@ void gfxLoop(LGFX_Device* gfx)
   }
 }
 
-
 void setup(void)
 {
   auto cfg = M5.config();
 
-  cfg.external_spk = true;    /// use external speaker (SPK HAT / ATOMIC SPK)
-//cfg.external_spk_detail.omit_atomic_spk = true; // exclude ATOMIC SPK
-//cfg.external_spk_detail.omit_spk_hat    = true; // exclude SPK HAT
+  // If you want to play sound from ModuleDisplay, write this
+//  cfg.external_speaker.module_display = true;
+
+  // If you want to play sound from ModuleRCA, write this
+//  cfg.external_speaker.module_rca     = true;
+
+  // If you want to play sound from HAT Speaker, write this
+  cfg.external_speaker.hat_spk        = true;
+
+  // If you want to play sound from HAT Speaker2, write this
+//  cfg.external_speaker.hat_spk2       = true;
+
+  // If you want to play sound from ATOMIC Speaker, write this
+  cfg.external_speaker.atomic_spk     = true;
 
   M5.begin(cfg);
 
@@ -617,7 +627,7 @@ void loop(void)
   {
     M5.Speaker.tone(440, 50);
   }
-  if (M5.BtnA.wasDeciedClickCount())
+  if (M5.BtnA.wasDecideClickCount())
   {
     switch (M5.BtnA.getClickCount())
     {
@@ -634,7 +644,7 @@ void loop(void)
   }
   if (M5.BtnA.isHolding() || M5.BtnB.isPressed() || M5.BtnC.isPressed())
   {
-    size_t v = M5.Speaker.getChannelVolume(m5spk_virtual_channel);
+    size_t v = M5.Speaker.getVolume();
     int add = (M5.BtnB.isPressed()) ? -1 : 1;
     if (M5.BtnA.isHolding())
     {
@@ -643,7 +653,7 @@ void loop(void)
     v += add;
     if (v <= 255)
     {
-      M5.Speaker.setChannelVolume(m5spk_virtual_channel, v);
+      M5.Speaker.setVolume(v);
     }
   }
 }

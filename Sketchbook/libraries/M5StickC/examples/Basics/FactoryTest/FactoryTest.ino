@@ -71,9 +71,9 @@ double cos_alpha = cos(19.47 * PI / 180);
 double sin_gamma = sin(20.7 * PI / 180);
 double cos_gamma = cos(20.7 * PI / 180);
 
-//#define NUM_LEDS 3
-//#define DATA_PIN 32
-// CRGB leds[NUM_LEDS];
+// #define NUM_LEDS 3
+// #define DATA_PIN 32
+//  CRGB leds[NUM_LEDS];
 
 hw_timer_t *timer = NULL;
 volatile SemaphoreHandle_t timerSemaphore;
@@ -310,9 +310,13 @@ bool deviceConnected    = false;
 bool oldDeviceConnected = false;
 
 class MyServerCallbacks : public BLEServerCallbacks {
-    void onConnect(BLEServer *pServer) { deviceConnected = true; };
+    void onConnect(BLEServer *pServer) {
+        deviceConnected = true;
+    };
 
-    void onDisconnect(BLEServer *pServer) { deviceConnected = false; }
+    void onDisconnect(BLEServer *pServer) {
+        deviceConnected = false;
+    }
 };
 
 uint8_t *data = new uint8_t[128];
@@ -379,7 +383,9 @@ bool checkAXP192() {
     return true;
 }
 
-bool checkMPU6886() { return true; }
+bool checkMPU6886() {
+    return true;
+}
 
 bool checkBM8563() {
     uint8_t i = 0;

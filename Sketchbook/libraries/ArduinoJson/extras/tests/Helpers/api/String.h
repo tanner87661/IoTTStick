@@ -1,5 +1,5 @@
 // ArduinoJson - https://arduinojson.org
-// Copyright © 2014-2022, Benoit BLANCHON
+// Copyright © 2014-2023, Benoit BLANCHON
 // MIT License
 
 #pragma once
@@ -62,7 +62,7 @@ class String {
   size_t _maxCapacity;
 };
 
-class StringSumHelper;
+class StringSumHelper : public ::String {};
 
 inline bool operator==(const std::string& lhs, const ::String& rhs) {
   return lhs == rhs.c_str();

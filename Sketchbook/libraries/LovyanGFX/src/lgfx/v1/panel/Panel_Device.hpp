@@ -183,10 +183,10 @@ namespace lgfx
     /// If you want to control the RST pin on your own, override this function and implement it.
     virtual void init_rst(void);
 
-    /// RSTピンを一度LOWにし、HIGHに戻す。RSTピンを自前で制御する場合、この関数をoverrideして実装すること。;
-    /// Bring the RST pin low once and bring it back high.
+    /// 引数に応じてRSTピンを制御する。false=LOW / true=HIGH。RSTピンを自前で制御する場合、この関数をoverrideして実装すること。;
+    /// Controls the RST pin to go HIGH when the argument is true.
     /// If you want to control the RST pin on your own, override this function and implement it.
-    virtual void reset(void);
+    virtual void rst_control(bool level);
 
     /// パネルの初期化コマンド列を得る。無い場合はnullptrを返す。;
     /// Get the panel initialization command sequence.
@@ -245,7 +245,7 @@ namespace lgfx
     void writeImageARGB(uint_fast16_t, uint_fast16_t, uint_fast16_t, uint_fast16_t, pixelcopy_t*) override {}
     void writePixels(pixelcopy_t*, uint32_t, bool) override {}
 
-    uint32_t readCommand(uint_fast8_t, uint_fast8_t, uint_fast8_t) override { return 0; }
+    uint32_t readCommand(uint_fast16_t, uint_fast8_t, uint_fast8_t) override { return 0; }
     uint32_t readData(uint_fast8_t, uint_fast8_t) override { return 0; }
     void readRect(uint_fast16_t, uint_fast16_t, uint_fast16_t, uint_fast16_t, void*, pixelcopy_t*) override {}
     void copyRect(uint_fast16_t, uint_fast16_t, uint_fast16_t, uint_fast16_t, uint_fast16_t, uint_fast16_t) override {}

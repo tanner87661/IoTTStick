@@ -1,0 +1,33 @@
+{
+  "name": "ATmega_TimerInterrupt",
+  "version": "1.1.1",
+  "keywords": "timer, interrupt, timer-interrupt, hardware, isr, isr-based, hardware-timer, mission-critical, accuracy, precise, avr, atmega, atmega164, atmega324, atmega644, atmega1284, atmega16, atmega32, atmega8535, mightycore",
+  "description": "This library enables you to use Interrupt from Hardware Timers on an AVR ATmega164, ATmega324, ATmega644, ATmega1284 with MCUdude MightyCore. It now supports 16 ISR-based timers, while consuming only 1 hardware Timer. Timers' interval is very long (ulong millisecs). The most important feature is they're ISR-based timers. Therefore, their executions are not blocked by bad-behaving functions or tasks. This important feature is absolutely necessary for mission-critical tasks.",
+  "authors":
+  {
+    "name":  "Khoi Hoang",
+    "url":   "https://github.com/khoih-prog",
+    "maintainer": true
+  },  
+  "repository":
+  {
+    "type": "git",
+    "url": "https://github.com/khoih-prog/ATmega_TimerInterrupt"
+  },
+  "homepage": "https://github.com/khoih-prog/ATmega_TimerInterrupt",
+  "export": {
+    "exclude": [
+      "linux",
+      "extras",
+      "tests"
+    ]
+  },
+  "license": "MIT",
+  "frameworks": "arduino",
+  "platforms":
+  [
+    "atmelavr"
+  ],
+  "examples": "examples/*/*/*.ino",
+  "headers": ["ATmega_TimerInterrupt.h", "ATmega_TimerInterrupt.hpp", "ISR_Timer.h", "ISR_Timer.hpp"]
+}

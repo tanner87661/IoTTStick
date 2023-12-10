@@ -149,7 +149,7 @@ function getPlainMsgText(lnData)
                     {
                         case 0x7B: retMsg = "Slot Data for FastClock slot "; break;
                         case 0x7C: 
-                            if (lnData[4] === 0) { retMsg = "Read CV " + (lnData[9]+1).toString() + " Value " + lnData[10].toString(); break;}
+                            if (lnData[4] === 0) { retMsg = "Read CV " + (lnData[9]+1).toString() + " Value " + (lnData[10] + ((lnData[8] & 0x02) << 6)).toString(); break;} 
                             if (lnData[4] & 0x01) { retMsg = "Service Mode track empty"; break; }
                             if (lnData[4] & 0x02) { retMsg = "No Write acknowledge response from decoder"; break; }
                             if (lnData[4] & 0x04) { retMsg = "Failed to detect READ response from decoder"; break; }
@@ -178,7 +178,7 @@ function getPlainMsgText(lnData)
                         case 0x7B: retMsg = "Set FastClock (Rate " + lnData[3].toString() + ") to " + ("00" + (24 - 128 + lnData[8]).toString()).slice(-2) + ":" + ("00" + (60 - 128 + lnData[6]).toString()).slice(-2); break;
                         case 0x7C: 
                             var decAddr = (lnData[5] << 7) + lnData[6];
-                            retMsg = (((lnData[3] & 0x04) > 0) ? ("OpsMode Addr " + decAddr.toString())  : "Service Mode") + (((lnData[3] & 0x40) > 0) ? " write" : " read")  + " task CV " + (lnData[9]+1).toString() + " Val " + lnData[10].toString(); break;
+                            retMsg = (((lnData[3] & 0x04) > 0) ? ("OpsMode Addr " + decAddr.toString())  : "Service Mode") + (((lnData[3] & 0x40) > 0) ? " write" : " read")  + " task CV " + (lnData[9]+1).toString() + " Val " + (lnData[10] + ((lnData[8] & 0x02) << 6)).toString(); break;
                         default: retMsg = "Update slot information of slot " + lnData[2].toString();
                     }
                     break;
@@ -214,7 +214,25 @@ function decodeDCCPacket(packetData)
     }                                                        
     if ((packetData[0] > 0xBF) && (packetData[0] <= 0xE7)) //Multi Function Decoders with 14 bit addresses
     {
-        return "Multi Function Decoders with 14 bit addresses";
+		var locoAddr = ((packetData[0] & 0x3F) << 8) + packetData[1];
+		switch (packetData[2] & 0xE0)
+		{
+			case 0xA0:
+				return "MF Decoder 14bit Addr " + locoAddr.toString() + " Fct Group 9-12 Value " + (packetData[2] & 0x0F).toString(16).toUpperCase();
+				break;
+			case 0xC0:
+				switch (packetData[2] & 0x1F)
+				{
+					case 0x1E: 
+						return "MF Decoder 14bit Addr " + locoAddr.toString() + " Fct Group 13-20 Value " + packetData[3].toString(16).toUpperCase();
+						break;
+					case 0x1F:
+						return "MF Decoder 14bit Addr " + locoAddr.toString() + " Fct Group 21-28 Value " + packetData[3].toString(16).toUpperCase();
+						break;
+				}
+				break;
+			default: return "Multi Function Decoders with 14 bit addresses";
+		}
     }
     if ((packetData[0] > 0xE7) && (packetData[0] <= 0xFE)) //Reserved for Future Use
     {

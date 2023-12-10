@@ -2,6 +2,7 @@
  *  © 2021 Fred Decker
  *  © 2020-2022 Harald Barth
  *  © 2020-2022 Chris Harlow
+ *  © 2023 Nathan Kellenicki
  *  All rights reserved.
  *
  *  This file is part of CommandStation-EX
@@ -22,7 +23,7 @@
 #ifndef ARDUINO_AVR_UNO_WIFI_REV2
 // This code is NOT compiled on a unoWifiRev2 processor which uses a different architecture 
 #include "WifiInterface.h"        /* config.h included there */
-#include <avr/pgmspace.h>
+//#include <avr/pgmspace.h>
 #include "DIAG.h"
 #include "StringFormatter.h"
 
@@ -52,10 +53,32 @@ Stream * WifiInterface::wifiStream;
  
 #if (defined(ARDUINO_AVR_MEGA) || defined(ARDUINO_AVR_MEGA2560))
 #define NUM_SERIAL 3
+#define SERIAL1 Serial1
+#define SERIAL3 Serial3
+#endif
+
+#if defined(ARDUINO_ARCH_STM32)
+// Handle serial ports availability on STM32 for variants!
+// #undef NUM_SERIAL
+#if defined(ARDUINO_NUCLEO_F401RE) || defined(ARDUINO_NUCLEO_F411RE)
+#define NUM_SERIAL 3
+#define SERIAL1 Serial1
+#define SERIAL3 Serial6
+#elif defined(ARDUINO_NUCLEO_F446RE)
+#define NUM_SERIAL 3
+#define SERIAL1 Serial3
+#define SERIAL3 Serial5
+#elif defined(ARDUINO_NUCLEO_F413ZH) || defined(ARDUINO_NUCLEO_F429ZI) || defined(ARDUINO_NUCLEO_F446ZE) || defined(ARDUINO_NUCLEO_F412ZG)
+#define NUM_SERIAL 2
+#define SERIAL1 Serial6
+#else
+#warning This variant of Nucleo not yet explicitly supported
+#endif
 #endif
 
 #ifndef NUM_SERIAL
 #define NUM_SERIAL 1
+#define SERIAL1 Serial1
 #endif
 
 bool WifiInterface::setup(long serial_link_speed, 
@@ -63,7 +86,8 @@ bool WifiInterface::setup(long serial_link_speed,
                           const FSH *wifiPassword,
                           const FSH *hostname,
                           const int port,
-                          const byte channel) {
+                          const byte channel,
+                          const bool forceAP) {
 
   wifiSerialState wifiUp = WIFI_NOAT;
 
@@ -75,27 +99,34 @@ bool WifiInterface::setup(long serial_link_speed,
   (void) hostname;
   (void) port;
   (void) channel;
+  (void) forceAP;
 #endif  
-  
+
+// See if the WiFi is attached to the first serial port
 #if NUM_SERIAL > 0 && !defined(SERIAL1_COMMANDS)
-  Serial1.begin(serial_link_speed);
-  wifiUp = setup(Serial1, wifiESSID, wifiPassword, hostname, port, channel);
+  SERIAL1.begin(serial_link_speed);
+  wifiUp = setup(SERIAL1, wifiESSID, wifiPassword, hostname, port, channel, forceAP);
 #endif
 
 // Other serials are tried, depending on hardware.
+// Currently only the Arduino Mega 2560 has usable Serial2 (Nucleo-64 boards use Serial 2 for console!)
+#if defined(ARDUINO_AVR_MEGA2560)
 #if NUM_SERIAL > 1 && !defined(SERIAL2_COMMANDS)
   if (wifiUp == WIFI_NOAT)
   {
     Serial2.begin(serial_link_speed);
-    wifiUp = setup(Serial2, wifiESSID, wifiPassword, hostname, port, channel);
+    wifiUp = setup(Serial2, wifiESSID, wifiPassword, hostname, port, channel, forceAP);
   }
 #endif
-  
+#endif
+
+// We guess here that in all architctures that have a Serial3
+// we can use it for our purpose.
 #if NUM_SERIAL > 2 && !defined(SERIAL3_COMMANDS)
   if (wifiUp == WIFI_NOAT)
   {
-    Serial3.begin(serial_link_speed);
-    wifiUp = setup(Serial3, wifiESSID, wifiPassword, hostname, port, channel);
+    SERIAL3.begin(serial_link_speed);
+    wifiUp = setup(SERIAL3, wifiESSID, wifiPassword, hostname, port, channel, forceAP);
   }
 #endif
 
@@ -113,7 +144,7 @@ bool WifiInterface::setup(long serial_link_speed,
 }
 
 wifiSerialState WifiInterface::setup(Stream & setupStream,  const FSH* SSid, const FSH* password,
-				     const FSH* hostname,  int port, byte channel) {
+				     const FSH* hostname,  int port, byte channel, bool forceAP) {
   wifiSerialState wifiState;
   static uint8_t ntry = 0;
   ntry++;
@@ -122,20 +153,21 @@ wifiSerialState WifiInterface::setup(Stream & setupStream,  const FSH* SSid, con
 
   DIAG(F("++ Wifi Setup Try %d ++"), ntry);
 
-  wifiState = setup2( SSid, password, hostname,  port, channel);
+  wifiState = setup2( SSid, password, hostname,  port, channel, forceAP);
 
   if (wifiState == WIFI_NOAT) {
-      DIAG(F("++ Wifi Setup NO AT ++"));
-      return wifiState;
+    LCD(4, F("WiFi no AT chip"));
+    return wifiState;
   }
  
   if (wifiState == WIFI_CONNECTED) {
     StringFormatter::send(wifiStream, F("ATE0\r\n")); // turn off the echo 
-    checkForOK(200, true);      
+    checkForOK(200, true);
+    DIAG(F("WiFi CONNECTED"));
+    // LCD already shows IP
+  } else {
+    LCD(4,F("WiFi DISCON."));
   }
-
-    
-  DIAG(F("++ Wifi Setup %S ++"), wifiState == WIFI_CONNECTED ? F("CONNECTED") : F("DISCONNECTED"));
   return wifiState;
 }
 
@@ -145,7 +177,7 @@ wifiSerialState WifiInterface::setup(Stream & setupStream,  const FSH* SSid, con
 #pragma GCC diagnostic ignored "-Wunused-parameter"
 #endif
 wifiSerialState WifiInterface::setup2(const FSH* SSid, const FSH* password,
-				      const FSH* hostname, int port, byte channel) {
+				      const FSH* hostname, int port, byte channel, bool forceAP) {
   bool ipOK = false;
   bool oldCmd = false;
 
@@ -184,8 +216,8 @@ wifiSerialState WifiInterface::setup2(const FSH* SSid, const FSH* password,
   checkForOK(1000, true);                       // Not always OK, sometimes "no change"
 
   const char *yourNetwork = "Your network ";
-  if (strncmp_P(yourNetwork, (const char*)SSid, 13) == 0 || strncmp_P("", (const char*)SSid, 13) == 0) {
-    if (strncmp_P(yourNetwork, (const char*)password, 13) == 0) {
+  if (STRNCMP_P(yourNetwork, (const char*)SSid, 13) == 0 || STRNCMP_P("", (const char*)SSid, 13) == 0) {
+    if (STRNCMP_P(yourNetwork, (const char*)password, 13) == 0) {
       // If the source code looks unconfigured, check if the
       // ESP8266 is preconfigured in station mode.
       // We check the first 13 chars of the SSid and the password
@@ -198,7 +230,7 @@ wifiSerialState WifiInterface::setup2(const FSH* SSid, const FSH* password,
 	  if (!checkForOK(1000, F("0.0.0.0"), true,false))
 	      ipOK = true;
     }
-  } else {
+  } else if (!forceAP) {
       // SSID was configured, so we assume station (client) mode.
       if (oldCmd) {
 	      // AT command early version supports CWJAP/CWSAP
@@ -258,14 +290,19 @@ wifiSerialState WifiInterface::setup2(const FSH* SSid, const FSH* password,
   
     i=0;
     do {
-      if (strncmp_P(yourNetwork, (const char*)password, 13) == 0) {
-	// unconfigured
-        StringFormatter::send(wifiStream, F("AT+CWSAP%s=\"DCCEX_%s\",\"PASS_%s\",%d,4\r\n"),
-                                          oldCmd ? "" : "_CUR", macTail, macTail, channel);
+      if (!forceAP) {
+        if (STRNCMP_P(yourNetwork, (const char*)password, 13) == 0) {
+    // unconfigured
+          StringFormatter::send(wifiStream, F("AT+CWSAP%s=\"DCCEX_%s\",\"PASS_%s\",%d,4\r\n"),
+                                            oldCmd ? "" : "_CUR", macTail, macTail, channel);
+        } else {
+          // password configured by user
+          StringFormatter::send(wifiStream, F("AT+CWSAP%s=\"DCCEX_%s\",\"%S\",%d,4\r\n"), oldCmd ? "" : "_CUR",
+                                          macTail, password, channel);
+        }
       } else {
-        // password configured by user
-       StringFormatter::send(wifiStream, F("AT+CWSAP%s=\"DCCEX_%s\",\"%S\",%d,4\r\n"), oldCmd ? "" : "_CUR",
-	                                       macTail, password, channel);
+        StringFormatter::send(wifiStream, F("AT+CWSAP%s=\"%S\",\"%S\",%d,4\r\n"),
+                                        oldCmd ? "" : "_CUR", SSid, password, channel);
       }
     } while (!checkForOK(WIFI_CONNECT_TIMEOUT, true) && i++<2); // do twice if necessary but ignore failure as AP mode may still be ok
     if (i >= 2)
@@ -344,11 +381,10 @@ void WifiInterface::ATCommand(HardwareSerial * stream,const byte * command) {
       while (wifiStream->available()) stream->write(wifiStream->read());
       if (stream->available()) {
         int cx=stream->read();
-        // A newline followed by !!! is an exit
+        // A newline followed by ! is an exit
         if (cx=='\n' || cx=='\r') startOfLine=true; 
         else if (startOfLine && cx=='!')  break;
         else startOfLine=false; 
-        stream->write(cx);
         wifiStream->write(cx);  
       }
     }
@@ -377,11 +413,12 @@ bool WifiInterface::checkForOK( const unsigned int timeout, const FSH * waitfor,
   char *locator = (char *)waitfor;
   DIAG(F("Wifi Check: [%E]"), waitfor);
   while ( millis() - startTime < timeout) {
-    while (wifiStream->available()) {
-      int ch = wifiStream->read();
+    int nextchar;
+    while (wifiStream->available() && (nextchar = wifiStream->read()) > -1) {
+      char ch = (char)nextchar;
       if (echo) {
         if (escapeEcho) StringFormatter::printEscape( ch); /// THIS IS A DIAG IN DISGUISE
-        else StringFormatter::diagSerial->print((char)ch); 
+        else USB_SERIAL.print(ch);
       }
       if (ch != GETFLASH(locator)) locator = (char *)waitfor;
       if (ch == GETFLASH(locator)) {

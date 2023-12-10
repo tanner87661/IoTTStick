@@ -1,4 +1,5 @@
  /*
+ *  © 2022 Paul M. Antoine
  *  © 2021 Chris Harlow
  *  © 2022 Harald Barth
  *  All rights reserved.
@@ -21,6 +22,20 @@
 
 #include "SerialManager.h"
 #include "DCCEXParser.h"
+#include "StringFormatter.h"
+
+#ifdef ARDUINO_ARCH_ESP32
+#ifdef SERIAL_BT_COMMANDS
+#include <BluetoothSerial.h>
+//#include <BleSerial.h>
+#if !defined(CONFIG_BT_ENABLED) || !defined(CONFIG_BLUEDROID_ENABLED)
+#error No Bluetooth library available
+#endif //ENABLED
+BluetoothSerial SerialBT;
+//BleSerial SerialBT;
+#endif //COMMANDS
+#endif //ESP32
+
 SerialManager * SerialManager::first=NULL;
 
 SerialManager::SerialManager(Stream * myserial) {
@@ -32,9 +47,22 @@ SerialManager::SerialManager(Stream * myserial) {
 } 
 
 void SerialManager::init() {
-  while (!Serial && millis() < 5000); // wait max 5s for Serial to start
-  Serial.begin(115200);
-  new SerialManager(&Serial);
+  USB_SERIAL.begin(115200);
+  while (!USB_SERIAL && millis() < 5000); // wait max 5s for Serial to start
+  new SerialManager(&USB_SERIAL);
+  
+#ifdef SERIAL6_COMMANDS
+  Serial6.begin(115200);
+  new SerialManager(&Serial6);
+#endif
+#ifdef SERIAL5_COMMANDS
+  Serial5.begin(115200);
+  new SerialManager(&Serial5);
+#endif
+#ifdef SERIAL4_COMMANDS
+  Serial4.begin(115200);
+  new SerialManager(&Serial4);
+#endif
 #ifdef SERIAL3_COMMANDS
   Serial3.begin(115200);
   new SerialManager(&Serial3);
@@ -47,13 +75,28 @@ void SerialManager::init() {
   Serial1.begin(115200);
   new SerialManager(&Serial1);
 #endif
+#ifdef SERIAL_BT_COMMANDS
+  {
+    //SerialBT.setPin("6666"); // choose other pin
+    uint64_t chipid = ESP.getEfuseMac();
+    char idstr[16] = {0};
+    snprintf(idstr, 15, "DCCEX-%08X",
+	     __builtin_bswap32((uint32_t)(chipid>>16)));
+    SerialBT.begin(idstr);
+    new SerialManager(&SerialBT);
+    delay(1000);
+  }
+#endif
+#ifdef SABERTOOTH
+  Serial2.begin(9600, SERIAL_8N1, 16, 17); // GPIO 16 RXD2; GPIO 17 TXD2 on ESP32
+#endif
 }
 
-void SerialManager::broadcast(RingStream * ring) {
-    for (SerialManager * s=first;s;s=s->next) s->broadcast2(ring);
+void SerialManager::broadcast(char * stringBuffer) {
+    for (SerialManager * s=first;s;s=s->next) s->broadcast2(stringBuffer);
 }
-void SerialManager::broadcast2(RingStream * ring) {
-    ring->printBuffer(serial);
+void SerialManager::broadcast2(char * stringBuffer) {
+    serial->print(stringBuffer);
 }
 
 void SerialManager::loop() {

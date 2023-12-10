@@ -2,25 +2,34 @@
 
 Graphics library for M5Stack series  
 
-Support framework  
+Supported framework  
 ----------------
 - ESP-IDF
 - Arduino for ESP32
 
 
-Support device  
+Supported device  
 ----------------
 - M5Stack ( Basic / Gray / GO / Fire )
 - M5Stack Core2
 - M5Stack CoreInk
 - M5Stick C
 - M5Stick C Plus
+- M5Stick C Plus2
 - M5Paper
 - M5Tough
 - M5Station
+- M5ATOMS3
+- M5Dial
+- M5DinMeter
+- M5Cardputer
 - UnitOLED
+- UnitMiniOLED
 - UnitLCD
-- [AtomDisplay](docs/ATOMDisplay.md)
+- [UnitRCA / ModuleRCA](docs/UnitRCA.md)
+- [UnitGLASS](docs/UnitGLASS.md)
+- UnitGLASS2
+- [AtomDisplay](docs/ATOMDisplay.md) / ModuleDisplay
 
 
 License

@@ -1,5 +1,8 @@
 
 #include <Arduino.h>
+
+// If you want to use a set of functions to handle SD/SPIFFS/HTTP,
+//  please include <SD.h>,<SPIFFS.h>,<HTTPClient.h> before <M5GFX.h>
 // #include <SD.h>
 // #include <SPIFFS.h>
 // #include <HTTPClient.h>
@@ -14,6 +17,10 @@ M5GFX display;
 //#include <M5UnitLCD.h>
 //M5UnitLCD display;  // default setting
 //M5UnitLCD display  ( 21, 22, 400000 ); // SDA, SCL, FREQ
+
+//#include <M5UnitGLASS2.h>
+//M5UnitGLASS2 display;  // default setting
+//M5UnitGLASS2 display ( 21, 22, 400000 ); // SDA, SCL, FREQ
 
 //#include <M5AtomDisplay.h>
 //M5AtomDisplay display;

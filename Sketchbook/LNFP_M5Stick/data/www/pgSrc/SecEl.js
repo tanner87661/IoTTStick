@@ -35,10 +35,10 @@ function upgradeJSONVersion(jsonData)
 function addFileSeq(ofObj) //object specific function to include partial files
 {
 	console.log(ofObj);
-	for (var j=0; j<ofObj.SecurityElementModels.length; j++)
+	for (var j=0; j<ofObj.SecurityElementSections.length; j++)
 	{
-		configData[1].SecurityElementModels.push(JSON.parse(JSON.stringify(ofObj.SecurityElementModels[j])));
-		configData[2].SecurityElementModels.push(JSON.parse(JSON.stringify(ofObj.SecurityElementModels[j])));
+		configData[1].SecurityElementSections.push(JSON.parse(JSON.stringify(ofObj.SecurityElementSections[j])));
+		configData[2].SecurityElementSections.push(JSON.parse(JSON.stringify(ofObj.SecurityElementSections[j])));
 	}
 }
 
@@ -46,7 +46,7 @@ function prepareFileSeq() //object specific function to create partial files
 {
 	function addEntry()
 	{
-		var newEntry = {"SecurityElementModels":[]}
+		var newEntry = {"SecurityElementSections":[]}
 		transferData.FileList.push(newEntry);
 		return newEntry;
 	}
@@ -58,12 +58,12 @@ function prepareFileSeq() //object specific function to create partial files
 	thisEntry.AspectGeneratorList = JSON.parse(JSON.stringify(configData[2].AspectGeneratorList));
 	var thisFileLength = JSON.stringify(thisEntry).length;
 	
-	for (var j=0; j<configData[2].SecurityElementModels.length;j++)
+	for (var j=0; j<configData[2].SecurityElementSections.length;j++)
 	{
-		var thisElementStr = JSON.stringify(configData[2].SecurityElementModels[j]);
+		var thisElementStr = JSON.stringify(configData[2].SecurityElementSections[j]);
 		thisFileLength += thisElementStr.length;
-		thisEntry.SecurityElementModels.push(JSON.parse(thisElementStr));
-		if ((thisFileLength > targetSize) && (j < (configData[2].SecurityElementModels.length - 1)))
+		thisEntry.SecurityElementSections.push(JSON.parse(thisElementStr));
+		if ((thisFileLength > targetSize) && (j < (configData[2].SecurityElementSections.length - 1)))
 		{
 			thisEntry = addEntry();
 			thisFileLength = 0;
@@ -859,5 +859,5 @@ function loadDataFields(jsonData)
 	loadSpeedTable(dynSpeedTable, jsonData.DynSpeedModelList);
 	loadSpeedTable(staticSpeedTable, jsonData.StaticSpeedModelList);
 	loadAspectTable(aspectGenTable, jsonData.AspectGeneratorList);
-	loadSecElModelTable(secelModelTable, jsonData.SecurityElementModels);
+	loadSecElModelTable(secelModelTable, jsonData.SecurityElementSections);
 }

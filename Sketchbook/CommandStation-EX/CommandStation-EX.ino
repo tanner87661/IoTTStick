@@ -18,16 +18,19 @@
 
 #if __has_include ( "config.h")
   #include "config.h"
+  #ifndef MOTOR_SHIELD_TYPE
+  #error Your config.h must include a MOTOR_SHIELD_TYPE definition. If you see this warning in spite not having a config.h, you have a buggy preprocessor and must copy config.example.h to config.h
+  #endif
 #else
   #warning config.h not found. Using defaults from config.example.h
   #include "config.example.h"
 #endif
 
-
 /*
  *  © 2021 Neil McKechnie
  *  © 2020-2021 Chris Harlow, Harald Barth, David Cutting,
  *  Fred Decker, Gregor Baues, Anthony W - Dayton
+ *  © 2023 Nathan Kellenicki
  *  All rights reserved.
  *
  *  This file is part of CommandStation-EX
@@ -47,6 +50,12 @@
  */
 
 #include "DCCEX.h"
+#include "Display_Implementation.h"
+
+#ifdef CPU_TYPE_ERROR
+#error CANNOT COMPILE - DCC++ EX ONLY WORKS WITH THE ARCHITECTURES LISTED IN defines.h
+#endif
+
 #ifdef WIFI_WARNING
 #warning You have defined that you want WiFi but your hardware has not enough memory to do that, so WiFi DISABLED
 #endif
@@ -67,29 +76,39 @@ void setup()
 
   DIAG(F("License GPLv3 fsf.org (c) dcc-ex.com"));
 
-  CONDITIONAL_LCD_START {
-    // This block is still executed for DIAGS if LCD not in use
-    LCD(0,F("DCC++ EX v%S"),F(VERSION));
+// Initialise HAL layer before reading EEprom or setting up MotorDrivers 
+  IODevice::begin();
+
+  // As the setup of a motor shield may require a read of the current sense input from the ADC,
+  // let's make sure to initialise the ADCee class!
+  ADCee::begin();
+  // Set up MotorDrivers early to initialize all pins
+  TrackManager::Setup(MOTOR_SHIELD_TYPE);
+
+  DISPLAY_START (
+    // This block is still executed for DIAGS if display not in use
+    LCD(0,F("DCC-EX v%S"),F(VERSION));
     LCD(1,F("Lic GPLv3"));
-  }
+  );
 
   // Responsibility 2: Start all the communications before the DCC engine
   // Start the WiFi interface on a MEGA, Uno cannot currently handle WiFi
   // Start Ethernet if it exists
+#ifndef ARDUINO_ARCH_ESP32
 #if WIFI_ON
-  WifiInterface::setup(WIFI_SERIAL_LINK_SPEED, F(WIFI_SSID), F(WIFI_PASSWORD), F(WIFI_HOSTNAME), IP_PORT, WIFI_CHANNEL);
+  WifiInterface::setup(WIFI_SERIAL_LINK_SPEED, F(WIFI_SSID), F(WIFI_PASSWORD), F(WIFI_HOSTNAME), IP_PORT, WIFI_CHANNEL, WIFI_FORCE_AP);
 #endif // WIFI_ON
+#else
+  // ESP32 needs wifi on always
+  WifiESP::setup(WIFI_SSID, WIFI_PASSWORD, WIFI_HOSTNAME, IP_PORT, WIFI_CHANNEL, WIFI_FORCE_AP);
+#endif // ARDUINO_ARCH_ESP32
 
 #if ETHERNET_ON
   EthernetInterface::setup();
 #endif // ETHERNET_ON
-
+  
   // Responsibility 3: Start the DCC engine.
-  // Note: this provides DCC with two motor drivers, main and prog, which handle the motor shield(s)
-  // Standard supported devices have pre-configured macros but custome hardware installations require
-  //  detailed pin mappings and may also require modified subclasses of the MotorDriver to implement specialist logic.
-  // STANDARD_MOTOR_SHIELD, POLOLU_MOTOR_SHIELD, FIREBOX_MK1, FIREBOX_MK1S are pre defined in MotorShields.h
-  DCC::begin(MOTOR_SHIELD_TYPE);
+  DCC::begin();
 
   // Start RMFT aka EX-RAIL (ignored if no automnation)
   RMFT::begin();
@@ -98,17 +117,16 @@ void setup()
   // Invoke any DCC++EX commands in the form "SETUP("xxxx");"" found in optional file mySetup.h.
   //  This can be used to create turnouts, outputs, sensors etc. through the normal text commands.
   #if __has_include ( "mySetup.h")
-  #define SETUP(cmd) DCCEXParser::parse(F(cmd))
-  #include "mySetup.h"
-  #undef SETUP
+    #define SETUP(cmd) DCCEXParser::parse(F(cmd))
+    #include "mySetup.h"
+    #undef SETUP
   #endif
 
   #if defined(LCN_SERIAL)
   LCN_SERIAL.begin(115200);
   LCN::init(LCN_SERIAL);
   #endif
-
-  LCD(3,F("Ready"));
+  LCD(3, F("Ready"));
   CommandDistributor::broadcastPower();
 }
 
@@ -124,9 +142,15 @@ void loop()
   SerialManager::loop();
 
   // Responsibility 3: Optionally handle any incoming WiFi traffic
+#ifndef ARDUINO_ARCH_ESP32
 #if WIFI_ON
   WifiInterface::loop();
+#endif //WIFI_ON
+#else  //ARDUINO_ARCH_ESP32
+#ifndef WIFI_TASK_ON_CORE0
+  WifiESP::loop();
 #endif
+#endif //ARDUINO_ARCH_ESP32
 #if ETHERNET_ON
   EthernetInterface::loop();
 #endif
@@ -137,7 +161,8 @@ void loop()
   LCN::loop();
   #endif
 
-  LCDDisplay::loop();  // ignored if LCD not in use
+  // Display refresh
+  DisplayInterface::loop();
 
   // Handle/update IO devices.
   IODevice::loop();
@@ -147,7 +172,7 @@ void loop()
   // Report any decrease in memory (will automatically trigger on first call)
   static int ramLowWatermark = __INT_MAX__; // replaced on first loop
 
-  int freeNow = minimumFreeMemory();
+  int freeNow = DCCTimer::getMinimumFreeMemory();
   if (freeNow < ramLowWatermark) {
     ramLowWatermark = freeNow;
     LCD(3,F("Free RAM=%5db"), ramLowWatermark);

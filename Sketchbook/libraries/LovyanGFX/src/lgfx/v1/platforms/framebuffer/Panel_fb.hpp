@@ -43,6 +43,12 @@ namespace lgfx
     Panel_fb(void);
     virtual ~Panel_fb(void);
 
+    struct config_detail_t
+    {
+      // 操作対象とするフレームバッファのパス名、または、デバイス名称 ("st7789") 等の文字列へのポインタを指定する。
+      const char* device_name = "/dev/fb0";
+    };
+
     bool init(bool use_reset) override;
     void beginTransaction(void) override;
     void endTransaction(void) override;
@@ -65,18 +71,23 @@ namespace lgfx
     void writeImage(uint_fast16_t x, uint_fast16_t y, uint_fast16_t w, uint_fast16_t h, pixelcopy_t* param, bool use_dma) override;
     void writeImageARGB(uint_fast16_t x, uint_fast16_t y, uint_fast16_t w, uint_fast16_t h, pixelcopy_t* param) override;
 
-    uint32_t readCommand(uint_fast8_t cmd, uint_fast8_t index, uint_fast8_t len) override { return 0; }
+    uint32_t readCommand(uint_fast16_t cmd, uint_fast8_t index, uint_fast8_t len) override { return 0; }
     uint32_t readData(uint_fast8_t index, uint_fast8_t len) override { return 0; }
     void readRect(uint_fast16_t x, uint_fast16_t y, uint_fast16_t w, uint_fast16_t h, void* dst, pixelcopy_t* param) override;
     void copyRect(uint_fast16_t dst_x, uint_fast16_t dst_y, uint_fast16_t w, uint_fast16_t h, uint_fast16_t src_x, uint_fast16_t src_y) override;
 
     uint_fast8_t getTouchRaw(touch_point_t* tp, uint_fast8_t count) override;
 
-  private:
-    void fb_draw_rgb_pixel(int x, int y, uint32_t rawcolor);
-    void fb_draw_argb_pixel(int x, int y, uint32_t rawcolor);
+    // init前に使用し、操作対象とするフレームバッファのパス名、または、デバイス名称 ("st7789") 等の文字列へのポインタを指定する。
+    void setDeviceName(const char* device_name) { _config_detail.device_name = device_name; };
+
+    const config_detail_t& config_detail(void) const { return _config_detail; }
+    void config_detail(const config_detail_t& config_detail);
 
   protected:
+
+    config_detail_t _config_detail;
+
     touch_point_t _touch_point;
     // framebuffer
     int _fbfd = 0;
@@ -89,6 +100,10 @@ namespace lgfx
     int32_t _ypos = 0;
 
     void _rotate_pixelcopy(uint_fast16_t& x, uint_fast16_t& y, uint_fast16_t& w, uint_fast16_t& h, pixelcopy_t* param, uint32_t& nextx, uint32_t& nexty);
+
+  private:
+    void fb_draw_rgb_pixel(int x, int y, uint32_t rawcolor);
+    void fb_draw_argb_pixel(int x, int y, uint32_t rawcolor);
   };
 
 //----------------------------------------------------------------------------

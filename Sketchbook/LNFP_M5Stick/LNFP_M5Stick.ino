@@ -1,25 +1,29 @@
-#if defined ( ARDUINO )
-#include <Arduino.h>
-#include <SD.h>
-#include <SPIFFS.h>
-#endif
-#include <M5AtomDisplay.h>
-#include <M5UnitLCD.h>
-#include <M5UnitOLED.h>
-#include <M5Unified.h>
+#define  StickPlus
+//#define DialKnob
 
-String BBVersion = "1.6.0";
+#if defined ( DialKnob )
+  #define PowerSys M5.Power.Axp2101
+#endif
+
+#if defined ( StickPlus )
+  #define PowerSys M5.Power.Axp192
+#endif
 
 //#define measurePerformance //uncomment this to display the number of loop cycles per second
 //#define useAI
-#define useSecEl
+//#define useSecEl
 
 //Arduino published libraries. Install using the Arduino IDE or download from Github and install manually
+#include <Arduino.h>
+#include <SD.h>
+#include <SPIFFS.h>
+#include <M5Unified.h>
+#if defined ( DialKnob )
+  #include <M5Dial.h>
+#endif
 #include <math.h>
 
-//#include <Wiroe.h>
-//#include <esp_int_wdt.h>
-//#include <esp_task_wdt.h>
+#include <Wire.h>
 
 #include <WiFi.h>
 #include <ArduinoUniqueID.h>
@@ -33,6 +37,7 @@ String BBVersion = "1.6.0";
 #include <ESPAsyncWiFiManager.h>         //https://github.com/alanswx/ESPAsyncWiFiManager
 #include <ArduinoJson.h> //standard JSON library, can be installed in the Arduino IDE. Make sure to use version 6.x
 
+
 //following libraries can be downloaded from https://github.com/tanner87661?tab=repositories
 #include <IoTT_CommDef.h>
 #include <IoTT_DigitraxBuffers.h> //as introduced in video # 30
@@ -45,7 +50,9 @@ String BBVersion = "1.6.0";
 #include <IoTT_SerInjector.h> //Serial USB Port to make it an interface for LocoNet and OpenLCB
 //#include <IoTT_OpenLCB.h> //CAN port for OpenLCB
 #include <IoTT_Switches.h>
+#ifdef useSecEl
 #include <IoTT_SecurityElements.h> //not ready yet. This is the support for ABS/APB as described in Videos #20, 21, 23, 24
+#endif
 #include <NmraDcc.h> //install via Arduino IDE
 //#include <OneDimKalman.h>
 #include <IoTT_lbServer.h>
@@ -53,6 +60,9 @@ String BBVersion = "1.6.0";
 #ifdef useAI
   #include <IoTT_VoiceControl.h>
 #endif
+
+
+String BBVersion = "1.6.5";
 
 //library object pointers. Libraries will be dynamically initialized as needed during the setup() function
 AsyncWebServer * myWebServer = NULL; //(80)
@@ -80,6 +90,9 @@ IPAddress static_nm;
 IPAddress static_dns;
 IPAddress ap_ip;
 IPAddress ap_nm(255,255,255,0);
+IPAddress dyn_ip;
+
+String mySSID;
 
 uint8_t wifiCfgMode = 0x00; //1: STA, 2: AP, 3: STA+AP
 String deviceName; //device name used for AP, will load from node.cfg
@@ -88,8 +101,11 @@ String apPassword; //AP password, will load from node.cfg
 bool wifiAlwaysOn = false; //set to false to shut Wifi after some time of inactivity. Gateway and MQTT should be disabled, though
 bool wifiCancelled = false; //true if Wifi was switched off due to no use
 uint32_t lastWifiUse = millis();
+
 #define wifiShutTimeout 120000 //after 2 Mins of not using, Wifi is closed
 #define apShutTimeout 180000 //after 3 Mins of not using, AP is shut. 3 Min to give enough time to connect to the AP from a PC
+
+#define i2cClock 400000
 
 String bufferFileName = "/buffers.dat";
 
@@ -108,7 +124,7 @@ nodeType subnetMode = standardMode;
 IoTT_SerInjector * usbSerial = NULL;
 IoTT_LBServer * lbClient = NULL;
 IoTT_LBServer * lbServer = NULL;
-IoTT_LBServer * wiServer = NULL;
+IoTT_LBServer * wiThServer = NULL;
 IoTT_DigitraxBuffers * digitraxBuffer = NULL; //pointer to DigitraxBuffers
 //IoTT_OpenLCB *olcbSerial = NULL;
 //HardwareSerial *wireSerial = NULL;
@@ -145,9 +161,6 @@ uint8_t hatData[] = {1, hatDataPin}; //pin definition for LED library
 uint8_t analogPins[] = {hatInputPin, 2}; //analog pin used for button reading, number of button MUX (connected via I2C)
 
 //***********************************************************************************************************************************
-
-//M5StickCPlus M5;
-//M5StickC M5;
 
 //global variables for the NTP module
 int ntpTimeout = 5000; //ms timeout for NTP update request
@@ -196,6 +209,10 @@ bool hatPresent = false;
 bool pwrUSB = false;
 bool pwrDC = false;
 
+uint16_t wifiMode = 0;
+uint16_t wifiStatus = 0;
+bool dataValid = false;
+
 File uploadFile; //used for web server to upload files
 
 //this is the outgoing communication function for IoTT_DigitraxBuffers.h, routing the outgoing messages to the correct interface
@@ -218,7 +235,8 @@ uint16_t sendMsg(lnTransmitMsg txData)
     case 16:; //LocoNet Loopback
     case 2: if (lnSerial) return lnSerial->lnWriteMsg(&txData); break;
     case 3: if (lnMQTTClient) return lnMQTTClient->lnWriteMsg(&txData); break;
-    case 17:; //WiThrottle
+    case 17:; //WiThrottle native Mode
+    case 18:; //WiThrottle DCC EX Mode
     case 12:if (lbClient) //LocoNet over TCP or WiClient
             {
 //               Serial.printf("Send to lbServer ID %2X\n", txData.requestID);
@@ -230,7 +248,7 @@ uint16_t sendMsg(lnTransmitMsg txData)
             break;
 */            
   }
-  Serial.printf("nada %i\n", useInterface.devId);
+  Serial.printf("No Command Source selected %i\n", useInterface.devId);
   return 0;
 }
 
@@ -276,10 +294,11 @@ void setup()
   cfg.external_rtc  = false;  // default=false. use Unit RTC.
   cfg.external_spk  = false; // default=false. use SPK_HAT / ATOMIC_SPK
   cfg.led_brightness = 0;   // default= 0. system LED brightness (0=off / 255=max) (※ not NeoPixel)
+
   M5.begin(cfg);
 
   initDisplay();
-  digitalWrite(stickLED, 0);
+  digitalWrite(stickLED, 1);
   getRTCTime();
   char time_output[30];
   strftime(time_output, 30, "%a  %d-%m-%y %T", localtime(&now));
@@ -307,6 +326,7 @@ void setup()
   DynamicJsonDocument * jsonConfigObj = NULL;
   DynamicJsonDocument * jsonDataObj = NULL;
   jsonConfigObj = getDocPtr("/configdata/node.cfg", true); //read and decode the master config file. See ConfigLoader tab. Make data copy
+
   if (jsonConfigObj != NULL)
   {
     //first, read all Wifi Paramters
@@ -366,6 +386,11 @@ void setup()
     }
     else
       digitraxBuffer->enableFCRefresh(true, 75);
+    if (jsonConfigObj->containsKey("refreshFct"))
+    {
+      bool fctRefresh = (*jsonConfigObj)["refreshFct"];
+      digitraxBuffer->enableFctRefresh(fctRefresh);
+    }
 
     //load the interface type
     if (jsonConfigObj->containsKey("InterfaceTypeList") && jsonConfigObj->containsKey("InterfaceIndex"))
@@ -383,14 +408,6 @@ void setup()
       useInterface.devCommMode = 1;
       useInterface.devId = 2;
     }
-/*    
-    if (jsonConfigObj->containsKey("subnetMode")) //applicable for Loconet interface only
-    {
-      uint8_t newMode = (*jsonConfigObj)["subnetMode"];
-      if (newMode > 0)
-        subnetMode = limitedMaster;
-    }
-*/    
    //load the hat type
     strcpy(useHat.devName, "none");
     bool validHat = false;
@@ -550,7 +567,7 @@ void setup()
     else 
       Serial.println("LocoNet over TCP / lbServer Client not activated");
 
-    if (useInterface.devId == 17) // WiThrottle, client
+    if ((useInterface.devId == 17) || (useInterface.devId == 18)) // WiThrottle, client
     {
       Serial.println("Load WiThrottle Client");  
       jsonDataObj = getDocPtr("/configdata/wiclient.cfg", false);
@@ -558,7 +575,7 @@ void setup()
       {
         lbClient = new IoTT_LBServer();
         lbClient->loadLBServerCfgJSON(*jsonDataObj);
-        lbClient->initWIServer(false);
+        lbClient->initWIServer(false, useInterface.devId == 18);
         digitraxBuffer->setLocoNetMode(false);
         wifiAlwaysOn = true;
         delete(jsonDataObj);
@@ -644,9 +661,9 @@ void setup()
       jsonDataObj = getDocPtr("/configdata/wiclient.cfg", false);
       if (jsonDataObj != NULL)
       {
-        wiServer = new IoTT_LBServer();
-        wiServer->loadLBServerCfgJSON(*jsonDataObj);
-        wiServer->initWIServer(true);
+        wiThServer = new IoTT_LBServer();
+        wiThServer->loadLBServerCfgJSON(*jsonDataObj);
+        wiThServer->initWIServer(true);
         wifiAlwaysOn = true;
         delete(jsonDataObj);
       }
@@ -676,13 +693,12 @@ void setup()
     if ((useHat.devId == 7) || (useHat.devId == 3) || (useHat.devId == 4)) //PurpleHat or YellowHat or GreenHat
     {
         Serial.println("Init TwoWire");  
-        Wire.begin(hatSDA, hatSCL);//, 400000); //initialize the I2C interface 400kHz
-        delay(10);
+//        Wire.setClock(i2cClock);
+        Wire.begin(hatSDA, hatSCL, 400000); //initialize the I2C interface 400kHz
 //        Serial.println(Wire.getClock());
-//        Serial.println("Set Clock");  
-        Wire.setClock(400000);
-        delay(10);
-//        Serial.println(Wire.getClock());
+
+//        check_if_exist_I2C();
+        
     }
 
 
@@ -714,9 +730,7 @@ void setup()
           }
           if (useInterface.devCommMode == 3)
             myChain->setMQTTMode(mqttTransmit);
-//          Serial.printf("Init LED Chain on Pin %i, %i LEDs long\n", hatDataPin, myChain->getChainLength());
-
-//            const uint8_t pinNr = useHat.devId == 1 ? hatDataPin : rhDataPin;
+          Serial.printf("Init LED Chain on Pin %i, %i LEDs long\n", useHat.devId == 1 ? hatDataPin : rhDataPin, myChain->getChainLength());
           if (myChain->colTypeNum == 0x66)
           {
             if (useHat.devId == 1) //BlueHat
@@ -731,6 +745,10 @@ void setup()
             else
               FastLED.addLeds<WS2812B, rhDataPin, RGB>(myChain->getChain(), myChain->getChainLength()); 
           }
+          if (useHat.devId == 1) //BlueHat
+            myChain->setFastPin(hatDataPin);
+          else
+            myChain->setFastPin(rhDataPin);
         }
       }
     }
@@ -766,17 +784,6 @@ void setup()
     if (useHat.devId == 3) //YellowHat
     {
         Serial.println("Init YellowHat");  
-/*
-        Serial.println("Set Pins");  
-        Wire.setPins(hatSDA, hatSCL);
-        Serial.println("Init");  
-        Wire.begin();//, 400000); //initialize the I2C interface 400kHz
-        delay(10);
-        Serial.println(Wire.getClock());
-        Serial.println("Set Clock");  
-        Wire.setClock(400000);
-        delay(10);
-*/
         Serial.println("Load Btn Config Data");  
         jsonDataObj = getDocPtr("/configdata/btn.cfg", false);
         if (jsonDataObj != NULL)
@@ -888,14 +895,8 @@ void setup()
       jsonDataObj = getDocPtr("/configdata/phcfg.cfg", false);
       if (jsonDataObj != NULL)
       {
-/*        
-        Wire.begin(hatSDA, hatSCL);//, 400000); //initialize the I2C interface 400kHz
-        delay(10);
-        Wire.setClock(400000);
-        delay(10);
-*/
         Serial.println("Load Trainside Sensor"); 
-        trainSensor = new IoTT_TrainSensor(&Wire, hatSDA, hatSCL);
+        trainSensor = new IoTT_TrainSensor(&Wire);
 //        trainSensor->setTxCallback(sendMsg);
         trainSensor->loadLNCfgJSON(*jsonDataObj);
         delete(jsonDataObj); 
@@ -930,6 +931,37 @@ void setup()
       Serial.println("DCC++Ex not activated");
       digitraxBuffer->clearSlotBuffer(true); //erase slot data (slave)
     }
+
+    if (useHat.devId == 8) //SilverHat USB Serial Injector
+    {
+      jsonDataObj = getDocPtr("/configdata/usb.cfg", false);
+      if (jsonDataObj != NULL)
+      {
+        Serial.printf("Load SilverHat Serial communication interface %i\n", useInterface.devId); 
+        usbSerial = new IoTT_SerInjector(hatRxDAlt, hatTxD, false, 1);
+        usbSerial->setProtType(DCCBoost);
+        usbSerial->begin();
+        usbSerial->setTxCallback(sendMsg);
+//        usbSerial->loadLNCfgJSON(*jsonDataObj);
+/*
+        switch (useInterface.devId)
+        {
+          case 2: ; // LocoNet
+          case 3: ; //LocoNet over MQTT
+          case 4: usbSerial->setProtType(LocoNet); break; //LocoNet with Gateway
+          case 5: ; //OpenLCB
+          case 6: ; //OpenLCB over MQTT
+          case 7: usbSerial->setProtType(OpenLCB); break; //OpenLCB with Gateway
+          //usbSerial->setProtType(DCCEx); break; //DCC++Ex DCC Generator
+        }
+*/
+        delete(jsonDataObj); 
+        Serial.println("Serial communication for Booster loaded"); 
+      }
+    }
+    else
+      Serial.println("Silver not activated");
+
 
 //------------------------------------------------------------------------------------------------------------------------------------------------------------------
 //Initialize ALMs
@@ -993,7 +1025,7 @@ void setup()
       Serial.println("Initialize VoiceWatcher");  
       voiceWatcher = new(IoTT_VoiceControl);
       voiceWatcher->beginKeywordRecognition();
-      voiceWatchlnclienter->setTxCallback(sendMsg);
+      voiceWatcher->setTxCallback(sendMsg);
       jsonDataObj = getDocPtr("/configdata/vwcfg.cfg", false);
       if (jsonDataObj != NULL)
       {
@@ -1034,8 +1066,8 @@ void setup()
     
     startWebServer();
 //    if (useNTP) getInternetTime();
-    if (wiServer)
-      wiServer->startServer();
+    if (wiThServer)
+      wiThServer->startServer();
     if (lbServer)
       lbServer->startServer();
       
@@ -1043,10 +1075,12 @@ void setup()
   }
   randomSeed((uint32_t)ESP.getEfuseMac()); //initialize random generator with MAC
   pinMode(0, INPUT);
+
 }
 
 void loop() 
 {
+  
   // put your main code here, to run repeatedly:
 #ifdef measurePerformance
   loopCtr++;
@@ -1075,7 +1109,7 @@ void loop()
     if (usbSerial) usbSerial->processLoop(); //drives the USB interface serial traffic
     if (lbClient) lbClient->processLoop(); //drives the LocoNet over TCP and WiThrottle interface client traffic
     if (lbServer) lbServer->processLoop(); //drives the LocoNet over TCP interface server traffic
-    if (wiServer) wiServer->processLoop(); //drives the WiThrottle interface server traffic
+    if (wiThServer) wiThServer->processLoop(); //drives the WiThrottle interface server traffic
     if (lnSerial) lnSerial->processLoop(); //handling all LocoNet communication
     if (lnSubnet) lnSubnet->processLoop(); //handling all LocoNet Subnet communication
 //    if (olcbSerial) olcbSerial->processLoop(); //handling all OpenLCB communication
@@ -1091,62 +1125,65 @@ void loop()
   if (myChain) 
     myChain->processChain(); //updates all LED's based on received status information for switches, inputs, buttons, etc.
 
-  checkWifiTimeout(); //checks if wifi has been inactive and disables it after timeout
-  if ((wifiCfgMode == 1))// || (wifiCfgMode == 3)) //STA active, Internet connection
+  if (dataValid)
   {
-    if (!wifiCancelled) //handles keep alive updates as long connection is valid
+    checkWifiTimeout(); //checks if wifi has been inactive and disables it after timeout
+    if ((wifiCfgMode == 1))// || (wifiCfgMode == 3)) //STA active, Internet connection
     {
-      if (WiFi.status() == WL_CONNECTED)
-      { 
-        sendKeepAlive();
-        if (useNTP)
-          getInternetTime(); //gets periodic updates of date and time from NTP server
-      }
-      else
+      if (!wifiCancelled) //handles keep alive updates as long connection is valid
       {
-        Serial.println("Reconnect WiFi");
-        establishWifiConnection(myWebServer,dnsServer);
-        startWebServer();
+        if (wifiStatus == WL_CONNECTED)
+        { 
+          sendKeepAlive();
+          if (useNTP)
+            getInternetTime(); //gets periodic updates of date and time from NTP server
+        }
+        else
+        {
+          Serial.println("Reconnect WiFi");
+          establishWifiConnection(myWebServer,dnsServer);
+          startWebServer();
+        }
       }
-    }
     
-    if ((!wifiCancelled) && ((lnMQTTServer) || (lnMQTTClient))) //handles all wifi communication for MQTT
-      if (WiFi.status() == WL_CONNECTED)
-      { 
-          if (lnMQTTClient) 
-          {
-            if (lnMQTTClient->mustResubscribe()) //true after reset of the MQTT connection
+      if ((!wifiCancelled) && ((lnMQTTServer) || (lnMQTTClient))) //handles all wifi communication for MQTT
+        if (wifiStatus == WL_CONNECTED)
+        { 
+            if (lnMQTTClient) 
             {
-              //add code to resubscribe topics of all libraries that support native MQTT, e.g. LED, Buttons
-              if (useInterface.devCommMode == 3) //native MQTT
+              if (lnMQTTClient->mustResubscribe()) //true after reset of the MQTT connection
               {
-                if (myChain) myChain->subscribeTopics();
-                if (myButtons) myButtons->subscribeTopics();
+                //add code to resubscribe topics of all libraries that support native MQTT, e.g. LED, Buttons
+                if (useInterface.devCommMode == 3) //native MQTT
+                {
+                  if (myChain) myChain->subscribeTopics();
+                  if (myButtons) myButtons->subscribeTopics();
+                }
+                lnMQTTClient->subscribeTopics();
               }
-              lnMQTTClient->subscribeTopics();
+              lnMQTTClient->processLoop(); //LN or OpenLCB over MQTT
             }
-            lnMQTTClient->processLoop(); //LN or OpenLCB over MQTT
-          }
-          if (lnMQTTServer) 
-          {
-            if (lnMQTTServer->mustResubscribe()) //true after reset of the MQTT connection
-              lnMQTTServer->subscribeTopics();
-            lnMQTTServer->processLoop(); //LN or LCC Gateway
-          }
-      }
-      else
-      {
-        Serial.println("Reconnect WiFi");
-        establishWifiConnection(myWebServer,dnsServer);
-        startWebServer();
-      }
+            if (lnMQTTServer) 
+            {
+              if (lnMQTTServer->mustResubscribe()) //true after reset of the MQTT connection
+                lnMQTTServer->subscribeTopics();
+              lnMQTTServer->processLoop(); //LN or LCC Gateway
+            }
+        }
+        else
+        {
+          Serial.println("Reconnect WiFi");
+          establishWifiConnection(myWebServer,dnsServer);
+          startWebServer();
+        }
+    }
+    else
+      sendKeepAlive();
+    }
+    if (subnetMode != standardMode)
+      if (lnSerial) lnSerial->processLoop(); //increase frequency to reduce time lag
   }
-  else
-    sendKeepAlive();
-  }
-  if (subnetMode != standardMode)
-    if (lnSerial) lnSerial->processLoop(); //increase frequency to reduce time lag
-  M5.update();
+  M5.update(); //read button states
   processDisplay();
   
 //  while (Serial.available())
@@ -1155,6 +1192,7 @@ void loop()
 //    sendBlockDetectorCommand(150,1);
 //    sendAnalogCommand(22,17);
 //  }
-
+  yield();
   digitraxBuffer->processLoop(); //updating DigitraxBuffers by querying information from LocoNet, e.g. slot statuses
+
 }

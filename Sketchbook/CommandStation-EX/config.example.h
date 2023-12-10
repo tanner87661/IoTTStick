@@ -1,8 +1,10 @@
 /*
+ *  © 2022 Paul M. Antoine
  *  © 2021 Neil McKechnie
- *  © 2020-2021 Harald Barth
+ *  © 2020-2023 Harald Barth
  *  © 2020-2021 Fred Decker
  *  © 2020-2021 Chris Harlow
+ *  © 2023 Nathan Kellenicki
  *  
  *  This file is part of CommandStation-EX
  *
@@ -27,13 +29,23 @@ The configuration file for DCC-EX Command Station
 **********************************************************************/
 
 /////////////////////////////////////////////////////////////////////////////////////
+// If you want to add your own motor driver definition(s), add them here
+//   For example MY_SHIELD with display name "MINE":
+//   (remove comment start and end marker if you want to edit and use that)
+/* 
+#define MY_SHIELD F("MINE"), \
+ new MotorDriver( 3, 12, UNUSED_PIN, 9, A0, 5.08, 3000, A4), \
+ new MotorDriver(11, 13, UNUSED_PIN, 8, A1, 5.08, 1500, A5)
+*/
+
+/////////////////////////////////////////////////////////////////////////////////////
 //  NOTE: Before connecting these boards and selecting one in this software
 //        check the quick install guides!!! Some of these boards require a voltage
 //        generating resistor on the current sense pin of the device. Failure to select
 //        the correct resistor could damage the sense pin on your Arduino or destroy
 //        the device.
 //
-// DEFINE MOTOR_SHIELD_TYPE BELOW ACCORDING TO THE FOLLOWING TABLE:
+// DEFINE MOTOR_SHIELD_TYPE BELOW. THESE ARE EXAMPLES. FULL LIST IN MotorDrivers.h
 //
 //  STANDARD_MOTOR_SHIELD : Arduino Motor shield Rev3 based on the L298 with 18V 2A per channel
 //  POLOLU_MOTOR_SHIELD   : Pololu MC33926 Motor Driver (not recommended for prog track)
@@ -41,10 +53,26 @@ The configuration file for DCC-EX Command Station
 //  FIREBOX_MK1           : The Firebox MK1                    
 //  FIREBOX_MK1S          : The Firebox MK1S
 //  IBT_2_WITH_ARDUINO    : Arduino Motor Shield for PROG and IBT-2 for MAIN
+//  EX8874_SHIELD         : DCC-EX TI DRV8874 based motor shield
 //   |
 //   +-----------------------v
 //
 #define MOTOR_SHIELD_TYPE STANDARD_MOTOR_SHIELD
+//
+/////////////////////////////////////////////////////////////////////////////////////
+//
+// If you want to restrict the maximum current LOWER than what your
+// motor shield can provide, you can do that here. For example if you
+// have a motor shield that can provide 5A and your power supply can
+// only provide 2.5A then you should restict the maximum current to
+// 2.25A (90% of 2.5A) so that DCC-EX does shut off the track before
+// your PS does shut DCC-EX. MAX_CURRENT is in mA so for this example
+// it would be 2250, adjust the number according to your PS. If your
+// PS has a higher rating than your motor shield you do not need this.
+// You can use this as well if you are cautious and your trains do not
+// need full current.
+// #define MAX_CURRENT 2250
+//
 /////////////////////////////////////////////////////////////////////////////////////
 //
 // The IP port to talk to a WIFI or Ethernet shield.
@@ -96,6 +124,11 @@ The configuration file for DCC-EX Command Station
 // this line exists or not. If you need to use an alternate channel (we recommend
 // using only 1,6, or 11) you may change it here.
 #define WIFI_CHANNEL 1
+//
+// WIFI_FORCE_AP: If you'd like to specify your own WIFI_SSID in AP mode, set this
+// true. Otherwise it is assumed that you'd like to connect to an existing network
+// with that SSID.
+#define WIFI_FORCE_AP false
 
 /////////////////////////////////////////////////////////////////////////////////////
 //
@@ -123,10 +156,10 @@ The configuration file for DCC-EX Command Station
 // define LCD_DRIVER for I2C address 0x27, 16 cols, 2 rows
 // #define LCD_DRIVER  0x27,16,2
 
-//OR define OLED_DRIVER width,height in pixels (address auto detected)
+//OR define OLED_DRIVER width,height[,address] in pixels (address auto detected if not supplied)
 // 128x32 or 128x64 I2C SSD1306-based devices are supported.
 // Use 132,64 for a SH1106-based I2C device with a 128x64 display.
-// #define OLED_DRIVER 128,32
+// #define OLED_DRIVER 0x3c,128,32
 
 // Define scroll mode as 0, 1 or 2
 //  *  #define SCROLLMODE 0 is scroll continuous (fill screen if poss),
@@ -139,10 +172,24 @@ The configuration file for DCC-EX Command Station
 //
 // If you do not need the EEPROM at all, you can disable all the code that saves
 // data in the EEPROM. You might want to do that if you are in a Arduino UNO
-// and want to use the EX-RAIL automation. Otherwise you do not have enough RAM
+// and want to use the EXRAIL automation. Otherwise you do not have enough RAM
 // to do that. Of course, then none of the EEPROM related commands work.
 //
+// EEPROM does not work on ESP32. So on ESP32, EEPROM will always be disabled,
+// at least until it works.
+//
 // #define DISABLE_EEPROM
+
+/////////////////////////////////////////////////////////////////////////////////////
+// DISABLE PROG
+//
+// If you do not need programming capability, you can disable all programming related
+// commands. You might want to do that if you are using an Arduino UNO and still want
+// to use EXRAIL automation, as the Uno is lacking in RAM and Flash to run both.
+// 
+// Note this disables all programming functionality, including EXRAIL.
+//
+// #define DISABLE_PROG
 
 /////////////////////////////////////////////////////////////////////////////////////
 // REDEFINE WHERE SHORT/LONG ADDR break is. According to NMRA the last short address
@@ -187,13 +234,47 @@ The configuration file for DCC-EX Command Station
 // HANDLING MULTIPLE SERIAL THROTTLES
 // The command station always operates with the default Serial port.
 // Diagnostics are only emitted on the default serial port and not broadcast.
-// Other serial throttles may be added to the Serial1, Serial2, Serial3 ports
-// which may or may not exist on your CPU. (Mega has all 3)
+// Other serial throttles may be added to the Serial1, Serial2, Serial3, Serial4,
+// Serial5, and Serial6 ports which may or may not exist on your CPU. (Mega has 3,
+// SAMD/SAMC and STM32 have up to 6.)
 // To monitor a throttle on one or more serial ports, uncomment the defines below.
 // NOTE: do not define here the WiFi shield serial port or your wifi will not work.
 //
 //#define SERIAL1_COMMANDS
 //#define SERIAL2_COMMANDS
 //#define SERIAL3_COMMANDS
+//#define SERIAL4_COMMANDS
+//#define SERIAL5_COMMANDS
+//#define SERIAL6_COMMANDS
+//
+// BLUETOOTH SERIAL ON ESP32
+// On ESP32 you have the possibility to use the builtin BT serial to connect to
+// the CS.
+//
+// The CS shows up as a pairable BT Clasic device. Name is "DCCEX-hexnumber".
+// BT is as an additional serial port, debug messages are still sent over USB,
+// not BT serial.
+//
+// If you enable this there are some implications:
+// 1. WiFi will sleep more (as WiFi and BT share the radio. So WiFi performance
+//    may suffer
+// 2. The app will be bigger that 1.2MB, so the default partition scheme will not
+//    work any more. You need to choose a partition scheme with 2MB (or bigger).
+//    For example "NO OTA (2MB APP, 2MB SPIFFS)" in the Arduino IDE.
+// 3. There is no securuity (PIN) implemented. Everyone in radio range can pair
+//    with your CS.
+//
+//#define SERIAL_BT_COMMANDS
+
+// SABERTOOTH
+//
+// This is a very special option and only useful if you happen to have a
+// sabertooth motor controller from dimension engineering configured to
+// take commands from and ESP32 via serial at 9600 baud from GPIO17 (TX)
+// and GPIO16 (RX, currently unused).
+// The number defined is the DCC address for which speed controls are sent
+// to the sabertooth controller _as_well_. Default: Undefined.
+//
+//#define SABERTOOTH 1
 
 /////////////////////////////////////////////////////////////////////////////////////

@@ -164,14 +164,14 @@ void processStatustoWebClient()
   Data["sigstrength"] = WiFi.RSSI();
   Data["apname"] = WiFi.SSID();
 
-  Data["temp"] = M5.Power.Axp192.getInternalTemperature();
-  Data["ubat"] = M5.Power.Axp192.getBatteryVoltage();
-  Data["ibat"] =  M5.Power.Axp192.getBatteryDischargeCurrent();
-  Data["pwrbat"] = M5.Power.Axp192.getBatteryPower();
-  Data["ubus"] = M5.Power.Axp192.getVBUSVoltage();
-  Data["ibus"] = M5.Power.Axp192.getVBUSCurrent();
-  Data["uin"] = M5.Power.Axp192.getACINVolatge();
-  Data["iin"] = M5.Power.Axp192.getACINCurrent();
+  Data["temp"] = axpIntTemp;
+  Data["ubat"] = axpBattVoltage;
+  Data["ibat"] =  axpBattCurr;
+  Data["pwrbat"] = axpBattPower;
+  Data["ubus"] = axpVBUSVoltage;
+  Data["ibus"] = axpVBUSCurrent;
+  Data["uin"] = axpACInVoltage;
+  Data["iin"] = axpACInCurrent;
 
   serializeJson(doc, myStatusMsg);
 //  Serial.println(myStatusMsg);
@@ -393,6 +393,7 @@ void processWsMessage(char * newMsg, int msgLen, AsyncWebSocketClient * client)
           fileSelector = doc["Type"];
         addFileToTx(client, "", 0, "pgStartFile", 2); //reset file list
         if (fileSelector & 0x0001)  
+          addFileToTx(client, "node", 0, "pgNodeCfg", 1); //add file
         if (fileSelector & 0x0002)  
           addFileToTx(client, "mqtt", 0, "pgMQTTCfg", 1); //add file
         if (fileSelector & 0x0004)  
@@ -400,7 +401,7 @@ void processWsMessage(char * newMsg, int msgLen, AsyncWebSocketClient * client)
         if (fileSelector & 0x0010)  
           addFileToTx(client, "btn", 0, "pgHWBtnCfg", 1);
         if (fileSelector & 0x0100)  
-          addFileToTx(client, "btn", 0, "pgThrottleCfg", 1);
+          addFileToTx(client, "throttle", 0, "pgThrottleCfg", 1);
         int fileCtr = 0;
         if (fileSelector & 0x0200)  
         {
@@ -466,26 +467,32 @@ void processWsMessage(char * newMsg, int msgLen, AsyncWebSocketClient * client)
         int8_t thisClient = getWSClient(client->id()); 
         if (thisClient >= 0)
           strcpy(globalClients[thisClient].pageName, cmdType.c_str());
-//        Serial.printf("%i %s \n", thisClient, cmdType);
+/*
+        Serial.printf("%i %s \n", thisClient, cmdType);
         if (cmdType == "pgLNViewer")
           return;
         if (cmdType == "pgDCCViewer")
           return;
         if (cmdType == "pgOLCBViewer")
           return;
-
+        if (cmdType == "pgSilverHatCfg")
+          return;
+*/
         String fileName = doc["FileName"];
+        if (fileName == "")
+          return;
+          
         int fileCtr = 0;
         while (addFileToTx(client, fileName, fileCtr, cmdType, 0))
           fileCtr++;
       }
       if (thisCmd == "CfgUpdate") //Config Request Format: {"Cmd":"CfgData", "Type":"pgxxxxCfg", "FileType":"xxxx", "FileName":"nnnnx.cfg", "Data":{}}
       {
-        execLoop = false;
+//        execLoop = false;
         const char *  cmdType = doc["Type"];
         const char * fileStr = doc["Data"];
         const char *  fileName = doc["FileName"];
-        const char *  fileNameType = doc["Fi//leNameType"];
+        const char *  fileNameType = doc["FileNameType"];
         int fileIndex = doc["Index"];
         if (strcmp(cmdType, "pgDelete") == 0)
         {
@@ -534,39 +541,50 @@ void processWsMessage(char * newMsg, int msgLen, AsyncWebSocketClient * client)
             if (trainSensor) 
             {
               uint16_t repRate = doc["Val"];
-              int8_t nextClient = getWSClientByPage(0, "pgPrplHatCfg");
-              while (nextClient >= 0)
-              {
-                trainSensor->setRepRate(globalClients[nextClient].wsClient, repRate);
-                nextClient = getWSClientByPage(nextClient, "pgPrplHatCfg");
-              }
+              trainSensor->setRepRate(repRate);
             }
           if (subCmd == "SetDCC")
             if (trainSensor)
             {
               int16_t dccAddr = doc["Addr"];
-              int8_t nextClient = getWSClientByPage(0, "pgPrplHatCfg");
-              while (nextClient >= 0)
-              {
-                trainSensor->reqDCCAddrWatch(globalClients[nextClient].wsClient, dccAddr, useInterface.devId == 17); //17: WiThrottle Client
-                nextClient = getWSClientByPage(nextClient, "pgPrplHatCfg");
-              }
+              trainSensor->reqDCCAddrWatch(dccAddr, (useInterface.devId == 17) || (useInterface.devId == 18)); //17: WiThrottle Client 18: WiThrottle DCC EX format
             }
           if (subCmd == "RunTest")
             if (trainSensor)
             {
               float tLen = doc["TrackLen"];
               float vMax = doc["VMax"];
-              uint8_t pMode = doc["Mode"];
-              trainSensor->startTest(tLen, vMax, pMode);
+              JsonArray speedPOI = doc["POI"];
+              std::vector<float> poiMode;
+              if (speedPOI.size() > 0)
+              {
+                for (uint8_t i = 0; i < speedPOI.size(); i++)
+                {
+                  float thisVal = speedPOI[i];
+                  poiMode.push_back(thisVal);
+                }
+              }
+              trainSensor->startTest(tLen, vMax, poiMode);
             }
           if (subCmd == "ReadCV")
           {
             uint16_t dccAddr = doc["Addr"]; 
-            uint8_t progMode = doc["ProgMode"];
+            uint8_t progMode = doc["ProgMode"]; //read SM direct, 
             uint8_t progMethod = doc["ProgMethod"];
             uint8_t cvNr = doc["CV"];
-            digitraxBuffer->readProg(dccAddr, progMode, progMethod, cvNr);
+            uint8_t cmdCode = 0x01; //read direct mode byte
+            switch (progMode)
+            {
+              case 0: //prog track
+                switch (progMethod)
+                {
+                  case 0: break;//direct mode is preset
+                  case 1: cmdCode = 0; break;//page mode
+                }
+                break;
+              case 1: cmdCode = 0x04; break;//main line read, requires transponding
+            }
+            digitraxBuffer->progCVProc(dccAddr, cmdCode, cvNr, 0);
           }
           if (subCmd == "WriteCV")
           {
@@ -575,7 +593,19 @@ void processWsMessage(char * newMsg, int msgLen, AsyncWebSocketClient * client)
             uint8_t progMethod = doc["ProgMethod"];
             uint8_t cvNr = doc["CV"];
             uint8_t cvVal = doc["CVVal"];
-            digitraxBuffer->writeProg(dccAddr, progMode, progMethod, cvNr, cvVal);
+            uint8_t cmdCode = 0x09; //write direct mode byte
+            switch (progMode)
+            {
+              case 0: //prog track
+                switch (progMethod)
+                {
+                  case 0: break;//direct mode is preset
+                  case 1: cmdCode = 0x08; break;//page mode
+                }
+                break;
+              case 1: cmdCode = 0x0C; break;//main line write
+            }
+            digitraxBuffer->progCVProc(dccAddr, cmdCode, cvNr, cvVal);
           }
           if (subCmd == "StopTest")
             if (trainSensor)
@@ -606,8 +636,8 @@ void processWsMessage(char * newMsg, int msgLen, AsyncWebSocketClient * client)
         {
           String subCmd = doc["SubCmd"];
           if (subCmd == "WI")
-            if (wiServer)
-              wiServer->updateClientList();
+            if (wiThServer)
+              wiThServer->updateClientList();
           if (subCmd == "LN")
             if (lbServer)
               lbServer->updateClientList();
@@ -649,10 +679,14 @@ void processWsMessage(char * newMsg, int msgLen, AsyncWebSocketClient * client)
           {
             JsonArray lnData = doc["Data"];
             lnTransmitMsg txData;
-            for (int i = 0; i < lnData.size(); i++)
+            uint8_t msgSize = lnData.size();
+            for (int i = 0; i < msgSize; i++)
               txData.lnData[i] = lnData[i];
             txData.lnMsgSize = ((txData.lnData[0] & 0x60) >> 4) + ((txData.lnData[0] & 0x80) >> 7); //-1 for indexing
-            txData.lnMsgSize++;
+            if (txData.lnMsgSize == 7)
+              txData.lnMsgSize = txData.lnData[1];
+            else
+              txData.lnMsgSize++;
             setXORByte(&txData.lnData[0]);
 
 //  Serial.printf("Msg Len %i\n", txData.lnMsgSize);
@@ -665,6 +699,33 @@ void processWsMessage(char * newMsg, int msgLen, AsyncWebSocketClient * client)
           break;
         }
       }
+      if (thisCmd == "BST")  
+      {
+        if (usbSerial)
+        {
+          if (doc.containsKey("SV"))
+          {
+            JsonArray lnData = doc["SV"];
+            lnTransmitMsg txData;
+            uint8_t msgSize = lnData.size();
+            for (int i = 0; i < msgSize; i++)
+              txData.lnData[i] = lnData[i];
+            txData.lnMsgSize = ((txData.lnData[0] & 0x60) >> 4) + ((txData.lnData[0] & 0x80) >> 7); //-1 for indexing
+            if (txData.lnMsgSize == 7)
+              txData.lnMsgSize = txData.lnData[1];
+            else
+              txData.lnMsgSize++;
+            setXORByte(&txData.lnData[0]);
+/*
+  Serial.printf("Msg Len %i\n", txData.lnMsgSize);
+  for (uint8_t i = 0; i < txData.lnMsgSize; i++)
+    Serial.printf("%2X ", txData.lnData[i]);
+  Serial.println();
+*/            
+            usbSerial->lnWriteMsg(txData);
+          }
+        }
+      }
     } 
   } 
   else
@@ -675,7 +736,6 @@ void processWsMessage(char * newMsg, int msgLen, AsyncWebSocketClient * client)
 void onWsEvent(AsyncWebSocket * server, AsyncWebSocketClient * client, AwsEventType type, void * arg, uint8_t *data, size_t len)
 {
   int8_t currClient = -1;  
-
   lastWifiUse = millis();
 //  Serial.printf("WS Event %i \n", globalClient);
   switch (type)
@@ -692,11 +752,10 @@ void onWsEvent(AsyncWebSocket * server, AsyncWebSocketClient * client, AwsEventT
       }
     case WS_EVT_DISCONNECT:
       {
-//        globalClient = NULL;
         currClient = getWSClient(client->id());
         if (currClient >= 0)
         {
-          Serial.printf("Websocket client disconnected from %u\n", client->id());
+          Serial.printf("Websocket client disconnected from %u %i\n", client->id(), currClient);
           globalClients.erase(globalClients.begin() + currClient);
         }
         break;

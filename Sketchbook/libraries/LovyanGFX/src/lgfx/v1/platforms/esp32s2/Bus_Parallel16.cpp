@@ -23,7 +23,8 @@ Contributors:
 #include "../../misc/pixelcopy.hpp"
 
 #include <soc/dport_reg.h>
-#include <soc/i2s_struct.h>
+#include <rom/gpio.h>
+#include <hal/gpio_ll.h>
 #include <esp_log.h>
 
 namespace lgfx
@@ -68,7 +69,7 @@ namespace lgfx
     static constexpr uint32_t pll_160M_clock_d2 = 160 * 1000 * 1000 >> 1;
 
     // I2S_CLKM_DIV_NUM 2=40MHz  /  3=27MHz  /  4=20MHz  /  5=16MHz  /  8=10MHz  /  10=8MHz
-    _div_num = std::min(255u, 1 + ((pll_160M_clock_d2) / (1 + _cfg.freq_write)));
+    _div_num = std::min<uint32_t>(255u, 1 + ((pll_160M_clock_d2) / (1 + _cfg.freq_write)));
 
     _clkdiv_write = I2S_CLK_160M_PLL << I2S_CLK_SEL_S
                   |             I2S_CLK_EN
@@ -78,23 +79,18 @@ namespace lgfx
                   ;
   }
 
-  static void _gpio_pin_init(int pin)
-  {
-    if (pin >= 0)
-    {
-      gpio_pad_select_gpio(pin);
-      gpio_hi(pin);
-      gpio_set_direction((gpio_num_t)pin, GPIO_MODE_OUTPUT);
-    }
-  }
-
   bool Bus_Parallel16::init(void)
   {
     _init_pin();
 
-    _gpio_pin_init(_cfg.pin_rd);
-    _gpio_pin_init(_cfg.pin_wr);
-    _gpio_pin_init(_cfg.pin_rs);
+    for (size_t i = 0; i < 3; ++i)
+    {
+      int32_t pin = _cfg.pin_ctrl[i];
+      if (pin < 0) { continue; }
+      gpio_pad_select_gpio(pin);
+      gpio_hi(pin);
+      gpio_set_direction((gpio_num_t)pin, GPIO_MODE_OUTPUT);
+    }
 
     auto idx_base = I2S0O_DATA_OUT8_IDX;
 
@@ -201,7 +197,7 @@ namespace lgfx
     {
       _flush(_cache_index, true);
       _cache_index = 0;
-      ets_delay_us(1);
+      delayMicroseconds(1);
     }
     _wait();
   }
@@ -227,7 +223,7 @@ namespace lgfx
     {
       _flush(_cache_index, true);
       _cache_index = 0;
-      ets_delay_us(1);
+      delayMicroseconds(1);
     }
     _wait();
   }

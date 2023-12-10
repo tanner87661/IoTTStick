@@ -20,7 +20,7 @@
 #include "M5Core2.h"
 #include "M5_ADS1115.h"
 
-Ammeter ammeter;
+ADS1115 Ammeter(AMETER, AMETER_ADDR, AMETER_EEPROM_ADDR);
 
 float page512_volt = 2000.0F;
 
@@ -30,16 +30,16 @@ int16_t adc_raw     = 0;
 
 int16_t hope = 0.0;
 
-ammeterGain_t now_gain = PAG_512;
+ADS1115Gain_t now_gain = PAG_512;
 
 void setup(void) {
     M5.begin();  // Init M5Core2.  初始化M5Core2
     Wire.begin();
 
-    ammeter.setMode(SINGLESHOT); /* | PAG      | Max Input Voltage(V) | */
-    ammeter.setRate(RATE_8);     /* | PAG_6144 |        128           | */
-    ammeter.setGain(PAG_512);    /* | PAG_4096 |        64            | */
-    hope = page512_volt / ammeter.resolution; /* | PAG_2048 |        32 | */
+    Ammeter.setMode(SINGLESHOT); /* | PAG      | Max Input Voltage(V) | */
+    Ammeter.setRate(RATE_8);     /* | PAG_6144 |        128           | */
+    Ammeter.setGain(PAG_512);    /* | PAG_4096 |        64            | */
+    hope = page512_volt / Ammeter.resolution; /* | PAG_2048 |        32 | */
     /* | PAG_512  |        16            | */
     /* | PAG_256  |        8             | */
     M5.Lcd.setTextFont(4);  // Set font to 4 point font.  设置字体为4号字体
@@ -51,11 +51,11 @@ void setup(void) {
 void loop(void) {
     M5.update();  // Check the status of the key.  检测按键的状态
     if (M5.BtnA.wasPressed()) {
-        ammeter.setMode(SINGLESHOT);  // Set the mode.  设置模式
-        ammeter.setRate(RATE_8);      // Set the rate.  设置速率
-        ammeter.setGain(PAG_512);
+        Ammeter.setMode(SINGLESHOT);  // Set the mode.  设置模式
+        Ammeter.setRate(RATE_8);      // Set the rate.  设置速率
+        Ammeter.setGain(PAG_512);
         now_gain = PAG_512;
-        hope     = page512_volt / ammeter.resolution;
+        hope     = page512_volt / Ammeter.resolution;
 
         for (uint8_t i = 0; i < 10; i++) {
             volt_raw_list[i] = 0;
@@ -63,7 +63,7 @@ void loop(void) {
     }
 
     if (M5.BtnC.wasPressed()) {
-        bool success = ammeter.saveCalibration2EEPROM(now_gain, hope, adc_raw);
+        bool success = Ammeter.saveCalibration2EEPROM(now_gain, hope, adc_raw);
         M5.Lcd.setCursor(224, 210);
         if (success) {
             M5.Lcd.setTextColor(GREEN, BLACK);
@@ -78,11 +78,11 @@ void loop(void) {
         M5.Lcd.setTextColor(WHITE, BLACK);
         M5.Lcd.printf("SAVE");
 
-        ammeter.setGain(now_gain);
+        Ammeter.setGain(now_gain);
     }
 
-    float current              = ammeter.getCurrent();
-    volt_raw_list[raw_now_ptr] = ammeter.adc_raw;
+    float current              = Ammeter.getValue();
+    volt_raw_list[raw_now_ptr] = Ammeter.adc_raw;
     raw_now_ptr                = (raw_now_ptr == 9) ? 0 : (raw_now_ptr + 1);
 
     int count = 0;
@@ -116,7 +116,7 @@ void loop(void) {
     M5.Lcd.setTextColor(WHITE, BLACK);
     M5.Lcd.setCursor(10, 110);
     M5.Lcd.printf("Cal ADC: %.0f         \r\n",
-                  adc_raw * ammeter.calibration_factor);
+                  adc_raw * Ammeter.calibration_factor);
 
     M5.Lcd.setCursor(10, 150);
 

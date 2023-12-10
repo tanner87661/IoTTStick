@@ -4,9 +4,28 @@
 #ifndef __M5_Mic_Class_H__
 #define __M5_Mic_Class_H__
 
+#include "m5unified_common.h"
+
+#if defined ( ESP_PLATFORM )
+
 #include <freertos/FreeRTOS.h>
+#include <freertos/semphr.h>
 #include <freertos/task.h>
-#include <driver/i2s.h>
+#include <soc/i2s_struct.h>
+
+#if __has_include(<driver/i2s_std.h>)
+ #include <driver/i2s_std.h>
+#else
+ #include <driver/i2s.h>
+#endif
+
+#endif
+
+#include <stdint.h>
+
+#ifndef I2S_PIN_NO_CHANGE
+#define I2S_PIN_NO_CHANGE (-1)
+#endif
 
 namespace m5
 {
@@ -17,13 +36,22 @@ namespace m5
     /// i2s_data_in (for mic)
     int pin_data_in = -1;
 
-    /// i2s_ws
-    int pin_ws = -1;
+    /// i2s_bclk
+    int pin_bck = I2S_PIN_NO_CHANGE;
+
+    /// i2s_mclk
+    int pin_mck = I2S_PIN_NO_CHANGE;
+
+    /// i2s_ws (lrck)
+    int pin_ws = I2S_PIN_NO_CHANGE;
 
     /// input sampling rate (Hz)
     uint32_t sample_rate = 16000;
 
-    /// offset correction value of ADC input value
+    /// use stereo output
+    bool stereo = false;
+
+    /// <<This value is no longer used>>
     int input_offset = 0;
 
     /// Sampling times of obtain the average value
@@ -39,16 +67,16 @@ namespace m5
     bool use_adc = false;
 
     /// for I2S dma_buf_len
-    size_t dma_buf_len = 64;
+    size_t dma_buf_len = 256;
 
     /// for I2S dma_buf_count
-    size_t dma_buf_count = 4;
+    size_t dma_buf_count = 3;
 
     /// background task priority
-    UBaseType_t task_priority = 2;
+    uint8_t task_priority = 2;
 
     /// background task pinned core
-    BaseType_t task_pinned_core = -1;
+    uint8_t task_pinned_core = -1;
 
     /// I2S port
     i2s_port_t i2s_port = i2s_port_t::I2S_NUM_0;
@@ -83,18 +111,20 @@ namespace m5
     /// @param rec_data Recording destination array.
     /// @param array_len Number of data array elements.
     /// @param sample_rate the sampling rate (Hz)
-    bool record(uint8_t* rec_data, size_t array_len, uint32_t sample_rate)
+    /// @param stereo true=data is stereo / false=data is monaural.
+    bool record(uint8_t* rec_data, size_t array_len, uint32_t sample_rate, bool stereo = false)
     {
-      return _rec_raw(rec_data, array_len, false, sample_rate);
+      return _rec_raw(rec_data, array_len, false, sample_rate, stereo);
     }
 
     /// record raw sound wave data.
     /// @param rec_data Recording destination array.
     /// @param array_len Number of data array elements.
     /// @param sample_rate the sampling rate (Hz)
-    bool record(int16_t* rec_data, size_t array_len, uint32_t sample_rate)
+    /// @param stereo true=data is stereo / false=data is monaural.
+    bool record(int16_t* rec_data, size_t array_len, uint32_t sample_rate, bool stereo = false)
     {
-      return _rec_raw(rec_data, array_len,  true, sample_rate);
+      return _rec_raw(rec_data, array_len,  true, sample_rate, stereo);
     }
 
     /// record raw sound wave data.
@@ -102,7 +132,7 @@ namespace m5
     /// @param array_len Number of data array elements.
     bool record(uint8_t* rec_data, size_t array_len)
     {
-      return _rec_raw(rec_data, array_len, false, _cfg.sample_rate);
+      return _rec_raw(rec_data, array_len, false, _cfg.sample_rate, false);
     }
 
     /// record raw sound wave data.
@@ -110,7 +140,7 @@ namespace m5
     /// @param array_len Number of data array elements.
     bool record(int16_t* rec_data, size_t array_len)
     {
-      return _rec_raw(rec_data, array_len,  true, _cfg.sample_rate);
+      return _rec_raw(rec_data, array_len,  true, _cfg.sample_rate, false);
     }
 
   protected:
@@ -121,6 +151,8 @@ namespace m5
     {
       void* data = nullptr;
       size_t length = 0;
+      size_t index = 0;
+      bool is_stereo = false;
       bool is_16bit = false;
     };
 
@@ -131,7 +163,7 @@ namespace m5
 
     uint32_t _calc_rec_rate(void) const;
     esp_err_t _setup_i2s(void);
-    bool _rec_raw(void* recdata, size_t array_len, bool flg_16bit, uint32_t sample_rate);
+    bool _rec_raw(void* recdata, size_t array_len, bool flg_16bit, uint32_t sample_rate, bool stereo);
 
     mic_config_t _cfg;
     uint32_t _rec_sample_rate = 0;
@@ -139,10 +171,14 @@ namespace m5
     bool (*_cb_set_enabled)(void* args, bool enabled) = nullptr;
     void* _cb_set_enabled_args = nullptr;
 
-    TaskHandle_t _task_handle = nullptr;
     volatile bool _task_running = false;
     volatile bool _is_recording = false;
+#if defined (SDL_h_)
+    SDL_Thread* _task_handle = nullptr;
+#else
+    TaskHandle_t _task_handle = nullptr;
     volatile SemaphoreHandle_t _task_semaphore = nullptr;
+#endif
   };
 }
 

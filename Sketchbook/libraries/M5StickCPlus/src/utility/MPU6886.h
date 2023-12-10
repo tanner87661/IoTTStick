@@ -18,6 +18,9 @@
 #define MPU6886_SMPLRT_DIV       0x19
 #define MPU6886_INT_PIN_CFG      0x37
 #define MPU6886_INT_ENABLE       0x38
+#define MPU6886_ACCEL_WOM_X_THR  0x20
+#define MPU6886_ACCEL_WOM_Y_THR  0x21
+#define MPU6886_ACCEL_WOM_Z_THR  0x22
 #define MPU6886_ACCEL_XOUT_H     0x3B
 #define MPU6886_ACCEL_XOUT_L     0x3C
 #define MPU6886_ACCEL_YOUT_H     0x3D
@@ -43,6 +46,8 @@
 #define MPU6886_ACCEL_CONFIG  0x1C
 #define MPU6886_ACCEL_CONFIG2 0x1D
 #define MPU6886_FIFO_EN       0x23
+// add register for R/W FIFO buffer
+#define MPU6886_FIFO_R_W 0x74
 
 //#define G (9.8)
 #define RtA     57.324841
@@ -55,12 +60,25 @@ class MPU6886 {
 
     enum Gscale { GFS_250DPS = 0, GFS_500DPS, GFS_1000DPS, GFS_2000DPS };
 
+    // Enumeration type for selecting FIFO output data rate (sample rate)
+    enum Fodr {
+        ODR_1kHz  = 0,
+        ODR_500Hz = 1,
+        ODR_250Hz = 3,
+        ODR_200Hz = 4,
+        ODR_125Hz = 7,
+        ODR_100Hz = 9,
+        ODR_50Hz  = 19,
+        ODR_10Hz  = 99
+    };
+
     Gscale Gyscale = GFS_2000DPS;
     Ascale Acscale = AFS_8G;
 
    public:
     MPU6886();
     int Init(void);
+    void enableWakeOnMotion(Ascale ascale, uint8_t thresh_num_lsb);
     void getAccelAdc(int16_t* ax, int16_t* ay, int16_t* az);
     void getGyroAdc(int16_t* gx, int16_t* gy, int16_t* gz);
     void getTempAdc(int16_t* t);
@@ -72,6 +90,15 @@ class MPU6886 {
     void SetGyroFsr(Gscale scale);
     void SetAccelFsr(Ascale scale);
     void getAhrsData(float* pitch, float* roll, float* yaw);
+
+    //	New public functions of MPU6886 to support FIFO buffered sensor data
+    // output
+    void enableFIFO(Fodr rate);
+    void resetFIFO(void);
+    void disableFIFO(void);
+    int getFIFOData(int16_t databuf[]);
+    int getFIFOData(int16_t* ax, int16_t* ay, int16_t* az, int16_t* t,
+                    int16_t* gx, int16_t* gy, int16_t* gz);
 
    public:
     float aRes, gRes;

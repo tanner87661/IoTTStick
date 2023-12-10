@@ -1,3 +1,5 @@
+
+
 //display size C 80 x 160
 //display size C Plus 135 * 240
 #include "iottlogo2020.c"
@@ -8,6 +10,7 @@
 uint8_t screenDef = 1; //0 for Stick; 1 for Stick C Plus
 uint8_t lineY_0[] = {3,18,33,48,63};
 uint8_t lineY_1[] = {3,15,27,39,51,63};
+
 
 uint16_t getXCoord(uint16_t ofValue)
 {
@@ -30,16 +33,31 @@ uint16_t getYCoord(uint16_t ofValue)
 #define pwrOffTimeout 30000
 #define pwrDispInterval 2000
 #define speedDispInterval 500
-
+#define pwrRefreshInterval 500
 #define dccStrLen 45
 
 bool dccOneTimeDisp = false;
 uint32_t pwrOffTimer = millis();
 uint32_t pwrDispTimer = millis();
 uint32_t dccDispTimer = millis();
+uint32_t pwrRefreshTimer = millis();
 
-float axpBusVoltage = 0;
-float axpInVoltage = 0;
+float axpVBUSVoltage = 0;
+//float axpInVoltage = 0;
+
+
+float axpIntTemp = 0;
+float axpBattChargeCurrent = 0;
+float axpBattDischargeCurrent = 0;
+
+float axpBattVoltage = 0;
+float axpVBUSCurrent = 0;
+float axpACInCurrent = 0;
+float axpACInVoltage = 0;
+float axpBattPower = 0;
+float axpBattCurr = 0;
+uint8_t pwrRefreshCtr = 0;
+//uint32_t startmeas;
 
 uint8_t wifiResetCtr = 0;
 uint32_t wifiResetLastClick = 0;
@@ -106,10 +124,18 @@ void btnAClick()
   switch (m5CurrentPage)
   {
     case 0:
-      setOpeningPage();
+//      if (millis() > scrDispTimer)      
+//      { 
+        setOpeningPage();
+//        scrDispTimer = millis() + scrRefreshInterval;
+//      }
       break;
     case 1:
-      setWifiConnectPage();
+//      if (millis() > scrDispTimer)      
+//      { 
+        setWifiConnectPage();
+//        scrDispTimer = millis() + scrRefreshInterval;
+//      }
       break;
     case 2:
       m5CurrentPage++;
@@ -118,14 +144,23 @@ void btnAClick()
       oldWifiStatus = 0xFFFF; //impossible mode, requires update
       break;
     case 4:
-      setStatusPage();
+//      if (millis() > scrDispTimer)      
+//      { 
+        setStatusPage();
+//        scrDispTimer = millis() + scrRefreshInterval;
+//      }
       break;
     case 5:
-      pwrDispTimer = millis() + pwrDispInterval;
-      setPwrStatusPage();
+      if (millis() > pwrDispTimer)
+      {
+        setPwrStatusPage(); 
+        pwrDispTimer = millis() + pwrDispInterval;
+      }
+//      pwrDispTimer = millis() + pwrDispInterval;
+//      setPwrStatusPage();
       break;
     case 6:
-      if (useHat.devId == 7)
+      if (useHat.devId == 7) //PurpleHat
       {
         pwrDispTimer = millis() + speedDispInterval;
         sensorViewerPage();
@@ -136,6 +171,8 @@ void btnAClick()
     case 7:
       switch (useInterface.devId)
       {
+        case 17:
+        case 18:
         case 0: useM5Viewer = 0; m5CurrentPage = 3; oldWifiStatus = 0xFFFF; break;
         case 1:;
         case 10: dccViewerPage(); break;
@@ -183,7 +220,7 @@ void btnBUp()
 
 void btnBClick()
 {
-//  Serial.printf("Button B Clicked Page %i\n", m5CurrentPage);
+//  Serial.printf("Button B Clicked Page %i Wifi\n", m5CurrentPage);
   pwrOffTimer = millis();
   switch (useHat.devId)
   {
@@ -192,7 +229,7 @@ void btnBClick()
       if (m5CurrentPage == 3)
         if (WiFi.getMode() == 0)
         {
-//          Serial.println("Connect WiFi");  
+          Serial.println("Connect WiFi");  
           establishWifiConnection(myWebServer,dnsServer);
           return;
         }
@@ -271,7 +308,7 @@ void btnCDblClick(uint8_t evtCtr)
   if (evtCtr > wifiResetReqCount)
   {
     Serial.println("Reset Wifi");
-    if (WiFi.status() == WL_CONNECTED)
+    if (wifiStatus == WL_CONNECTED)
       WiFi.disconnect();
     WiFi.begin("0","0");
     delay(100);
@@ -323,10 +360,6 @@ void processDisplay()
         : M5.BtnPWR.wasDeciedClickCount() ? 5
         : 0;
 
-//  static constexpr const char* const names[] = { "none", "wasHold", "wasClicked", "wasPressed", "wasReleased", "wasDeciedCount" };
-//  if (state)
-//    Serial.printf("BtnPWR:%s  count:%d\n", names[state], M5.BtnPWR.getClickCount());
-
   switch (state)
   {
     case 1: btnCOnHold(0); break;
@@ -336,23 +369,49 @@ void processDisplay()
             break;
   }
 
-//  M5.BtnA.processEvents();
-//  M5.BtnB.processEvents();
-//  M5.BtnC.processEvents();
+  if (pwrRefreshTimer < millis())
+  {
+    switch (pwrRefreshCtr)
+    {
+//      case 1: startmeas = millis();
+      case 2: axpVBUSVoltage = PowerSys.getVBUSVoltage(); break;
+      case 4: axpACInVoltage = PowerSys.getACINVoltage(); break;
+      case 6: axpIntTemp = PowerSys.getInternalTemperature(); break;
+      case 8: axpBattChargeCurrent = PowerSys.getBatteryChargeCurrent(); break;
+      case 10: axpBattDischargeCurrent = PowerSys.getBatteryDischargeCurrent(); break;
+      case 12: axpBattChargeCurrent = PowerSys.getBatteryChargeCurrent(); break;
+      case 14: axpBattVoltage = PowerSys.getBatteryVoltage(); break;
+      case 16: axpVBUSCurrent = PowerSys.getVBUSCurrent(); break;
+      case 18: axpACInCurrent = PowerSys.getACINCurrent(); break;
+      case 20: axpBattPower = PowerSys.getBatteryPower(); break;
+//      case 22: wifiMode = WiFi.getMode(); yield(); break;
+      case 26: wifiStatus = WiFi.status(); yield(); break;
+      case 30:
+          axpBattCurr = axpBattChargeCurrent == 0? - axpBattDischargeCurrent : axpBattChargeCurrent;
+          hatPresent = axpACInVoltage > 0.5;
+          pwrUSB = axpVBUSVoltage > 4.5;
+          pwrDC = axpACInVoltage > 4.7;
+          pwrRefreshTimer += pwrRefreshInterval;
+          pwrRefreshCtr = 0;
+          dataValid = true;
+//          Serial.printf("Duration: %i\n", millis() - startmeas);
+          break;
+      default: break;
+    }
+    pwrRefreshCtr++;
+  }
 
-  axpBusVoltage = M5.Power.Axp192.getVBUSVoltage();
-  axpInVoltage = M5.Power.Axp192.getACINVolatge();
-  hatPresent = axpInVoltage > 0.5;
-  pwrUSB = axpBusVoltage > 4.5;
-  pwrDC = axpInVoltage > 4.7;
-//  M5.Power.Axp192.setEXTEN(pwrUSB || pwrDC);
-  
+//  if (!dataValid)
+  if ((!dataValid) || (pwrRefreshCtr > 1))
+    return;
+    
   if (pwrUSB || pwrDC) //check for Power Status, but not for BlackHat
   {
     pwrOffTimer = millis();
     if (darkScreen)
     {
       darkScreen = false;
+      Serial.println("Set bright");
       M5.Display.setBrightness(255); //0-255
     } 
   }
@@ -363,46 +422,54 @@ void processDisplay()
       {
         if ((useHat.devId == 5) && (!darkScreen)) //darkScreen only for BlackHat
         {
+          Serial.println("Set dark");
           M5.Display.setBrightness(0);
           darkScreen = true;
         }
       }
       else
       {
+        Serial.println("Shut down");
         prepareShutDown();
         M5.Power.powerOff();
       }
     }
+
   if (m5CurrentPage == 3) //in case status changes while displayed, we update the page
   {
-    uint16_t currStatus = (WiFi.getMode() << 8) + WiFi.status();
+    uint16_t currStatus = (wifiMode << 8) + wifiStatus;
     if (currStatus != oldWifiStatus)
     {
+//      Serial.printf("Status change %i %i %i %i\n", oldWifiStatus, currStatus, wifiMode, wifiStatus);
       oldWifiStatus = currStatus;
-      switch (WiFi.getMode())
+      switch (wifiMode)
       {
         case 0: setNoWifiPage(); break; //Wifi shut off
         case 1: // STA
-          if (WiFi.status() == WL_CONNECTED)
-            setWifiPage(wifiCfgMode);
+          if (wifiStatus == WL_CONNECTED)
+            setWifiPage(wifiMode);
           else
             setNoWifiPage();
           break;
         case 2: //AP
           if (!wifiCancelled)
-            setWifiPage(wifiCfgMode);
+            setWifiPage(wifiMode);
           else
             setNoWifiPage();
           break;
       }
+    Serial.println("Status change complete");
     }
   }
+
   if ((useInterface.devCommMode == 0))// && (useHat.devCommMode == 0)) //DCC/Decoder
     if (millis() > dccDispTimer)
     {
+//      Serial.println("Refresh");
       sendRefreshBuffer();
       dccDispTimer = millis() + pwrDispInterval; //exact interval not important, we start with millis as base
     }
+
   if (m5CurrentPage == 5)
   {
     if (millis() > pwrDispTimer)
@@ -411,6 +478,7 @@ void processDisplay()
       pwrDispTimer = millis() + pwrDispInterval;
     }
   }
+
   if ((m5CurrentPage == 6) && (useHat.devId == 7))
   {
     if (millis() > pwrDispTimer)
@@ -434,6 +502,7 @@ void initDisplay()
 
 void drawLogo(int x, int y, int logoSize)
 {
+//  Serial.println("drawLogo");
   switch (screenDef)
   {
     case 0:  //Stick C
@@ -453,20 +522,19 @@ void drawLogo(int x, int y, int logoSize)
       }
       break;
   }
+//  Serial.println("done");
 }
 
 void drawText(const char * payload, int x, int y, int what)
 {
+//  Serial.println("drawText");
   M5.Display.drawString(payload,getXCoord(x),getYCoord(y),what);
-//  M5.Display.startWrite();
-//  M5.Display.setCursor(getXCoord(x), getYCoord(y));
-//  M5.Display.setTextSize(what); // = what;
-//  M5.Display.print(payload);
-//  M5.Display.endWrite();
+//  Serial.println("done");
 }
 
 void drawBackground()
 {
+//  Serial.println("drawBackground");
   switch (screenDef)
   {
     case 0: 
@@ -480,10 +548,12 @@ void drawBackground()
           M5.Display.pushImage( 40 * x,20 * y,40,20, (uint16_t *)image_data_Nickel4020); 
       break;
   }
+//  Serial.println("done");
 }
 
 void setOpeningPage()
 {
+//  Serial.println("setOpeningPage");
   switch (screenDef)
   {
     case 0: 
@@ -495,10 +565,12 @@ void setOpeningPage()
       drawLogo(80, 25, 2); //80x80
       break;
   }
+//  Serial.println("done");
 }
 
 void setWifiConnectPage()
 {
+//  Serial.println("setWifiConnectPage");
   char outText[50];
   M5.Display.fillScreen(TFT_LIGHTGREY);
   M5.Display.setTextColor(TFT_BLACK, TFT_LIGHTGREY);
@@ -516,10 +588,12 @@ void setWifiConnectPage()
   sprintf(outText, hlpStr.c_str());
   drawText(outText, 5, 18, 2);
   drawText("to set Wifi credentials", 5, 33, 2);
+//  Serial.println("done");
 }
 
-void setWifiPage(int wifiCfgMode)
+void setWifiPage(int wifiCfgModePrm)
 {
+//  Serial.println("setWifiPage");
   uint8_t * lineY = screenDef == 0 ? &lineY_0[0] : &lineY_1[0];
   char outText[50];
   M5.Display.fillScreen(TFT_LIGHTGREY);
@@ -533,16 +607,16 @@ void setWifiPage(int wifiCfgMode)
       drawLogo(210, 105, 0);
       break;
   }
-  switch (wifiCfgMode)
+  switch (wifiCfgModePrm)
   {
     case 1:
     {
       sprintf(outText, "IoTT Stick: %s", deviceName.c_str());
       drawText(outText, 5, lineY[0], 2);
       drawText("Wifi LAN connected", 5, lineY[1], 2);
-      sprintf(outText, "AP: %s", WiFi.SSID().c_str());
+      sprintf(outText, "AP: %s", mySSID.c_str());
       drawText(outText, 5, lineY[2], 2);
-      sprintf(outText, "IP: %s", WiFi.localIP().toString().c_str());
+      sprintf(outText, "IP: %s", dyn_ip.toString().c_str());
       drawText(outText, 5, lineY[3], 2);
       break;
     }
@@ -553,15 +627,17 @@ void setWifiPage(int wifiCfgMode)
       drawText(outText, 5, lineY[1], 2);
       sprintf(outText, "Password: %s", apPassword.c_str());
       drawText(outText, 5, lineY[2], 2);
-      sprintf(outText, "IP: %s", WiFi.softAPIP().toString().c_str());
+      sprintf(outText, "IP: %s", ap_ip.toString().c_str());
       drawText(outText, 5, lineY[3], 2);
       break;
     }
   }
+//  Serial.println("done");
 }
 
 void setNoWifiPage()
 {
+//  Serial.println("setNoWifiPage");
   uint8_t * lineY = screenDef == 0 ? &lineY_0[0] : &lineY_1[0];
   M5.Display.fillScreen(TFT_LIGHTGREY);
   M5.Display.setTextColor(TFT_BLACK, TFT_LIGHTGREY);
@@ -576,6 +652,7 @@ void setNoWifiPage()
   }
   drawText("Wifi LAN disconnected", 5, lineY[0], 2);
   drawText("Click here to connect", 5, 63, 2);
+//  Serial.println("done");
 }
 
 //commMode: 0: DCC, 1: LocoNet, 2: MQTT, 3: Gateway
@@ -583,6 +660,7 @@ void setNoWifiPage()
 
 void setStatusPage()
 {
+//  Serial.println("setStatusPage");
   uint8_t * lineY = screenDef == 0 ? &lineY_0[0] : &lineY_1[0];
   M5.Display.fillScreen(TFT_LIGHTGREY);
   M5.Display.setTextColor(TFT_BLACK, TFT_LIGHTGREY);
@@ -606,6 +684,7 @@ void setStatusPage()
     case 5: drawText("Hat: BlackHat", 5, lineY[0], 2); break;
     case 6: drawText("Hat: RedHat++", 5, lineY[0], 2); break;
     case 7: drawText("Hat: PurpleHat", 5, lineY[0], 2); break;
+    case 8: drawText("Hat: SilverHat", 5, lineY[0], 2); break;
     default: drawText("Hat: unknown", 5, lineY[0], 2); break;
   }
   switch (useInterface.devId)
@@ -650,7 +729,7 @@ void setStatusPage()
       modList += ", ";
     modList += "TCP";
   }
-  if (wiServer)
+  if (wiThServer)
   {
     if (modList.length() > 1)
       modList += ", ";
@@ -694,10 +773,12 @@ if (secElHandlerList)
 //  }
   modList += "]";
   drawText(&modList[0], 50, lineY[3], 2); 
+//  Serial.println("done");
 }
 
 void setPwrStatusPage()
 {
+//  Serial.println("setPwrStatusPage");
   char outText[50];
   M5.Display.fillScreen(TFT_LIGHTGREY);
   M5.Display.setTextColor(TFT_BLACK, TFT_LIGHTGREY);
@@ -712,18 +793,18 @@ void setPwrStatusPage()
   }
   sprintf(outText, "IoTT Stick V. %s", BBVersion.c_str());
   drawText(outText, 5, 3, 2);
-  sprintf(outText, "Stick Temp: %.1f C \n", M5.Power.Axp192.getInternalTemperature());
+  sprintf(outText, "Stick Temp: %.1f C \n", axpIntTemp);
   drawText(outText, 5, 20, 1);
-  sprintf(outText, "Bat:  V: %.1fV I: %.1fmA\n", M5.Power.Axp192.getBatteryVoltage(), M5.Power.Axp192.getBatteryDischargeCurrent());
+  sprintf(outText, "Bat:  V: %.1fV I: %.1fmA\n", axpBattVoltage, axpBattCurr);
   drawText(outText, 5, 30, 1);
   M5.Display.setTextColor(pwrUSB ? TFT_BLACK : TFT_RED, TFT_LIGHTGREY);
-  sprintf(outText, "USB:  V: %.1fV I: %.1fmA\n", axpBusVoltage, M5.Power.Axp192.getVBUSCurrent());
+  sprintf(outText, "USB:  V: %.1fV I: %.1fmA\n", axpVBUSVoltage, axpVBUSCurrent);
   drawText(outText, 5, 40, 1);
   M5.Display.setTextColor(pwrDC ? TFT_BLACK : hatPresent ? TFT_BLUE : TFT_RED, TFT_LIGHTGREY);
-  sprintf(outText, "5VIn: V: %.1fV I: %.1fmA\n", axpInVoltage, M5.Power.Axp192.getACINCurrent());                                                                                                                                                               
+  sprintf(outText, "5VIn: V: %.1fV I: %.1fmA\n", axpACInVoltage, axpACInCurrent);                                                                                                                                                               
   drawText(outText, 5, 50, 1);
   M5.Display.setTextColor(TFT_BLACK, TFT_LIGHTGREY);
-  sprintf(outText, "Bat Pwr: %.1fmW", M5.Power.Axp192.getBatteryPower());
+  sprintf(outText, "Bat Pwr: %.1fmW", axpBattPower);
   drawText(outText, 5, 60, 1);
   unsigned long allSeconds = millis()/1000;
   int runHours = allSeconds/3600;
@@ -732,10 +813,12 @@ void setPwrStatusPage()
   int runSeconds=secsRemaining%60;
   sprintf(outText,"Uptime: %02d:%02d:%02d",runHours,runMinutes,runSeconds);  
   drawText(outText, 5, 70, 1);
+//  Serial.println("done");
 }
 
 void lnViewerPage()
 {
+//  Serial.println("lnViewerPage");
   M5.Display.fillScreen(TFT_LIGHTGREY);
   M5.Display.setTextColor(TFT_BLACK, TFT_LIGHTGREY);
   switch (screenDef)
@@ -750,10 +833,12 @@ void lnViewerPage()
   drawText("LocoNet Viewer", 5, 3, 2);
   m5DispLine = 0;
   useM5Viewer = 1;
+//  Serial.println("done");
 }
 
 void olcbViewerPage()
 {
+//  Serial.println("olcbViewerPage");
   M5.Display.fillScreen(TFT_LIGHTGREY);
   M5.Display.setTextColor(TFT_BLACK, TFT_LIGHTGREY);
   switch (screenDef)
@@ -768,10 +853,12 @@ void olcbViewerPage()
   drawText("OpenLCB Viewer", 5, 3, 2);
   m5DispLine = 0;
   useM5Viewer = 3;
+//  Serial.println("done");
 }
 
 void dccViewerPage()
 {
+//  Serial.println("dccViewerPage");
   M5.Display.fillScreen(TFT_LIGHTGREY);
   M5.Display.setTextColor(TFT_BLACK, TFT_LIGHTGREY);
   switch (screenDef)
@@ -790,10 +877,12 @@ void dccViewerPage()
   drawText("Click here to toggle", 5, 63, 2);
   m5DispLine = 0;
   useM5Viewer = 2;
+//  Serial.println("done");
 }
 
 void mqttViewerPage()
 {
+//  Serial.println("mqttViewerPage");
   M5.Display.fillScreen(TFT_LIGHTGREY);
   M5.Display.setTextColor(TFT_BLACK, TFT_LIGHTGREY);
   switch (screenDef)
@@ -812,10 +901,12 @@ void mqttViewerPage()
   drawText("Click here to toggle", 5, 63, 2);
   m5DispLine = 0;
   useM5Viewer = 4;
+//  Serial.println("done");
 }
 
 void sensorViewerPage()
 {
+//  Serial.println("sensorViewerPage");
   uint8_t * lineY = screenDef == 0 ? &lineY_0[0] : &lineY_1[0];
   if (trainSensor)
   {
@@ -861,6 +952,7 @@ void sensorViewerPage()
     drawText("Sensor not initialized", 5, lineY[0], 2);
     drawText("Check IoTT Stick configuration", 5, lineY[1], 2);
   }
+//  Serial.println("done");
 }
 
 String getLNString(lnReceiveBuffer * newData)

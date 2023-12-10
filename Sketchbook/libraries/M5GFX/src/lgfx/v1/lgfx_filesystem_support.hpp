@@ -31,7 +31,9 @@ Contributors:
  #include <alloca.h>
 #else
  #include <malloc.h>
+ #ifndef alloca
  #define alloca _alloca
+ #endif
 #endif
 
 namespace lgfx
@@ -55,64 +57,35 @@ namespace lgfx
     using Base::drawJpg;
     using Base::drawPng;
     using Base::drawQoi;
+    using Base::drawBmpFile;
+    using Base::drawJpgFile;
+    using Base::drawPngFile;
+    using Base::drawQoiFile;
     using Base::loadFont;
 
-    virtual ~LGFX_FILESYSTEM_Support<Base>()
-    {
-      if (this->_font_file != nullptr)
-      {
-        delete this->_font_file;
-        this->_font_file = nullptr;
-      }
-    }
-
 #if defined (ARDUINO)
- #if defined (FS_H) || defined (__SEEED_FS__)
 
-    /// load vlw fontdata from filesystem.
-    void loadFont(const char *path, fs::FS &fs
-#if defined (_SD_H_)
- = SD
-#elif defined (_SPIFFS_H_)
- = SPIFFS
-#endif
-    )
-    {
-      init_font_file<FileWrapper>(fs);
-      load_font_with_path(path);
-    }
-
-    void loadFont(fs::FS &fs, const char *path)
-    {
-      init_font_file<FileWrapper>(fs);
-      load_font_with_path(path);
-    }
+ #if defined (FS_H)
 
   #define LGFX_FUNCTION_GENERATOR(drawImg, draw_img) \
-    inline bool drawImg##File(fs::FS &fs, const char *path, int32_t x = 0, int32_t y = 0, int32_t maxWidth = 0, int32_t maxHeight = 0, int32_t offX = 0, int32_t offY = 0, float scale_x = 1.0f, float scale_y = 0.0f, datum_t datum = datum_t::top_left) \
-    {  FileWrapper file(fs); \
-       bool res = this->drawImg##File(&file, path, x, y, maxWidth, maxHeight, offX, offY, scale_x, scale_y, datum); \
-       file.close(); \
-       return res; \
-    } \
-    inline bool drawImg##File(fs::FS &fs, fs::File *file, int32_t x=0, int32_t y=0, int32_t maxWidth=0, int32_t maxHeight=0, int32_t offX=0, int32_t offY=0, float scale_x = 1.0f, float scale_y = 0.0f, datum_t datum = datum_t::top_left) \
+    template <typename T> \
+    inline bool drawImg##File(T &fs, fs::File *file, int32_t x=0, int32_t y=0, int32_t maxWidth=0, int32_t maxHeight=0, int32_t offX=0, int32_t offY=0, float scale_x = 1.0f, float scale_y = 0.0f, datum_t datum = datum_t::top_left) \
     { \
-      FileWrapper data(fs, file); \
+      DataWrapperT<T> data { fs, file }; \
       bool res = this->draw_img(&data, x, y, maxWidth, maxHeight, offX, offY, scale_x, scale_y, datum); \
       data.close(); \
       return res; \
     } \
-    inline bool drawImg##File(fs::FS &fs, const String& path, int32_t x = 0, int32_t y = 0, int32_t maxWidth = 0, int32_t maxHeight = 0, int32_t offX = 0, int32_t offY = 0, float scale_x = 1.0f, float scale_y = 0.0f, datum_t datum = datum_t::top_left) \
+    inline bool drawImg(fs::File *file, int32_t x = 0, int32_t y = 0, int32_t maxWidth = 0, int32_t maxHeight = 0, int32_t offX = 0, int32_t offY = 0, float scale_x = 1.0f, float scale_y = 0.0f, datum_t datum = datum_t::top_left) \
     { \
-      return drawImg##File(fs, path.c_str(), x, y, maxWidth, maxHeight, offX, offY, scale_x, scale_y, datum); \
-    } \
-    inline bool drawImg(fs::File *dataSource, int32_t x = 0, int32_t y = 0, int32_t maxWidth = 0, int32_t maxHeight = 0, int32_t offX = 0, int32_t offY = 0, float scale_x = 1.0f, float scale_y = 0.0f, datum_t datum = datum_t::top_left) \
-    { \
-      StreamWrapper data; \
-      data.set(dataSource); \
-      data.need_transaction = true; \
+      DataWrapperT<fs::File> data { file }; \
       return this->draw_img(&data, x, y, maxWidth, maxHeight, offX, offY, scale_x, scale_y, datum); \
     } \
+    template <typename T> \
+    inline bool drawImg##File(T &fs, const String& path, int32_t x = 0, int32_t y = 0, int32_t maxWidth = 0, int32_t maxHeight = 0, int32_t offX = 0, int32_t offY = 0, float scale_x = 1.0f, float scale_y = 0.0f, datum_t datum = datum_t::top_left) \
+    { \
+      return drawImg##File(fs, path.c_str(), x, y, maxWidth, maxHeight, offX, offY, scale_x, scale_y, datum); \
+    }
 
     LGFX_FUNCTION_GENERATOR(drawBmp, draw_bmp)
     LGFX_FUNCTION_GENERATOR(drawJpg, draw_jpg)
@@ -125,7 +98,6 @@ namespace lgfx
     {
       return drawBmpFile(fs, path, x, y, maxWidth, maxHeight, offX, offY, scale_x, scale_y, datum);
     }
-
     [[deprecated("use float scale")]]
     inline bool drawJpgFile(fs::FS &fs, const char *path, int32_t x, int32_t y, int32_t maxWidth, int32_t maxHeight, int32_t offX, int32_t offY, jpeg_div::jpeg_div_t scale)
     {
@@ -143,20 +115,20 @@ namespace lgfx
     }
 
  #endif
-
+/*
  #if defined (__STORAGE_H__) // for SPRESENSE
 
     /// load vlw fontdata from filesystem.
-    void loadFont(const char *path, StorageClass &fs)
+    bool loadFont(const char *path, StorageClass &fs)
     {
       init_font_file<FileWrapper>(fs);
-      load_font_with_path(path);
+      return load_font_with_path(path);
     }
 
-    void loadFont(StorageClass &fs, const char *path)
+    bool loadFont(StorageClass &fs, const char *path)
     {
       init_font_file<FileWrapper>(fs);
-      load_font_with_path(path);
+      return load_font_with_path(path);
     }
 
   #define LGFX_FUNCTION_GENERATOR(drawImg, draw_img) \
@@ -214,72 +186,8 @@ namespace lgfx
     }
 
  #endif
-
- #if defined (SdFat_h)
-  #if SD_FAT_VERSION >= 20102
-   #define LGFX_SDFAT_TYPE SdBase<FsVolume,FsFormatter>
-  #else
-   #define LGFX_SDFAT_TYPE SdBase<FsVolume>
-  #endif
-
-    void loadFont(const char *path, LGFX_SDFAT_TYPE &fs)
-    {
-      init_font_file<SdFatWrapper>(fs);
-      load_font_with_path(path);
-    }
-
-    void loadFont(LGFX_SDFAT_TYPE &fs, const char *path)
-    {
-      init_font_file<SdFatWrapper>(fs);
-      load_font_with_path(path);
-    }
-
-  #define LGFX_FUNCTION_GENERATOR(drawImg, draw_img) \
-    inline bool drawImg##File(LGFX_SDFAT_TYPE &fs, const char *path, int32_t x = 0, int32_t y = 0, int32_t maxWidth = 0, int32_t maxHeight = 0, int32_t offX = 0, int32_t offY = 0, float scale_x = 1.0f, float scale_y = 0.0f, datum_t datum = datum_t::top_left) \
-    { \
-      SdFatWrapper file(fs); \
-      bool res = this->drawImg##File(&file, path, x, y, maxWidth, maxHeight, offX, offY, scale_x, scale_y, datum); \
-      file.close(); \
-      return res; \
-    } \
-    inline bool drawImg##File(LGFX_SDFAT_TYPE &fs, FsFile *file, int32_t x = 0, int32_t y = 0, int32_t maxWidth = 0, int32_t maxHeight = 0, int32_t offX = 0, int32_t offY = 0, float scale_x = 1.0f, float scale_y = 0.0f, datum_t datum = datum_t::top_left) \
-    { \
-      SdFatWrapper data(fs, file); \
-      bool res = this->draw_img(&data, x, y, maxWidth, maxHeight, offX, offY, scale_x, scale_y, datum); \
-      data.close(); \
-      return res; \
-    } \
-    inline bool drawImg##File(LGFX_SDFAT_TYPE &fs, const String& path, int32_t x = 0, int32_t y = 0, int32_t maxWidth = 0, int32_t maxHeight = 0, int32_t offX = 0, int32_t offY = 0, float scale_x = 1.0f, float scale_y = 0.0f, datum_t datum = datum_t::top_left) \
-    { \
-      return drawImg##File(fs, path.c_str(), x, y, maxWidth, maxHeight, offX, offY, scale_x, scale_y, datum); \
-    } \
-
-    LGFX_FUNCTION_GENERATOR(drawBmp, draw_bmp)
-    LGFX_FUNCTION_GENERATOR(drawJpg, draw_jpg)
-    LGFX_FUNCTION_GENERATOR(drawPng, draw_png)
-    LGFX_FUNCTION_GENERATOR(drawQoi, draw_qoi)
-
-  #undef LGFX_FUNCTION_GENERATOR
-
-    inline bool drawBmp(LGFX_SDFAT_TYPE &fs, const char *path, int32_t x = 0, int32_t y = 0, int32_t maxWidth = 0, int32_t maxHeight = 0, int32_t offX = 0, int32_t offY = 0, float scale_x = 1.0f, float scale_y = 0.0f, datum_t datum = datum_t::top_left)
-    {
-      return drawBmpFile(fs, path, x, y, maxWidth, maxHeight, offX, offY, scale_x, scale_y, datum);
-    }
-    [[deprecated("use float scale")]]
-    inline bool drawJpgFile(LGFX_SDFAT_TYPE &fs, const char *path, int32_t x, int32_t y, int32_t maxWidth, int32_t maxHeight, int32_t offX, int32_t offY, jpeg_div::jpeg_div_t scale)
-    {
-      return drawJpgFile(fs, path, x, y, maxWidth, maxHeight, offX, offY, 1.0f / (1 << scale));
-    }
-    [[deprecated("use float scale")]]
-    inline bool drawJpgFile(LGFX_SDFAT_TYPE &fs, FsFile *file, int32_t x, int32_t y, int32_t maxWidth, int32_t maxHeight, int32_t offX, int32_t offY, jpeg_div::jpeg_div_t scale)
-    {
-      return drawJpgFile(fs, file, x, y, maxWidth, maxHeight, offX, offY, 1.0f / (1 << scale));
-    }
-
-  #undef LGFX_SDFAT_TYPE
- #endif
-
- #if defined (Stream_h)
+//*/
+ #if defined (Stream_h) || defined ARDUINO_ARCH_RP2040 // RP2040 has no defines for builtin Stream API
 
   #define LGFX_FUNCTION_GENERATOR(drawImg, draw_img) \
     inline bool drawImg(Stream *dataSource, int32_t x = 0, int32_t y = 0, int32_t maxWidth = 0, int32_t maxHeight = 0, int32_t offX = 0, int32_t offY = 0, float scale_x = 1.0f, float scale_y = 0.0f, datum_t datum = datum_t::top_left) \
@@ -354,8 +262,8 @@ namespace lgfx
 
   #endif
  #endif
-
-#elif defined (CONFIG_IDF_TARGET_ESP32) || defined(__SAMD51_HARMONY__) || defined(_INC_STDIO) // ESP-IDF or Harmony
+/*
+#elif defined (ESP_PLATFORM) || defined(__SAMD51_HARMONY__) || defined(stdin) // ESP-IDF, Harmony, stdio
 
   #define LGFX_FUNCTION_GENERATOR(drawImg) \
     inline bool drawImg##File(const char *path, int32_t x = 0, int32_t y = 0, int32_t maxWidth = 0, int32_t maxHeight = 0, int32_t offX = 0, int32_t offY = 0, float scale_x = 1.0f, float scale_y = 0.0f, datum_t datum = datum_t::top_left) \
@@ -377,12 +285,12 @@ namespace lgfx
       return drawJpgFile(path, x, y, maxWidth, maxHeight, offX, offY, 1.0f / (1 << scale));
     }
 
-    void loadFont(const char *path)
+    bool loadFont(const char *path)
     {
       init_font_file<FileWrapper>();
-      load_font_with_path(path);
+      return load_font_with_path(path);
     }
-
+//*/
 #endif
 
 #define LGFX_URL_MAXLENGTH 2083
@@ -438,7 +346,7 @@ namespace lgfx
           return false;
         }
 
-        
+
         if (hConnect == nullptr || wcscmp(szHostName, _last_host))
         {
           if (hConnect)
@@ -774,86 +682,20 @@ namespace lgfx
 
 #undef LGFX_URL_MAXLENGTH
 
-  #define LGFX_FUNCTION_GENERATOR(drawImg, draw_img) \
-    bool drawImg##File(DataWrapper* file, const char *path, int32_t x = 0, int32_t y = 0, int32_t maxWidth = 0, int32_t maxHeight = 0, int32_t offX = 0, int32_t offY = 0, float scale_x = 1.0f, float scale_y = 0.0f, datum_t datum = datum_t::top_left) \
-    { \
-      bool res = false; \
-      this->prepareTmpTransaction(file); \
-      file->preRead(); \
-      if (file->open(path)) \
-      { \
-        res = this->draw_img(file, x, y, maxWidth, maxHeight, offX, offY, scale_x, scale_y, datum); \
-        file->close(); \
-      } \
-      file->postRead(); \
-      return res; \
-    } \
-
-    LGFX_FUNCTION_GENERATOR(drawBmp, draw_bmp)
-    LGFX_FUNCTION_GENERATOR(drawJpg, draw_jpg)
-    LGFX_FUNCTION_GENERATOR(drawPng, draw_png)
-    LGFX_FUNCTION_GENERATOR(drawQoi, draw_qoi)
-
-  #undef LGFX_FUNCTION_GENERATOR
-
   private:
 
     template<typename T, typename Tfs>
     void init_font_file(Tfs &fs)
     {
       this->unloadFont();
-      if (this->_font_file != nullptr)
-      {
-        delete this->_font_file;
-      }
-      auto wrapper = new T(fs);
-      this->_font_file = wrapper;
+      this->_font_file.reset(new T(fs));
     }
 
     template<typename T>
     void init_font_file(void)
     {
       this->unloadFont();
-      if (this->_font_file != nullptr)
-      {
-        delete this->_font_file;
-      }
-      auto wrapper = new T();
-      this->_font_file = wrapper;
-    }
-
-    bool load_font_with_path(const char *path)
-    {
-      this->unloadFont();
-
-      if (this->_font_file == nullptr) return false;
-      //if (this->_font_file == nullptr) { init_font_file<FileWrapper>(SD); }
-
-      this->prepareTmpTransaction(this->_font_file);
-      this->_font_file->preRead();
-
-      bool result = this->_font_file->open(path);
-      if (!result)
-      {
-        size_t alloclen = strlen(path) + 8;
-        auto filename = (char*)alloca(alloclen);
-        memset(filename, 0, alloclen);
-        filename[0] = '/';
-
-        strcpy(&filename[1], &path[(path[0] == '/') ? 1 : 0]);
-        int len = strlen(filename);
-        if (memcmp(&filename[len - 4], ".vlw", 4))
-        {
-          strcpy(&filename[len], ".vlw");
-        }
-        result = this->_font_file->open(filename);
-      }
-
-      if (result) {
-        result = this->load_font(this->_font_file);
-      }
-      this->_font_file->postRead();
-      return result;
+      this->_font_file.reset(new T());
     }
   };
 
