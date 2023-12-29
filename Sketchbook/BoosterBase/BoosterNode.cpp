@@ -1,5 +1,7 @@
 #include "BoosterNode.h"
 
+//char myMqttMsg[80];
+
 Booster::Booster()
 {
 }
@@ -8,21 +10,34 @@ Booster::~Booster()
 {
 }
 
-void Booster::initNode(uint8_t nNr, nodeConfigData* initData)
+void Booster::initNode(uint8_t nNr, uint16_t lnAddr) //, nodeConfigData* initData)
 {
-  bCfg = (*initData);
+//  Serial.print("Init Booster ");
+//  Serial.println(nNr);
   nodeNr = nNr;
-  pinMode(bCfg.ctrlPin, OUTPUT);
+  setLNAddr(lnAddr);
+  bCfg = readEEPROM(); //(*initData);
+  if (bCfg.checkByte == 0) 
+  {
+    Serial.println("Invalid Booster Node Data");
+    return;
+  }
+  updateNominalTemp();
+  configPins();
   tripLine(false);
   bOps.currCtr = random(numSamples);
-  bOps.tripCurrVal = round(fuseTripPoint * bCfg.currNominal / bCfg.senseFactor); //trip current = 120% of nominal current, in analog port value
-  bOps.nominalTemp = (float)bCfg.fuseMode * ((float)bCfg.currNominal / 1000);
+  bOps.tripCurrVal = round(fuseTripPoint * bCfg.currNominal / bCfg.senseFactor); //trip current = 135% of nominal current, in analog port value
+//  Serial.print("Nominal Temp: ");
+//  Serial.print(bCfg.fuseMode);
+//  Serial.print(" ");
+//  Serial.print(bCfg.currNominal);
+//  Serial.print(" ");
+//  Serial.println(bOps.nominalTemp);
+//  Serial.println(bOps.tripCurrVal);
   bOps.intStat = allok;
   bOps.extStat = extStop;
   bOps.sigStat = noSig;
   bOps.scTrigVal = max(1, trunc(bCfg.fuseMode/10)); //req
-  if (bCfg.autoReverseMode)
-    pinMode(bCfg.reversePin, OUTPUT);
   
 //  Serial.println(bCfg.currNominal);
 //  Serial.println(bOps.tripCurrVal);
@@ -30,10 +45,37 @@ void Booster::initNode(uint8_t nNr, nodeConfigData* initData)
 //  Serial.println(bOps.scTrigVal);
 }
 
+void Booster::updateNominalTemp()
+{
+  bOps.nominalTemp = round(bCfg.fuseMode * (bCfg.currNominal / 10)); //centigrade
+  bOps.currTemp = 0;
+}
+
+void Booster::configPins()
+{
+  if (bCfg.ctrlPin > 3) //pins 0,1,2,3 reserved for Serial and DCC
+    pinMode(bCfg.ctrlPin, OUTPUT);  
+  if (bCfg.reversePin > 3) //pins 0,1,2,3 reserved for Serial and DCC
+    pinMode(bCfg.reversePin, OUTPUT);  
+}
+
+void Booster::releasePins()
+{
+  if (bCfg.ctrlPin > 3) //pins 0,1,2,3 reserved for Serial and DCC
+    pinMode(bCfg.ctrlPin, INPUT);  
+  if (bCfg.reversePin > 3) //pins 0,1,2,3 reserved for Serial and DCC
+    pinMode(bCfg.reversePin, INPUT);  
+}
+
 //uint8_t Booster::getTripStatus()
 //{
 //  return bOps.tripFlag;
 //}
+
+void Booster::setLNAddr(uint16_t lnAddr)
+{
+  lnAddress = lnAddr;
+}
 
 void Booster::tripLine(bool newStat)
 {
@@ -55,16 +97,36 @@ uint8_t Booster::getOutputStatus()
 
 void Booster::updateRMS_T(uint8_t currBuffer)
 {
-  bOps.currRMS = sqrt(bOps.currData[currBuffer] / numSamples) * 4 * bCfg.senseFactor;
-  bOps.currTemp = bOps.currTemp + (bOps.currRMS)/1000 - (bOps.currTemp/bCfg.fuseMode);
-  bOps.currOLF = (double)round(100 * bOps.currTemp / bOps.nominalTemp)/100;
-  bOps.currRMS = (double)round(100 * bOps.currRMS)/100;
-  bOps.currTemp = (double)round(100 * bOps.currTemp)/100;
+  float tmpRes = sqrt(bOps.currData[currBuffer] / numSamples) * 4 * bCfg.senseFactor;
+  uint16_t addTemp = round(sq(tmpRes/10)/(bCfg.currNominal/10));
+  uint16_t decrTemp = max(10, round(bOps.currTemp/bCfg.fuseMode));
+  bOps.currTemp = bOps.currTemp + addTemp;
+  if (bOps.currTemp > decrTemp)
+    bOps.currTemp -= decrTemp;
+  else
+    bOps.currTemp = 0;
+  bOps.currOLF = round(100 * ((float)bOps.currTemp / (float)bOps.nominalTemp));
+  bOps.currRMS = round(tmpRes);
+
+//  Serial.print("Nom: ");
+//  Serial.print(bOps.nominalTemp);
+//  Serial.print(" add: ");
+//  Serial.print(addTemp);
+//  Serial.print(" decr: ");
+//  Serial.print(decrTemp);
+//  Serial.print(" Curr: ");
+//  Serial.println(bOps.currTemp);
+  
 }
 
 void Booster::setARPolarity(uint8_t newPolarity) //0: forward 1: reverse; 2: toggle
 {
-  if (bCfg.autoReverseMode)
+//  Serial.print("AR Polarity Mod ");
+//  Serial.print(nodeNr);
+//  Serial.print(" pos ");
+//  Serial.println(newPolarity);
+//  if (bCfg.autoReverseMode)
+  if (bCfg.reversePin > 1)
   {
     if (newPolarity < 2)
       digitalWrite(bCfg.reversePin, newPolarity);
@@ -75,7 +137,10 @@ void Booster::setARPolarity(uint8_t newPolarity) //0: forward 1: reverse; 2: tog
 
 void Booster::setExtStatus(extNodeStatus newStatus)
 {
-//  Serial.println("Ext Stat");
+//  Serial.println("Ext Stat ");
+//  Serial.print(nodeNr);
+//  Serial.print(" pos ");
+//  Serial.println(newStatus);
   bOps.extStat = newStatus;
   bOps.intStat = allok;
   tripLine((bOps.extStat == extRun) && (bOps.extStat != noSig));
@@ -94,63 +159,74 @@ bool Booster::processReportRequest()
   {
     reportFlags &= ~0x01;
     uint16_t sensVal = round(bCfg.senseFactor * 100);
-    sprintf(myMqttMsg, "{\"Cmd\":\"SVR\",\"Prm\":{\"Src\":%i,\"Opc\":%i,\"Addr\":%i,\"Vals\":[%i,%i,%i,%i]}}\n", bCfg.lnAddress, 0x46, ((nodeNr+1) << 8) + 0x00, (bCfg.ctrlPin << 4) + (bCfg.sensePin-14), bCfg.reversePin, sensVal >> 8, sensVal & 0x00FF);
+//    Serial.println(bCfg.ctrlPin);
+//    Serial.println(bCfg.sensePin);
+    sprintf(myMqttMsg, quadByteResponse, lnAddress, 0x46, ((nodeNr+1) << 8) + 0x00, (bCfg.ctrlPin << 4) + (bCfg.sensePin-A0), bCfg.reversePin, sensVal >> 8, sensVal & 0x00FF);
     Serial.print(myMqttMsg);
+//    Serial.println(sensVal);
     return true;
   }
   if (reportFlags & 0x02) //AR 1bit, Reset Mode 2bits, Fuse Value 1byte, nominal Current 2byte
   {
     reportFlags &= ~0x02;
-    sprintf(myMqttMsg, "{\"Cmd\":\"SVR\",\"Prm\":{\"Src\":%i,\"Opc\":%i,\"Addr\":%i,\"Vals\":[%i,%i,%i,%i]}}\n", bCfg.lnAddress, 0x46, ((nodeNr+1) << 8) + 0x04, (bCfg.autoReverseMode << 2) + (bCfg.autoResetMode & 0x03), bCfg.fuseMode, bCfg.currNominal >> 8, bCfg.currNominal & 0x00FF);
+//    Serial.println(bCfg.autoReverseMode);
+    sprintf(myMqttMsg, quadByteResponse, lnAddress, 0x46, ((nodeNr+1) << 8) + 0x04, (bCfg.autoReverseMode << 2) + (bCfg.autoResetMode & 0x03), bCfg.fuseMode, bCfg.currNominal >> 8, bCfg.currNominal & 0x00FF);
     Serial.print(myMqttMsg);
     return true;
   }
   if (reportFlags & 0x04) //LN Actuator On type, state, addr
   {
     reportFlags &= ~0x04;
-    sprintf(myMqttMsg, "{\"Cmd\":\"SVR\",\"Prm\":{\"Src\":%i,\"Opc\":%i,\"Addr\":%i,\"Vals\":[%i,%i,%i,%i]}}\n", bCfg.lnAddress, 0x46, ((nodeNr+1) << 8) + 0x08, bCfg.actSetOn.trigDef, (bCfg.actSetOn.devAddr >> 8),(bCfg.actSetOn.devAddr & 0x00FF),0);
+    sprintf(myMqttMsg, quadByteResponse, lnAddress, 0x46, ((nodeNr+1) << 8) + 0x08, bCfg.actSetOn.trigDef, (bCfg.actSetOn.devAddr >> 8),(bCfg.actSetOn.devAddr & 0x00FF),0);
     Serial.print(myMqttMsg);
     return true;
   }
   if (reportFlags & 0x08) //LN Actuator Off type, state, addr
   {
     reportFlags &= ~0x08;
-    sprintf(myMqttMsg, "{\"Cmd\":\"SVR\",\"Prm\":{\"Src\":%i,\"Opc\":%i,\"Addr\":%i,\"Vals\":[%i,%i,%i,%i]}}\n", bCfg.lnAddress, 0x46, ((nodeNr+1) << 8) + 0x0C, bCfg.actSetOff.trigDef, (bCfg.actSetOff.devAddr >> 8),(bCfg.actSetOff.devAddr & 0x00FF),0);
+    sprintf(myMqttMsg, quadByteResponse, lnAddress, 0x46, ((nodeNr+1) << 8) + 0x0C, bCfg.actSetOff.trigDef, (bCfg.actSetOff.devAddr >> 8),(bCfg.actSetOff.devAddr & 0x00FF),0);
     Serial.print(myMqttMsg);
     return true;
   }
   if (reportFlags & 0x10) //LN Actuator Reset type, state, addr
   {
     reportFlags &= ~0x10;
-    sprintf(myMqttMsg, "{\"Cmd\":\"SVR\",\"Prm\":{\"Src\":%i,\"Opc\":%i,\"Addr\":%i,\"Vals\":[%i,%i,%i,%i]}}\n", bCfg.lnAddress, 0x46, ((nodeNr+1) << 8) + 0x10, bCfg.actResetNode.trigDef, (bCfg.actResetNode.devAddr >> 8),(bCfg.actResetNode.devAddr & 0x00FF),0);
+    sprintf(myMqttMsg, quadByteResponse, lnAddress, 0x46, ((nodeNr+1) << 8) + 0x10, bCfg.actResetNode.trigDef, (bCfg.actResetNode.devAddr >> 8),(bCfg.actResetNode.devAddr & 0x00FF),0);
     Serial.print(myMqttMsg);
     return true;
   }
   if (reportFlags & 0x20) //LN Actuator AR Pos type, state, addr            
   {
     reportFlags &= ~0x20;
-    sprintf(myMqttMsg, "{\"Cmd\":\"SVR\",\"Prm\":{\"Src\":%i,\"Opc\":%i,\"Addr\":%i,\"Vals\":[%i,%i,%i,%i]}}\n", bCfg.lnAddress, 0x46, ((nodeNr+1) << 8) + 0x14, bCfg.actARPolarityPos.trigDef, (bCfg.actARPolarityPos.devAddr >> 8),(bCfg.actARPolarityPos.devAddr & 0x00FF),0);
+    sprintf(myMqttMsg, quadByteResponse, lnAddress, 0x46, ((nodeNr+1) << 8) + 0x14, bCfg.actARPolarityPos.trigDef, (bCfg.actARPolarityPos.devAddr >> 8),(bCfg.actARPolarityPos.devAddr & 0x00FF),0);
     Serial.print(myMqttMsg);
     return true;
   }
   if (reportFlags & 0x40) //LN Actuator AR Neg type, state, addr
   {
     reportFlags &= ~0x40;
-    sprintf(myMqttMsg, "{\"Cmd\":\"SVR\",\"Prm\":{\"Src\":%i,\"Opc\":%i,\"Addr\":%i,\"Vals\":[%i,%i,%i,%i]}}\n", bCfg.lnAddress, 0x46, ((nodeNr+1) << 8) + 0x18, bCfg.actARPolarityNeg.trigDef, (bCfg.actARPolarityNeg.devAddr >> 8),(bCfg.actARPolarityNeg.devAddr & 0x00FF),0);
+    sprintf(myMqttMsg, quadByteResponse, lnAddress, 0x46, ((nodeNr+1) << 8) + 0x18, bCfg.actARPolarityNeg.trigDef, (bCfg.actARPolarityNeg.devAddr >> 8),(bCfg.actARPolarityNeg.devAddr & 0x00FF),0);
     Serial.print(myMqttMsg);
     return true;
   }
   if (reportFlags & 0x80) //LN Actuator Short circuit type, state, addr
   {
     reportFlags &= ~0x80;
-    sprintf(myMqttMsg, "{\"Cmd\":\"SVR\",\"Prm\":{\"Src\":%i,\"Opc\":%i,\"Addr\":%i,\"Vals\":[%i,%i,%i,%i]}}\n", bCfg.lnAddress, 0x46, ((nodeNr+1) << 8) + 0x1C, bCfg.repShortCircuit.trigDef, (bCfg.repShortCircuit.devAddr >> 8),(bCfg.repShortCircuit.devAddr & 0x00FF),0);
+    sprintf(myMqttMsg, quadByteResponse, lnAddress, 0x46, ((nodeNr+1) << 8) + 0x1C, bCfg.repShortCircuit.trigDef, (bCfg.repShortCircuit.devAddr >> 8),(bCfg.repShortCircuit.devAddr & 0x00FF),0);
     Serial.print(myMqttMsg);
     return true;
   }
   if (reportFlags & 0x100) //LN Actuator Overload type, state, addr
   {
     reportFlags &= ~0x100;
-    sprintf(myMqttMsg, "{\"Cmd\":\"SVR\",\"Prm\":{\"Src\":%i,\"Opc\":%i,\"Addr\":%i,\"Vals\":[%i,%i,%i,%i]}}\n", bCfg.lnAddress, 0x46, ((nodeNr+1) << 8) + 0x20, bCfg.repOverload.trigDef, (bCfg.repOverload.devAddr >> 8),(bCfg.repOverload.devAddr & 0x00FF),0);
+    sprintf(myMqttMsg, quadByteResponse, lnAddress, 0x46, ((nodeNr+1) << 8) + 0x20, bCfg.repOverload.trigDef, (bCfg.repOverload.devAddr >> 8),(bCfg.repOverload.devAddr & 0x00FF),0);
+    Serial.print(myMqttMsg);
+    return true;
+  }
+  if (reportFlags & 0x200) //Short circuit current
+  {
+    reportFlags &= ~0x200;
+    sprintf(myMqttMsg, quadByteResponse, lnAddress, 0x46, ((nodeNr+1) << 8) + 0x24, bCfg.scCurr >> 8, bCfg.scCurr & 0x00FF,0, 0);
     Serial.print(myMqttMsg);
     return true;
   }
@@ -160,7 +236,23 @@ bool Booster::processReportRequest()
     updateRMS_T(bOps.rdPtr);
     if ((bOps.lastCurrRead + readIntv) < millis()) //ready to read data
     {
-      getBoosterOpsReport(this);
+      bool sendIntStat = ((bCfg.repShortCircuit.trigDef & 0xE0) > 0) && (bOps.intStat != intStatTx);
+      bool sendOLStat = ((bCfg.repOverload.trigDef & 0xE0) > 0) && (bOps.currOLF != olfTx);
+      uint16_t OLFVal = round(bOps.currOLF);
+      uint16_t TVal = round(bOps.currTemp/100);
+      sprintf(myMqttMsg, DCCAmpResponse,nodeNr, OLFVal, TVal, bOps.currRMS, olfTx, bOps.intStat, bOps.extStat, digitalRead(bCfg.reversePin));
+      Serial.print(myMqttMsg);
+      if (sendIntStat)
+      {
+        sendIntStatLN();
+        intStatTx = bOps.intStat;
+      }
+      else
+        if (sendOLStat)
+        {
+          sendOLFStatLN();
+          olfTx = bOps.currOLF;
+        }
       bOps.lastCurrRead += readIntv;
     }
     bOps.rdPtr = (bOps.rdPtr + 1) % smplBufSize;
@@ -189,6 +281,8 @@ void Booster::restartNode()
 
 void Booster::resetBooster()
 {
+//  Serial.print("Restart Node ");
+//  Serial.println(nodeNr);
   if (bOps.intStat == awReset)
     restartNode();
 }
@@ -207,7 +301,11 @@ void Booster::requestSVData(uint8_t svCmd, int16_t memLoc)
     case 0x18: reportFlags |= 0x40; break;
     case 0x1C: reportFlags |= 0x80; break;
     case 0x20: reportFlags |= 0x100; break;
-    
+    case 0x24: reportFlags |= 0x200; break;
+    case 0xF0: break;
+    case 0xF1: break;
+    case 0xF2: break;
+    case 0xF3: break;
     case 0xFF: reportFlags = 0xFFFF; break;
   }
 }
@@ -215,14 +313,27 @@ void Booster::requestSVData(uint8_t svCmd, int16_t memLoc)
 void Booster::writeSVData(uint8_t svCmd, int16_t memLoc, uint8_t svData[]) //write SV data
 {
   //write memLoc
+//  Serial.println(memLoc);
   switch (memLoc)
   {
-    case 0x00: break;
+    case 0x00: 
+    {
+      releasePins();
+      bCfg.ctrlPin = svData[0] >> 4;
+      bCfg.sensePin = (svData[0] & 0x0F) + A0;
+      bCfg.reversePin = svData[1] & 0x0F;
+      float sensVal = (float)((svData[2] << 8) + svData[3]) / 100;
+      setSensorFactor(sensVal);
+      configPins();
+    }
+      break;
     case 0x04: 
       bCfg.autoReverseMode = svData[0] >> 2;
       bCfg.autoResetMode = svData[0] & 0x03;
       bCfg.fuseMode = svData[1];
       bCfg.currNominal = (svData[2] << 8) + svData[3];
+      updateNominalTemp();
+//    Serial.println(bCfg.autoReverseMode);
       break;
     case 0x08: 
       bCfg.actSetOn.trigDef = svData[0];
@@ -252,6 +363,24 @@ void Booster::writeSVData(uint8_t svCmd, int16_t memLoc, uint8_t svData[]) //wri
       bCfg.repOverload.trigDef = svData[0];
       bCfg.repOverload.devAddr = (svData[1]<<8) + svData[2];
       break;
+    case 0xF0: 
+      if (svData[0] == 0xFF) //toggle
+        if (bOps.extStat == extStop)
+          setExtStatus(extRun);
+        else
+          setExtStatus(extStop);
+      else
+        setExtStatus(svData[0]);
+      break;
+    case 0xF1: 
+      setARPolarity(svData[0]);
+      break;
+    case 0xF2: 
+      resetBooster();
+      break;
+    case 0xF3: 
+      startSCTest();
+      break;
   }
   requestSVData(svCmd, memLoc);
 }
@@ -259,6 +388,7 @@ void Booster::writeSVData(uint8_t svCmd, int16_t memLoc, uint8_t svData[]) //wri
 void Booster::setSensorFactor(double newSensFact)
 {
   bCfg.senseFactor = newSensFact;
+//  Serial.println(bCfg.senseFactor);
   reportFlags |= 0x01;
 }
 
@@ -289,27 +419,56 @@ void Booster::setARMode(bool newARMode)
 void Booster::writeEEPROM(bool writeEE)
 {
   uint8_t * wrPtr = &bCfg.ctrlPin;
-  uint16_t baseAddr = 128 * (nodeNr+1);
-  for (uint8_t i = 0; i <  sizeof(bCfg); i++)
+  uint16_t baseAddr = (128 * (nodeNr+1)) + 1;
+  uint8_t recSize = sizeof(bCfg);
+  bCfg.checkByte = 0;
+  for (uint8_t i = 0; i <  recSize-1; i++)
   {
-    EEPROM.update(baseAddr + 1 + i, (*wrPtr));
     bCfg.checkByte ^= (*wrPtr);
     wrPtr++;
   }
+  EEPROM.put(baseAddr, bCfg);
 }
 
 nodeConfigData Booster::readEEPROM()
 {
-  nodeConfigData eeData;
-  uint8_t * rdPtr = &eeData.ctrlPin;
-  uint16_t baseAddr = 128 * (nodeNr+1);
+  nodeConfigData readData;
+  uint8_t * rdPtr = &readData.ctrlPin;
+  uint16_t baseAddr = (128 * (nodeNr+1)) + 1;
   uint8_t chkSum = 0;
-  for (uint8_t i = 0; i <  sizeof(eeData); i++)
+  uint8_t recSize = sizeof(readData);
+  EEPROM.get(baseAddr, readData);
+  for (uint8_t i = 0; i < recSize-1;  i++)
   {
-    EEPROM.get(baseAddr + 1 + i, (*rdPtr));
+    chkSum ^= (*rdPtr);
+//    Serial.print((*rdPtr));
+//    Serial.print(", ");
     rdPtr++;
   }
-  return eeData;
+//  Serial.println(chkSum);
+  if (chkSum != readData.checkByte)
+  {
+//    Serial.println("EE invalid");
+    readData.ctrlPin = 0;
+    readData.sensePin = A0; //analog pins starting with 14
+    readData.reversePin = 0;
+    readData.senseFactor = 0; //Current Factor: 8500 A/A, Rsense = 5kOhm Umax at 8.5 Amps = 5V = Analog Value 1023 Sense Factor = 8500 / 1023 = 8.31
+    readData.currNominal = 0; //[mA] set trip current, must be smaller than achievable short circuit current. 80% of this is nominal current (infinite RMS load) if higher, warmup is calculated
+    readData.fuseMode = 30; //10,20,30,..,100
+    readData.autoResetMode = 2; //0: manual only 1: limited 2: full autoreset
+    readData.autoReverseMode = false;
+    readData.actSetOn.trigDef = 0;
+    readData.actSetOff.trigDef = 0;
+    readData.actResetNode.trigDef = 0;
+    readData.actARPolarityPos.trigDef = 0;
+    readData.actARPolarityNeg.trigDef = 0;
+    readData.repShortCircuit.trigDef = 0;
+    readData.repOverload.trigDef = 0;
+    readData.checkByte = 0;
+  }
+//  else
+//      Serial.println("EE ok");
+  return readData;
 }
 
 void Booster::processTimerInterrupt()
@@ -344,7 +503,7 @@ void Booster::processTimerOps()
       {
         if (bCfg.autoReverseMode)
         {
-          setARPolarity(2);
+          setARPolarity(0xFF);
           bOps.intStat = scAR0;
 //          Serial.print(currVal);
 //          Serial.print(" ");
@@ -485,9 +644,8 @@ void Booster::processTimerSCDetect()
   }
   else
   {
-    char myMqttMsg[50];
-    sprintf(myMqttMsg, "{\"SCT\":[%i,%i,%i]}\n",nodeNr, bOps.scVal, round((float)bOps.scVal * bCfg.senseFactor / (float)bOps.scCtr));
-    Serial.print(myMqttMsg);
+    bCfg.scCurr = round((float)bOps.scVal * bCfg.senseFactor / (float)bOps.scCtr);
+    reportFlags |= 0x200;
     bOps.extStat = extStop; 
   } 
 }
@@ -498,8 +656,39 @@ void Booster::processExtCommand(lnActivatorDef newCmd)
     setExtStatus(extRun);
   if ((newCmd.trigDef == bCfg.actSetOff.trigDef) && (newCmd.devAddr == bCfg.actSetOff.devAddr)) 
     setExtStatus(extStop);
+  if ((newCmd.trigDef == bCfg.actResetNode.trigDef) && (newCmd.devAddr == bCfg.actResetNode.devAddr)) 
+    resetBooster();
   if ((newCmd.trigDef == bCfg.actARPolarityPos.trigDef) && (newCmd.devAddr == bCfg.actARPolarityPos.devAddr)) 
     setARPolarity(0);
   if ((newCmd.trigDef == bCfg.actARPolarityNeg.trigDef) && (newCmd.devAddr == bCfg.actARPolarityNeg.devAddr)) 
     setARPolarity(1);
 }
+  
+  void Booster::sendLNMsg(uint8_t opCode, uint16_t lnAddr, uint8_t lnStatus)
+  {
+    char myMqttMsg[50];
+    sprintf(myMqttMsg, LNResponse, opCode, lnAddr, lnStatus); 
+    Serial.print(myMqttMsg);
+  }
+
+  void Booster::sendIntStatLN()
+  {
+    switch (bCfg.repOverload.trigDef >> 5)
+    {
+      case 1: sendLNMsg(0xB0, bCfg.repOverload.devAddr, bOps.intStat < 3 ? bCfg.repShortCircuit.trigDef & 0x01 : (bCfg.repShortCircuit.trigDef & 0x01) ^ 0x01); break;
+      case 2: sendLNMsg(0xED, bCfg.repOverload.devAddr, bOps.intStat); break;
+      case 3: sendLNMsg(0xE5, bCfg.repOverload.devAddr, bOps.intStat < 3 ? bCfg.repShortCircuit.trigDef & 0x01 : (bCfg.repShortCircuit.trigDef & 0x01) ^ 0x01); break;
+      case 4: sendLNMsg(0xB2, bCfg.repOverload.devAddr, bOps.intStat < 3 ? bCfg.repShortCircuit.trigDef & 0x01 : (bCfg.repShortCircuit.trigDef & 0x01) ^ 0x01); break;
+    }
+  }
+
+  void Booster::sendOLFStatLN()
+  {
+    switch (bCfg.repOverload.trigDef >> 5)
+    {
+      case 1: sendLNMsg(0xB0, bCfg.repOverload.devAddr, bOps.currOLF > 100 ? bCfg.repOverload.trigDef & 0x01 : (bCfg.repOverload.trigDef & 0x01) ^ 0x01); break;
+      case 2: sendLNMsg(0xED, bCfg.repOverload.devAddr, round(bOps.currOLF / 4)); break;
+      case 3: sendLNMsg(0xE5, bCfg.repOverload.devAddr, bOps.currOLF > 100 ? bCfg.repOverload.trigDef & 0x01 : (bCfg.repOverload.trigDef & 0x01) ^ 0x01); break;
+      case 4: sendLNMsg(0xB2, bCfg.repOverload.devAddr, bOps.currOLF > 100 ? bCfg.repOverload.trigDef & 0x01 : (bCfg.repOverload.trigDef & 0x01) ^ 0x01); break;
+    }
+  }

@@ -1,8 +1,12 @@
-var DeviceData = {"lnAddress" : 0, "serNr": 0,"LNMode" : 0, "SigType": 0, "SigState": 0, "PwrUpMode": 0, "PwrState": 0, "devActuators": [], "Boosters": []};
+var DeviceData = {"lnAddress" : 0, "manufId" : 25, "devId":25, "prodId": 0, "serNr": 0,"LNMode" : 0, "SigType": 0, "SigState": 0, "PwrUpMode": 0, "PwrState": 0, "devActuators": [], "Boosters": []};
 
 var HWTemplate = {"Module":0,"PwrPin":0,"AnalogPin":0,"SensorFactor":0.00,"ARPin":0,"SCCurrent":0};
 var ELTemplate = {"NominalCurrent":0,"FuseMode":0,"ResMode":0,"ARMode":false};
 var ActTemplate = {"MemLoc": 0, "CmdType":0, "Addr":0, "Status":0};
+var RTTemplate = {"OLF":0.00, "RMS":0.00,"intS": 0, "extS":0, "arS":0};
+
+var intStatText = ["Running", "Trying AR", "Trying AR", "Short Circuit", "Overload", "Cooling", "Await Reset"];
+var extStatText = ["Stop", "Running", "CS Testing"];
 
 var hwMainTab;
 var configMainTab;
@@ -21,7 +25,7 @@ var tabRuntime;
 var updateCurrent = false;
 var currTrack = 0;
 
-var trackGauges = [];
+//var trackGauges = [];
 var trackGaugeDefs = [];
 
 var ConfigOptionPanel;
@@ -44,16 +48,26 @@ function saveConfigFileSettings()
 	saveJSONConfig(scriptList.Pages[currentPage].ID, scriptList.Pages[currentPage].FileName, configData[workCfg], null);
 }
 
+function sendLNCommand(msgData)
+{
+	ws.send("{\"Cmd\":\"LNOut\", \"Data\":" + msgData + "}");
+}
+
 function sendSVCommand(sv_cmd, sv_addr, data)
 {
 //	console.log(data);
 	var src = 0x01;
 	var dst = DeviceData.lnAddress; 
+
+	if (sv_cmd == 0x09) //change LN Address
+	{
+		dst = sv_addr;
+//		sv_addr = 
+	}
+
 	var svx1 = 0x10 + ((sv_addr & 0x8000) >> 12) + ((sv_addr & 0x0080) >> 5) + ((dst & 0x8000) >> 14) + ((dst & 0x0080) >> 7);
-//	console.log(svx1, sv_addr, dst, ((dst & 0x0080) >> 7));
 	var svx2 = 0x10 + ((data[0] & 0x80) >> 7) + ((data[1] & 0x80) >> 6) + ((data[2] & 0x80) >> 5) + ((data[3] & 0x80) >> 4);
 	SVCmd = JSON.stringify([0xE5, 0x10, src, sv_cmd, 0x02, svx1, (dst & 0x007F), (dst & 0x7F00) >> 8, (sv_addr & 0x007F), (sv_addr & 0x7F00) >> 8,  svx2, data[0] & 0x7F, data[1] & 0x7F, data[2] & 0x7F, data[3] & 0x7F]);
-//	console.log("{\"Cmd\":\"BST\", \"SV\":" + SVCmd + "}");
 	ws.send("{\"Cmd\":\"BST\", \"SV\":" + SVCmd + "}");
 }
 
@@ -67,16 +81,28 @@ function setPanelVisibility()
 //	console.log(DeviceData);
 	setVisibility(DeviceData.LNMode > 0, devLoconetInputPanel);
 	setVisibility(DeviceData.Boosters.length > 0, dataTab);
+	setVisibility(DeviceData.LNMode > 0, document.getElementById("layoutstatus"));
+//	setVisibility((DeviceData.LNMode > 0) && ([4,5,6].indexOf(configData[nodeCfg].InterfaceIndex) >= 0), document.getElementById("outputstatus"));
+	for (var i = 0; i < DeviceData.Boosters.length; i++)
+	{
+		setVisibility(DeviceData.LNMode > 0, document.getElementById("boosterconfig_inp_" + i.toString() + "_2"));
+		setVisibility((DeviceData.LNMode > 0) && ([4,5,6].indexOf(configData[nodeCfg].InterfaceIndex) >= 0), document.getElementById("boosterconfig_inp_" + i.toString() + "_3"));
+		setVisibility(DeviceData.Boosters[i].hw.ARPin > 3, document.getElementById("panel_bstARF_" + i.toString() + "_2"));
+		setVisibility(DeviceData.Boosters[i].hw.ARPin > 3, document.getElementById("panel_bstARR_" + i.toString() + "_2"));
+//		console.log(DeviceData.Boosters[i].hw);
+	}
 }
 
 function createHWMainTab(parentObj)
 {
 	createPageTitle(hwMainTab, "div", "tile-1", "HWCfg_TitleMain", "h2", "Hardware Configuration");
 	dataTab = createEmptyDiv(hwMainTab, "div", "tile-1", "");
-	createTextInput(dataTab, "tile-1_4", "Serial Number:", "n/a", "SerNum", "setSerNum(this)");
+	createDispText(dataTab, "tile-1_4", "Serial Number:", "n/a", "SerNum");
 	createDropdownselector(dataTab, "tile-1_4", "# Modules:", ["0", "1", "2", "3", "4", "5", "6"], "numMods", "setNumMods(this)");
 	dataTab = createEmptyDiv(hwMainTab, "div", "tile-1", "");
 	createTextInput(dataTab, "tile-1_4", "LN Address:", "n/a", "LNAddr", "setLNAddr(this)");
+	dataTab = createEmptyDiv(hwMainTab, "div", "tile-1", "");
+	createDispText(dataTab, "tile-1_4", "Input Signal:", "", "RepInpSigHW");
 	dataTab = createEmptyDiv(hwMainTab, "div", "tile-1", "");
 	hwTable = createDataTable(dataTab, "tile-1", ["Pos","PWR Pin","Analog Pin", "Sensor Rate", "AR Pin","Short Test", "Short Current [mA]"], "hwconfig", "");
 }
@@ -87,8 +113,6 @@ function createConfigMainTab(parentObj)
 	createPageTitle(dataTab, "div", "tile-1", "BasicCfg_TitleMain", "h2", "Booster Device Configuration");
 	var dataTab = createEmptyDiv(parentObj, "div", "tile-1", "");
 	createDropdownselector(dataTab, "tile-1_4", "Valid Signal Format:", ["DCC","PWM"], "SigSel", "setSignalType(this)");
-//	createDropdownselector(dataTab, "tile-1_4", "Default Reset Mode:", ["Manual Reset Only","Limited Auto Reset", "Auto Reset"], "DefReset", "setResetMode(this)");
-//	var dataTab = createEmptyDiv(parentObj, "div", "tile-1", "");
 	createDropdownselector(dataTab, "tile-1_4", "Power Up State:", ["Track Power OFF","Track Power ON"], "PwrUpState", "setPowerUpState(this)");
 	var dataTab = createEmptyDiv(parentObj, "div", "tile-1", "");
 	createCheckbox(dataTab, "tile-1_4", "Use Command Communication", "UseLN", "setLoconetComm(this)");
@@ -110,33 +134,10 @@ function createConfigMainTab(parentObj)
 	var dataTab = createEmptyDiv(parentObj, "div", "tile-1", "");
 	createDispText(dataTab, "tile-1_4", "# of Booster Boards:", "0", "NumBooster");
 
-//	configBoosterTab = createEmptyDiv(parentObj, "div", "tile-1", "");
 	BoosterTab = createEmptyDiv(parentObj, "div", "tile-1", "");
 	BoosterTable = createDataTable(BoosterTab, "tile-1", ["Pos","Booster Module Settings", "Actuator Settings", "Reporting Settings"], "boosterconfig", "");
 
 	
-}
-
-function createBosterDataElement(nodeNr, parentObj)
-{
-	var boosterTab = createEmptyDiv(parentObj, "div", "tile-1", "");
-		var dataTab = createEmptyDiv(boosterTab, "div", "tile-1", "");
-			createPageTitle(dataTab, "div", "tile-1", "BSet_" + nodeNr.toString(), "h3", "Booster " + (nodeNr+1).toString() + " Control");
-
-		var dataTab = createEmptyDiv(boosterTab, "div", "tile-1", "layoutPwrButtons");
-			createButton(dataTab, "", "Power ON", "btnPower_" + nodeNr.toString(), "setPowerStatus(this)");
-			createButton(dataTab, "", "Polarity", "btnPolarity_" + nodeNr.toString(), "setPolarity(this)");
-
-
-		var dataTab = createEmptyDiv(boosterTab, "div", "tile-1", "");
-			createDispText(dataTab, "tile-1_4", "Current [mA]:", "n/a", "Curr_" + nodeNr.toString());
-			createDispText(dataTab, "tile-1_4", "Load Factor [%]:", "n/a", "OLF_" + nodeNr.toString());
-			createDispText(dataTab, "tile-1_4", "Status:", "n/a", "Stat_" + nodeNr.toString());
-			createCheckbox(dataTab, "tile-1_4", "Reverse Polarity", "Rev_" + nodeNr.toString(), "");
-			dataTab = createEmptyDiv(boosterTab, "div", "tile-1", "");
-			createButton(dataTab, "", "SC Test", "btnSSCTest" + nodeNr.toString(), "scTest(this)");
-			createDispText(dataTab, "tile-1_4", "SC Current [mA]:", "n/a", "SCCurr_" + nodeNr.toString());
-
 }
 
 function createRuntimeMainTab(parentObj)
@@ -146,47 +147,20 @@ function createRuntimeMainTab(parentObj)
 	var dataTab = createEmptyDiv(parentObj, "div", "tile-1", "");
 	createDispText(dataTab, "tile-1_4", "Input Signal:", "", "RepInpSig");
 	var dataTab = createEmptyDiv(parentObj, "div", "tile-1", "layoutPwrStatus");
-	createButton(dataTab, "", "CS Power ON", "btnGlobalPowerOn", "setPowerStatus(this)");
-	createButton(dataTab, "", "CS Power OFF", "btnGlobalPowerOff", "setPowerStatus(this)");
-	createButton(dataTab, "", "CS Power Idle", "btnGlobalPowerIdle", "setPowerStatus(this)");
+	dataTab.setAttribute("id","layoutstatus"); 
+	createButton(dataTab, "", "CS Power ON", "btnGlobalPowerOn", "setPowerStatus(this, 0x83)");
+	createButton(dataTab, "", "CS Power OFF", "btnGlobalPowerOff", "setPowerStatus(this, 0x82)");
+	createButton(dataTab, "", "CS Power Idle", "btnGlobalPowerIdle", "setPowerStatus(this, 0x85)");
 	var dataTab = createEmptyDiv(parentObj, "div", "tile-1", "");
-	createButton(dataTab, "", "All Output On", "btnBoosterPowerOn", "setBoosterStatus(this)");
-	createButton(dataTab, "", "All Output Off", "btnBoosterPowerOn", "setBoosterStatus(this)");
+	dataTab.setAttribute("id","outputstatus"); 
+	createButton(dataTab, "", "All Output On", "btnBoosterPowerOn", "setBoosterStatus(this, 1)");
+	createButton(dataTab, "", "All Output Off", "btnBoosterPowerOff", "setBoosterStatus(this, 0)");
 
 	var dataTab = createEmptyDiv(parentObj, "div", "tile-1", "");
 	createPageTitle(dataTab, "div", "tile-1", "BasicCfg_TitleMain", "h2", "Booster Module Status and Control");
 
 	runtimeBoosterTab = createEmptyDiv(parentObj, "div", "tile-1", "");
-	runtimeBoosterTable = createDataTable(runtimeBoosterTab, "tile-1", ["Pos","Track Current", "Status", "Control"], "boosterstatus", "");
-}
-
-
-function updateConfigBoosterTab(nodeNr, hwData)
-{
-
-	if (hwData.HW)
-	{
-	}
-
-	if (hwData.EL)
-	{
-	}
-
-/*
-		{
-			HWConfig[nodeNr] = JSON.parse(JSON.stringify(HWTemplate));
-			HWConfig[nodeNr].CtrlPin = jsonData.HW[1]; 
-			HWConfig[nodeNr].AnalogPin = jsonData.HW[2]; 
-			HWConfig[nodeNr].ReversePin = jsonData.HW[3]; 
-			HWConfig[nodeNr].SensorFactor = jsonData.HW[4]; 
-		}
-			ELConfig[nodeNr] = JSON.parse(JSON.stringify(ELTemplate));
-			ELConfig[nodeNr].NominalCurrent = jsonData.EL[1]; 
-			ELConfig[nodeNr].FuseMode = jsonData.EL[2]; 
-			ELConfig[nodeNr].ResMode = jsonData.EL[3]; 
-			ELConfig[nodeNr].ARMode = jsonData.EL[4]; 
-
-*/
+	runtimeBoosterTable = createDataTable(runtimeBoosterTab, "tile-1", ["Pos","Track Current", "Status", "Output Control"], "boosterstatus", "");
 }
 
 function tfGauge(y, x, id, evtHandler)
@@ -196,6 +170,45 @@ function tfGauge(y, x, id, evtHandler)
 	var trackCanvas = document.createElement("CANVAS");
 	trackCanvas.setAttribute("id",id); 
 	subGaugePanel.append(trackCanvas);
+	var maxVal = 1000 * (Math.trunc(1.35 * DeviceData.Boosters[y].el.NominalCurrent / 1000) + 1);
+	var newTicks = [];
+	var tickIntv = 1000;
+	var numTicks = Math.round(maxVal / tickIntv) + 1;
+	while (numTicks <= 4)
+	{
+		tickIntv /= 2;
+		numTicks = Math.round(maxVal / tickIntv) + 1;
+	}
+	while (numTicks > 8)
+	{
+		tickIntv *= 2;
+		numTicks = Math.round(maxVal / tickIntv) + 1;
+	}
+	for (var i = 0; i < numTicks; i++)
+		newTicks.push(i * tickIntv);
+	var trackGauge = new RadialGauge(
+		{width: 200, 
+		height: 200, 
+		units: 'mA', 
+		renderTo: trackCanvas,
+		title: "Booster " + (y+1).toString(),
+		value: 0,
+		minValue: 0,
+		maxValue: maxVal,
+		majorTicks: newTicks,
+ 		minorTicks: [],
+ 		highlights: [
+			{ "from": 0, "to": 0.8 * DeviceData.Boosters[y].el.NominalCurrent, "color": "rgba(0,255,0,.3)" },
+			{ "from": 0.8 * DeviceData.Boosters[y].el.NominalCurrent, "to": 1.0 * DeviceData.Boosters[y].el.NominalCurrent, "color": "rgba(255,255,0,.3)" },
+			{ "from": 1.0 * DeviceData.Boosters[y].el.NominalCurrent, "to": 1.2 * DeviceData.Boosters[y].el.NominalCurrent, "color": "rgba(255,0,0,.3)" },
+			{ "from": 1.2 * DeviceData.Boosters[y].el.NominalCurrent, "to": 1.35 * DeviceData.Boosters[y].el.NominalCurrent, "color": "rgba(255,0,0,.8)" },
+			{ "from": 1.35 * DeviceData.Boosters[y].el.NominalCurrent, "to": maxVal, "color": "rgba(0,0,0,.5)" }
+		]
+	}).draw();
+	if (y >= trackGaugeDefs.length)
+		trackGaugeDefs.push(trackGauge);
+	else
+		trackGaugeDefs[y] = trackGauge;
 	return subGaugePanel;
 }
 
@@ -337,7 +350,7 @@ function tfBoosterStatus(y, x, id, evtHandler)
 	var divElement = document.createElement("div");
 	divElement.setAttribute("class", "mastertile");
 	tfSetCoordinate(divElement, y, x, 0, id);
-
+//---------------
 	var upperDiv = document.createElement("div");
 	upperDiv.setAttribute("class", "editortile");
 	divElement.append(upperDiv);
@@ -345,7 +358,6 @@ function tfBoosterStatus(y, x, id, evtHandler)
 	var textDiv = document.createElement("div");
 	textDiv.setAttribute("class", "manipulatorbox");
 	upperDiv.append(textDiv);
-
 
 	thisId = "outstatetext_" + y.toString() + "_" + x.toString();
 	var thisText = tfText(y, x, thisId, evtHandler);
@@ -360,43 +372,55 @@ function tfBoosterStatus(y, x, id, evtHandler)
 	upperDiv.append(tfTab(y, x, '&nbsp;',""));
 	upperDiv.append(thisText);
 	upperDiv.append(tfTab(y, x, '&nbsp;',""));
-
+//---------------
 	var upperDiv = document.createElement("div");
 	upperDiv.setAttribute("class", "editortile");
 	divElement.append(upperDiv);
 
-	var textDiv = document.createElement("div");
-	textDiv.setAttribute("class", "manipulatorbox");
-	upperDiv.append(textDiv);
-
-	thisId = "overloadtext_" + y.toString() + "_" + x.toString();
+	thisId = "intstatetext_" + y.toString() + "_" + x.toString();
 	var thisText = tfText(y, x, thisId, evtHandler);
-	thisText.innerHTML = "Booster Load:";
-	textDiv.append(tfTab(y, x, '&nbsp;',""));
-	textDiv.append(thisText);
-	textDiv.append(tfTab(y, x, '&nbsp;',""));
-
-	thisId = "overloadval_" + y.toString() + "_" + x.toString();
-	var thisText = tfText(y, x, thisId, evtHandler);
-	thisText.innerHTML = "80%:";
+	thisText.innerHTML = "Booster Status:";
 	upperDiv.append(tfTab(y, x, '&nbsp;',""));
 	upperDiv.append(thisText);
 	upperDiv.append(tfTab(y, x, '&nbsp;',""));
 
+	thisId = "intstateval_" + y.toString() + "_" + x.toString();
+	var thisText = tfText(y, x, thisId, evtHandler);
+	thisText.innerHTML = "all OK";
+	upperDiv.append(tfTab(y, x, '&nbsp;',""));
+	upperDiv.append(thisText);
+	upperDiv.append(tfTab(y, x, '&nbsp;',""));
+//---------------
 	var upperDiv = document.createElement("div");
 	upperDiv.setAttribute("class", "editortile");
 	divElement.append(upperDiv);
 
-	var textDiv = document.createElement("div");
-	textDiv.setAttribute("class", "manipulatorbox");
-	upperDiv.append(textDiv);
+	thisId = "overloadtext_" + y.toString() + "_" + x.toString();
+	var thisText = tfText(y, x, thisId, evtHandler);
+	thisText.innerHTML = "Load Factor [%]:";
+	upperDiv.append(tfTab(y, x, '&nbsp;',""));
+	upperDiv.append(thisText);
+	upperDiv.append(tfTab(y, x, '&nbsp;',""));
+
+	thisId = "overloadval_" + y.toString() + "_" + x.toString();
+	var thisText = tfText(y, x, thisId, evtHandler);
+	thisText.innerHTML = "";
+	upperDiv.append(tfTab(y, x, '&nbsp;',""));
+	upperDiv.append(thisText);
+	upperDiv.append(tfTab(y, x, '&nbsp;',""));
+
+	thisId = "ardisppanel_" + y.toString() + "_" + x.toString();
+	var upperDiv = document.createElement("div");
+	upperDiv.setAttribute("class", "editortile");
+	upperDiv.setAttribute("id", thisId);
+	divElement.append(upperDiv);
 
 	thisId = "arstatetext_" + y.toString() + "_" + x.toString();
 	var thisText = tfText(y, x, thisId, evtHandler);
 	thisText.innerHTML = "AR Status:";
-	textDiv.append(tfTab(y, x, '&nbsp;',""));
-	textDiv.append(thisText);
-	textDiv.append(tfTab(y, x, '&nbsp;',""));
+	upperDiv.append(tfTab(y, x, '&nbsp;',""));
+	upperDiv.append(thisText);
+	upperDiv.append(tfTab(y, x, '&nbsp;',""));
 
 	thisId = "arstateval_" + y.toString() + "_" + x.toString();
 	var thisText = tfText(y, x, thisId, evtHandler);
@@ -413,7 +437,7 @@ function tfBoosterControl(y, x, id, evtHandler)
 	var divElement = document.createElement("div");
 	divElement.setAttribute("class", "mastertile");
 	tfSetCoordinate(divElement, y, x, 0, id);
-
+/*
 	var upperDiv = document.createElement("div");
 	upperDiv.setAttribute("class", "editortile");
 	divElement.append(upperDiv);
@@ -421,14 +445,17 @@ function tfBoosterControl(y, x, id, evtHandler)
 	var textDiv = document.createElement("div");
 	textDiv.setAttribute("class", "manipulatorbox");
 	upperDiv.append(textDiv);
+*/
+	thisId = "btnPower_" + y.toString() + "_" + x.toString();
+//	var thisBtn = tfBtnGen(y,x,thisId,evtHandler, "Toggle Power");
 
-	thisId = "btnPower" + y.toString() + "_" + x.toString();
-	var thisText = tfText(y, x, thisId, evtHandler);
-	thisText.innerHTML = "Toggle Power";
-	textDiv.append(tfTab(y, x, '&nbsp;',""));
-	textDiv.append(thisText);
-	textDiv.append(tfTab(y, x, '&nbsp;',""));
+//	textDiv.append(tfTab(y, x, '&nbsp;',""));
+	var thisBtn = createButton(divElement, "", "Toggle Power", thisId, evtHandler);
+	tfSetCoordinate(thisBtn, y, x, 0, thisId);
 
+//	textDiv.append(thisBtn);
+//	textDiv.append(tfTab(y, x, '&nbsp;',""));
+/*
 	var upperDiv = document.createElement("div");
 	upperDiv.setAttribute("class", "editortile");
 	divElement.append(upperDiv);
@@ -436,14 +463,16 @@ function tfBoosterControl(y, x, id, evtHandler)
 	var textDiv = document.createElement("div");
 	textDiv.setAttribute("class", "manipulatorbox");
 	upperDiv.append(textDiv);
-
-	thisId = "btnReset" + y.toString() + "_" + x.toString();
-	var thisText = tfText(y, x, thisId, evtHandler);
-	thisText.innerHTML = "Reset Booster";
-	textDiv.append(tfTab(y, x, '&nbsp;',""));
-	textDiv.append(thisText);
-	textDiv.append(tfTab(y, x, '&nbsp;',""));
-
+*/
+	thisId = "btnReset_" + y.toString() + "_" + x.toString();
+//	var thisText = tfText(y, x, thisId, evtHandler);
+//	thisText.innerHTML = "Reset Booster";
+//	textDiv.append(tfTab(y, x, '&nbsp;',""));
+	var thisBtn = createButton(divElement, "", "Reset Booster", thisId, evtHandler);
+	tfSetCoordinate(thisBtn, y, x, 1, thisId);
+//	textDiv.append(thisText);
+//	textDiv.append(tfTab(y, x, '&nbsp;',""));
+/*
 	var upperDiv = document.createElement("div");
 	upperDiv.setAttribute("class", "editortile");
 	divElement.append(upperDiv);
@@ -451,13 +480,15 @@ function tfBoosterControl(y, x, id, evtHandler)
 	var textDiv = document.createElement("div");
 	textDiv.setAttribute("class", "manipulatorbox");
 	upperDiv.append(textDiv);
-
-	thisId = "btnAR" + y.toString() + "_" + x.toString();
-	var thisText = tfText(y, x, thisId, evtHandler);
-	thisText.innerHTML = "Toggle AR";
-	textDiv.append(tfTab(y, x, '&nbsp;',""));
-	textDiv.append(thisText);
-	textDiv.append(tfTab(y, x, '&nbsp;',""));
+*/
+	thisId = "btnAR_" + y.toString() + "_" + x.toString();
+//	var thisText = tfText(y, x, thisId, evtHandler);
+//	thisText.innerHTML = "Toggle AR";
+//	textDiv.append(tfTab(y, x, '&nbsp;',""));
+	var thisBtn = createButton(divElement, "", "Toggle AR", thisId, evtHandler);
+	tfSetCoordinate(thisBtn, y, x, 2, thisId);
+//	textDiv.append(thisText);
+//	textDiv.append(tfTab(y, x, '&nbsp;',""));
 
 	return divElement;
 }
@@ -497,10 +528,11 @@ function tfResetTypeSel(y, x, id, evtHandler)
 
 function tfActuatorLine(y, x, id, label, evtHandler)
 {
-	var thisId = id + x.toString() + "_" + y.toString();
+	var thisId = id + y.toString() + "_" + x.toString();
 
 	var divElement = document.createElement("div");
 	divElement.setAttribute("class", "editorpanel");
+	divElement.setAttribute("id", "panel_" + thisId);
 	
 	var textDiv = document.createElement("div");
 	textDiv.setAttribute("class", "manipulatorbox");
@@ -513,7 +545,7 @@ function tfActuatorLine(y, x, id, label, evtHandler)
 	textDiv.append(thisText);
 	textDiv.append(tfTab(y, x, '&nbsp;',""));
 
-	var inpEl = tfCmdInputSel(y,x,"Cmd_" + thisId, evtHandler)
+	var inpEl = tfCmdInputSel(y, x,"Cmd_" + thisId, evtHandler)
 	tfSetCoordinate(inpEl, y, x, 0, "Cmd_" + thisId);
 	divElement.append(inpEl);
 	
@@ -543,7 +575,7 @@ function tfActuatorLine(y, x, id, label, evtHandler)
 	textDiv.append(thisText);
 	textDiv.append(tfTab(y, x, '&nbsp;',""));
 
-	var inpEl = tfValTypeSel(y,x,"Val_" + thisId, evtHandler)
+	var inpEl = tfValTypeSel(y, x,"Val_" + thisId, evtHandler)
 	tfSetCoordinate(inpEl, y, x, 2, "Val_" + thisId);
 	divElement.append(inpEl);
 
@@ -592,7 +624,7 @@ function tfSensor(y, x, id, evtHandler)
 	return divElement;
 }
 
-function updateActOptions(id, x, y)
+function updateActOptions(id, y, x)
 {
 	var e = document.getElementById("Cmd_" + id + "_" + y.toString() + "_" +x.toString());
 //	console.log("Cmd_" + id + "_" + y.toString() + "_" +x.toString());
@@ -603,7 +635,7 @@ function updateActOptions(id, x, y)
 		createOptions(e, ["None", "Switch", "DCC Signal"]);
 }
 
-function updateActorDisplay(actData, id, x, y)
+function updateActorDisplay(actData, id, y, x)
 {
 //	console.log("Update ", actData);
 	var e = document.getElementById("Cmd_" + id + "_" + y.toString() + "_" +x.toString());
@@ -651,8 +683,15 @@ function loadConfigBoosterTable(thisTable, thisData)
 	createDataTableLines(thisTable, [tfPos, tfBoosterConfig, tfActuator, tfSensor], thisData.length, "setBoosterConfigData(this)");
 	for (var i=0; i<thisData.length;i++)
 	{
+//		console.log(thisData[i].hw.SCCurrent);
+		var e = document.getElementById("maxcurrval_" + i.toString() + "_1");
+		e.innerHTML = (Math.round(thisData[i].hw.SCCurrent * 0.007) * 100).toString();
+		var e = document.getElementById("shortcurrval_" + i.toString() + "_1");
+		e.innerHTML = thisData[i].hw.SCCurrent.toString();
 		var e = document.getElementById("nomcurrval_" + i.toString() + "_1");
 		e.value = thisData[i].el.NominalCurrent;
+
+
 		var e = document.getElementById("armode_" + i.toString() + "_1");
 		e.checked = thisData[i].el.ARMode;
 		setVisibility(thisData[i].hw.ARPin > 1,document.getElementById("armode_" + i.toString() + "_1").parentElement);
@@ -680,30 +719,30 @@ function loadConfigBoosterTable(thisTable, thisData)
 	}
 }
 
-function loadRuntimeBoosterTable(thisTable, thisData)
+function loadRuntimeBoosterTable(redrawTable, thisTable, thisData)
 {
 	var th = document.getElementById(thisTable.id + "_head");
 	var tb = document.getElementById(thisTable.id + "_body");
 	var numCols = th.childNodes[0].children.length;
-	createDataTableLines(thisTable, [tfPos, tfBoosterRuntime, tfBoosterStatus, tfBoosterControl], thisData.length, "setBoosterRuntimeData(this)");
+	if (redrawTable)
+		createDataTableLines(thisTable, [tfPos, tfBoosterRuntime, tfBoosterStatus, tfBoosterControl], thisData.length, "setBoosterRuntimeData(this)");
 	for (var i=0; i<thisData.length;i++)
 	{
-//		var e = document.getElementById("lednrbox_" + i.toString() + "_" + "1");
-//		e.value = thisData[i].LEDNums;
-		var e = document.getElementById("trackCanvas_" + i.toString() + "_" + "1");
-	var trackGauge = new RadialGauge(
-		{width: 200, 
-		height: 200, 
-		units: 'mA', 
-		renderTo: e,
-		title: "Booster " + (i+1).toString(),
-		value: 0,
-		minValue: 0,
-		maxValue: 8000,
-		majorTicks: 10,
-		minorTicks: 2,
-	}).draw();
-	trackGaugeDefs.push(trackGauge);
+		var e = document.getElementById("overloadval_" + i.toString() + "_" + "2");
+		e.innerHTML = DeviceData.Boosters[i].rt.OLF.toString();
+		var e = document.getElementById("arstateval_" + i.toString() + "_" + "2");
+		e.innerHTML = DeviceData.Boosters[i].rt.arS == 0? "Forward":"Reverse";
+		var e = document.getElementById("outstateval_" + i.toString() + "_" + "2");
+		e.innerHTML = extStatText[DeviceData.Boosters[i].rt.extS];
+		var e = document.getElementById("intstateval_" + i.toString() + "_" + "2");
+		e.innerHTML = intStatText[DeviceData.Boosters[i].rt.intS];
+
+		if (trackGaugeDefs[i].value != DeviceData.Boosters[i].rt.RMS)
+			trackGaugeDefs[i].value = DeviceData.Boosters[i].rt.RMS;
+		var e = document.getElementById("ardisppanel_" + i.toString() + "_" + "2");
+		setVisibility(DeviceData.Boosters[i].el.ARMode, e);
+		var e = document.getElementById("btnAR_" + i.toString() + "_" + "3");
+		setVisibility(DeviceData.Boosters[i].el.ARMode, e);
 	}
 }
 
@@ -711,13 +750,25 @@ function dispSigState()
 {
 	switch (DeviceData.SigState)
 	{
-		case 0: document.getElementById("RepInpSig").innerHTML = "No Input"; break;
-		case 1: document.getElementById("RepInpSig").innerHTML = "DCC OK"; break;
-		case 2: document.getElementById("RepInpSig").innerHTML = "PWM OK"; break;
-		case 3: document.getElementById("RepInpSig").innerHTML = "Mixed"; break;
+		case 0: 
+			document.getElementById("RepInpSig").innerHTML = "No Input"; 
+			document.getElementById("RepInpSigHW").innerHTML = "No Input"; 
+		break;
+		case 1: 
+			document.getElementById("RepInpSig").innerHTML = "DCC OK"; 
+			document.getElementById("RepInpSigHW").innerHTML = "DCC OK"; 
+		break;
+		case 2: 
+			document.getElementById("RepInpSig").innerHTML = "PWM OK"; 
+			document.getElementById("RepInpSigHW").innerHTML = "PWM OK"; 
+		break;
+		case 3: 
+			document.getElementById("RepInpSig").innerHTML = "Mixed"; 
+			document.getElementById("RepInpSigHW").innerHTML = "Mixed"; 
+		break;
 	}
 }
-
+/*
 function updateRuntimeBoosterTab(nodeNr, currData)
 {
 	if (currData.I)
@@ -738,9 +789,8 @@ function updateRuntimeBoosterTab(nodeNr, currData)
 		}
 		document.getElementById("Rev_" + nodeNr.toString()).checked = jsonData.I[7] == 0;
 
-*/
 }
-
+*/
 function updateAllRuntimeBoosterTabs(currData)
 {
 //	for (var i = 0; i < HWConfig.length; i++)
@@ -800,14 +850,20 @@ function constructPageContent(contentTab)
 			createRuntimeMainTab(runtimeMainTab);
 
 	tempObj = createEmptyDiv(mainScrollBox, "div", "tile-1", "");
-		createButton(tempObj, "", "Save & Restart", "btnSave", "saveEEPROMSettings(this)");
-		createButton(tempObj, "", "Cancel", "btnCancel", "cancelSettings(this)");
-//		createButton(tempObj, "", "Request", "btnReq", "requestCurrent(this)");
-	tempObj = createEmptyDiv(mainScrollBox, "div", "tile-1", "");
-			createButton(tempObj, "", "Save to File", "btnDownload", "downloadSettings(this)");
+		createButton(tempObj, "", "Save to EEPROM", "btnSave", "saveEEPROMSettings(this)");
 	setPanelVisibility();
 	setVisibility(false, tabConfig);
 	setVisibility(false, tabRuntime);
+}
+
+function setPowerStatus (sender, opCode) //send Loconet GPON/OFF/IDLE
+{
+	sendLNCommand(JSON.stringify([opCode]));
+}
+
+function setBoosterStatus (sender, newState)
+{
+	sendSVCommand(0x01, 0xF1, [newState]);
 }
 
 function setSignalType(sender)
@@ -822,23 +878,73 @@ function setPowerUpState(sender)
 	sendSVCommand(0x01, 0x04, [((DeviceData.SigType & 0x0F)<<4) + (DeviceData.PwrUpMode & 0x0F)]);
 }
 
+/*
 function setSerNum(sender)
 {
-	console.log(sender);
+	DeviceData.serNr = verifyNumber(sender.value, DeviceData.serNr);
+	sendSVCommand(0x01, 0x04, [((DeviceData.SigType & 0x0F)<<4) + (DeviceData.PwrUpMode & 0x0F)]);
+	
 }
-
+*/
 function setLNAddr(sender)
 {
-	console.log(sender);
+	DeviceData.lnAddress = verifyNumber(sender.value, DeviceData.lnAddress);
+	sendSVCommand(0x09, DeviceData.lnAddress, [DeviceData.manufId, DeviceData.devId, DeviceData.prodId, DeviceData.serNr]);
 }
 
-function setHWConfigData(sender)
+function setHWConfig(sender)
 {
-	console.log(sender);
+//	console.log(sender);
 	var thisRow = parseInt(sender.getAttribute("row"));
 	var thisCol = parseInt(sender.getAttribute("col"));
 	var thisIndex = parseInt(sender.getAttribute("index"));
-	console.log(thisRow, thisCol, thisIndex);
+//	console.log(thisRow, thisCol, thisIndex);
+	switch (thisCol)
+	{
+		case 1: //PWR Pin
+//			switch (thisIndex)
+			{
+				DeviceData.Boosters[thisRow].hw.PwrPin = Math.max(verifyNumber(sender.value, DeviceData.Boosters[thisRow].hw.PwrPin), 0);
+				console.log(DeviceData.Boosters[thisRow]);
+				sendSVCommand(0x05, ((thisRow+1)<<8) + 0x00, [(DeviceData.Boosters[thisRow].hw.PwrPin << 4) + (DeviceData.Boosters[thisRow].hw.AnalogPin & 0x0F), DeviceData.Boosters[thisRow].hw.ARPin & 0x0F,(DeviceData.Boosters[thisRow].hw.SensorFactor & 0xFF00)>>8,DeviceData.Boosters[thisRow].hw.SensorFactor & 0x00FF]);
+			}
+			break;
+		case 2: //Analog Pin
+//			switch (thisIndex)
+			{
+				DeviceData.Boosters[thisRow].hw.AnalogPin = Math.max(verifyNumber(sender.value, DeviceData.Boosters[thisRow].hw.AnalogPin), 0);
+				console.log(DeviceData.Boosters[thisRow]);
+				sendSVCommand(0x05, ((thisRow+1)<<8) + 0x00, [(DeviceData.Boosters[thisRow].hw.PwrPin << 4) + (DeviceData.Boosters[thisRow].hw.AnalogPin & 0x0F), DeviceData.Boosters[thisRow].hw.ARPin & 0x0F,(DeviceData.Boosters[thisRow].hw.SensorFactor & 0xFF00)>>8,DeviceData.Boosters[thisRow].hw.SensorFactor & 0x00FF]);
+			}
+			break;
+		case 3: //Sensor rate
+//			switch (thisIndex)
+			{
+				var inpVal = sender.value*100;
+				console.log(inpVal);
+				DeviceData.Boosters[thisRow].hw.SensorFactor = verifyNumber(inpVal, DeviceData.Boosters[thisRow].hw.SensorFactor);
+				console.log(DeviceData.Boosters[thisRow]);
+				sendSVCommand(0x05, ((thisRow+1)<<8) + 0x00, [(DeviceData.Boosters[thisRow].hw.PwrPin << 4) + (DeviceData.Boosters[thisRow].hw.AnalogPin & 0x0F), DeviceData.Boosters[thisRow].hw.ARPin & 0x0F,(DeviceData.Boosters[thisRow].hw.SensorFactor & 0xFF00)>>8,DeviceData.Boosters[thisRow].hw.SensorFactor & 0x00FF]);
+			}
+			break;
+		case 4: //AR Pin
+//			switch (thisIndex)
+			{
+				DeviceData.Boosters[thisRow].hw.ARPin = Math.max(verifyNumber(sender.value, DeviceData.Boosters[thisRow].hw.ARPin), 0);
+				console.log(DeviceData.Boosters[thisRow]);
+				sendSVCommand(0x05, ((thisRow+1)<<8) + 0x00, [(DeviceData.Boosters[thisRow].hw.PwrPin << 4) + (DeviceData.Boosters[thisRow].hw.AnalogPin & 0x0F), DeviceData.Boosters[thisRow].hw.ARPin & 0x0F,(DeviceData.Boosters[thisRow].hw.SensorFactor & 0xFF00)>>8,DeviceData.Boosters[thisRow].hw.SensorFactor & 0x00FF]);
+			}
+			break;
+		case 5: //Short Button
+			{	
+				sendSVCommand(0x01, ((thisRow+1) << 8) + 0xF0, [0x00]);
+				if (confirm("Bridge the rails and click OK to run short circuit test"))
+				{
+					sendSVCommand(0x01, ((thisRow+1) << 8) + 0xF3, [0xFF]); //trigger short circuit test
+				}
+			}
+			break;
+	}
 }
 
 function setBoosterConfigData(sender)
@@ -847,15 +953,16 @@ function setBoosterConfigData(sender)
 	var thisRow = parseInt(sender.getAttribute("row"));
 	var thisCol = parseInt(sender.getAttribute("col"));
 	var thisIndex = parseInt(sender.getAttribute("index"));
-	console.log(thisRow, thisCol, thisIndex);
+//	console.log(thisRow, thisCol, thisIndex);
 	switch (thisCol)
 	{
 		case 1: //module setting
 			switch (thisIndex)
 			{
 				case 0: //nominal current
-					DeviceData.Boosters[thisRow].el.NominalCurrent = verifyNumber(sender.value, DeviceData.Boosters[thisRow].el.NominalCurrent);
-					sendSVCommand(0x05, ((thisRow+1)<<8) + 0x04, [(DeviceData.Boosters[thisRow].el.ARMode << 2) + (DeviceData.Boosters[thisRow].el.ResMode & 0x03), DeviceData.Boosters[thisRow].el.FuseMode,(DeviceData.Boosters[thisRow].el.NominalCurrent & 0xFF00)>>8,DeviceData.Boosters[thisRow].el.NominalCurrent & 0x00FF]);
+					var newNomCurr = verifyNumber(sender.value, DeviceData.Boosters[thisRow].el.NominalCurrent);
+					if (newNomCurr != DeviceData.Boosters[thisRow].el.NominalCurrent)
+						sendSVCommand(0x05, ((thisRow+1)<<8) + 0x04, [(DeviceData.Boosters[thisRow].el.ARMode << 2) + (DeviceData.Boosters[thisRow].el.ResMode & 0x03), DeviceData.Boosters[thisRow].el.FuseMode,(newNomCurr & 0xFF00)>>8, newNomCurr & 0x00FF]);
 					break;
 				case 1: //AR mode
 					DeviceData.Boosters[thisRow].el.ARMode = sender.checked;
@@ -957,6 +1064,31 @@ function setBoosterConfigData(sender)
 	}
 }
 
+function setBoosterRuntimeData(sender)
+{
+	var thisRow = parseInt(sender.getAttribute("row"));
+	var thisCol = parseInt(sender.getAttribute("col"));
+	var thisIndex = parseInt(sender.getAttribute("index"));
+//	console.log(thisRow, thisCol, thisIndex);
+	switch (thisCol)
+	{
+		case 3: //the only column with input
+		{
+			switch (thisIndex)
+			{
+				case 0: sendSVCommand(0x01, ((thisRow+1) << 8) + 0xF0, [0xFF]);
+				break;
+				case 1: sendSVCommand(0x01, ((thisRow+1) << 8) + 0xF2, [0x00]);
+				break;
+				case 2: sendSVCommand(0x01, ((thisRow+1) << 8) + 0xF1, [0xFF]);
+				break;
+			}
+		}
+		break;
+	}
+}
+
+/*
 function requestCurrent(sender)
 {
 	try 
@@ -971,18 +1103,26 @@ function requestCurrent(sender)
 	if (updateCurrent)
 		setTimeout(function(){requestCurrent(null)}, 500);
 }
+*/
 
 function setNumMods(sender)
 {
 	var numMods = sender.selectedIndex;
-	sendSVCommand(0x01,0x00,[numMods,DeviceData.LNMode,DeviceData.lnAddress >> 8, DeviceData.lnAddress & 0x00FF]); //Set number of booster modules. Booster will reply with full configuration settings
+	sendSVCommand(0x05,0x00,[numMods,DeviceData.LNMode,DeviceData.lnAddress >> 8, DeviceData.lnAddress & 0x00FF]); //Set number of booster modules. Booster will reply with full configuration settings
 }
 
 function setLoconetComm(sender)
 {
 	DeviceData.LNMode = sender.checked;
+	sendSVCommand(0x05,0x00,[DeviceData.Boosters.length,DeviceData.LNMode,DeviceData.lnAddress >> 8, DeviceData.lnAddress & 0x00FF]); //Set Loconet/DCC communication
 	setPanelVisibility();
 }
+
+function saveEEPROMSettings(sender)
+{
+	sendSVCommand(0x01,0xFF,[0]); //Write EEPROM
+}
+
 /*
 
 function loadGaugeData(gaugeNr)
@@ -1097,10 +1237,9 @@ function loadHWTable(thisTable, thisData, clrConf)
 		e.childNodes[0].value = thisData.Boosters[i].hw.SensorFactor/100;
 		var e = document.getElementById(thisTable.id + "_" + i.toString() + "_" + "4");
 		e.childNodes[0].value = thisData.Boosters[i].hw.ARPin;
-//		var e = document.getElementById(thisTable.id + "_" + i.toString() + "_" + "5");
-//		e.childNodes[0].innerHTML = "Measure";
 		var e = document.getElementById(thisTable.id + "_" + i.toString() + "_" + "6");
-		e.childNodes[0].innerHTML = "Click \"Measure\"";
+		e.childNodes[0].innerHTML = thisData.Boosters[i].hw.SCCurrent > 0 ? thisData.Boosters[i].hw.SCCurrent.toString() : "Click \"Measure\"";
+
 	}
 
 }
@@ -1142,42 +1281,8 @@ function requestAllData()
 function loadDataFields(jsonData)
 {
 	configData[workCfg] = upgradeJSONVersion(jsonData);
-//	console.log(configData[workCfg]);
-//	sendSVCommand(0x01,0,[1,0,0,0]); //send 1 to addr 0 to trigger sending config data		
 	sendSVCommand(0x07,0,[0,0,0,0]); //send 1 to addr 0 to trigger identification to get LN number	
 	requestAllData();
-/*
-	while (GaugePanel.lastElementChild) 
-		GaugePanel.removeChild(GaugePanel.lastElementChild);
-
-	for (var i = 0; i < configData[workCfg].CurrentTracker.length; i++)
-	{
-		var subGaugePanel = createEmptyDiv(GaugePanel, "div", "tile-1_4", "");
-		var trackCanvas = document.createElement("CANVAS");
-		trackCanvas.setAttribute("id","trackCanvas_" + i.toString()); 
-		trackCanvas.setAttribute("style","tile-1_4"); 
-		subGaugePanel.append(trackCanvas);
-		trackGauges.push(trackCanvas);
-		var trackGauge = new RadialGauge(
-			{width: 200, 
-			height: 200, 
-			units: 'mA', 
-			renderTo: "trackCanvas_" + i.toString(),
-			title: configData[workCfg].CurrentTracker[i].GaugeName,
-			value: 0,
-			minValue: 0,
-			maxValue: configData[workCfg].CurrentTracker[i].MaxVal,
-			majorTicks: configData[workCfg].CurrentTracker[i].MainTicks,
-			minorTicks: 2,
-		}).draw();
-		trackGaugeDefs.push(trackGauge);
-	}
-
-	document.getElementById("currgaugeselector").selectedIndex = 0;
-//	loadGaugeData(0);
-//	setVisibility(true, document.getElementById("cbsetup_6")); //only show menu item if needed
-
-*/
 	setPanelVisibility();
 }
 
@@ -1200,6 +1305,7 @@ function processConfigDataInput(jsonData)
 //var HWTemplate = {"Module":0,"PwrPin":0,"AnalogPin":0,"SensorFactor":0.00,"ARPin":0,"SCCurrent":0};
 //var ELTemplate = {"NominalCurrent":0,"FuseMode":0,"ResMode":0,"ARMode":false};
 //var ActTemplate = {"MemLoc": 0, "Type":0, "Addr":0, "Status":0};
+//var RTTemplate = {"OLF":0.00, "RMS":0.00,"intS": 0, "extS":0, "arS":0};
 
 function setActuator(modNr, actPos, actType, actAddr, actState)
 {
@@ -1232,40 +1338,57 @@ function processConfigDataBooster(jsonData)
 			switch (memLoc)
 			{
 				case 0x00: //Pins, Sensor rate
+//					console.log(jsonData);
 					DeviceData.Boosters[modNr].hw.PwrPin = jsonData.Prm.Vals[0] >> 4;
 					DeviceData.Boosters[modNr].hw.AnalogPin = jsonData.Prm.Vals[0] & 0x0F;
 					DeviceData.Boosters[modNr].hw.ARPin = jsonData.Prm.Vals[1] & 0x0F;
-					DeviceData.Boosters[modNr].hw.SensorFactor = (jsonData.Prm.Vals[2] << 8) + jsonData.Prm.Vals[3];
+					DeviceData.Boosters[modNr].hw.SensorFactor = ((jsonData.Prm.Vals[2] << 8) + jsonData.Prm.Vals[3]);
+					loadHWTable(hwTable, DeviceData, false);
 //					console.log(Boosters[modNr]);
 					break;
 				case 0x04: //Reset & AR Mode, Nominal Current
 					DeviceData.Boosters[modNr].el.ResMode = jsonData.Prm.Vals[0] & 0x03;
 					DeviceData.Boosters[modNr].el.ARMode = (jsonData.Prm.Vals[0] & 0x0C) >> 2;
 					DeviceData.Boosters[modNr].el.FuseMode = jsonData.Prm.Vals[1];
+					var oldNomVal = DeviceData.Boosters[modNr].el.NominalCurrent;
 					DeviceData.Boosters[modNr].el.NominalCurrent = (jsonData.Prm.Vals[2] << 8) + jsonData.Prm.Vals[3];
 					loadConfigBoosterTable(BoosterTable, DeviceData.Boosters);
-//					console.log(Boosters[modNr]);
+					if (oldNomVal != DeviceData.Boosters[modNr].el.NominalCurrent)
+						loadRuntimeBoosterTable(true, runtimeBoosterTable, DeviceData.Boosters);
 					break;
 				case 0x08: //LN Actuator ON
 					setActuator(modNr, 0, (jsonData.Prm.Vals[0] >> 5), (jsonData.Prm.Vals[1] << 8) + jsonData.Prm.Vals[2], jsonData.Prm.Vals[0] & 0x1F);
+					loadConfigBoosterTable(BoosterTable, DeviceData.Boosters);
 					break;
 				case 0x0C: //LN Actuator OFF
 					setActuator(modNr, 1, (jsonData.Prm.Vals[0] >> 5), (jsonData.Prm.Vals[1] << 8) + jsonData.Prm.Vals[2], jsonData.Prm.Vals[0] & 0x1F);
+					loadConfigBoosterTable(BoosterTable, DeviceData.Boosters);
 					break;
 				case 0x10: //LN Actuator Reset
 					setActuator(modNr, 2, (jsonData.Prm.Vals[0] >> 5), (jsonData.Prm.Vals[1] << 8) + jsonData.Prm.Vals[2], jsonData.Prm.Vals[0] & 0x1F);
+					loadConfigBoosterTable(BoosterTable, DeviceData.Boosters);
 					break;
 				case 0x14: //LN Actuator AR Pos
 					setActuator(modNr, 3, (jsonData.Prm.Vals[0] >> 5), (jsonData.Prm.Vals[1] << 8) + jsonData.Prm.Vals[2], jsonData.Prm.Vals[0] & 0x1F);
+					loadConfigBoosterTable(BoosterTable, DeviceData.Boosters);
 					break;
 				case 0x18: //LN Actuator AR Neg
 					setActuator(modNr, 4, (jsonData.Prm.Vals[0] >> 5), (jsonData.Prm.Vals[1] << 8) + jsonData.Prm.Vals[2], jsonData.Prm.Vals[0] & 0x1F);
+					loadConfigBoosterTable(BoosterTable, DeviceData.Boosters);
 					break;
 				case 0x1C: //Short circuit report
 					setActuator(modNr, 5, (jsonData.Prm.Vals[0] >> 5), (jsonData.Prm.Vals[1] << 8) + jsonData.Prm.Vals[2], jsonData.Prm.Vals[0] & 0x1F);
+					loadConfigBoosterTable(BoosterTable, DeviceData.Boosters);
 					break;
 				case 0x20: //Overload report
 					setActuator(modNr, 6, (jsonData.Prm.Vals[0] >> 5), (jsonData.Prm.Vals[1] << 8) + jsonData.Prm.Vals[2], jsonData.Prm.Vals[0] & 0x1F);
+					loadConfigBoosterTable(BoosterTable, DeviceData.Boosters);
+					break;
+				case 0x24: //Short Circuit current report
+					DeviceData.Boosters[modNr].hw.SCCurrent = ((jsonData.Prm.Vals[0] << 8) + jsonData.Prm.Vals[1]);
+					loadHWTable(hwTable, DeviceData, false);
+					loadConfigBoosterTable(BoosterTable, DeviceData.Boosters);
+//					console.log(DeviceData.Boosters[modNr].hw.SCCurrent);
 					break;
 			}
 		}
@@ -1302,31 +1425,40 @@ function processConfigDataDevice(jsonData)
 					setDropdownValue("numMods", jsonData.Prm.Vals[0]);
 					document.getElementById("NumBooster").innerHTML = jsonData.Prm.Vals[0].toString();
 					writeCBInputField("UseLN", DeviceData.LNMode);
-					DeviceData.devActuators = [];
 					for (var j = 0; j < 2; j++)
-					{
-						var newAct = JSON.parse(JSON.stringify(ActTemplate));
-						newAct.MemLoc = 0x08 + (j * 4);
-						DeviceData.devActuators.push(newAct);
-					}
-					DeviceData.Boosters = [];
-					for (var i = 0; i < jsonData.Prm.Vals[0]; i++)
-					{
-						var newBooster = {};
-						newBooster.hw = JSON.parse(JSON.stringify(HWTemplate));
-						newBooster.el = JSON.parse(JSON.stringify(ELTemplate));
-						newBooster.act = [];
-						for (var j = 0; j < 7; j++) //5 actors, 2 analog reports
+						if (j >= DeviceData.devActuators.length)
 						{
 							var newAct = JSON.parse(JSON.stringify(ActTemplate));
 							newAct.MemLoc = 0x08 + (j * 4);
-							newBooster.act.push(newAct);
+							DeviceData.devActuators.push(newAct);
 						}
-						newBooster.hw.Module = i;
-						DeviceData.Boosters.push(newBooster);
+					var numBoosters = jsonData.Prm.Vals[0];
+//					console.log(numBoosters, DeviceData.Boosters.length);
+					while (DeviceData.Boosters.length > numBoosters)
+						DeviceData.Boosters.pop();
+					for (var i = 0; i < numBoosters; i++)
+					{
+						if (i >= DeviceData.Boosters.length)
+						{
+							var newBooster = {};
+							newBooster.hw = JSON.parse(JSON.stringify(HWTemplate));
+							newBooster.el = JSON.parse(JSON.stringify(ELTemplate));
+							newBooster.rt = JSON.parse(JSON.stringify(RTTemplate));
+							newBooster.act = [];
+							for (var j = 0; j < 7; j++) //5 actors, 2 analog reports
+							{
+								var newAct = JSON.parse(JSON.stringify(ActTemplate));
+								newAct.MemLoc = 0x08 + (j * 4);
+								newBooster.act.push(newAct);
+							}
+							newBooster.hw.Module = i;
+							DeviceData.Boosters.push(newBooster);
+						}
+						else
+							DeviceData.Boosters[i].hw.Module = i;
 					}
 					loadConfigBoosterTable(BoosterTable, DeviceData.Boosters);
-					loadRuntimeBoosterTable(runtimeBoosterTable, DeviceData.Boosters);
+					loadRuntimeBoosterTable(true, runtimeBoosterTable, DeviceData.Boosters);
 				break;
 				case 0x08: //LN Actuator Global ON
 					setActuator(-1, 0, (jsonData.Prm.Vals[0] >> 5), (jsonData.Prm.Vals[1] << 8) + jsonData.Prm.Vals[2], jsonData.Prm.Vals[0] & 0x1F);
@@ -1342,8 +1474,11 @@ function processConfigDataDevice(jsonData)
 			if ((jsonData.Prm.Vals[0] == 25) && (jsonData.Prm.Vals[2] == 1)) //Booster discovered, update LN Address
 			{
 				DeviceData.lnAddress = jsonData.Prm.Src;
+				DeviceData.manufId = jsonData.Prm.Vals[0];
+				DeviceData.devId = jsonData.Prm.Vals[1];
+				DeviceData.prodId = jsonData.Prm.Vals[2];
 				DeviceData.serNr = jsonData.Prm.Vals[3];
-				writeInputField("SerNum", DeviceData.serNr); //Serial number
+				writeTextField("SerNum", DeviceData.serNr); //Serial number
 				writeInputField("LNAddr", DeviceData.lnAddress); //lnAddress
 			}
 			break;
@@ -1354,39 +1489,17 @@ function processConfigDataDevice(jsonData)
 function processTrackDataInput(jsonData)
 {
 //	console.log(jsonData);
-
 	if (jsonData.I)
 	{
 		var nodeNr = parseInt(jsonData.I[0]);
-		updateRuntimeBoosterTab(nodeNr, jsonData.I)
-	}
-	if (jsonData.SCT)
-	{
-		var nodeNr = parseInt(jsonData.SCT[0]);
-		writeTextField("SCCurr_" + nodeNr.toString(), jsonData.SCT[2]); //
-	}
-	if (jsonData.HW) 
-	{
-		var nodeNr = parseInt(jsonData.HW[0]);
-		if (nodeNr >= 0)
-			updateConfigBoosterTab(nodeNr, jsonData)
-	}	
-	if (jsonData.EL)
-	{
-		var nodeNr = parseInt(jsonData.EL[0]);
-		if (nodeNr >= 0)
-			updateConfigBoosterTab(nodeNr, jsonData)
-	}	
-		
-	return;
-	var dispVal = 0;
-	for (var i = 0; i < trackGauges.length; i++)
-	{
-		if (configData[workCfg].CurrentTracker[i].PinNr == jsonData.Data.Track)
+		if (DeviceData.Boosters[nodeNr] != undefined)
 		{
-			dispVal = Math.min(jsonData.Data.Value, configData[workCfg].CurrentTracker[i].MaxVal);
-			trackGaugeDefs[i].value = dispVal;
-			break;
+			DeviceData.Boosters[nodeNr].rt.OLF = jsonData.I[1];
+			DeviceData.Boosters[nodeNr].rt.RMS = jsonData.I[3];
+			DeviceData.Boosters[nodeNr].rt.intS = jsonData.I[5];
+			DeviceData.Boosters[nodeNr].rt.extS = jsonData.I[6];
+			DeviceData.Boosters[nodeNr].rt.arS = jsonData.I[7];
+			loadRuntimeBoosterTable(false, runtimeBoosterTable, DeviceData.Boosters);
 		}
 	}
 }

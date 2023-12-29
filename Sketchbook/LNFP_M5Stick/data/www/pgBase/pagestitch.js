@@ -8,7 +8,7 @@ function upgradeJSONVersionNode(jsonData)
 
 var InterfaceList = [{"Name": "none",	"IntfId": 0,"Type": 0,"ReqSTA": 0}, {"Name": "DCC Interface","IntfId": 1,"Type": 0,"ReqSTA": 0}, {"Name": "DCC from MQTT","IntfId": 10,"Type": 0,"ReqSTA": 1}, {"Name": "LocoNet Loopback","IntfId": 16,"Type": 1,"ReqSTA": 0}, {"Name": "LocoNet Interface","IntfId": 2,"Type": 1,"ReqSTA": 0}, {"Name": "LocoNet lbServer Client","IntfId": 12,"Type": 2,"ReqSTA": 1}, {"Name": "LocoNet from MQTT","IntfId": 3,"Type": 1,"ReqSTA": 1}, {"Name": "WiThrottle Client","IntfId": 17,"Type": 2,"ReqSTA": 1}, {"Name": "WiThrottle Client (DCC EX)", "IntfId": 18, "Type": 2, "ReqSTA": 1}, {"Name": "MQTT with Topics","IntfId": 8,"Type": 3,"ReqSTA": 1}];
 //1.6.5 var HatList = [{"Name": "none","HatId": 0,"Type": 0,"InterfaceList": [0, 1, 2, 3, 8, 10, 12, 16, 17, 18]}, {"Name": "Blue Hat","HatId": 1,"Type": 0,"InterfaceList": [0, 1, 2, 3, 8, 10, 12, 16]}, {"Name": "Brown Hat","HatId": 2,"Type": 0,"InterfaceList": [0, 2, 3, 12]}, {"Name": "Yellow Hat","HatId": 3,"Type": 0,"InterfaceList": [0, 1, 2, 3, 8, 10, 12, 16]}, {"Name": "Green Hat","HatId": 4,"Type": 0,"InterfaceList": [0, 1, 2, 3, 8, 10, 12, 16]}, {"Name": "Red Hat Shield","HatId": 6,"Type": 0,"InterfaceList": [2, 16]}, {"Name": "Black Hat","HatId": 5,"Type": 0,"InterfaceList": [0, 2, 3, 12, 16]}, {"Name": "Purple Hat","HatId": 7,"Type": 0,"InterfaceList": [0, 3, 12, 16, 17, 18]}];
-var HatList = [{"Name": "none","HatId": 0,"Type": 0,"InterfaceList": [0, 1, 2, 3, 8, 10, 12, 16, 17, 18]}, {"Name": "Blue Hat","HatId": 1,"Type": 0,"InterfaceList": [0, 1, 2, 3, 8, 10, 12, 16]}, {"Name": "Brown Hat","HatId": 2,"Type": 0,"InterfaceList": [0, 2, 3, 12]}, {"Name": "Yellow Hat","HatId": 3,"Type": 0,"InterfaceList": [0, 1, 2, 3, 8, 10, 12, 16]}, {"Name": "Green Hat","HatId": 4,"Type": 0,"InterfaceList": [0, 1, 2, 3, 8, 10, 12, 16]}, {"Name": "Red Hat Shield","HatId": 6,"Type": 0,"InterfaceList": [2, 16]}, {"Name": "Black Hat","HatId": 5,"Type": 0,"InterfaceList": [0, 2, 3, 12, 16]}, {"Name": "Purple Hat","HatId": 7,"Type": 0,"InterfaceList": [0, 3, 12, 16, 17, 18]},{"Name": "Silver Hat","HatId": 8,"Type": 0,"InterfaceList": [0,2,3,12]}];
+var HatList = [{"Name": "none","HatId": 0,"Type": 0,"InterfaceList": [0, 1, 2, 3, 8, 10, 12, 16, 17, 18]}, {"Name": "Blue Hat","HatId": 1,"Type": 0,"InterfaceList": [0, 1, 2, 3, 8, 10, 12, 16]}, {"Name": "Brown Hat","HatId": 2,"Type": 0,"InterfaceList": [0, 2, 3, 12]}, {"Name": "Yellow Hat","HatId": 3,"Type": 0,"InterfaceList": [0, 1, 2, 3, 8, 10, 12, 16]}, {"Name": "Green Hat","HatId": 4,"Type": 0,"InterfaceList": [0, 1, 2, 3, 8, 10, 12, 16]}, {"Name": "Red Hat Shield","HatId": 6,"Type": 0,"InterfaceList": [2, 16]}, {"Name": "Black Hat","HatId": 5,"Type": 0,"InterfaceList": [0, 2, 3, 12, 16]}, {"Name": "Purple Hat","HatId": 7,"Type": 0,"InterfaceList": [0, 3, 12, 16, 17, 18]},{"Name": "Silver Hat","HatId": 8,"Type": 0,"InterfaceList": [0,1,2,3,10,12]}];
 //var	ALMList = [{"Name": "Event Handler","ALMId": 0,"InterfaceList": [2, 3, 12, 16],"Type": 1}];
 var	ALMList = [{"Name": "Event Handler","ALMId": 0,"InterfaceList": [2, 3, 12, 16],"Type": 1},{"Name": "SecEl Handler","ALMId": 1,"InterfaceList": [],"Type": 1},{"Name": "Voice Watcher","ALMId": 2,"InterfaceList": [],"Type": 1}];
 var	ServerList = [{"Name": "MQTT Broker Gateway","ServerId": 0,"InterfaceList": [1, 2, 3, 10, 12, 16],"Type": 1},{"Name": "Loconet lbServer","ServerId": 1,"InterfaceList": [2, 3, 12, 16],"Type": 1},{"Name": "WiThrottle Server","ServerId": 2,"InterfaceList": [2, 3, 12, 16],"Type": 1},{"Name": "Loconet Subnet","ServerId": 3,"InterfaceList": [3, 12],"Type": 1}];
@@ -147,7 +147,7 @@ function upgradeJSONVersionRedHat(jsonData)
 
 function upgradeJSONVersionPurpleHat(jsonData)
 {
-	jsonFileVersion = "1.0.3";
+	jsonFileVersion = "1.0.4";
 	var thisVersion = jsonData.Version;
 	console.log(thisVersion);
 	if (thisVersion == jsonFileVersion)
@@ -183,6 +183,12 @@ function upgradeJSONVersionPurpleHat(jsonData)
 		jsonData.CalcMode = 0;
 		jsonData.TrimMode = 0;
 		jsonData.Version = "1.0.3";
+	}
+	if (jsonData.Version == "1.0.3")
+	{
+		console.log("upgrade PurpleHat Config from 1.0.3 to 1.0.4");
+		jsonData.SpeedDispSize = 100;
+		jsonData.Version = "1.0.4";
 	}
 	return jsonData;
 }

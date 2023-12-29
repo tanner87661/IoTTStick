@@ -226,6 +226,9 @@ void notifyDccAccTurnoutOutput(uint16_t Addr, uint8_t Direction, uint8_t OutputP
 //    Serial.println(dispStr);
     lnMQTTServer->sendDCCMsg(dispStr);
   }
+  if (useHat.devId == 8) //SilverHat USB Serial Injector
+    if (usbSerial)
+      usbSerial->dccToBooster(0xB0, Addr-1, (Direction << 1) + OutputPower);
 }
 
 // This function is called whenever a DCC Signal Aspect Packet is received
@@ -243,6 +246,9 @@ void notifyDccSigOutputState(uint16_t Addr, uint8_t State)
 //    Serial.println(dispStr);
     lnMQTTServer->sendDCCMsg(dispStr);
   }
+  if (useHat.devId == 8) //SilverHat USB Serial Injector
+    if (usbSerial)
+      usbSerial->dccToBooster(0xED, Addr+1, State);
 }
 
 void    notifyDccIdle(void)

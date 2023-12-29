@@ -12,40 +12,42 @@ BoosterGroup::~BoosterGroup()
 void BoosterGroup::initBooster()
 {
   bConfig = readEEPROM();
-
-  Serial.println(bConfig.numMods);
-  Serial.println(bConfig.serNr);
-  Serial.println(bConfig.checkByte);
-
-  while (true)
-    delay(100);
-    
   for (uint8_t i = 0; i < 6; i++)
     bData[i].nodeNr = i;
-//  bConfig = *initData;
-  sigMask = (bConfig.devMode & 0xF0) >> 4;
+//  numDevs = bConfig.numMods;
+//  Serial.println(bConfig.numMods);
+//  sigMask = (bConfig.devMode & 0xF0) >> 4;
 //  sigMask = (bConfig.acceptPWM << 1) + bConfig.acceptDCC;
 }
 
-void BoosterGroup::initNodes(nodeConfigData* initData, uint8_t numBoosters)
+void BoosterGroup::initNodes() //nodeConfigData* initData, uint8_t numBoosters)
 {
-  numDevs = min(numBoosters, maxPins);
-  for (uint8_t i = 0; i < numDevs; i++)
-    bData[i].initNode(i, &(initData[i]));
-//  Serial.println(numDevs);
+  for (uint8_t i = 0; i < bConfig.numMods; i++)
+    bData[i].initNode(i, bConfig.lnAddress); //, &(initData[i]));
+//  Serial.println(bConfig.numMods);
 }
 
 void BoosterGroup::setExtStatus(int8_t boosterNr, uint8_t newStat)
 {
-  pwrStatus = newStat;
-  for (uint8_t i = 0; i < numDevs; i++)
+//  Serial.print("Booster ");
+//  Serial.print(boosterNr);
+//  Serial.print(" Status ");
+//  Serial.println(newStat);
+  if (newStat == 0xFF) //dev mode
+    pwrStatus = (bConfig.devMode & 0x0F);
+  else
+    if (newStat == 0xFE) //toggle
+      pwrStatus ^= 0x01;
+    else
+      pwrStatus = newStat;
+  for (uint8_t i = 0; i < bConfig.numMods; i++)
     if ((i == boosterNr) || (boosterNr < 0))
-      bData[i].setExtStatus(newStat);
+      bData[i].setExtStatus(pwrStatus);
 }
 
 void BoosterGroup::resetBooster(int8_t boosterNr)
 {
-  for (uint8_t i = 0; i < numDevs; i++)
+  for (uint8_t i = 0; i < bConfig.numMods; i++)
     if ((i == boosterNr) || (boosterNr < 0))
       bData[i].resetBooster();
 }
@@ -59,7 +61,7 @@ void BoosterGroup::requestSVData(uint8_t svCmd, int16_t memLoc) //set report fla
       case 7: reportFlags |= 0x01; break;
       case 8: reportFlags |= 0x02; break;
       default:
-        switch (memLoc)
+        switch (memLoc & 0x00FF)
         {
           case 0x00: reportFlags |= 0x0004; break; //get number of modules, LN Mode, LN Addr
           case 0x04: reportFlags |= 0x0008; break; //get power on mode, accepted signal type
@@ -102,15 +104,23 @@ void BoosterGroup::writeSVData(uint8_t svCmd, int16_t memLoc, uint8_t svData[]) 
           requestSVData(0x08, 0);
         }
         break;
-      case 0x01:;
+      case 0x01: ;
       case 0x05:
         switch (memLoc)
         {
           case 0x00: //set/get number of modules, LN Mode, LN Addr
-            numDevs = svData[0];
+          {
+            uint8_t oldNumMods = bConfig.numMods;
+            bConfig.numMods = svData[0];
             bConfig.useLN = svData[1];
             bConfig.lnAddress = (svData[2] << 8) + svData[3];
+            if (oldNumMods < bConfig.numMods)
+            {
+              for (uint8_t i = oldNumMods; i < bConfig.numMods; i++)
+                bData[i].initNode(i, bConfig.lnAddress);
+            }
             break;
+          }
           case 0x04: //set/get power on mode, accepted signal type
             bConfig.devMode = svData[0];
             break;
@@ -126,6 +136,10 @@ void BoosterGroup::writeSVData(uint8_t svCmd, int16_t memLoc, uint8_t svData[]) 
 //            break;
           case 0xF1: //set global power status on/off
             setExtStatus(-1, svData[0]); //include updating all subnodes
+            break;
+          case 0xFF: //write all data to EEPROM
+//            Serial.println("write EEPROM");
+            writeEEPROM(-1, true); //include updating all subnodes
             break;
         }
         requestSVData(svCmd & 0x0F, memLoc);
@@ -145,21 +159,21 @@ void BoosterGroup::writeSVData(uint8_t svCmd, int16_t memLoc, uint8_t svData[]) 
 
 void BoosterGroup::setSensorFactor(int8_t nodeNr, double newSensFact)
 {
-  for (uint8_t i = 0; i < numDevs; i++)
+  for (uint8_t i = 0; i < bConfig.numMods; i++)
     if ((i == nodeNr) || (nodeNr < 0))
       bData[i].setSensorFactor(newSensFact);
 }
 
 void BoosterGroup::setNominalCurrent(int8_t nodeNr, uint16_t newCurrent)
 {
-  for (uint8_t i = 0; i < numDevs; i++)
+  for (uint8_t i = 0; i < bConfig.numMods; i++)
     if ((i == nodeNr) || (nodeNr < 0))
       bData[i].setNominalCurrent(newCurrent);
 }
 
 void BoosterGroup::setFuseValue(int8_t nodeNr, uint8_t newFuseMode)
 {
-  for (uint8_t i = 0; i < numDevs; i++)
+  for (uint8_t i = 0; i < bConfig.numMods; i++)
     if ((i == nodeNr) || (nodeNr < 0))
       bData[i].setFuseValue(newFuseMode);
 }
@@ -167,36 +181,41 @@ void BoosterGroup::setFuseValue(int8_t nodeNr, uint8_t newFuseMode)
 void BoosterGroup::setResetMode(int8_t nodeNr, uint8_t newResetMode)
 {
   resetMode = newResetMode;
-  for (uint8_t i = 0; i < numDevs; i++)
+  for (uint8_t i = 0; i < bConfig.numMods; i++)
     if ((i == nodeNr) || (nodeNr < 0))
       bData[i].setResetMode(newResetMode);
 }
 
 void BoosterGroup::setARMode(int8_t nodeNr, bool newARMode)
 {
-  for (uint8_t i = 0; i < numDevs; i++)
+  for (uint8_t i = 0; i < bConfig.numMods; i++)
     if ((i == nodeNr) || (nodeNr < 0))
       bData[i].setARMode(newARMode);
 }
 
 void BoosterGroup::setSignalStatus(extSignalStatus newStatus)
 {
-  for (uint8_t i = 0; i < numDevs; i++)
+  for (uint8_t i = 0; i < bConfig.numMods; i++)
     bData[i].setSignalStatus(newStatus);
 }
 
 void BoosterGroup::writeEEPROM(int8_t nodeNr, bool writeEE)
 {
+  uint16_t baseAddr = 1;
+  bConfig.checkByte = 0;
   uint8_t * wrPtr = &bConfig.numMods;
-  uint16_t baseAddr = 0;
-  uint8_t chkSum = 0;
-  for (uint8_t i = 0; i <  sizeof(bConfig); i++)
+  uint8_t recSize = sizeof(bConfig);
+  for (uint8_t i = 0; i < recSize-1; i++)
   {
-    EEPROM.update(baseAddr + 1 + i, (*wrPtr));
+//    Serial.print(*wrPtr);
+//    Serial.print(",");
     bConfig.checkByte ^= (*wrPtr);
     wrPtr++;
   }
-  for (uint8_t i = 0; i < numDevs; i++)
+  EEPROM.put(baseAddr, bConfig);
+//  Serial.println();
+//  Serial.println(bConfig.checkByte);
+  for (uint8_t i = 0; i < bConfig.numMods; i++)
     if ((i == nodeNr) || (nodeNr < 0))
       bData[i].writeEEPROM(writeEE);
 }
@@ -205,16 +224,32 @@ boosterConfigData BoosterGroup::readEEPROM()
 {
   boosterConfigData readData;
   uint8_t * rdPtr = &readData.numMods;
-  uint16_t baseAddr = 0;
+  uint16_t baseAddr = 1;
   uint8_t chkSum = 0;
-  for (uint8_t i = 0; i <  sizeof(readData); i++)
+  uint8_t recSize = sizeof(bConfig);
+  EEPROM.get(baseAddr, readData);
+  for (uint8_t i = 0; i <  recSize-1; i++)
   {
-    EEPROM.get(baseAddr + 1 + i, (*rdPtr));
+//    Serial.print(*rdPtr);
+//    Serial.print(",");
     chkSum ^= (*rdPtr);
     rdPtr++;
   }
+  Serial.println();
+  Serial.println(readData.checkByte);
+  Serial.println(chkSum);
   if (chkSum != readData.checkByte)
+  {
     readData.numMods = 0;
+    readData. serNr = random(255);
+    readData.lnAddress = 1234;
+    readData.useLN = false;
+    readData.devMode = 0x00; //DCC/pwrup OFF
+    readData.globalOn.trigDef = 0;
+    readData.globalOn.devAddr = 0;
+    readData.globalOff.trigDef = 0;
+    readData.globalOff.devAddr = 0;
+  }
   return readData;
 }
 
@@ -231,12 +266,12 @@ void BoosterGroup::processTimerInterrupt() //called by interrupt handler
     negCtrB++;
   splCtr++;
   
-  if (devIndex < numDevs) //if the booster is defined, we process it
+  if (devIndex < bConfig.numMods) //if the booster is defined, we process it
   {
     Booster* thisBooster = &bData[devIndex];
     thisBooster->processTimerInterrupt();
   }
-  devIndex = (devIndex + 1) % (maxPins+1); //move ptr to next
+  devIndex = (devIndex + 1) % (maxDefs+1); //move ptr to next
 //  digitalWrite(LED_BUILTIN, 0);
 }
 
@@ -250,7 +285,9 @@ void BoosterGroup::checkInputSignal()
     bool activeB = (posCtrB > 0) && (negCtrB > 0);
     bool diffSig = abs((posCtrA - negCtrB)) < okVal;
     bool isPWM = activeA ^ activeB;
+    isPWM &= ((bConfig.devMode & 0xF0) == 0x10);
     bool isDCC = activeA && activeB && diffSig; //2 input DCC only
+    isDCC &= ((bConfig.devMode & 0xF0) == 0x00);
     hasSig = (isPWM << 1) + isDCC;
     if (hasSig != sigStatus)
     {
@@ -273,7 +310,7 @@ void BoosterGroup::checkInputSignal()
       Serial.println(" ");
 */
       sigStatus = hasSig;
-      for (uint8_t i = 0; i < numDevs; i++)
+      for (uint8_t i = 0; i < bConfig.numMods; i++)
         bData[i].setSignalStatus(sigStatus);
       reportFlags |= 0x0100;  
     }
@@ -289,7 +326,7 @@ void BoosterGroup::processLoop()
 {
   checkInputSignal();
   processReportRequest();
-  for (uint8_t i = 0; i < maxPins; i++)
+  for (uint8_t i = 0; i < maxDefs; i++)
   {
     Booster* thisBooster = getBooster(i);
     if (thisBooster)
@@ -317,60 +354,60 @@ bool BoosterGroup::processReportRequest()
     if (reportFlags & 0x01) //
     {
       reportFlags &= ~0x01;
-      sprintf(myMqttMsg, "{\"Cmd\":\"SVR\",\"Prm\":{\"Src\":%i,\"Opc\":%i,\"Vals\":[%i,%i,%i,%i]}}\n", bConfig.lnAddress, 0x47, manufID, devID, prodID, bConfig.serNr);
+      sprintf(myMqttMsg, quadByteResponse, bConfig.lnAddress, 0x47, 0x00, manufID, devID, prodID, bConfig.serNr);
       Serial.print(myMqttMsg);
       return true;
     }
     if (reportFlags & 0x02) //
     {
       reportFlags &= ~0x02;
-      sprintf(myMqttMsg, "{\"Cmd\":\"SVR\",\"Prm\":{\"Src\":%i,\"Opc\":%i,\"Vals\":[%i,%i,%i,%i]}}\n", bConfig.lnAddress, 0x48, manufID, devID, prodID, bConfig.serNr);
+      sprintf(myMqttMsg, quadByteResponse, bConfig.lnAddress, 0x48, 0x00, manufID, devID, prodID, bConfig.serNr);
       Serial.print(myMqttMsg);
       return true;
     }
     if (reportFlags & 0x04) //set/get number of modules, LN Mode, LN Addr
     {
       reportFlags &= ~0x04;
-      sprintf(myMqttMsg, "{\"Cmd\":\"SVR\",\"Prm\":{\"Src\":%i,\"Opc\":%i,\"Addr\":%i,\"Vals\":[%i,%i,%i,%i]}}\n", bConfig.lnAddress, 0x46, 0x00, numDevs, bConfig.useLN, ((bConfig.lnAddress & 0xFF00)>>8), (bConfig.lnAddress & 0x00FF));
+      sprintf(myMqttMsg, quadByteResponse, bConfig.lnAddress, 0x46, 0x00, bConfig.numMods, bConfig.useLN, ((bConfig.lnAddress & 0xFF00)>>8), (bConfig.lnAddress & 0x00FF));
       Serial.print(myMqttMsg);
       return true;
     }
     if (reportFlags & 0x08) //set/get power on mode, accepted signal type
     {
       reportFlags &= ~0x08;
-      sprintf(myMqttMsg, "{\"Cmd\":\"SVR\",\"Prm\":{\"Src\":%i,\"Opc\":%i,\"Addr\":%i,\"Vals\":[%i]}}\n", bConfig.lnAddress, 0x42, 0x04, bConfig.devMode);
+      sprintf(myMqttMsg, singleByteResponse, bConfig.lnAddress, 0x42, 0x04, bConfig.devMode);
       Serial.print(myMqttMsg);
       return true;
     } 
     if (reportFlags & 0x10) //LN Actuator On type, state, addr
     {
       reportFlags &= ~0x10;
-      sprintf(myMqttMsg, "{\"Cmd\":\"SVR\",\"Prm\":{\"Src\":%i,\"Opc\":%i,\"Addr\":%i,\"Vals\":[%i,%i,%i,%i]}}\n", bConfig.lnAddress, 0x46, 0x08, bConfig.globalOn.trigDef, (bConfig.globalOn.devAddr >> 8),(bConfig.globalOn.devAddr & 0x00FF),0);
+      sprintf(myMqttMsg, quadByteResponse, bConfig.lnAddress, 0x46, 0x08, bConfig.globalOn.trigDef, (bConfig.globalOn.devAddr >> 8),(bConfig.globalOn.devAddr & 0x00FF),0);
       Serial.print(myMqttMsg);
       return true;
     }
     if (reportFlags & 0x20) //LN Actuator Off type, state, addr
     {
       reportFlags &= ~0x20;
-      sprintf(myMqttMsg, "{\"Cmd\":\"SVR\",\"Prm\":{\"Src\":%i,\"Opc\":%i,\"Addr\":%i,\"Vals\":[%i,%i,%i,%i]}}\n", bConfig.lnAddress, 0x46, 0x0C, bConfig.globalOff.trigDef, (bConfig.globalOff.devAddr >> 8),(bConfig.globalOff.devAddr & 0x00FF),0);
+      sprintf(myMqttMsg, quadByteResponse, bConfig.lnAddress, 0x46, 0x0C, bConfig.globalOff.trigDef, (bConfig.globalOff.devAddr >> 8),(bConfig.globalOff.devAddr & 0x00FF),0);
       Serial.print(myMqttMsg);
       return true;
     }
     if (reportFlags & 0x0100) //report signal status
     {
       reportFlags &= ~0x0100;
-      sprintf(myMqttMsg, "{\"Cmd\":\"SVR\",\"Prm\":{\"Src\":%i,\"Opc\":%i,\"Addr\":%i,\"Vals\":[%i]}}\n", bConfig.lnAddress, 0x42, 0xF0, sigStatus);
+      sprintf(myMqttMsg, singleByteResponse, bConfig.lnAddress, 0x42, 0xF0, sigStatus);
       Serial.print(myMqttMsg);
       return true;
     }
     if (reportFlags & 0x0200) //get current global power stauts
     {
       reportFlags &= ~0x0200;
-      sprintf(myMqttMsg, "{\"Cmd\":\"SVR\",\"Prm\":{\"Src\":%i,\"Opc\":%i,\"Addr\":%i,\"Vals\":[%i]}}\n", bConfig.lnAddress, 0x42, 0xF1, pwrStatus);
+      sprintf(myMqttMsg, singleByteResponse, bConfig.lnAddress, 0x42, 0xF1, pwrStatus);
       Serial.print(myMqttMsg);
       return true;
     }
-    for (uint8_t i = 0; i < numDevs; i++)
+    for (uint8_t i = 0; i < bConfig.numMods; i++)
       if (bData[i].processReportRequest())
         return true;
 
@@ -380,17 +417,17 @@ bool BoosterGroup::processReportRequest()
     return false;
 }
 
-void BoosterGroup::processExtCommand(int8_t boosterNr, lnActivatorDef newCmd)
+void BoosterGroup::processExtCommand(int8_t boosterNr, lnActivatorDef newCmd) //called from parser for device and modules (0x3F)
 {
   if (boosterNr & 0x20)
   {
     if ((newCmd.trigDef == bConfig.globalOn.trigDef) && (newCmd.devAddr == bConfig.globalOn.devAddr)) 
-      setExtStatus(0x3F, extRun);
+      setExtStatus(-1, extRun); //extStatus calls modules setExtStatus as well
     if ((newCmd.trigDef == bConfig.globalOff.trigDef) && (newCmd.devAddr == bConfig.globalOff.devAddr)) 
-      setExtStatus(0x3F, extStop);
+      setExtStatus(-1, extStop);
   }
   if (boosterNr & 0x10)
-    for (uint8_t i = 0; i < numDevs; i++)
+    for (uint8_t i = 0; i < bConfig.numMods; i++)
       if ((i == (boosterNr & 0x0F)) || ((boosterNr & 0x0F) == 0x0F))
         bData[i].processExtCommand(newCmd);
 }
@@ -407,21 +444,8 @@ void BoosterGroup::startSCTest(int8_t nodeNr)
 
 Booster* BoosterGroup::getBooster(uint8_t ofIndex)
 {
-  if (ofIndex < numDevs)
+  if (ofIndex < bConfig.numMods)
     return &bData[ofIndex];
   else
     return NULL;
 }
-
-/*
-void BoosterGroup::requestBoosterReport(int8_t boosterNr, uint16_t reportType); //set report flags
-{
-  DynamicJsonDocument doc(100);
-  char myMqttMsg[100];
-  doc["Cmd"] = "B";
-//  doc["Stat"] = currStatus == 0? "OFF" : "ON";
-  doc["Sig"] = sigStatus;
-  serializeJson(doc, myMqttMsg);
-  Serial.println(String(myMqttMsg));
-}
-*/

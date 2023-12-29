@@ -843,7 +843,8 @@ void IoTT_LBServer::loadLBServerCfgJSON(DynamicJsonDocument doc)
 		if (doc.containsKey("Turnouts"))
 		{
 			JsonArray turnoutList = doc["Turnouts"];
-			for (uint16_t i = 0; i < turnoutList.size(); i++)
+			uint16_t dLen = turnoutList.size();
+			for (uint16_t i = 0; i < dLen; i++)
 			{
 				turnoutSupport.push_back((uint16_t) turnoutList[i]);
 			}

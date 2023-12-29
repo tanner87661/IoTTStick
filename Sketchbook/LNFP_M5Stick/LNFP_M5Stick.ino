@@ -24,7 +24,6 @@
 #include <math.h>
 
 #include <Wire.h>
-
 #include <WiFi.h>
 #include <ArduinoUniqueID.h>
 #include <time.h>
@@ -36,7 +35,6 @@
 #include <ESPmDNS.h>
 #include <ESPAsyncWiFiManager.h>         //https://github.com/alanswx/ESPAsyncWiFiManager
 #include <ArduinoJson.h> //standard JSON library, can be installed in the Arduino IDE. Make sure to use version 6.x
-
 
 //following libraries can be downloaded from https://github.com/tanner87661?tab=repositories
 #include <IoTT_CommDef.h>
@@ -61,8 +59,7 @@
   #include <IoTT_VoiceControl.h>
 #endif
 
-
-String BBVersion = "1.6.5";
+String BBVersion = "1.6.6Dev";
 
 //library object pointers. Libraries will be dynamically initialized as needed during the setup() function
 AsyncWebServer * myWebServer = NULL; //(80)
@@ -703,7 +700,7 @@ void setup()
 
 
 // initialize selected Hat
-    if ((useHat.devId == 1) || (useHat.devId == 3) || (useHat.devId == 6)) //BlueHat or YellowHat or RedHat
+    if ((useHat.devId == 1) || (useHat.devId == 3) || (useHat.devId == 6) || (useHat.devId == 8)) //BlueHat or YellowHat or RedHat or SilverHat
     {
       {
         Serial.printf("Load LED Chain Data Hat Id: %i\n", useHat.devId); 

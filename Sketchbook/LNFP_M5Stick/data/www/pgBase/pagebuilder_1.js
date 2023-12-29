@@ -245,7 +245,7 @@ function createButton(parentObj, divclass, labelText, btnObjID, onclick)
 	textDiv.append(thisButton);
 	var textElement = document.createTextNode(labelText);
 	thisButton.append(textElement);
-	
+	return thisButton;
 }
 
 function createSmallButton(parentObj, divclass, labelText, btnObjID, onclick)

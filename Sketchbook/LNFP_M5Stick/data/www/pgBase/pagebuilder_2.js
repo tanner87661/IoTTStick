@@ -232,6 +232,21 @@ function tfBtnMeasure(y, x, id, evtHandler)
 	return tfBtnGen(y,x,id,evtHandler, "Measure");
 }
 
+function tfBtnTogglePwr(y, x, id, evtHandler)
+{
+	return tfBtnGen(y,x,id,evtHandler, "Toggle Power");
+}
+
+function tfBtnReset(y, x, id, evtHandler)
+{
+	return tfBtnGen(y,x,id,evtHandler, "Reset");
+}
+
+function tfBtnToggleAR(y, x, id, evtHandler)
+{
+	return tfBtnGen(y,x,id,evtHandler, "Toggle AR");
+}
+
 function tfColorPicker(y, x, id, evtHandler)
 {
 	var inpElement = document.createElement("input");

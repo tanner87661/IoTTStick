@@ -9,13 +9,16 @@
 #define scTestSamples 1
 #define smplBufSize 3 //size of sample buffer for current reading
 #define readIntv 1000
-#define olfThreshold 1.2
-#define fuseTripPoint 1.4
-#define olfRestoreThreshold 0.6
+#define olfThreshold 120 //%
+#define fuseTripPoint 1.35
+#define olfRestoreThreshold 60 //%
 #define limWaitTime 500 //wait time in case of limited reset
 #define limRetry 5 //# of retrys in limited reset mode
 
-//extern String getCurrentReport(uint8_t modNr, float currVal, float OL);
+#define quadByteResponse   "{\"Cmd\":\"SVR\",\"Prm\":{\"Src\":%i,\"Opc\":%i,\"Addr\":%i,\"Vals\":[%i,%i,%i,%i]}}\n"
+#define singleByteResponse "{\"Cmd\":\"SVR\",\"Prm\":{\"Src\":%i,\"Opc\":%i,\"Addr\":%i,\"Vals\":[%i]}}\n"
+#define DCCAmpResponse "{\"Cmd\":\"DCCAmp\",\"I\":[%i,%i,%i,%i,%i,%i,%i,%i]}\n"
+#define LNResponse "{\"Cmd\":\"LN\",\"OPC\":%i,\"Addr\":%i, \"Stat\":%i}\n"
 
 enum extNodeStatus : uint8_t {extStop=0, extRun=1, extScDetect=2}; //short circuit detect
 enum extSignalStatus : uint8_t {noSig=0, dccSig=1, pwmSig=2}; //external signal status
@@ -30,7 +33,7 @@ typedef struct
 
 typedef struct
 {
-  uint16_t lnAddress;
+//  uint16_t lnAddress;
   uint8_t ctrlPin;
   uint8_t sensePin;
   uint8_t reversePin;
@@ -38,7 +41,7 @@ typedef struct
   float senseFactor; //Current Factor: 8500 A/A, Rsense = 5kOhm Umax at 8.5 Amps = 5V = Analog Value 1023 Sense Factor = 8500 / 1023 = 8.31
   //make it uint16_t * 1000
   uint16_t currNominal; //[mA] set trip current, must be smaller than achievable short circuit current. 80% of this is nominal current (infinite RMS load) if higher, warmup is calculated
-
+  uint16_t scCurr; //short circuit current in mA
   uint8_t fuseMode; //10,20,30,..,100
   resetModes autoResetMode; //0: manual only 1: limited 2: full autoreset
   bool autoReverseMode;
@@ -56,15 +59,15 @@ typedef struct
 {
   float currData[smplBufSize] = {0,0,0}; //adders for squared current reading values
   uint16_t currCtr = 0; //counter for number of samples in currData
-  float currTemp = 0;
-  float currRMS = 0;
-  float currOLF = 0;
+  uint16_t currTemp = 0; //centigrade
+  uint16_t currRMS = 0;
+  uint16_t currOLF = 0; //0..120%
   uint8_t rdPtr = 0;
   uint8_t wrPtr = 0;
   uint32_t lastCurrRead; //last time current values were read
 
   //calculate in initNode function
-  float nominalTemp; //based on fuseMode, temp at nominal current. tripTemp is 110% of that
+  uint16_t nominalTemp; //in centigrade, based on fuseMode, temp at nominal current. tripTemp is 110% of that
   uint16_t tripCurrVal = 0; //120% of nominal current
   uint8_t scTrigVal = 2; //short circuit trigger value for scCtr
   
@@ -84,7 +87,8 @@ class Booster {
   ~Booster();
   void writeEEPROM(bool writeEE);
   nodeConfigData readEEPROM();
-  void initNode(uint8_t nNr, nodeConfigData* initData);
+  void initNode(uint8_t nNr, uint16_t lnAddr); //, nodeConfigData* initData);
+  void setLNAddr(uint16_t lnAddr);
 
   //config commands
   void setSensorFactor(double newSensFact);
@@ -96,7 +100,7 @@ class Booster {
 
   //runtime commands
   void setExtStatus(extNodeStatus newStatus);
-  void setARPolarity(uint8_t newPolarity); //0: forward 1: reverse; 2: toggle
+  void setARPolarity(uint8_t newPolarity); //0: forward 1: reverse; 0xFF: toggle
 
   void resetBooster(); //conditional call restartNode 
   void restartNode();  //reset status machine, set output active
@@ -115,6 +119,10 @@ class Booster {
 
   void processExtCommand(lnActivatorDef newCmd);
 
+  void sendLNMsg(uint8_t opCode, uint16_t lnAddr, uint8_t lnStatus);
+  void sendIntStatLN();
+  void sendOLFStatLN();
+  
   void updateRMS_T(uint8_t currBuffer); //update current and temp data, called from processLoop
 
   uint8_t getOutputStatus(); //return status of ctrl pin
@@ -125,12 +133,18 @@ class Booster {
   uint8_t nodeNr = 0;
   private:
   uint16_t reportFlags;
+  uint16_t lnAddress;
+  intNodeStatus intStatTx = 0;
+  uint8_t olfTx = 0;
 //  uint8_t sendCfgMask = 0; replaced by reportFlags
   void tripLine(bool newStat); //set ctrl pin, if low, start timer for short circuit
+  void updateNominalTemp();
+  void configPins();
+  void releasePins();
 };
 
-extern void getBoosterOpsReport(Booster* thisBooster);
-extern void getBoosterHwCfgReport(Booster* thisBooster);
-extern void getBoosterElCfgReport(Booster* thisBooster);
+//extern void getBoosterOpsReport(Booster* thisBooster);
+//extern void getBoosterHwCfgReport(Booster* thisBooster);
+//extern void getBoosterElCfgReport(Booster* thisBooster);
 
 #endif

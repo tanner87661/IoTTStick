@@ -357,7 +357,7 @@ void hybrid_begin(uint8_t pinRxNum, uint8_t pinTxNum, bool invLogicRx, bool invL
 	lastCarrierOKTicker = carrierLossNotification;
 
     timer = timerBegin(0, 5, true); //prescale to 16MHz, counting up
-    timerAttachInterrupt(timer, &hybrid_driver, true); 
+    timerAttachInterrupt(timer, &hybrid_driver, false); 
     timerHighSpeed = true;
     hybrid_highSpeed(false);
 }

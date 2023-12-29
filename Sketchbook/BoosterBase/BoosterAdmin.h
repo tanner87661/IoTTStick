@@ -13,14 +13,14 @@
 
 #define qSamples 40  //# of samples to determine DCC signal quality
 
-#define maxPins 6
+#define maxDefs 6
 #define DCCA_PIN 2
 #define DCCB_PIN 3
 
 typedef struct
 {
   uint8_t numMods;
-  uint16_t serNr;
+  uint8_t serNr;
   uint16_t lnAddress;
   bool useLN;
   uint8_t devMode; //command format hi, startup pwr mode lo
@@ -37,7 +37,7 @@ class BoosterGroup {
   boosterConfigData readEEPROM();
 
   void initBooster();
-  void initNodes(nodeConfigData* initData, uint8_t numBoosters);
+  void initNodes(); //nodeConfigData* initData, uint8_t numBoosters);
 
   void setSensorFactor(int8_t nodeNr, double newSensFact);
   void setNominalCurrent(int8_t nodeNr, uint16_t newCurrent);
@@ -72,18 +72,14 @@ class BoosterGroup {
 
   private:
   uint16_t reportFlags;
-
-//  void tripLine(int8_t lineNr, bool newStat);
   Booster* getBooster(uint8_t ofIndex);
   void checkInputSignal();
   private:
 //variables for status management
   boosterConfigData bConfig;
+
 //variables for node management
-  uint8_t sigMask = 0;
-  uint8_t numDevs = 0;
-  uint8_t devIndex = 0;
-  uint16_t reportState = 0;
+  uint8_t devIndex = 0; //pointer to the current booster in the interrupt
   uint32_t lastReportTime = millis();
   Booster bData[6];
 

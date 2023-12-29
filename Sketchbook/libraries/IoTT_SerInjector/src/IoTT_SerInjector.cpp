@@ -411,51 +411,106 @@ void IoTT_SerInjector::processDCCExTransmit()
 void IoTT_SerInjector::processBoosterReceive()
 {
 //	Serial.println("processBoosterReceive");
-	char inBuffer[200];
-	uint8_t inBufferCtr = 0;
-//	Serial.println(available());
 	while (available()) //read GridConnect protocol and package by message
 	{
 		char inData = read();
 //		Serial.print(inData);
 		if ((inData != '\n') && (inData !='\r'))
 		{
-			inBuffer[inBufferCtr] = inData;
-			if (inBufferCtr < 200-1)
+			inBuffer[lnBufferPtr] = inData;
+			if (lnBufferPtr < genInBufLen-1)
 			{
-				inBufferCtr++;
-				inBuffer[inBufferCtr] = '\0'; //terminating 0
+				lnBufferPtr++;
+				inBuffer[lnBufferPtr] = '\0'; //terminating 0
 			}
 			else
 				Serial.println("Buffer overflow");
 		}
-		if (((inData == '\n') || (inData =='\r')) && (inBufferCtr > 0))
+		if (((inData == '\n') || (inData =='\r')) && (lnBufferPtr > 0))
 		{
 			char* outStr = (char*)&inBuffer[0];
-			Serial.println(outStr);
-			inBufferCtr = 0;
+//			Serial.println(outStr);
+			lnBufferPtr = 0;
 
 			int8_t currClient = getWSClientByPage(0, "pgSilverHatCfg");
-			if (currClient >= 0)
+			DynamicJsonDocument doc(200);
+			DeserializationError error = deserializeJson(doc, outStr);//, msgLen);
+			if (!error)
 			{
-				while (currClient >= 0)
-				{
-					globalClients[currClient].wsClient->text(outStr);
-					currClient = getWSClientByPage(currClient + 1, "pgSilverHatCfg");
-				}
-			}
-			else
-			{
-				DynamicJsonDocument doc(200);
-				DeserializationError error = deserializeJson(doc, outStr);//, msgLen);
-				if (!error)
-				{
-					Serial.println("Prepare LN Msg");
-				}
+				if (doc.containsKey("Cmd"))
+					if ((doc["Cmd"] == "LN") || (currClient < 0))
+					{
+						lnTransmitMsg lnInBuffer;
+						if (doc["Cmd"] == "LN") //Loconet reporting
+						{
+							uint8_t opCode = doc["OPC"];
+							uint16_t lnAddr = doc["Addr"];
+							uint8_t lnData = doc["Stat"];
+//							Serial.printf("LN Msg: %02X %i %i\n", opCode, lnAddr, lnData);
+							switch (opCode)
+							{
+								case 0xB0: //sw_req
+									sendSwitchCommand(opCode, lnAddr, lnData, 0);
+									return;
+								case 0xB2: //inp_report
+									sendBlockDetectorCommand(lnAddr, lnData);
+									return;
+								case 0xED: //signal IMM
+									sendSignalCommand(lnAddr, lnData);
+									return;
+								case 0xE5: //btn PEER_XFER
+									sendButtonCommand(lnAddr, lnData);
+									return;
+								default: return;
+							}
+						}
+						if (doc["Cmd"] == "SVR") //SV response if no web client
+						{
+							Serial.println("Prepare and send SV Msg");
+							JsonArray svData = doc["Prm"]["Vals"];
+							uint8_t svrData[4];
+							for (uint8_t i = 0; i < 4; i++)
+								if (i < svData.size())
+									svrData[i] = svData[i];
+								else
+									svrData[i] = 0;
+							//void sendSVCommand2(uint8_t SRC, uint8_t SV_CMD, uint16_t DST, uint16_t ADDR, uint8_t DTA[4])
+							//"{\"Cmd\":\"SVR\",\"Prm\":{\"Src\":%i,\"Opc\":%i,\"Addr\":%i,\"Vals\":[%i,%i,%i,%i]}}\n"
+							//{"Cmd":"SVR","Prm":{"Src":1234,"Opc":70,"Addr":284,"Vals":[129,0,31,0]}}
+							sendSVCommand2(0x50, doc["Prm"]["Opc"], doc["Prm"]["Src"], doc["Prm"]["Addr"], svrData);
+
+						}
+					}
+					else //web client found and not LN message
+					{
+						char myMqttMsg[150];
+						serializeJson(doc, myMqttMsg);
+//						Serial.println(myMqttMsg);
+						while (currClient >= 0)
+						{
+							globalClients[currClient].wsClient->text(myMqttMsg);
+							currClient = getWSClientByPage(currClient + 1, "pgSilverHatCfg");
+						}
+					}
 			}
 		}
 
 	}
+}
+
+void IoTT_SerInjector::toggleBoosterOutput()
+{
+	char txMsg[100] = {'\0'};
+	sprintf(txMsg, "{\"Cmd\":\"BTN\",\"Prm\":{\"Dst\":%i,\"Opc\":%i,\"Addr\":%i,\"Vals\":[%i]}}\n", 0xF0, 0x01, 0xFFFF, 0xFE);
+	write(txMsg);
+}
+
+void IoTT_SerInjector::dccToBooster(uint8_t opCode, uint16_t devAddr, uint8_t devData)
+{
+	char txMsg[100] = {'\0'};
+	sprintf(txMsg, "{\"Cmd\":\"LN\",\"Prm\":{\"Opc\":%i,\"Addr\":%i,\"Vals\":[%i]}}\n", opCode, devAddr, devData);
+//	Serial.println(txMsg);
+	write(txMsg);
 }
 
 void IoTT_SerInjector::processBoosterTransmit()
@@ -471,12 +526,12 @@ void IoTT_SerInjector::processBoosterTransmit()
 			case 0xBD : ; //OPC_SW_ACK
 			case 0xB0 : //OPC_SW_REQ
 				sprintf(txMsg, "{\"Cmd\":\"LN\",\"Prm\":{\"Opc\":%i,\"Addr\":%i,\"Vals\":[%i]}}\n", transmitQueue[hlpQuePtr].lnData[0], ((transmitQueue[hlpQuePtr].lnData[2] & 0x0F) << 7) + transmitQueue[hlpQuePtr].lnData[1], ((transmitQueue[hlpQuePtr].lnData[2] & 0x30) >> 4));
-				Serial.println(txMsg);
+//				Serial.println(txMsg);
 				write(txMsg);
 			break;
 			case 0xB2: //OPC_INPUT_REP
 				sprintf(txMsg, "{\"Cmd\":\"LN\",\"Prm\":{\"Opc\":%i,\"Addr\":%i,\"Vals\":[%i]}}\n", transmitQueue[hlpQuePtr].lnData[0], ((transmitQueue[hlpQuePtr].lnData[2] & 0x0F) << 8) + (transmitQueue[hlpQuePtr].lnData[1] << 1) + ((transmitQueue[hlpQuePtr].lnData[2] & 0x20) >> 5), ((transmitQueue[hlpQuePtr].lnData[2] & 0x10) >> 4));
-				Serial.println(txMsg);
+//				Serial.println(txMsg);
 				write(txMsg);
 			break;
 			case 0xE5 : //OPC_PEER_XFER
@@ -490,34 +545,34 @@ void IoTT_SerInjector::processBoosterTransmit()
 					svData[1] = transmitQueue[hlpQuePtr].lnData[12] + ((transmitQueue[hlpQuePtr].lnData[10] & 0x02) << 6);
 					svData[2] = transmitQueue[hlpQuePtr].lnData[13] + ((transmitQueue[hlpQuePtr].lnData[10] & 0x04) << 5);
 					svData[3] = transmitQueue[hlpQuePtr].lnData[14] + ((transmitQueue[hlpQuePtr].lnData[10] & 0x08) << 4);
-					//Serial.printf("SV Command %i %i %i %i %i %i %i\n", svDest, svAddr, svCmd, svData[0], svData[1], svData[2], svData[3]);
+//					Serial.printf("SV Command %i %i %i %i %i %i %i\n", svDest, svAddr, svCmd, svData[0], svData[1], svData[2], svData[3]);
 					switch (svCmd)
 					{
 						case 0x01: //write 1 byte
 							{
 								sprintf(txMsg, "{\"Cmd\":\"SV\",\"Prm\":{\"Dst\":%i,\"Opc\":%i,\"Addr\":%i,\"Vals\":[%i]}}\n", svDest, svCmd, svAddr, svData[0]);
-								Serial.println(txMsg);
+//								Serial.println(txMsg);
 								write(txMsg);
 							}
 							break;
 						case 0x02: //read 1 byte
 							{
 								sprintf(txMsg, "{\"Cmd\":\"SV\",\"Prm\":{\"Dst\":%i,\"Opc\":%i,\"Addr\":%i}}\n", svDest, svCmd, svAddr);
-								Serial.println(txMsg);
+//								Serial.println(txMsg);
 								write(txMsg);
 							}
 							break;
 						case 0x05: //write 4 bytes
 							{
 								sprintf(txMsg, "{\"Cmd\":\"SV\",\"Prm\":{\"Dst\":%i,\"Opc\":%i,\"Addr\":%i,\"Vals\":[%i,%i,%i,%i]}}\n", svDest, svCmd, svAddr, svData[0], svData[1], svData[2], svData[3]);
-								Serial.println(txMsg);
+//								Serial.println(txMsg);
 								write(txMsg);
 							}
 							break;
 						case 0x06: //read 4 bytes
 							{
 								sprintf(txMsg, "{\"Cmd\":\"SV\",\"Prm\":{\"Dst\":%i,\"Opc\":%i,\"Addr\":%i}}\n", svDest, svCmd, svAddr);
-								Serial.println(txMsg);
+//								Serial.println(txMsg);
 								write(txMsg);
 							}
 							break;
@@ -525,17 +580,28 @@ void IoTT_SerInjector::processBoosterTransmit()
 						case 0x08: //identify
 							{
 								sprintf(txMsg, "{\"Cmd\":\"SV\",\"Prm\":{\"Dst\":%i,\"Opc\":%i,\"Vals\":[%i]}}\n", svDest, svCmd, 0);
-								Serial.println(txMsg);
+//								Serial.println(txMsg);
 								write(txMsg);
 							}
 							break;
 						case 0x09: //change LN address
 							{
 								sprintf(txMsg, "{\"Cmd\":\"SV\",\"Prm\":{\"Dst\":%i,\"Opc\":%i,\"Addr\":%i,\"Vals\":[%i,%i,%i,%i]}}\n", svAddr, svCmd, svDest, svData[0], svData[1], svData[2], svData[3]);
-								Serial.println(txMsg);
+//								Serial.println(txMsg);
 								write(txMsg);
 							}
 							break;
+						case 0x71: //universal input device
+							{
+								if (svData[0] == 1)
+								{
+									sprintf(txMsg, "{\"Cmd\":\"LN\",\"Prm\":{\"Opc\":%i,\"Addr\":%i,\"Vals\":[%i,%i]}}\n", svCmd, svAddr, svData[0], svData[1]);
+//									Serial.println(txMsg);
+									write(txMsg);
+								}
+								else
+									return;
+							}
 					}
 				}
 			break;
@@ -566,7 +632,7 @@ void IoTT_SerInjector::processBoosterTransmit()
 							uint8_t accStatus = (dccData[1] & 0x08)>>3;
 							uint16_t mastAddr = (4 * baseAddr) + groupAddr - 2; //sigOffset;
 							sprintf(txMsg, "{\"Cmd\":\"LN\",\"Prm\":{\"Opc\":%i,\"Addr\":%i,\"Vals\":[%i]}}\n", transmitQueue[hlpQuePtr].lnData[0], mastAddr, (dccData[2] & 0x1F));
-							Serial.println(txMsg);
+//							Serial.println(txMsg);
 							write(txMsg);
 						}
 					}

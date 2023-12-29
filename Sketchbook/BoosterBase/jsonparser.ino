@@ -1,6 +1,6 @@
 void procInput()
 {
-  if (Serial.available())
+  while (Serial.available())
   {
     serBuffer[readPtr] = Serial.read();
     if (readPtr == 0)
@@ -62,15 +62,38 @@ void cmdParser(char newCmd[])
           lnAct.devAddr = doc["Prm"]["Addr"];
           switch (svOpc)
           {
-            case 0xB0: lnAct.trigDef = 0x10 << 1; break;
-            case 0xBD: lnAct.trigDef = 0x20 << 1; break;
-            case 0xB2: lnAct.trigDef = 0x30 << 1; break;
-            case 0xED: lnAct.trigDef = 0x40 << 1; break;
+            case 0xB0:; //switch
+            case 0xBD: //switch ack
+              lnAct.trigDef = (0x10 << 1) + ((srcVal & 0x02) >> 1); 
+              lnAct.devAddr++;
+              break; 
+            case 0xED: //DCC Signal (Imm Packet)
+              lnAct.trigDef = (0x20 << 1) + srcVal; 
+              break;
+            case 0xB2:  //block detector
+              lnAct.trigDef = (0x40 << 1) + (srcVal & 0x01); 
+              lnAct.devAddr++;
+              break;
+            case 0x71: //SV button command
+              {
+                if (srcVal == 0x01)
+                {
+                  srcVal = srcData[1];
+                  lnAct.trigDef = (0x30 << 1) + (srcVal & 0x03); 
+                }
+                else
+                  return;
+              }
+              break;
             default: return; //no valid opcode
           }
-          lnAct.trigDef += srcVal;
+//          lnAct.trigDef;
           bList.processExtCommand(0x3F, lnAct);
         }
+      }
+      if (strcmp(CmdName, "BTN") == 0) //Stick button pressed
+      {
+        bList.setExtStatus(-1, 0xFE);
       }
       if (strcmp(CmdName, "SV") == 0) //Set booster config elements
       {
@@ -146,6 +169,7 @@ void cmdParser(char newCmd[])
     Serial.println(error.c_str());
 }
 
+/*
 void getBoosterOpsReport(Booster* thisBooster)
 {
   char myMqttMsg[50];
@@ -166,3 +190,4 @@ void getBoosterElCfgReport(Booster* thisBooster)
 //  sprintf(myMqttMsg, "{\"EL\":[%i,%i,%i,%i,%i]}\n",thisBooster->nodeNr, thisBooster->bCfg.currNominal, thisBooster->bCfg.fuseMode, thisBooster->bCfg.autoResetMode, thisBooster->bCfg.autoReverseMode);
 //  Serial.print(myMqttMsg);
 }
+*/

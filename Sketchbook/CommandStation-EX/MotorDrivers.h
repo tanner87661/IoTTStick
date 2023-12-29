@@ -78,7 +78,8 @@
 
 
 #elif defined(ARDUINO_ARCH_ESP32)
-// STANDARD shield on an ESPDUINO-32 (ESP32 in Uno form factor). The shield must be eiter the
+// STANDARD shield on an ESPDUINO-32 (ESP32 in Uno form fa0
+ctor). The shield must be eiter the
 // 3.3V compatible R3 version or it has to be modified to not supply more than 3.3V to the
 // analog inputs. Here we use analog inputs A2 and A3 as A0 and A1 are wired in a way so that
 // they are not useable at the same time as WiFi (what a bummer). The numbers below are the
@@ -98,6 +99,12 @@
 // STANDARD shield on any Arduino Uno or Mega compatible with the original specification.
 //use for DCC configuration
 
+
+#define STANDARD_MOTOR_SHIELD F("STANDARD_MOTOR_SHIELD"),                                                 \
+                              new MotorDriver(11, 13, UNUSED_PIN, UNUSED_PIN, A0, 8.31, 4500, UNUSED_PIN)
+
+
+
 /*
 #define STANDARD_MOTOR_SHIELD F("STANDARD_MOTOR_SHIELD"),                                                 \
                               new MotorDriver(11, 13, UNUSED_PIN, 8, A1, 8.31, 3000, UNUSED_PIN), \
@@ -116,14 +123,14 @@
 
 
 */
-
+/*
 //for DC district, inverse logic, swapped PWR/BRK
 #define STANDARD_MOTOR_SHIELD F("STANDARD_MOTOR_SHIELD"),                                                 \
                               new MotorDriver(-8, 13, UNUSED_PIN,-11, A1, 8.31, 2000, UNUSED_PIN), \
                               new MotorDriver(-9, 12, UNUSED_PIN, -3, A2, 8.31, 2000, UNUSED_PIN), \
                               new MotorDriver(-7, 10, UNUSED_PIN, -2, A0, 8.31, 2000, UNUSED_PIN), \
                               new MotorDriver(-6,  4, UNUSED_PIN, -5, A5, 8.31, 2000, UNUSED_PIN)
-
+*/
 /*
 #define STANDARD_MOTOR_SHIELD F("STANDARD_MOTOR_SHIELD"),                                                 \
                               new MotorDriver(-10,  6, UNUSED_PIN,  -4,  A0, 8.31, 5000, UNUSED_PIN), \

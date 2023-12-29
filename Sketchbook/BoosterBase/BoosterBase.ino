@@ -6,7 +6,7 @@
 #include "BoosterAdmin.h"
 
 //boosterConfigData thisBooster = {2,99,1234, true, 0x11, 0, 0, 0}; //device addr, accept DCC/PWM, on cmd, off cmd
-nodeConfigData stackConfig[] = {{1234,8,A1,9,12.2,4000,40,1,true,0,0,0,0},{1234,11,A0,0,8.31,4000,80, 1,false,0,0,0,0}}; //, {6,A1,0,8.13,4000,true},{9,A3,0,8.1,4000,true},{7,A4,0,8.13,4000,true},{7,A5,0,8.13,4000,true}};
+//nodeConfigData stackConfig[] = {{1234,8,A1,9,12.2,4000,40,1,true,0,0,0,0},{1234,11,A0,0,8.31,4000,80, 1,false,0,0,0,0}}; //, {6,A1,0,8.13,4000,true},{9,A3,0,8.1,4000,true},{7,A4,0,8.13,4000,true},{7,A5,0,8.13,4000,true}};
 
 BoosterGroup bList;
 
@@ -22,22 +22,21 @@ typedef struct
 */
 
 void setup() {
+  delay(1000);
   Serial.begin(115200);
-  randomSeed(analogRead(0));
-  delay(100);
+  while (Serial.available())
+    char c = Serial.read();
   Serial.println("IoTT SilverHat Booster");
-  Serial.setTimeout(0);
-  delay(100);
-//  pinMode(LED_BUILTIN, OUTPUT);
-
+  randomSeed(micros());
   bList.initBooster();
-  bList.initNodes(&stackConfig[0], sizeof(stackConfig)/sizeof(nodeConfigData));
+  bList.initNodes(); 
   bList.setExtStatus(-1, 0);
-  delay(100);
+  delay(10);
   DCCTimer::begin(interruptHandler);   
-  delay(100);
-  bList.setExtStatus(-1, 1);
-  bList.requestSVData(-1, 0x01);
+  delay(10);
+  bList.setExtStatus(-1, 0xFF); //bList.bConfig.devMode & 0x0F);
+  bList.requestSVData(-1, 0x00FF);
+  bList.requestSVData(-1, 0xFFFF);
 }
 
 void interruptHandler()

@@ -16,7 +16,7 @@
 		{"Menue":"Smart Throttle", "ProdSel":[5], "CommSel":[], "ServerSel":[], "ALMSel":[],  "WebPage": "Throttle.htm", "ID":"pgThrottleCfg", "FileName": "throttle"}, 
 		{"Menue":"GreenHat", "ProdSel":[4], "CommSel":[], "ServerSel":[], "ALMSel":[],  "WebPage": "GreenHat.htm", "ID":"pgGreenHatCfg", "FileName": "greenhat"}, 
 		{"Menue":"SilverHat Booster", "ProdSel":[8], "CommSel":[], "ServerSel":[], "ALMSel":[],  "WebPage": "SilverHat.htm", "ID":"pgSilverHatCfg", "FileName": "silver"}, 
-		{"Menue":"LED Chain Setup", "ProdSel":[1,3,6], "CommSel":[], "ServerSel":[], "ALMSel":[],  "WebPage": "LEDCfg.htm", "ID":"pgLEDCfg", "FileName": "led"},
+		{"Menue":"LED Chain Setup", "ProdSel":[1,3,6,8], "CommSel":[], "ServerSel":[], "ALMSel":[],  "WebPage": "LEDCfg.htm", "ID":"pgLEDCfg", "FileName": "led"},
 		{"Menue":"Hardware Button Setup", "ProdSel":[3], "CommSel":[], "ServerSel":[], "ALMSel":[],  "WebPage": "HWBtnCfg.htm", "ID":"pgHWBtnCfg", "FileName": "btn"}, 
 		{"Menue":"LocoNet Viewer", "ProdSel":[], "CommSel":[2,3,4,11,12,13,14,15,16], "ServerSel":[], "ALMSel":[],  "WebPage": "LNViewer.htm", "ID":"pgLNViewer", "FileName": ""},
 		{"Menue":"OpenLCB Viewer", "ProdSel":[], "CommSel":[5,6,7], "ServerSel":[], "ALMSel":[],  "WebPage": "OLCBViewer.htm", "ID":"pgOLCBViewer", "FileName": ""},

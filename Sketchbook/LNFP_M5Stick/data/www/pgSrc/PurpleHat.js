@@ -30,6 +30,9 @@ var colorTableThrottle;
 var colorTableProfile;
 var colorTableTable;
 
+var speedDistTable;
+var elevPitchTable;
+
 var analysisBuffer = [];
 var analysisIndex = 0;
 
@@ -40,6 +43,7 @@ var trackRecFile = "";
 var trackRecMode = false;
 
 var dimOptions = ["Metric","Imperial"];
+var sizeOptions = ["100%","200%","300%","400%","500%"];
 var relDist = 0; //relative distance, always metric
 var wheelSizeDlg = null;
 var progDlg = null;
@@ -167,6 +171,7 @@ function constructPageContent(contentTab)
 		tempObj = createEmptyDiv(tabSetup, "div", "tile-1", "");
 			createDropdownselector(tempObj, "tile-1_4", "Scale:", ["1:22.5","1:29","1:87", "1:160"], "selectscale", "setScaleSettings(this)");
 			createDropdownselector(tempObj, "tile-1_4", "Display:", dimOptions, "selectdim", "setDimSettings(this)");
+			createDropdownselector(tempObj, "tile-1_4", "Font Size:", sizeOptions, "selectfontsize", "setFontSettings(this)");
 		tempObj = createEmptyDiv(tabSetup, "div", "tile-1", "");
 			createDropdownselector(tempObj, "tile-1_4", "Orientation:", ["Flat","Upright"], "mountstyle", "setMountingStyle(this)");
 		tempObj = createEmptyDiv(tabSetup, "div", "tile-1", "");
@@ -216,17 +221,22 @@ function constructPageContent(contentTab)
 			createDispText(tabMeasurement, "tile-1_4", "Speed Step:","n/a","dccstep");
 			var dispObj = createEmptyDiv(tabMeasurement, "div", "tile-1", "");
 				createPageTitle(dispObj, "div", "tile-1", "", "h2", "Speed and Distance");
-				createDispText(dispObj, "", "Phys. Speed [mm/s]:", "n/a", "speed");
-				createDispText(dispObj, "", "Scale Speed:", "n/a", "scalespeed");
-				createDispText(dispObj, "", "Abs. Distance:", "n/a", "absdist");
-				createDispText(dispObj, "", "Rel. Distance:", "n/a", "reldist");
+
+				speedDistTable = createDataTable(dispObj, "tile-1_2", ["Direction", "    ", "Phys. Speed [mm/s]", "    ","Scale Speed","    ", "Abs. Distance","    ", "Rel. Distance"], "speeddisptable", "");
+
+//				createDispText(dispObj, "", "Phys. Speed [mm/s]:", "n/a", "speed");
+//				createDispText(dispObj, "", "Scale Speed:", "n/a", "scalespeed");
+//				createDispText(dispObj, "", "Abs. Distance:", "n/a", "absdist");
+//				createDispText(dispObj, "", "Rel. Distance:", "n/a", "reldist");
 
 			var dispObj = createEmptyDiv(tabMeasurement, "div", "tile-1", "Orientation");
 				createPageTitle(dispObj, "div", "tile-1", "", "h2", "Orientation");
-				createDispText(dispObj, "", "Radius [mm]:", "n/a", "radius");
-				createDispText(dispObj, "", "Heading [Deg]:", "n/a", "heading");
-				createDispText(dispObj, "", "Grade [%]:", "n/a", "pitch");
-				createDispText(dispObj, "", "Superelevation [%]:", "n/a", "roll");
+				elevPitchTable = createDataTable(dispObj, "tile-1_2", ["Radius [mm]", "", "Heading [Deg.]", "", "Grade [%]", "", "Superelevation [%]"], "elevpitchtable", "");
+
+//				createDispText(dispObj, "", "Radius [mm]:", "n/a", "radius");
+//				createDispText(dispObj, "", "Heading [Deg]:", "n/a", "heading");
+//				createDispText(dispObj, "", "Grade [%]:", "n/a", "pitch");
+//				createDispText(dispObj, "", "Superelevation [%]:", "n/a", "roll");
 
 			var dispObj = createEmptyDiv(tabMeasurement, "div", "tile-1", "SelectDisplay");
 				createPageTitle(dispObj, "div", "tile-1", "", "h2", "Select Data Trackers and Colors");
@@ -473,6 +483,102 @@ function setColorData(sender)
 		configData[workCfg].LEDColsTable[thisRow].RGBVal = colorArray; //background
 }
 
+function loadSpeedDispTable(thisTable, jsonData)
+{
+	var th = document.getElementById(thisTable.id + "_head");
+	var tb = document.getElementById(thisTable.id + "_body");
+	var scaleStr = configData[workCfg].ScaleList[configData[workCfg].ScaleIndex].Name;
+	if (jsonData.Units)
+	{
+		th.childNodes[0].childNodes[4].innerHTML = scaleStr + " Scale Speed [mph]";
+		th.childNodes[0].childNodes[6].innerHTML = "Abs. Distance [in]";
+		th.childNodes[0].childNodes[8].innerHTML = "Rel. Distance [in]";
+	}
+	else
+	{
+		th.childNodes[0].childNodes[4].innerHTML = scaleStr + " Scale Speed [km/h]";
+		th.childNodes[0].childNodes[6].innerHTML = "Abs. Distance [cm]";
+		th.childNodes[0].childNodes[8].innerHTML = "Rel. Distance [cm]";
+	}
+	var numCols = th.childNodes[0].children.length;
+	createDataTableLines(thisTable, [tfText,tfText,tfText,tfText,tfText,tfText,tfText,tfText,tfText], 1, "");	
+	var fSize = configData[workCfg].SpeedDispSize.toString() + "%";
+	tb.childNodes[0].style.height = 50 * (configData[workCfg].SpeedDispSize/100); // * tb.style.fontSize;
+	var e = document.getElementById(thisTable.id + "_0_0");
+	e.childNodes[0].style.fontSize = fSize;
+	e.childNodes[0].innerHTML = jsonData.Speed > 0 ? " Forward" : jsonData.Speed < 0 ? " Backward" : "";
+	var e = document.getElementById(thisTable.id + "_0_1");
+	e.childNodes[0].style.fontSize = fSize;
+	e.childNodes[0].innerHTML = "&nbsp";
+	var currScale = configData[workCfg].ScaleList[configData[workCfg].ScaleIndex].Scale;
+	var scaleSpeed = ((jsonData.Speed  * 36 * currScale) / 10000).toFixed(2); //[km/h]
+	var e = document.getElementById(thisTable.id + "_0_2");
+	e.childNodes[0].style.fontSize = fSize;
+	e.childNodes[0].innerHTML = configData[workCfg].Units == 0 ? scaleSpeed : scaleSpeed / 1.6;
+	var e = document.getElementById(thisTable.id + "_0_3");
+	e.childNodes[0].style.fontSize = fSize;
+	e.childNodes[0].innerHTML = "&nbsp";
+	var e = document.getElementById(thisTable.id + "_0_4");
+	e.childNodes[0].style.fontSize = fSize;
+	e.childNodes[0].innerHTML = Math.abs(jsonData.Speed).toFixed(2);
+	var e = document.getElementById(thisTable.id + "_0_5");
+	e.childNodes[0].style.fontSize = fSize;
+	e.childNodes[0].innerHTML = "&nbsp";
+	var e = document.getElementById(thisTable.id + "_0_6");
+	e.childNodes[0].style.fontSize = fSize;
+	e.childNodes[0].innerHTML = configData[workCfg].Units == 0 ? (jsonData.AbsDist/10).toFixed(2) : (jsonData.AbsDist/25.4).toFixed(2);
+	var e = document.getElementById(thisTable.id + "_0_7");
+	e.childNodes[0].style.fontSize = fSize;
+	e.childNodes[0].innerHTML = "&nbsp";
+	var e = document.getElementById(thisTable.id + "_0_8");
+	e.childNodes[0].style.fontSize = fSize;
+	e.childNodes[0].innerHTML = configData[workCfg].Units == 0 ? (jsonData.RelDist/10).toFixed(2) : (jsonData.RelDist/25.4).toFixed(2);
+}
+
+function loadElevPitchTable(thisTable, jsonData)
+{
+	var th = document.getElementById(thisTable.id + "_head");
+	var tb = document.getElementById(thisTable.id + "_body");
+	if (jsonData.Units)
+		th.childNodes[0].childNodes[0].innerHTML = "Radius [in]";
+	else
+		th.childNodes[0].childNodes[0].innerHTML = "Radius [mm]";
+	var numCols = th.childNodes[0].children.length;
+
+	createDataTableLines(thisTable, [tfText,tfText,tfText,tfText,tfText,tfText,tfText], 1, "");	
+	var fSize = configData[workCfg].SpeedDispSize.toString() + "%";
+	tb.childNodes[0].style.height = 50 * (configData[workCfg].SpeedDispSize/100); // * tb.style.fontSize;
+	var e = document.getElementById(thisTable.id + "_0_0");
+	e.childNodes[0].style.fontSize = fSize;
+	var radiusVal = Math.min(5000, configData[workCfg].Units == 0 ? Math.abs(jsonData.Radius) : Math.abs(jsonData.Radius)/25.4);
+	var radiusValGraph = radiusVal > 2000 ? 0 : radiusVal;
+	var radiusSig = jsonData.Radius >= 0 ? 1 : -1; 
+	var radiusStr = radiusVal.toFixed(2);
+	if ((jsonData.Radius != 0) && (Math.abs(jsonData.Radius) < 5000))
+		dirStr = radiusStr + ((radiusSig > 0) ? " right" : " left");
+	else
+		dirStr = " straight";
+	e.childNodes[0].innerHTML = dirStr;
+	var e = document.getElementById(thisTable.id + "_0_1");
+	e.childNodes[0].style.fontSize = fSize;
+	e.childNodes[0].innerHTML = "&nbsp";
+	var e = document.getElementById(thisTable.id + "_0_2");
+	e.childNodes[0].style.fontSize = fSize;
+	e.childNodes[0].innerHTML = (180 * jsonData.EulerVect[0] / 3.1415).toFixed(2);
+	var e = document.getElementById(thisTable.id + "_0_3");
+	e.childNodes[0].style.fontSize = fSize;
+	e.childNodes[0].innerHTML = "&nbsp";
+	var e = document.getElementById(thisTable.id + "_0_4");
+	e.childNodes[0].style.fontSize = fSize;
+	e.childNodes[0].innerHTML = jsonData.Slope ? jsonData.Slope.toFixed(1) : "n/a";
+	var e = document.getElementById(thisTable.id + "_0_5");
+	e.childNodes[0].style.fontSize = fSize;
+	e.childNodes[0].innerHTML = "&nbsp";
+	var e = document.getElementById(thisTable.id + "_0_6");
+	e.childNodes[0].style.fontSize = fSize;
+	e.childNodes[0].innerHTML = jsonData.Banking ? jsonData.Banking.toFixed(1) : "n/a";
+}
+
 function loadColorTable(thisTable, thisData)
 {
 	function toHex(numbers) 
@@ -702,15 +808,16 @@ function loadDataFields(jsonData)
 	else
 		setDropdownValue("selectscale", 0);
 	setDropdownValue("selectdim", jsonData.Units); //most likely HO
+	setDropdownValue("selectfontsize", Math.round(jsonData.SpeedDispSize /100) - 1); //most likely HO
 	setDropdownValue("mountstyle", jsonData.MountStyle); //flat or upright
 	var scaleStr = jsonData.ScaleList[jsonData.ScaleIndex].Name;
 	switch (jsonData.Units)
 	{
 		case 0: 
-			document.getElementById("scalespeed_txt").innerHTML = scaleStr + " Scale Speed [km/h]";
-			document.getElementById("absdist_txt").innerHTML = "Abs. Distance [cm]";
-			document.getElementById("reldist_txt").innerHTML = "Rel. Distance [cm]";
-			document.getElementById("radius_txt").innerHTML = "Radius [mm]";
+//			document.getElementById("scalespeed_txt").innerHTML = scaleStr + " Scale Speed [km/h]";
+//			document.getElementById("absdist_txt").innerHTML = "Abs. Distance [cm]";
+//			document.getElementById("reldist_txt").innerHTML = "Rel. Distance [cm]";
+//			document.getElementById("radius_txt").innerHTML = "Radius [mm]";
 			document.getElementById("thscalespeed_txt").innerHTML = "Max. Scale [km/h]";
 			document.getElementById("testtracklen_txt").innerHTML = "Track Length [mm]"; 
 			document.getElementById("ttracklen_txt").innerHTML = "Track Length [mm]"; 
@@ -719,10 +826,10 @@ function loadDataFields(jsonData)
 			
 			break;
 		case 1: 
-			document.getElementById("scalespeed_txt").innerHTML = scaleStr + " Scale Speed [mph]";
-			document.getElementById("absdist_txt").innerHTML = "Abs. Distance [in]";
-			document.getElementById("reldist_txt").innerHTML = "Rel. Distance [in]";
-			document.getElementById("radius_txt").innerHTML = "Radius [in]";
+//			document.getElementById("scalespeed_txt").innerHTML = scaleStr + " Scale Speed [mph]";
+//			document.getElementById("absdist_txt").innerHTML = "Abs. Distance [in]";
+//			document.getElementById("reldist_txt").innerHTML = "Rel. Distance [in]";
+//			document.getElementById("radius_txt").innerHTML = "Radius [in]";
 			document.getElementById("thscalespeed_txt").innerHTML = "Max. Scale [mph]";
 			document.getElementById("testtracklen_txt").innerHTML = "Track Length [in]";
 			document.getElementById("ttracklen_txt").innerHTML = "Track Length [in]";
@@ -738,6 +845,21 @@ function loadDataFields(jsonData)
 	writeRBInputField("trimmode", configData[workCfg].TrimMode);
 	writeRBInputField("dccstepsprb", stepMode);
 
+//	console.log(configData[workCfg]);
+/*		
+	if (configData[workCfg].SpeedDispSize)
+	{
+		var fSize = configData[workCfg].SpeedDispSize.toString() + "%";
+		document.getElementById("speed").style.fontSize = fSize;
+		document.getElementById("scalespeed").style.fontSize = fSize;
+		document.getElementById("absdist").style.fontSize = fSize;
+		document.getElementById("reldist").style.fontSize = fSize;
+//		document.getElementById("radius").style.fontSize = fSize;
+//		document.getElementById("heading").style.fontSize = fSize;
+//		document.getElementById("pitch").style.fontSize = fSize;
+//		document.getElementById("roll").style.fontSize = fSize;
+	}
+*/	
 	if (configData[workCfg].LEDColsSpeedDisp)
 	{
 		graphColorSpeed = "rgb(" + configData[workCfg].LEDColsSpeedDisp[0].RGBVal.toString() + ")";
@@ -810,6 +932,11 @@ function setScaleSettings(sender)
 function setDimSettings(sender)
 {
 	configData[workCfg].Units = sender.selectedIndex;
+}
+
+function setFontSettings(sender)
+{
+	configData[workCfg].SpeedDispSize = 100 * (sender.selectedIndex + 1);
 }
 
 function setMountingStyle(sender)
@@ -1822,6 +1949,12 @@ function processSensorInput(jsonData)
 	}
 	else
 	{
+
+		var currScale = configData[workCfg].ScaleList[configData[workCfg].ScaleIndex].Scale;
+		var scaleSpeed = (jsonData.Speed  * 36 * currScale) / 10000; //[km/h]
+		loadSpeedDispTable(speedDistTable, jsonData);
+		loadElevPitchTable(elevPitchTable, jsonData);
+/*
 		var dirStr = jsonData.Speed > 0 ? " Forward" : jsonData.Speed < 0 ? " Backward" : "";
 		writeTextField("speed", Math.abs(jsonData.Speed).toFixed(2) + dirStr);
 
@@ -1854,11 +1987,14 @@ function processSensorInput(jsonData)
 			writeTextField("pitch", jsonData.Slope.toFixed(1)); //(180 * jsonData.EulerVect[2] / 3.1415).toFixed(2));
 		else
 			writeTextField("pitch", "n/a"); //(180 * jsonData.EulerVect[2] / 3.1415).toFixed(2));
+
 //		if (jsonData.EulerVect == [0, 0, 0, 0])
 		{
 			addEntryToArray(lineGraphGrade, jsonData.TS, jsonData.Slope, angleGraph.MaxXRange * 1000);
 			addEntryToArray(lineGraphElevation, jsonData.TS, jsonData.Banking, angleGraph.MaxXRange * 1000);
 		}
+*/
+
 /*
 		else
 		{

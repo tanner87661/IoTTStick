@@ -227,7 +227,7 @@ void btnBClick()
     case 6://RedHat
     {
       if (m5CurrentPage == 3)
-        if (WiFi.getMode() == 0)
+        if (wifiStatus != WL_CONNECTED)
         {
           Serial.println("Connect WiFi");  
           establishWifiConnection(myWebServer,dnsServer);
@@ -256,7 +256,22 @@ void btnBClick()
     case 7: //PurpleHat
       if (trainSensor) trainSensor->resetDistance();
       return;
+    case 8: //SilverHat
+    {
+//          Serial.println(wifiStatus);  
+      if (m5CurrentPage == 3)
+        if (wifiStatus != WL_CONNECTED)
+        {
+          Serial.println("Connect WiFi");  
+          establishWifiConnection(myWebServer,dnsServer);
+          return;
+        }
+      if (usbSerial)
+        usbSerial->toggleBoosterOutput();
+      return;
     }
+  }
+    
   switch (m5CurrentPage)
   {
     case 7: //DCC Viewer active, toggle status
@@ -273,7 +288,7 @@ void btnBClick()
       }
       break;
     case 3: //Wifi Status page active
-      if (WiFi.getMode() == 0)
+      if (wifiMode == 0)
       {
         Serial.println("Connect WiFi");  
         establishWifiConnection(myWebServer,dnsServer);
@@ -458,7 +473,7 @@ void processDisplay()
             setNoWifiPage();
           break;
       }
-    Serial.println("Status change complete");
+//    Serial.println("Status change complete");
     }
   }
 

@@ -703,6 +703,10 @@ void processWsMessage(char * newMsg, int msgLen, AsyncWebSocketClient * client)
       {
         if (usbSerial)
         {
+          if (doc.containsKey("LN"))
+          {
+            
+          }
           if (doc.containsKey("SV"))
           {
             JsonArray lnData = doc["SV"];

@@ -1,7 +1,7 @@
 #ifndef IoTT_CommDef_h
 #define IoTT_CommDef_h
 
-//#define LNDebug
+#define LNDebug
 
 #include <arduino.h>
 #include <inttypes.h>
