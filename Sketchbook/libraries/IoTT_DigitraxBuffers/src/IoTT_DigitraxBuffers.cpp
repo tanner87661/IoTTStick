@@ -1738,6 +1738,8 @@ uint16_t IoTT_DigitraxBuffers::receiveDCCGeneratorFeedbackNew(std::vector<ppElem
 //<r CALLBACKNUM|CALLBACKSUB|CV Value>
 //<r CALLBACKNUM|CALLBACKSUB|CV BIT VALUE> not used
 //<r CALLBACKNUM|CALLBACKSUB|CV VALUE> //read cv value
+			uint16_t cvNr = 0;
+			int16_t cvVal = 0;
 
 			switch (paramCount)
 			{
@@ -1745,8 +1747,8 @@ uint16_t IoTT_DigitraxBuffers::receiveDCCGeneratorFeedbackNew(std::vector<ppElem
 				case 6: break; //bit mode not used
 				default:
 				{
-					uint16_t cvNr = txData->at(paramCount - 2).payload.longVal - 1;
-					int16_t cvVal = txData->at(paramCount - 1).payload.longVal;
+					cvNr = txData->at(paramCount - 2).payload.longVal - 1;
+					cvVal = txData->at(paramCount - 1).payload.longVal;
 					memcpy(&slotBuffer[0x7C][0], &progSlot[0], 10);
 					if (cvVal < 0)
 						slotBuffer[0x7C][1] = 0x07;
@@ -1764,6 +1766,7 @@ uint16_t IoTT_DigitraxBuffers::receiveDCCGeneratorFeedbackNew(std::vector<ppElem
 			lnOutFct(txBuffer);
 			progModeActive = false;
 //			Serial.printf("Send Programmer final task reply CV %i Val %i \n", cvNr+1, cvVal);
+			
 		}
 		break;
 		case 'X': //slot # report
@@ -3079,16 +3082,20 @@ bool IoTT_DigitraxBuffers::processDCCGenerator(lnReceiveBuffer * newData)
 					{
 						case 0x7F: //OPC_IMM_PACKET
 						{
-							uint8_t numBytes = (newData->lnData[3] & 0x70) >> 4;
-//							Serial.println(numBytes);
-							txBuffer.lnData[0] = 4; //OpCode for direct DCC command <
-							for (uint8_t i = 0; i < numBytes; i++)
-								txBuffer.lnData[1+i] = newData->lnData[i+5] + ((newData->lnData[4] & (0x01 << i)) << (7 - i));
-							txBuffer.lnMsgSize = numBytes + 1;
-							if (dccPort)
-								for (uint8_t i = 0; i < (newData->lnData[3] & 0x07); i++)
-									dccPort->lnWriteMsg(txBuffer);
-								//dccOutFct(txBuffer);
+							//uint8_t numBytes = (newData->lnData[3] & 0x70) >> 4;
+							//Serial.println(numBytes);
+							//txBuffer.lnData[0] = 4; //OpCode for direct DCC command <
+							//for (uint8_t i = 0; i < numBytes; i++)
+							//	txBuffer.lnData[1+i] = newData->lnData[i+5] + ((newData->lnData[4] & (0x01 << i)) << (7 - i));
+							//txBuffer.lnMsgSize = numBytes + 1;
+							//if (dccPort)
+							//	for (uint8_t i = 0; i < (newData->lnData[3] & 0x07); i++)
+							//		dccPort->lnWriteMsg(txBuffer);
+							//	//dccOutFct(txBuffer);
+
+							setExtendedFunctionCmd(newData);
+
+											
 						}
 						break;
 					}
@@ -3119,6 +3126,69 @@ void IoTT_DigitraxBuffers::iterateMULinks(uint8_t thisSlot, uint8_t dirSpeedData
 		for (uint8_t i = 1; i < maxSlots; i++)
 			if ((getConsistStatus(i) & cnUplink) && (slotBuffer[i][SPD] == thisSlot) && (i != thisSlot))
 				iterateMULinks(i, dirSpeedData);
+}
+
+void IoTT_DigitraxBuffers::setExtendedFunctionCmd(lnReceiveBuffer* newData)
+{
+	lnTransmitMsg txBuffer;
+	uint8_t numBytes = (newData->lnData[3] & 0x70) >> 4;
+	uint16_t packet[numBytes];
+	uint16_t cabAddr;
+	bool send = false;
+	char* outStr = (char*)&txBuffer.lnData[0];	
+
+	for (uint8_t i = 0; i < numBytes; i++) {
+		packet[i] = (newData->lnData[i + 5] + ((newData->lnData[4] & (0x01 << i)) != 0 ? 0x80 : 0));
+	}
+
+	if ((packet[0] & 0xC0) == 0xC0)// long address
+	{
+		cabAddr = ((packet[0] & 0x3F) << 8) + packet[1];		
+
+		if ((packet[2] & 0xF0) == 0xA0)// F9 - F12
+		{
+			sprintf(outStr, "<f %i %i>", cabAddr, packet[2]);
+			send = true;
+		}
+		else if ((packet[2] & 0xFF) == 0xDE)// F13 - F20
+		{
+			sprintf(outStr, "<f %i %i %i>", cabAddr, packet[2], packet[3]);
+			send = true;
+		}
+		else if ((packet[2] & 0xFF) == 0xDF)// F21 - F28
+		{
+			sprintf(outStr, "<f %i %i %i>", cabAddr, packet[2], packet[3]);
+			send = true;
+		}
+	}
+	else // short address
+	{
+		cabAddr = packet[0];		
+
+		if ((packet[1] & 0xF0) == 0xA0)// F9 - F12
+		{
+			sprintf(outStr, "<f %i %i>", cabAddr, packet[1]);
+			send = true;
+		}
+		else if ((packet[1] & 0xFF) == 0xDE)// F13 - F20
+		{
+			sprintf(outStr, "<f %i %i %i>", cabAddr, packet[1], packet[2]);
+			send = true;
+		}
+		else if ((packet[1] & 0xFF) == 0xDF)// F21 - F28
+		{
+			sprintf(outStr, "<f %i %i %i>", cabAddr, packet[1], packet[2]);
+			send = true;
+		}
+	}
+	if (send)
+	{
+		txBuffer.lnMsgSize = strlen(outStr);
+		Serial.println(outStr);
+		dccPort->lnWriteMsg(txBuffer);
+	}
+	
+
 }
 
 void IoTT_DigitraxBuffers::setSlotDirfSpeed(lnReceiveBuffer * newData)
