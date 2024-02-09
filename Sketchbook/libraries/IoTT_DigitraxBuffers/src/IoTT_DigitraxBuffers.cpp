@@ -3184,7 +3184,7 @@ void IoTT_DigitraxBuffers::setExtendedFunctionCmd(lnReceiveBuffer* newData)
 	if (send)
 	{
 		txBuffer.lnMsgSize = strlen(outStr);
-		Serial.println(outStr);
+		//Serial.println(outStr);
 		dccPort->lnWriteMsg(txBuffer);
 	}
 	
