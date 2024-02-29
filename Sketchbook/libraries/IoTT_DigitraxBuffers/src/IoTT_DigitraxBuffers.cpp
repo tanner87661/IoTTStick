@@ -1033,7 +1033,8 @@ void IoTT_DigitraxBuffers::processLoop()
                                     prepSlotSndMsg(&txBuffer, throttleSlotIndex, slotBuffer[throttleSlotIndex][SND]);
                                     keepGoing = false;
                                 }
-
+                                break;
+    
                                 case 4:
                                 {
                                     if ((currFct & 0x000000F0) > 0 && fctRefresh) //9-12
