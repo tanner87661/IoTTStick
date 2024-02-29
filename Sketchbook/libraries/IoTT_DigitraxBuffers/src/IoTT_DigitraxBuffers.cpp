@@ -1026,6 +1026,7 @@ void IoTT_DigitraxBuffers::processLoop()
                                     prepSlotDirFMsg(&txBuffer, throttleSlotIndex, slotBuffer[throttleSlotIndex][DIRF]);
                                     keepGoing = false;
                                 }
+                                break;
 
                                 case 3:
                                 {
@@ -1042,6 +1043,7 @@ void IoTT_DigitraxBuffers::processLoop()
                                         keepGoing = false;
                                     }
                                 }
+                                break;
 
                                 case 5:
                                 {
@@ -1052,6 +1054,7 @@ void IoTT_DigitraxBuffers::processLoop()
                                         keepGoing = false;
                                     }
                                 }
+                                break;
 
                                 case 6:
                                 {
@@ -1062,6 +1065,7 @@ void IoTT_DigitraxBuffers::processLoop()
                                         keepGoing = false;
                                     }
                                 }
+                                break;
 
                             }
 
