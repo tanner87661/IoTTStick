@@ -363,6 +363,11 @@ class IoTT_DigitraxBuffers
 		uint16_t fctRefreshSlotIndex = 0;
 		uint32_t fctGroupIndex = 0;
 		uint16_t extFctCtr = 0;
+		uint32_t lastThrottleRefresh = millis();
+		uint16_t throttleRefreshInterval = 100;
+		uint8_t throttleSlotIndex = 0;
+		uint8_t throttleRefreshIndex = 0;
+		uint8_t throttleRefreshPriority = 0;
 		
 };
 

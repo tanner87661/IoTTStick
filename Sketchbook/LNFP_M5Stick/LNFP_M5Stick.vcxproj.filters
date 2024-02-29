@@ -1,0 +1,53 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="Source Files">
+      <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
+      <Extensions>cpp;c;cc;cxx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
+    </Filter>
+    <Filter Include="Header Files">
+      <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EBFB}</UniqueIdentifier>
+      <Extensions>h;hh;hpp;hxx;hm;inl;inc;xsd</Extensions>
+    </Filter>
+    <Filter Include="Resource Files">
+      <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
+      <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="LNFP_M5Stick.ino" />
+    <ClCompile Include="ConfigLoader.ino" />
+    <ClCompile Include="DCC_In_Handler.ino" />
+    <ClCompile Include="iottlogo2020.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="iottlogo3030.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="iottlogo8080.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="LocoNet_In_Handler.ino" />
+    <ClCompile Include="LocoNet_Out_Handler.ino" />
+    <ClCompile Include="M5Functions.ino" />
+    <ClCompile Include="MQTTGateway.ino" />
+    <ClCompile Include="MQTT_In_Handler.ino" />
+    <ClCompile Include="Nickel4020.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="OpenLCB_In_Handler.ino" />
+    <ClCompile Include="WebServer.ino" />
+    <ClCompile Include="WifiAccess.ino" />
+    <ClCompile Include="..\libraries\IoTT_DigitraxBuffers\src\IoTT_DigitraxBuffers.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="__vm\.LNFP_M5Stick.vsarduino.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\libraries\IoTT_DigitraxBuffers\src\IoTT_DigitraxBuffers.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+  </ItemGroup>
+</Project>

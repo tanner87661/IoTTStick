@@ -1,0 +1,67 @@
+{
+  "Version": 1,
+  "WorkspaceRootPath": "C:\\Users\\Keith\\OneDrive\\Documents\\GitHub\\IoTTStick\\Sketchbook\\LNFP_M5Stick\\",
+  "Documents": [
+    {
+      "AbsoluteMoniker": "D:0:0:{B46DD317-9160-4F9D-A504-A4520C3A9325}|LNFP_M5Stick.vcxproj|C:\\Users\\Keith\\OneDrive\\Documents\\GitHub\\IoTTStick\\Sketchbook\\libraries\\IoTT_DigitraxBuffers\\src\\IoTT_DigitraxBuffers.cpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{B46DD317-9160-4F9D-A504-A4520C3A9325}|LNFP_M5Stick.vcxproj|C:\\Users\\Keith\\OneDrive\\Documents\\GitHub\\IoTTStick\\Sketchbook\\libraries\\IoTT_DigitraxBuffers\\src\\IoTT_DigitraxBuffers.h||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{B46DD317-9160-4F9D-A504-A4520C3A9325}|LNFP_M5Stick.vcxproj|C:\\Users\\Keith\\OneDrive\\Documents\\GitHub\\IoTTStick\\Sketchbook\\LNFP_M5Stick\\LNFP_M5Stick.ino||{8B382828-6202-11D1-8870-0000F87579D2}|",
+      "RelativeMoniker": "D:0:0:{B46DD317-9160-4F9D-A504-A4520C3A9325}|LNFP_M5Stick.vcxproj|solutionrelative:LNFP_M5Stick.ino||{8B382828-6202-11D1-8870-0000F87579D2}|"
+    }
+  ],
+  "DocumentGroupContainers": [
+    {
+      "Orientation": 1,
+      "VerticalTabListWidth": 256,
+      "DocumentGroups": [
+        {
+          "DockedHeight": 200,
+          "SelectedChildIndex": 0,
+          "Children": [
+            {
+              "$type": "Document",
+              "DocumentIndex": 0,
+              "Title": "IoTT_DigitraxBuffers.cpp",
+              "DocumentMoniker": "C:\\Users\\Keith\\OneDrive\\Documents\\GitHub\\IoTTStick\\Sketchbook\\libraries\\IoTT_DigitraxBuffers\\src\\IoTT_DigitraxBuffers.cpp",
+              "RelativeDocumentMoniker": "..\\libraries\\IoTT_DigitraxBuffers\\src\\IoTT_DigitraxBuffers.cpp",
+              "ToolTip": "C:\\Users\\Keith\\OneDrive\\Documents\\GitHub\\IoTTStick\\Sketchbook\\libraries\\IoTT_DigitraxBuffers\\src\\IoTT_DigitraxBuffers.cpp",
+              "RelativeToolTip": "..\\libraries\\IoTT_DigitraxBuffers\\src\\IoTT_DigitraxBuffers.cpp",
+              "ViewState": "AQIAAL4DAAAAAAAAAAAlwGkAAAAFAAAA",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000677|",
+              "WhenOpened": "2024-02-24T23:33:50.34Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 1,
+              "Title": "IoTT_DigitraxBuffers.h",
+              "DocumentMoniker": "C:\\Users\\Keith\\OneDrive\\Documents\\GitHub\\IoTTStick\\Sketchbook\\libraries\\IoTT_DigitraxBuffers\\src\\IoTT_DigitraxBuffers.h",
+              "RelativeDocumentMoniker": "..\\libraries\\IoTT_DigitraxBuffers\\src\\IoTT_DigitraxBuffers.h",
+              "ToolTip": "C:\\Users\\Keith\\OneDrive\\Documents\\GitHub\\IoTTStick\\Sketchbook\\libraries\\IoTT_DigitraxBuffers\\src\\IoTT_DigitraxBuffers.h",
+              "RelativeToolTip": "..\\libraries\\IoTT_DigitraxBuffers\\src\\IoTT_DigitraxBuffers.h",
+              "ViewState": "AQIAAC8BAAAAAAAAAAAAAG8BAAAbAAAA",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000680|",
+              "WhenOpened": "2024-02-24T23:33:22.237Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 2,
+              "Title": "LNFP_M5Stick.ino",
+              "DocumentMoniker": "C:\\Users\\Keith\\OneDrive\\Documents\\GitHub\\IoTTStick\\Sketchbook\\LNFP_M5Stick\\LNFP_M5Stick.ino",
+              "RelativeDocumentMoniker": "LNFP_M5Stick.ino",
+              "ToolTip": "C:\\Users\\Keith\\OneDrive\\Documents\\GitHub\\IoTTStick\\Sketchbook\\LNFP_M5Stick\\LNFP_M5Stick.ino",
+              "RelativeToolTip": "LNFP_M5Stick.ino",
+              "ViewState": "AQIAAEMBAAAAAAAAAAAowPcAAABHAAAA",
+              "Icon": "00000000-0000-0000-0000-000000000000.000000|iVBORw0KGgoAAAANSUhEUgAAABQAAAAUCAYAAACNiR0NAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAJcEhZcwAADsMAAA7DAcdvqGQAAAO6SURBVDhPnVNLb9xUFP6u7ZnJzCQTZ5pHKZ1pqlYRJaIQJMpDQSgtQlQIEBSxQ6yJFAmx4g\u002BwZEPVqgg2AXWRBeLRTatsKAlILFoIpEmFKtohpMk8Subh8dj32r58TgKKkAopxzr29Tk\u002B3z3fd64Ftm1ychIfnD6NFcftuuN5Kb0d/zfLd6VksTvbmZqawrmzZwGttXhwbAzvf/6laadSI9\u002BVy683pDweaJ1ndrvsbiZgQTRyyeTlp4YGZwbS6WsvTjwTiq9\u002BvYmPlpaPjObz71U97/kgjLp2011sMT3LMCQ7/fpksfBu2e38aN54chzHBocmbzVbb7aVSsswxL24FwRmU6pCxe3IZwv7L4kzVxa65quVS9VO5\u002BnddvZPizvtS6YWTh08MGHoKIqH0NdQCq0d3tz2nbG7xRtSYUP69i8b9axR9zw4KhBOEDIZwg8j5FJdONCTw1Amw9EIbObokRYYSGcwzJzNb2SkN2scUo\u002BfDc\u002BH1eTN5ccdBjOmiRP378PE3kEgCADTwI12B5/dLEGx\u002BNTBIh7ozkBEpGmZ\u002BLZ6BxdKKwQMkODGLV8SUEruFCJkwaNDe/DSviF8sbiIaw0HA5k0Xj58CG\u002BNHIavNXpZeGFxCTUlcV8mi9dGj6DWcXFxdQ2\u002BwU5J32ipADx3SAqBMbsXV1ZWMVvbQH//AKrCxIdL11FIpzCaTePjn36Gm0zh8eFhzNWbmF9d3axJcyoRG3LIymjyFlI3zSvk2iW4kUig22sjLT0obuT4Ci6F9wlm6RCW48AiKzekMqRJNAR0NwaM\u002BfOPgc\u002BXq\u002BUKRnI9eMi2seB6kKaFV4v78Xu1gqX1Ml4pFih\u002BgIu313GoN4eHezL4YW1tU3\u002BCcIMQ4onzM/a6L\u002BeUjkbjmZ6wczia7wP3hcmPqi0Hs2vrUAR/jsPaS10jYSDJ/HKthtmNOlpWAglhlPKJxLh4ZPq8XZdqjn2OxrSTpD8gNHLUxeO6FmtjmEQ3kWUH/Yxn6E2uqzEzKwlhGPF/Xeq2zHFDcTKIeETidgnAN9wmg\u002BuBRgnGFhh1jHVqM/cbj8xyqLHKgUmDMASNazUxYizDl76vVVAX1PBvp\u002BCCAFub0P\u002BKc43t3GZ8Rw4qaOowdI26w5Or1DeQ0qfjf7oixrwOgrrRTf59fXtmGLislZR03KPHYN\u002BTzSe\u002B52mRLBRRePsd0\u002B94R7WO3qAkxylVL3031qK8c5zKNJ9XK\u002BfOBFR7yzKPHYN98oX43eYQslvR/zCtXd7rQbsd/fHpNIJKGX8CJlukK9y6XnAAAAAASUVORK5CYII=",
+              "WhenOpened": "2024-02-24T23:15:51.276Z"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
