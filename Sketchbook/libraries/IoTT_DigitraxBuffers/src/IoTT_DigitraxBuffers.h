@@ -278,6 +278,7 @@ class IoTT_DigitraxBuffers
 //		void generateSpeedCmd(lnTransmitMsg * txBuffer, uint8_t thisSlot, uint8_t topSpeed);
 //		void generateFunctionCmd(lnTransmitMsg * txBuffer, lnReceiveBuffer * newData);
 		void purgeUnusedSlots();
+		void setDCCExtendedFuncCmd(lnReceiveBuffer* newData);
 
 	public:
 		slotDataBuffer slotBuffer;
@@ -362,7 +363,7 @@ class IoTT_DigitraxBuffers
 		uint16_t fctRefreshSlotIndex = 0;
 		uint32_t fctGroupIndex = 0;
 		uint16_t extFctCtr = 0;
-		
+
 };
 
 extern IoTT_DigitraxBuffers* digitraxBuffer; //pointer to DigitraxBuffers

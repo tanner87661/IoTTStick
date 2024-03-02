@@ -292,6 +292,57 @@ void setDCCFuncCmd(uint8_t slotNr, uint8_t * funcData) // funcNr, funcStatus
 
 }
 
+void IoTT_DigitraxBuffers::setDCCExtendedFuncCmd(lnReceiveBuffer* newData)
+{
+	lnTransmitMsg txBuffer;
+	uint8_t numBytes = (newData->lnData[3] & 0x70) >> 4;
+	uint16_t packet[numBytes];
+	uint16_t cabAddr;
+	bool send = false;
+	char* outStr = (char*)&txBuffer.lnData[0];
+
+	for (uint8_t i = 0; i < numBytes; i++) {
+		packet[i] = (newData->lnData[i + 5] + ((newData->lnData[4] & (0x01 << i)) != 0 ? 0x80 : 0));
+	}
+
+	if ((packet[0] & 0xC0) == 0xC0)// long address
+	{
+		cabAddr = ((packet[0] & 0x3F) << 8) + packet[1];
+
+		if ((packet[2] & 0xF0) == 0xA0)// F9 - F12
+		{
+			sprintf(outStr, "<f %i %i>", cabAddr, packet[2]);
+			send = true;
+		}
+		else if ((packet[2] & 0xFF) == 0xDE || (packet[2] & 0xFF) == 0xDF)// F13 - F28
+		{
+			sprintf(outStr, "<f %i %i %i>", cabAddr, packet[2], packet[3]);
+			send = true;
+		}		
+	}
+	else // short address
+	{
+		cabAddr = packet[0];
+
+		if ((packet[1] & 0xF0) == 0xA0)// F9 - F12
+		{
+			sprintf(outStr, "<f %i %i>", cabAddr, packet[1]);
+			send = true;
+		}
+		else if ((packet[1] & 0xFF) == 0xDE || (packet[1] & 0xFF) == 0xDF)// F13 - F28
+		{
+			sprintf(outStr, "<f %i %i %i>", cabAddr, packet[1], packet[2]);
+			send = true;
+		}		
+	}
+	if (send)
+	{
+		txBuffer.lnMsgSize = strlen(outStr);
+		//Serial.println(outStr);
+		dccPort->lnWriteMsg(txBuffer);
+	}
+}
+
 //Prog byte on main:  <w CAB CV VALUE>
 //Prog bit on main: <b CAB CV BIT VALUE>
 
@@ -403,12 +454,12 @@ void setDCCPowerOutMsg(uint8_t trStatus, uint8_t trType)
 {
 	lnTransmitMsg txBuffer;
 	char* outStr = (char*)&txBuffer.lnData[0];
-	strcpy(outStr, "");
+	strcpy(outStr, "<");
 	switch (trStatus)
 	{
-		case 0x82 : strcpy(outStr, "0"); break;
-		case 0x83 : strcpy(outStr, "1"); break;
-		case 0x85 : strcpy(outStr, "!"); break;
+		case 0x82 : strcat(outStr, "0"); break;
+		case 0x83 : strcat(outStr, "1"); break;
+		case 0x85 : strcat(outStr, "!"); break;
 	}
 	switch (trType)
 	{
@@ -417,14 +468,15 @@ void setDCCPowerOutMsg(uint8_t trStatus, uint8_t trType)
 		case 0x02 : strcat(outStr, " PROG"); break;
 		case 0x03 : strcat(outStr, " JOIN"); break;
 	}
+	strcat(outStr, ">");
 	txBuffer.lnMsgSize = strlen(outStr);
 	txBuffer.lnData[txBuffer.lnMsgSize] = 0;
 //	Serial.printf("try: %s\n", outStr);
 	dccPort->lnWriteMsg(txBuffer);
 
-	strcpy(outStr, "= C DC 55");
-	txBuffer.lnMsgSize = strlen(outStr);
-	txBuffer.lnData[txBuffer.lnMsgSize] = 0;
+//	strcpy(outStr, "= C DC 55");
+//	txBuffer.lnMsgSize = strlen(outStr);
+//	txBuffer.lnData[txBuffer.lnMsgSize] = 0;
 //	Serial.printf("try: %s\n", outStr);
 //	dccPort->lnWriteMsg(txBuffer);
 
@@ -948,21 +1000,21 @@ void IoTT_DigitraxBuffers::processLoop()
 			if (inpQuery != 0xFF)
 			{
 				queryDelay += queryInterval;
-//				Serial.printf("Set Switch %i to %i\n", 1020 - (inpQuery & 0x03), (inpQuery & 0x04) >> 2);
+				//				Serial.printf("Set Switch %i to %i\n", 1020 - (inpQuery & 0x03), (inpQuery & 0x04) >> 2);
 				sendSwitchCommand(0xB0, 1020 - (inpQuery & 0x03) - 1, (inpQuery & 0x04) >> 2, false);
 				inpQuery--;
 			}
 		}
-/*
-		if (millis() - getStatusTimer > statusInterval) //runs every 5 secs
-		{
-			reqDCCCurrent();
-			getStatusTimer += statusInterval;
-		}
-*/		
+		/*
+				if (millis() - getStatusTimer > statusInterval) //runs every 5 secs
+				{
+					reqDCCCurrent();
+					getStatusTimer += statusInterval;
+				}
+		*/
 		if (millis() - purgeSlotTimer > purgeInterval) //runs every 10 secs
 		{
-//			Serial.println("check purging");
+			//			Serial.println("check purging");
 			purgeUnusedSlots();
 			purgeSlotTimer += purgeInterval;
 		}
@@ -971,7 +1023,7 @@ void IoTT_DigitraxBuffers::processLoop()
 		{
 			if ((millis() - progSent) > (uint32_t)progTimeout)
 			{
-//				Serial.printf("Prog timeout");
+				//				Serial.printf("Prog timeout");
 				memcpy(&slotBuffer[0x7C][0], &progSlot[0], 10);
 				slotBuffer[0x7C][1] = 0x04;
 				prepSlotReadMsg(&txBuffer, 0x7C);
@@ -979,7 +1031,9 @@ void IoTT_DigitraxBuffers::processLoop()
 				progModeActive = false;
 			}
 		}
+
 	}
+	
 	else
 	{
 		if (progBuffer.size() > 0) //programmer sequence in progress
@@ -1206,7 +1260,7 @@ void IoTT_DigitraxBuffers::processLoop()
 								extFctCtr++;
 								keepGoing = false;
 							}
-							break;
+							break;							
 					}
 					fctGroupIndex--;
 				}
@@ -1220,22 +1274,7 @@ void IoTT_DigitraxBuffers::processLoop()
 				lnOutFct(txBuffer);
 			lastFctRefresh = millis();
 		}
-	
-	if ((millis() - fcRefresh) > fcRefreshInterval)
-	{
-		//refresh fast clock slot
-		setFCTime(getFCTime() + slotBuffer[0x7B][0], false); //call every second, so just add the fc rate
-		fcRefresh += fcRefreshInterval;
-	}
-	
-	if ((millis() - fcLastBroadCast) > fcBroadcastInterval)
-	{
-		prepSlotWriteMsg(&txBuffer, 0x7B);
-		if (broadcastFC)
-			lnOutFct(txBuffer);
-		fcLastBroadCast = millis(); //+= fcBroadcastInterval;
-//		Serial.printf(" Broadcast FC %i:%i -> %i\n", trunc(intFastClock/3600), trunc((intFastClock % 3600)/60), intFastClock);
-	}
+
 
 	if (millis() > nextBufferUpdate)
 	{
@@ -2208,98 +2247,126 @@ void IoTT_DigitraxBuffers::processBufferUpdates(lnReceiveBuffer * newData) //pro
 		case 0xE4: break; //intellibox transponding, tbd
 		
 		case 0xE0: //OPC_MULTI_SENSE_LONG as used by Digikeijs railcom detector
-			if ((translateLissy) & (newData->lnData[1] == 0x09))
+			if ((translateLissy) && (newData->lnData[1] == 0x09))
 			{
 				lnTransmitMsg thisBuffer;
 				prepLissyMsg(newData, &thisBuffer);
 				lnOutFct(thisBuffer);
 			}
 			break;
-        case 0xED: //OPC_IMM_PACKET
-        {
+		case 0xED: //OPC_IMM_PACKET
+		{
 			//add DCC decoder from switch and locos
 			if ((newData->lnData[1] == 0x0B) && (newData->lnData[2] == 0x7F))
 			{
 				byte recData[6];
-				for (int i=0; i < 5; i++)
+				for (int i = 0; i < 5; i++)
 				{
-					recData[i] = newData->lnData[i+4]; //get all the IMM bytes
+					recData[i] = newData->lnData[i + 4]; //get all the IMM bytes
 					if (i > 0)
 					{
-						recData[i] |= ((recData[0] & (0x01<<(i-1)))<<(8-i)); //distribute 8th  its to data bytes
-//						Serial.printf("%2X ", recData[i]);
+						recData[i] |= ((recData[0] & (0x01 << (i - 1))) << (8 - i)); //distribute 8th  its to data bytes
+						//                        Serial.printf("%2X ", recData[i]);
 					}
 				}
 				recData[0] = newData->lnData[3] >> 4; //# of bytes in IMM packet
-				if (recData[0] >= 3) //extended packet
+				if (recData[0] >= 2) //extended packet
 				{
+					//                   Serial.printf("rec 0: %2X\n", recData[0]);
 					if (recData[1] < 0x80) //Multi-Function decoders with 7 bit addresses
-					{
-//						Serial.println("Multi-Function decoders with 7 bit address");
+					{//F9-F28
+						uint16_t locoAddr = recData[1];
+						slotData* currSlot = getSlotDataByAddr(locoAddr);
+						//                       Serial.printf("rec 3: %2X\n", recData[2]);
+						if (currSlot)
+						{
+							switch (recData[2] & 0xE0)
+							{
+							case 0xA0:
+								(*currSlot)[10] = recData[2] & 0x0F;
+								//                                    Serial.printf("9-12 %2X\n", recData[2] & 0x0F);
+								break;
+							case 0xC0:
+							{
+								switch (recData[2] & 0x1F)
+								{
+								case 0x1E: (*currSlot)[11] = recData[3];
+									//                                            Serial.printf("13-20 %2X\n", recData[3]);
+									break;
+								case 0x1F: (*currSlot)[12] = recData[3];
+									//                                            Serial.printf("21-28 %2X\n", recData[3]);
+									break;
+								}
+							}
+							break;
+							default: break;
+							}
+						}
+						//						Serial.println("Multi-Function decoders with 7 bit address");
 					}
 					else
 						if (recData[1] < 0xC0) //Basic Accessory Decoders with 9 bit addresses and Extended Accessory Decoders with 11-bit addresses
 						{ //signals
 //							Serial.println("Basic Accessory 9 bit / Extended Accessory 11-bit");
-							word boardAddress = (((~recData[2]) & 0x70) << 2) | (recData[1] & 0x3F) ;
+							word boardAddress = (((~recData[2]) & 0x70) << 2) | (recData[1] & 0x3F);
 							byte turnoutPairIndex = (recData[2] & 0x06) >> 1;
-							word sigAddress = (((boardAddress-1)<<2) | turnoutPairIndex) + 1;
+							word sigAddress = (((boardAddress - 1) << 2) | turnoutPairIndex) + 1;
 							word sigAspect = recData[3] & 0x1F;
 							setSignalAspect(sigAddress, sigAspect);
 							if (handleSignalEvent)
 								handleSignalEvent(sigAddress, sigAspect);
 						}
 						else
-						  if (recData[1] < 0xE8) //Multi-Function Decoders with 14 bit addresses
-						  { //F9-F28
-							  uint16_t locoAddr = ((recData[1] & 0x3F) << 8) + recData[2];
-							  slotData * currSlot = getSlotDataByAddr(locoAddr);
-//							  Serial.printf("rec 3: %2X\n", recData[3]);
-							  if (currSlot)
-							  {
-								switch (recData[3] & 0xE0)
+							if (recData[1] < 0xE8) //Multi-Function Decoders with 14 bit addresses
+							{ //F9-F28
+								uint16_t locoAddr = ((recData[1] & 0x3F) << 8) + recData[2];
+								slotData* currSlot = getSlotDataByAddr(locoAddr);
+								//                              Serial.printf("rec 3: %2X\n", recData[3]);
+								if (currSlot)
 								{
+									switch (recData[3] & 0xE0)
+									{
 									case 0xA0:
 										(*currSlot)[10] = recData[3] & 0x0F;
-//										Serial.printf("9-12 %2X\n", recData[3] & 0x0F);
+										//                                        Serial.printf("9-12 %2X\n", recData[3] & 0x0F);
 										break;
 									case 0xC0:
+									{
+										switch (recData[3] & 0x1F)
 										{
-											switch (recData[3] & 0x1F)
-											{
-												case 0x1E: (*currSlot)[11] = recData[4];
-//													Serial.printf("13-20 %2X\n", recData[4]);
-													break;
-												case 0x1F: (*currSlot)[12] = recData[4];
-//													Serial.printf("21-28 %2X\n", recData[4]);
-													break;
-											}
+										case 0x1E: (*currSlot)[11] = recData[4];
+											//                                                    Serial.printf("13-20 %2X\n", recData[4]);
+											break;
+										case 0x1F: (*currSlot)[12] = recData[4];
+											//                                                    Serial.printf("21-28 %2X\n", recData[4]);
+											break;
 										}
-										break;
+									}
+									break;
 									default: break;
+									}
 								}
-							  }
-//							Serial.println("Multi-Function Decoders with 14 bit");
-							  
-						  }
-						  else
-							if (recData[1] < 0xFD) //reserved
-							{
-//								Serial.println("RESERVED");
+								//                            Serial.println("Multi-Function Decoders with 14 bit");
+
 							}
 							else
-								if (recData[1] < 0xFF) //Advanced Extended Packet Formats
+								if (recData[1] < 0xFD) //reserved
 								{
-//								Serial.println("Advanced Extended Packet");
+									//								Serial.println("RESERVED");
 								}
-								else //idle packet
-								{
-//								Serial.println("IDLE");
-								}
+								else
+									if (recData[1] < 0xFF) //Advanced Extended Packet Formats
+									{
+										//    								Serial.println("Advanced Extended Packet");
+									}
+									else //idle packet
+									{
+										//    								Serial.println("IDLE");
+									}
 				}
 			}
 			break;
-        }
+		}
         case 0xE5: 
         {
 			switch (newData->lnData[1])
@@ -3079,16 +3146,18 @@ bool IoTT_DigitraxBuffers::processDCCGenerator(lnReceiveBuffer * newData)
 					{
 						case 0x7F: //OPC_IMM_PACKET
 						{
-							uint8_t numBytes = (newData->lnData[3] & 0x70) >> 4;
-//							Serial.println(numBytes);
-							txBuffer.lnData[0] = 4; //OpCode for direct DCC command <
-							for (uint8_t i = 0; i < numBytes; i++)
-								txBuffer.lnData[1+i] = newData->lnData[i+5] + ((newData->lnData[4] & (0x01 << i)) << (7 - i));
-							txBuffer.lnMsgSize = numBytes + 1;
-							if (dccPort)
-								for (uint8_t i = 0; i < (newData->lnData[3] & 0x07); i++)
-									dccPort->lnWriteMsg(txBuffer);
-								//dccOutFct(txBuffer);
+//							uint8_t numBytes = (newData->lnData[3] & 0x70) >> 4;
+////							Serial.println(numBytes);
+//							txBuffer.lnData[0] = 4; //OpCode for direct DCC command <
+//							for (uint8_t i = 0; i < numBytes; i++)
+//								txBuffer.lnData[1+i] = newData->lnData[i+5] + ((newData->lnData[4] & (0x01 << i)) << (7 - i));
+//							txBuffer.lnMsgSize = numBytes + 1;
+//							if (dccPort)
+//								for (uint8_t i = 0; i < (newData->lnData[3] & 0x07); i++)
+//									dccPort->lnWriteMsg(txBuffer);
+//								//dccOutFct(txBuffer);
+
+							setDCCExtendedFuncCmd(newData);
 						}
 						break;
 					}
