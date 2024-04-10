@@ -60,20 +60,26 @@ void BoosterGroup::requestSVData(uint8_t svCmd, int16_t memLoc) //set report fla
     {
       case 7: reportFlags |= 0x01; break;
       case 8: reportFlags |= 0x02; break;
-      default:
+      case 2:
+//      case 6:
         switch (memLoc & 0x00FF)
         {
-          case 0x00: reportFlags |= 0x0004; break; //get number of modules, LN Mode, LN Addr
-          case 0x04: reportFlags |= 0x0008; break; //get power on mode, accepted signal type
-          case 0x08: reportFlags |= 0x0010; break; //get LN Actuator for Device on type, state, addr
-          case 0x0C: reportFlags |= 0x0020; break; //get LN Actuator for Device off type, state, addr
-
-          
-          case 0xF0: reportFlags |= 0x0100; break; //get current signal status
-          case 0xF1: reportFlags |= 0x0200; break; //get current global power status
-
-          
+//          case 0x04: reportFlags |= 0x0008; break; //get power on mode, accepted signal type
+//          case 0xF0: reportFlags |= 0x0100; break; //get current signal status
+//          case 0xF1: reportFlags |= 0x0200; break; //get current global power status
           case 0xFF: reportFlags = 0xFFFF; break; //report all
+          default: reportQueue.addRequest(memLoc  & 0x00FF); break;
+        }
+        break;
+      case 6:
+        switch (memLoc & 0x00FF)
+        {
+//          case 0x00: reportFlags |= 0x0004; break; //get number of modules, LN Mode, LN Addr
+//          case 0x08: reportFlags |= 0x0010; break; //get LN Actuator for Device on type, state, addr
+//          case 0x0C: reportFlags |= 0x0020; break; //get LN Actuator for Device off type, state, addr
+          
+            default: reportQueue.addRequest((memLoc  & 0x00FF) + 0x0100); break;
+//          case 0xFF: reportFlags = 0xFFFF; break; //report all
         }
       break;
     }
@@ -84,6 +90,88 @@ void BoosterGroup::requestSVData(uint8_t svCmd, int16_t memLoc) //set report fla
     for (uint8_t i = 0; i < 6; i++)
       if ((i == boosterNr) || (memLoc & 0xFF00) == 0xFF00)
         bData[i].requestSVData(svCmd, memLoc & 0x00FF);
+  }
+}
+
+uint8_t BoosterGroup::getMemoryPos(uint16_t memLoc)
+{
+  switch (memLoc)
+  {
+    case 0x00: return bConfig.numMods;
+    case 0x01: return bConfig.useLN;
+    case 0x02: return (bConfig.lnAddress >> 8);
+    case 0x03: return (bConfig.lnAddress & 0x00FF);
+    case 0x04: return bConfig.devMode;
+    case 0x08: return bConfig.globalOn.trigDef;
+    case 0x09: return (bConfig.globalOn.devAddr >> 8);
+    case 0x0A: return bConfig.globalOn.devAddr & 0x00FF;
+    case 0x0C: return bConfig.globalOff.trigDef;
+    case 0x0D: return (bConfig.globalOff.devAddr >> 8);
+    case 0x0E: return bConfig.globalOff.devAddr & 0x00FF;
+    case 0xF0: return sigStatus & 0x01;
+    case 0xF1: return pwrStatus & 0x01;
+    default: return 0xFF;
+  }  
+}
+
+void BoosterGroup::setMemoryPos(uint16_t memLoc, uint8_t memVal)
+{
+  //flag for reporting
+  switch (memLoc)
+  {
+    case 0x00: 
+      {
+        uint8_t oldNumMods = bConfig.numMods;
+        if (oldNumMods < memVal)
+        {
+          bConfig.numMods = memVal;
+          for (uint8_t i = oldNumMods; i < bConfig.numMods; i++)
+            bData[i].initNode(i, bConfig.lnAddress);
+        }
+      }
+      break;
+    case 0x01: 
+      bConfig.useLN = memVal; 
+      break;
+    case 0x02: 
+      bConfig.lnAddress = (bConfig.lnAddress & 0x00FF) + (memVal << 8); 
+      break;
+    case 0x03: 
+      bConfig.lnAddress = (bConfig.lnAddress & 0xFF00) + memVal; 
+      break;
+    case 0x04: //set/get power on mode, accepted signal type
+      bConfig.devMode = memVal;
+      break;
+    case 0x08: //set LN Actuator for Device on type, state
+      bConfig.globalOn.trigDef = memVal;
+      break;
+    case 0x09: //set LN Actuator for Device on addr hi
+      bConfig.globalOn.devAddr = (bConfig.globalOn.devAddr & 0x00FF) + (memVal << 8);
+      break;
+    case 0x0A: //set LN Actuator for Device on addr lo
+      bConfig.globalOn.devAddr = (bConfig.globalOn.devAddr & 0xFF00) + memVal; 
+      break;
+
+    case 0x0C: //set LN Actuator for Device on type, state
+      bConfig.globalOff.trigDef = memVal;
+      break;
+    case 0x0D: //set LN Actuator for Device on addr hi
+      bConfig.globalOff.devAddr = (bConfig.globalOff.devAddr & 0x00FF) + (memVal << 8);
+      break;
+    case 0x0E: //set LN Actuator for Device on addr lo
+      bConfig.globalOff.devAddr = (bConfig.globalOff.devAddr & 0xFF00) + memVal; 
+      break;
+    case 0xF0: //request signal status
+      reportFlags |= 0x0100;
+      break;
+    case 0xF1: //set global power status on/off
+      setExtStatus(-1, memVal); //include updating all subnodes
+      break;
+    case 0xFF: //write all data to EEPROM
+//      Serial.println("write EEPROM");
+      writeEEPROM(-1, true); //include updating all subnodes
+      break;
+    default: return NULL;
   }
 }
 
@@ -104,45 +192,16 @@ void BoosterGroup::writeSVData(uint8_t svCmd, int16_t memLoc, uint8_t svData[]) 
           requestSVData(0x08, 0);
         }
         break;
-      case 0x01: ;
+      case 0x01: 
+        setMemoryPos(memLoc, svData[0]);
+        reportQueue.addRequest(memLoc);
+        break;
       case 0x05:
-        switch (memLoc)
         {
-          case 0x00: //set/get number of modules, LN Mode, LN Addr
-          {
-            uint8_t oldNumMods = bConfig.numMods;
-            bConfig.numMods = svData[0];
-            bConfig.useLN = svData[1];
-            bConfig.lnAddress = (svData[2] << 8) + svData[3];
-            if (oldNumMods < bConfig.numMods)
-            {
-              for (uint8_t i = oldNumMods; i < bConfig.numMods; i++)
-                bData[i].initNode(i, bConfig.lnAddress);
-            }
-            break;
-          }
-          case 0x04: //set/get power on mode, accepted signal type
-            bConfig.devMode = svData[0];
-            break;
-          case 0x08: //set LN Actuator for Device on type, state, addr
-            bConfig.globalOn.trigDef = svData[0];
-            bConfig.globalOn.devAddr = (svData[1] << 8) + svData[2];
-            break;
-          case 0x0C: //set LN Actuator for Device off type, state, addr
-            bConfig.globalOff.trigDef = svData[0];
-            bConfig.globalOff.devAddr = (svData[1] << 8) + svData[2];
-            break;
-//          case 0xF0: //signal status is read only
-//            break;
-          case 0xF1: //set global power status on/off
-            setExtStatus(-1, svData[0]); //include updating all subnodes
-            break;
-          case 0xFF: //write all data to EEPROM
-//            Serial.println("write EEPROM");
-            writeEEPROM(-1, true); //include updating all subnodes
-            break;
+          for (uint8_t i = 0; i < 4; i++) 
+            setMemoryPos(memLoc+i, svData[i]);
+          reportQueue.addRequest(memLoc + 0x0100);
         }
-        requestSVData(svCmd & 0x0F, memLoc);
         break;
       default: 
         break;
@@ -351,6 +410,18 @@ bool BoosterGroup::processReportRequest()
   {
     lastReportTime = millis();
     char myMqttMsg[100];
+
+    if (reportQueue.hasRequest())
+    {
+      uint16_t thisReq = reportQueue.getRequest();
+      if (thisReq & 0x0100)
+        sprintf(myMqttMsg, quadByteResponse, bConfig.lnAddress, 0x46, thisReq & 0xFF, getMemoryPos(thisReq & 0x00FF), getMemoryPos((thisReq & 0x00FF) + 1), getMemoryPos((thisReq & 0x00FF) + 2), getMemoryPos((thisReq & 0x00FF) + 3));
+      else
+        sprintf(myMqttMsg, singleByteResponse, bConfig.lnAddress, 0x42, thisReq & 0xFF, getMemoryPos(thisReq & 0x00FF));
+      Serial.print(myMqttMsg);
+      return true;
+    }
+
     if (reportFlags & 0x01) //
     {
       reportFlags &= ~0x01;

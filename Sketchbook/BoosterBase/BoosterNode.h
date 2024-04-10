@@ -3,6 +3,7 @@
 #include "Arduino.h"
 #include <EEPROM.h>
 #include <ArduinoJson.h>
+#include "SVMgr.h"
 
 #define numSamples 600
 #define resSamples 800
@@ -133,6 +134,7 @@ class Booster {
   uint8_t nodeNr = 0;
   private:
   uint16_t reportFlags;
+  svBuffer reportQueue;
   uint16_t lnAddress;
   intNodeStatus intStatTx = 0;
   uint8_t olfTx = 0;

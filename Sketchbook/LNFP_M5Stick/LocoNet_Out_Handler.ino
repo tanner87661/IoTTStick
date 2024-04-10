@@ -15,7 +15,7 @@ void sendSVCommand2(uint8_t SRC, uint8_t SV_CMD, uint16_t DST, uint16_t ADDR, ui
   txData.lnData[7] = (DST & 0x7F00) >> 8;
   txData.lnData[8] = ADDR & 0x007F;
   txData.lnData[9] = (ADDR & 0x7F00) >> 8;
-  txData.lnData[10]= 0x10 + ((DTA[3] & 0x8000) >> 12)  + ((DTA[2] & 0x0080) >> 5)  + ((DTA[1] & 0x8000) >> 14)  + ((DTA[0] & 0x0080) >> 7);  
+  txData.lnData[10]= 0x10 + ((DTA[3] & 0x80) >> 4)  + ((DTA[2] & 0x80) >> 5)  + ((DTA[1] & 0x80) >> 6)  + ((DTA[0] & 0x80) >> 7);  
   txData.lnData[11]= (DTA[0] & 0x7F);
   txData.lnData[12]= (DTA[1] & 0x7F);
   txData.lnData[13]= (DTA[2] & 0x7F);

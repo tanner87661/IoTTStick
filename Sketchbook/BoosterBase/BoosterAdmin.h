@@ -3,6 +3,7 @@
 #include "BoosterNode.h"
 #include "Arduino.h"
 #include <ArduinoJson.h>
+#include "SVMgr.h"
 
 #define manufID 25
 #define devID 25
@@ -72,11 +73,14 @@ class BoosterGroup {
 
   private:
   uint16_t reportFlags;
+  svBuffer reportQueue;
   Booster* getBooster(uint8_t ofIndex);
   void checkInputSignal();
   private:
 //variables for status management
   boosterConfigData bConfig;
+  uint8_t getMemoryPos(uint16_t memLoc);
+  void setMemoryPos(uint16_t memLoc, uint8_t memVal);
 
 //variables for node management
   uint8_t devIndex = 0; //pointer to the current booster in the interrupt

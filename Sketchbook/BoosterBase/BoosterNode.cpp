@@ -240,7 +240,7 @@ bool Booster::processReportRequest()
       bool sendOLStat = ((bCfg.repOverload.trigDef & 0xE0) > 0) && (bOps.currOLF != olfTx);
       uint16_t OLFVal = round(bOps.currOLF);
       uint16_t TVal = round(bOps.currTemp/100);
-      sprintf(myMqttMsg, DCCAmpResponse,nodeNr, OLFVal, TVal, bOps.currRMS, olfTx, bOps.intStat, bOps.extStat, digitalRead(bCfg.reversePin));
+      sprintf(myMqttMsg, DCCAmpResponse, nodeNr, OLFVal, TVal, bOps.currRMS, olfTx, bOps.intStat, bOps.extStat, digitalRead(bCfg.reversePin));
       Serial.print(myMqttMsg);
       if (sendIntStat)
       {

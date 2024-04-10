@@ -23,6 +23,7 @@
 #ifndef DCCTimer_h
 #define DCCTimer_h
 #include "Arduino.h"
+#include "SVMgr.h"
 
 typedef void (*INTERRUPT_CALLBACK)();
 
