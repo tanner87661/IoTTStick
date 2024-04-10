@@ -1,3 +1,4 @@
+
 void establishWifiConnection(AsyncWebServer * webServer,DNSServer * dnsServer)
 {
     AsyncWiFiManager wifiManager(webServer,dnsServer);
@@ -17,7 +18,7 @@ void establishWifiConnection(AsyncWebServer * webServer,DNSServer * dnsServer)
         //useful to make it all retry or go to sleep
         //in seconds
         Serial.println("Set STA Mode");
-        wifiManager.setTimeout(120); 
+        wifiManager.setTimeout(240); 
         String hlpStr = "New_IoTT-Stick_" + String((uint32_t)ESP.getEfuseMac());
         if (!wifiManager.autoConnect(hlpStr.c_str()))
         {
@@ -27,7 +28,10 @@ void establishWifiConnection(AsyncWebServer * webServer,DNSServer * dnsServer)
         else
         {
           WiFi.setHostname(deviceName.c_str());
-          Serial.println(WiFi.localIP());
+          dyn_ip = WiFi.localIP();
+//          Serial.println(dyn_ip);
+          mySSID = WiFi.SSID();
+          wifiStatus = WiFi.status();
         }
     }
     //AP Mode is fallback position 
@@ -41,7 +45,11 @@ void establishWifiConnection(AsyncWebServer * webServer,DNSServer * dnsServer)
       Serial.print("Local Access Point at ");
       Serial.println(WiFi.softAPIP());
     }
+
+    MDNS.begin(WiFi.getHostname());
+    MDNS.addService("http", "tcp", 80);
     
+    wifiMode = WiFi.getMode();
     wifiCancelled = false; //reset cancellation mode
     lastWifiUse = millis(); //reset timeout timer
     

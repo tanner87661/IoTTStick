@@ -1,18 +1,18 @@
 // ArduinoJson - https://arduinojson.org
-// Copyright © 2014-2022, Benoit BLANCHON
+// Copyright © 2014-2023, Benoit BLANCHON
 // MIT License
 
 #include <ArduinoJson/StringStorage/StringCopier.hpp>
 #include <catch.hpp>
 
-using namespace ARDUINOJSON_NAMESPACE;
+using namespace ArduinoJson::detail;
 
 TEST_CASE("StringCopier") {
   char buffer[4096];
 
   SECTION("Works when buffer is big enough") {
     MemoryPool pool(buffer, addPadding(JSON_STRING_SIZE(5)));
-    StringCopier str(pool);
+    StringCopier str(&pool);
 
     str.startString();
     str.append("hello");
@@ -24,7 +24,7 @@ TEST_CASE("StringCopier") {
 
   SECTION("Returns null when too small") {
     MemoryPool pool(buffer, sizeof(void*));
-    StringCopier str(pool);
+    StringCopier str(&pool);
 
     str.startString();
     str.append("hello world!");
@@ -35,7 +35,7 @@ TEST_CASE("StringCopier") {
 
   SECTION("Increases size of memory pool") {
     MemoryPool pool(buffer, addPadding(JSON_STRING_SIZE(6)));
-    StringCopier str(pool);
+    StringCopier str(&pool);
 
     str.startString();
     str.save();
@@ -46,7 +46,7 @@ TEST_CASE("StringCopier") {
 
   SECTION("Works when memory pool is 0 bytes") {
     MemoryPool pool(buffer, 0);
-    StringCopier str(pool);
+    StringCopier str(&pool);
 
     str.startString();
     REQUIRE(str.isValid() == false);
@@ -55,7 +55,7 @@ TEST_CASE("StringCopier") {
 }
 
 static const char* addStringToPool(MemoryPool& pool, const char* s) {
-  StringCopier str(pool);
+  StringCopier str(&pool);
   str.startString();
   str.append(s);
   return str.save().c_str();

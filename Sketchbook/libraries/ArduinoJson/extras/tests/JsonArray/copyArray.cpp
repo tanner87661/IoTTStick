@@ -1,5 +1,5 @@
 // ArduinoJson - https://arduinojson.org
-// Copyright © 2014-2022, Benoit BLANCHON
+// Copyright © 2014-2023, Benoit BLANCHON
 // MIT License
 
 #include <ArduinoJson.h>
@@ -165,7 +165,7 @@ TEST_CASE("copyArray()") {
     char json[32] = "";
     int source[][3] = {{1, 2, 3}, {4, 5, 6}};
 
-    CAPTURE(SIZE)
+    CAPTURE(SIZE);
 
     bool ok = copyArray(source, array);
     CAPTURE(doc.memoryUsage());

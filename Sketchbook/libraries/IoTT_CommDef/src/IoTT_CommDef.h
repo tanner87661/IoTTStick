@@ -1,7 +1,19 @@
 #ifndef IoTT_CommDef_h
 #define IoTT_CommDef_h
 
-#include <arduino.h>
+#define LNDebug
+
+#define DebugPrint
+
+#ifdef DebugPrint
+	#define SerialDebug(x) Serial.println(x)
+	#define SerialDebugf(x) Serial.printf(x)
+#else
+	#define SerialDebug(x)
+	#define SerialDebugf(x)
+#endif
+
+#include <Arduino.h>
 #include <inttypes.h>
 #include <AsyncTCP.h>
 #include <ESPAsyncWebServer.h>
@@ -26,7 +38,7 @@
 
 #define lnMaxMsgSize 48 //this is the maximum length of LocoNet Messages as defined by the standard. Do not change.
 
-enum messageType : uint8_t {LocoNet=0, OpenLCB=1, DCCEx=2};
+enum messageType : uint8_t {LocoNet=0, OpenLCB=1, DCCEx=2, DCCBoost=3};
 enum nodeType : uint8_t {standardMode = 0, limitedMaster = 1, fullMaster = 2};
 
 //this type is used to send a new message to Loconet
@@ -105,6 +117,15 @@ typedef struct
 
 typedef struct
 {
+	uint8_t cmdName = 0;
+	uint32_t execTime = 0;
+	uint16_t cvNr = 0;
+	uint8_t cvVal = 0;
+	uint8_t execStat = 0;
+} progCmd;
+
+typedef struct
+{
 	char pageName[50];
 	AsyncWebSocketClient * wsClient;
 } wsClientInfo;
@@ -122,11 +143,12 @@ void setXORByte(uint8_t * msgData);
 bool getXORCheck(uint8_t * msgData, uint8_t targetLen = 0);
 int8_t getWSClient(int8_t withID);
 int8_t getWSClientByPage(uint8_t startFrom, char * toWebPage);
-//void dispMsg(uint8_t * msgData, uint8_t targetLen = 0);
-//void dispSlot(uint8_t * slotBytes);
-//bool verifySyntax(uint8_t * msgData);
 void untokstr(char* strList[], uint8_t listLen, char* inpStr, const char* token); 
 bool isSameMsg(lnReceiveBuffer* msgA, lnReceiveBuffer* msgB);
+
+	void dispMsg(uint8_t * msgData, uint8_t targetLen = 0);
+	void dispSlot(uint8_t * slotBytes);
+	bool verifySyntax(uint8_t * msgData);
 
 class rmsBuffer
 {

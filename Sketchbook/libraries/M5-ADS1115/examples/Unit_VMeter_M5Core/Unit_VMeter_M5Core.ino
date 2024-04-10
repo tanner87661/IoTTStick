@@ -7,7 +7,7 @@
 * 获取更多资料请访问: https://docs.m5stack.com/zh_CN/unit/vmeter
 *
 * Describe: Vmeter_ADS1115.
-* Date: 2022/7/11
+* Date: 2022/8/10
 *******************************************************************************
   Please connect to Port A,Measure voltage and display in the screen.
   请连接端口A,测量电压并显示到屏幕上
@@ -18,9 +18,9 @@ will be overwritten and the measurement results will be inaccurate. 注意: EEPR
 */
 
 #include "M5Stack.h"
-#include "voltmeter.h"
+#include "M5_ADS1115.h"
 
-Voltmeter voltmeter;
+ADS1115 voltmeter;
 
 float page512_volt  = 5000.0F;
 float page4096_volt = 60000.0F;
@@ -31,7 +31,7 @@ int16_t adc_raw     = 0;
 
 int16_t hope = 0.0;
 
-voltmeterGain_t now_gain = PAG_512;
+ADS1115Gain_t now_gain = PAG_512;
 
 void setup() {
     M5.begin();
@@ -98,7 +98,7 @@ void loop(void) {
         voltmeter.setGain(now_gain);
     }
 
-    voltmeter.getVoltage();
+    voltmeter.getValue();
 
     volt_raw_list[raw_now_ptr] = voltmeter.adc_raw;
     raw_now_ptr                = (raw_now_ptr == 9) ? 0 : (raw_now_ptr + 1);

@@ -18,9 +18,9 @@
 */
 
 #include "M5Atom.h"
-#include "voltmeter.h"
+#include "M5_ADS1115.h"
 
-Voltmeter voltmeter;
+ADS1115 voltmeter;
 
 float page512_volt  = 5000.0F;
 float page4096_volt = 60000.0F;
@@ -32,7 +32,7 @@ int16_t adc_raw     = 0;
 int16_t hope           = 0.0;
 uint8_t voltage_change = 0;
 
-voltmeterGain_t now_gain = PAG_512;
+ADS1115Gain_t now_gain = PAG_512;
 
 void setup() {
     M5.begin();
@@ -75,7 +75,7 @@ void loop(void) {
             voltage_change = 0;
         }
     }
-    voltmeter.getVoltage();
+    voltmeter.getValue();
 
     volt_raw_list[raw_now_ptr] = voltmeter.adc_raw;
     raw_now_ptr                = (raw_now_ptr == 9) ? 0 : (raw_now_ptr + 1);

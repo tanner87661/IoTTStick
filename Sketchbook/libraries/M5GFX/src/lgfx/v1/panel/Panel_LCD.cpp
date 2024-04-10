@@ -33,6 +33,14 @@ namespace lgfx
       return false;
     }
 
+    // pin_csが設定されておらずバスタイプがi2cでない場合は、
+    // トランザクション終了時にnopを送信する。
+    // これによってSPIバスをSDカード等と共有が可能となる。
+    // ※ _nop_closingがtrueであることをチェックしている理由は、
+    //    派生クラス側でこの機能を無効化できるようにするため。
+    //    具体的には、GC9A01はNOPを受信すると誤動作を起こすため無効化する必要がある。
+    _nop_closing = _nop_closing && (_cfg.pin_cs < 0) && (_bus->busType() != bus_type_t::bus_i2c);
+
     startWrite(true);
 
     for (uint8_t i = 0; auto cmds = getInitCommands(i); i++)
@@ -72,7 +80,7 @@ namespace lgfx
       _bus->writeData(0, 8);
     }
 
-    if (_cfg.pin_cs < 0 && _bus->busType() != bus_type_t::bus_i2c)
+    if (_nop_closing)
     {
       write_command(_cmd_nop); // NOP command
     }
@@ -173,17 +181,26 @@ namespace lgfx
         _bus->writeData(0, 8);
         _has_align_data = false;
       }
-      _bus->writeCommand(data << 8, 16);
+      _bus->writeCommand(data << 8 | data >> 8, 16);
     }
   }
 
-  uint32_t Panel_LCD::readCommand(uint_fast8_t cmd, uint_fast8_t index, uint_fast8_t len)
+  uint32_t Panel_LCD::readCommand(uint_fast16_t cmd, uint_fast8_t index, uint_fast8_t length)
   {
+    size_t dlen = 8 << _cfg.dlen_16bit;
     startWrite();
     write_command(cmd);
-    index = (index << 3) + _cfg.dummy_read_bits;
-    auto res = read_bits(index, len << 3);
+    _bus->beginRead((index * dlen) + _cfg.dummy_read_bits);
+
+    uint32_t res = 0;
+    for (size_t i = 0; i < length; ++i)
+    {
+      res += ((_bus->readData(dlen) >> (dlen - 8)) & 0xFF) << (i * 8);
+    }
+    cs_control(true);
+    _bus->endRead();
     endWrite();
+
     if (_in_transaction) { cs_control(false); }
     return res;
   }
@@ -423,6 +440,11 @@ namespace lgfx
     endWrite();
 
     if (_in_transaction) { cs_control(false); }
+  }
+
+  int32_t Panel_LCD::getScanLine(void)
+  {
+    return getSwap16(readCommand(CMD_GETSCANLINE, 0, 2));
   }
 
   void Panel_LCD::set_window_8(uint_fast16_t xs, uint_fast16_t ys, uint_fast16_t xe, uint_fast16_t ye, uint32_t cmd)

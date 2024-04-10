@@ -37,6 +37,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #include <Adafruit_Sensor.h>
 #include <Adafruit_BNO055.h>
 #include <TMAG5273.h>
+//#include <SparkFun_TMAG5273_Arduino_Library.h>
 #include <utility/imumaths.h>
 #include <M5Unified.h>
 //#include <OneDimKalman.h>
@@ -54,17 +55,19 @@ extern uint16_t sendMsg(lnTransmitMsg txData);
 #define rxBufferSize 64
 #define txBufferSize 64
 #define verBufferSize 48
-#define maxSpeedSteps 128
+#define maxSpeedSteps 127
 #define accel2Steps 500 //start sampling
-#define maxSampleTime 8000000 //sampling complete after micros()
+#define maxSampleTime 10000000 //sampling complete after micros()
 #define minTestWheelTurns	6 //a successful sampling must last at least x wheel turns
 #define crawlTurns 5 //wheel turns per second for crawl speed
 
 #define queBufferSize 50 //messages that can be written in one burst before buffer overflow
 #define measuringInterval 5 //ms 200 samples per second
-#define speedTestInterval 200 //ms call test function 5 times per second
+#define sampleBufferSize 50 //last mag readings to build average, max 255
+#define speedTestInterval 100 //ms call test function 5 times per second
 #define magOverflow 360.0
 #define speedChangeTimeout 500 //ms
+#define noIncreaseLimit 3 //number of measurements without increasing speed to determine end test
 
 typedef struct 
 {
@@ -74,6 +77,13 @@ typedef struct
 
 const uint8_t corrLen = 4;
 const coordPt linCorr[corrLen] = {0,0,110,150,280,190,360,360};
+
+typedef struct
+{
+	float sampleArray[sampleBufferSize];
+	uint8_t sampleIndex;
+	float sampleSum;
+} sampleBuffer;
 
 typedef struct 
 {
@@ -101,16 +111,21 @@ typedef struct
     uint32_t sampleTime;
 	uint8_t lastSpeedStep = 0;
 	uint8_t crawlSpeedStep = 1;
+	uint8_t poiIndex = 0; //val 0 = initial table test val 1 = refinement phase
+	float_t testSpeedMax = 0;
+	uint8_t maxSpeedCtr = 0;
+	uint8_t maxTestSpeedStep = 0;
+	bool trackLimitViolation = false;
 	bool vMaxComplete = false;
 }dirData;
 
 typedef struct
 {
 	bool speedTestRunning = false; //test in progress
-	uint8_t masterPhase = 0; //0: test running 1: creep to end of track 2: reverse direction
+	uint8_t masterPhase = 0; //0: test running 1: crawl to end of track 2: reverse direction
 	float_t testTrackLen = 0; //available track len in mm
-	uint8_t testSteps = 0; // steps by default
-	float sampleMinDistance = 500; //mm, calculated based on wheel diameter and # of turns
+	uint8_t testSteps = 127; //0; // steps by default
+	float sampleMinDistance = 150; //mm, calculated based on wheel diameter and # of turns
 	bool upDir = true; //forward test
 	int8_t upDirPos = -1; //0 false 1 true means positive rel integrator 0xFF undefined
 	float_t lastLinIntegrator = 0; //position of last measurement
@@ -122,9 +137,7 @@ typedef struct
 	uint32_t measureStartTime = micros();
 	bool validSample = false; //tell the task to record sample data in speed table
 	float_t testStartLinIntegrator = 0; //the distance reading the testSpeed was considered achieved
-	
-	float_t vMaxTest = 300;
-
+	std::vector<float> testPOI;
 	dirData testState[2]; //0: fw 1: bw encoded by upDir
 }testAdminData;
 
@@ -136,11 +149,12 @@ typedef struct
 } speedTable;
 
 extern std::vector<wsClientInfo> globalClients; // a list to hold all clients when in server mode
+//extern char* wsTxBuffer; //use the existing buffer 16kb to send mqtt messages
 
 class IoTT_TrainSensor
 {
 public:
-	IoTT_TrainSensor(TwoWire * newWire, uint8_t sda, uint8_t scl);
+	IoTT_TrainSensor(TwoWire * newWire);
 	~IoTT_TrainSensor();
 	void begin();
 	void processLoop();
@@ -151,9 +165,11 @@ public:
 	void setTxCallback(txFct newCB);
 	void loadLNCfgJSON(DynamicJsonDocument doc);
 	volatile void sensorTask(void * thisParam);
-	void setRepRate(AsyncWebSocketClient * newClient, int newRate);
-	void reqDCCAddrWatch(AsyncWebSocketClient * newClient, int16_t dccAddr, bool simulOnly);
-	void startTest(float_t trackLen, float_t vMax, uint8_t pMode);
+	void setRepRate(int newRate);
+//	void setRepRate(AsyncWebSocketClient * newClient, int newRate);
+	void reqDCCAddrWatch(int16_t dccAddr, bool simulOnly);
+//	void reqDCCAddrWatch(AsyncWebSocketClient * newClient, int16_t dccAddr, bool simulOnly);
+	void startTest(float_t trackLen, float_t vMax, std::vector<float> pMode);
 	void stopTest();
 	void sendSpeedCommand(uint8_t newSpeed);
 	void toggleDirCommand();
@@ -162,8 +178,9 @@ public:
 private:
 	void sendSpeedTableDataToWeb(bool isFinal);
 //	void sendPosDataToWeb();
-	void sendSensorDataToWeb();
+	void sendSensorDataToWeb(uint16_t updateRate);
 	void clrSpeedTable();
+	int8_t getNextPrecStep(speedTable * dataTable, bool forwardDir);
 	bool processTestStep(sensorData * sensStatus);
 	bool processSpeedTest(); //returns false if complete
 	void displayIMUSensorDetails();
@@ -201,7 +218,7 @@ private:
 	bool reloadOffset = false; //flag the task to reset the IMU offsets
 	uint8_t mountStyle = 0; //flat mount
 	speedTable speedSample;
-	
+	sampleBuffer avgMove;
    // Member functions
 };
 

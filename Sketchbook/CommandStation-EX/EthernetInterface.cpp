@@ -27,6 +27,7 @@
 #include "EthernetInterface.h"
 #include "DIAG.h"
 #include "CommandDistributor.h"
+#include "WiThrottle.h"
 #include "DCCTimer.h"
 
 EthernetInterface * EthernetInterface::singleton=NULL;
@@ -66,17 +67,24 @@ EthernetInterface::EthernetInterface()
         DIAG(F("Ethernet.begin FAILED"));
         return;
     } 
-    #endif       
-    if (Ethernet.hardwareStatus() == EthernetNoHardware)
-      DIAG(F("Ethernet shield not detected or is a W5100"));
-
+    #endif
+    if (Ethernet.hardwareStatus() == EthernetNoHardware) {
+      DIAG(F("Ethernet shield not found or W5100"));
+    }
+  
     unsigned long startmilli = millis();
     while ((millis() - startmilli) < 5500) { // Loop to give time to check for cable connection
-      if (Ethernet.linkStatus() == LinkON)
-	break;
-      DIAG(F("Ethernet waiting for link (1sec) "));
-      delay(1000);
+        if (Ethernet.linkStatus() == LinkON)
+            break;
+        DIAG(F("Ethernet waiting for link (1sec) "));
+        delay(1000);
     }
+    // now we either do have link of we have a W5100
+    // where we do not know if we have link. That's
+    // the reason to now run checkLink.
+    // CheckLinks sets up outboundRing if it does
+    // not exist yet as well.
+    checkLink();
 }
 
 /**
@@ -93,26 +101,27 @@ EthernetInterface::~EthernetInterface() {
  * @brief Main loop for the EthernetInterface
  * 
  */
-void EthernetInterface::loop() {
-  if(!singleton || (!singleton->checkLink()))
-    return;
-
-  switch (Ethernet.maintain()) {
-  case 1:
-    //renewed fail
-    DIAG(F("Ethernet Error: renewed fail"));
-    singleton=NULL;
-    return;
-  case 3:
-    //rebind fail
-    DIAG(F("Ethernet Error: rebind fail"));
-    singleton=NULL;
-    return;
-  default:
-    //nothing happened
-    break;
-  }
-  singleton->loop2();
+void EthernetInterface::loop()
+{
+    if (!singleton || (!singleton->checkLink()))
+      return;
+    
+    switch (Ethernet.maintain()) {
+    case 1:
+        //renewed fail
+        DIAG(F("Ethernet Error: renewed fail"));
+        singleton=NULL;
+        return;
+    case 3:
+        //rebind fail
+        DIAG(F("Ethernet Error: rebind fail"));
+        singleton=NULL;
+        return;
+    default:
+        //nothing happened
+        break;
+    }
+   singleton->loop2();
 }
 
 /**
@@ -126,7 +135,10 @@ bool EthernetInterface::checkLink() {
     if(!connected) {
       DIAG(F("Ethernet cable connected"));
       connected=true;
-      IPAddress ip = Ethernet.localIP(); // reassign the obtained ip address
+      #ifdef IP_ADDRESS
+      Ethernet.setLocalIP(IP_ADDRESS);      // for static IP, set it again
+      #endif
+      IPAddress ip = Ethernet.localIP();    // look what IP was obtained (dynamic or static)
       server = new EthernetServer(IP_PORT); // Ethernet Server listening on default port IP_PORT
       server->begin();
       LCD(4,F("IP: %d.%d.%d.%d"), ip[0], ip[1], ip[2], ip[3]);
@@ -154,6 +166,10 @@ bool EthernetInterface::checkLink() {
 }
 
 void EthernetInterface::loop2() {
+    if (!outboundRing) { // no idea to call loop2() if we can't handle outgoing data in it
+      if (Diag::ETHERNET) DIAG(F("No outboundRing"));
+      return;
+    }
     // get client from the server
     EthernetClient client = server->accept();
 
@@ -189,9 +205,7 @@ void EthernetInterface::loop2() {
             buffer[count] = '\0'; // terminate the string properly
             if (Diag::ETHERNET) DIAG(F(",count=%d:%e"), socket,buffer);
             // execute with data going directly back
-            outboundRing->mark(socket); 
             CommandDistributor::parse(socket,buffer,outboundRing);
-            outboundRing->commit();
             return; // limit the amount of processing that takes place within 1 loop() cycle. 
           }
         }
@@ -205,10 +219,14 @@ void EthernetInterface::loop2() {
       if (Diag::ETHERNET)  DIAG(F("Ethernet: disconnect %d "), socket);             
      }
     }
+
+    WiThrottle::loop(outboundRing);
     
     // handle at most 1 outbound transmission 
     int socketOut=outboundRing->read();
-    if (socketOut>=0) {
+    if (socketOut >= MAX_SOCK_NUM) {
+      DIAG(F("Ethernet outboundRing socket=%d error"), socketOut);
+    } else if (socketOut >= 0) {
       int count=outboundRing->count();
       if (Diag::ETHERNET) DIAG(F("Ethernet reply socket=%d, count=:%d"), socketOut,count);
       for(;count>0;count--)  clients[socketOut].write(outboundRing->read());

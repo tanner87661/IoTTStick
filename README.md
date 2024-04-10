@@ -12,6 +12,11 @@ This is the code repository for the IoTT Stick, port modules and hat devices wit
 - WiThrottle server can now read turnouts, routes and roster from DCC EX
 - Loconet bridge allows to bridge into Loconet subnet
 
+2023/5/20 1.6.0
+- Version 1.6.0
+- WiThrottle server can now read turnouts, routes and roster from DCC EX
+- Loconet bridge allows to bridge into Loconet subnet
+
 2023/1/5 1.5.19
 - Version 1.5.19
 - added client report to WiThrottle and Loconet TCP servers

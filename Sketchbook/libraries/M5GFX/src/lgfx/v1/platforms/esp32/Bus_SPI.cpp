@@ -18,14 +18,22 @@ Contributors:
 #if defined (ESP_PLATFORM)
 #include <sdkconfig.h>
 
-/// ESP32-S3をターゲットにした際にREG_SPI_BASEが定義されていなかったので応急処置 ;
-#if defined ( CONFIG_IDF_TARGET_ESP32S3 )
- #define REG_SPI_BASE(i)   (DR_REG_SPI1_BASE + (((i)>1) ? (((i)* 0x1000) + 0x20000) : (((~(i)) & 1)* 0x1000 )))
-#endif
-
 #include "Bus_SPI.hpp"
 
+/// ESP32-S3をターゲットにした際にREG_SPI_BASEが定義されていなかったので応急処置 ;
+#if defined ( CONFIG_IDF_TARGET_ESP32S3 )
+ #if ( ESP_IDF_VERSION < ESP_IDF_VERSION_VAL(5, 3, 0) )
+  #define REG_SPI_BASE(i)   (DR_REG_SPI1_BASE + (((i)>1) ? (((i)* 0x1000) + 0x20000) : (((~(i)) & 1)* 0x1000 )))
+ #endif
+#elif defined ( CONFIG_IDF_TARGET_ESP32 ) || !defined ( CONFIG_IDF_TARGET )
+ #define LGFX_SPIDMA_WORKAROUND
+#endif
+
 #include "../../misc/pixelcopy.hpp"
+
+#if __has_include (<soc/dport_reg.h>)
+  #include <soc/dport_reg.h>
+#endif
 
 #include <driver/rtc_io.h>
 #include <esp_heap_caps.h>
@@ -40,23 +48,38 @@ Contributors:
 #if defined (ARDUINO) // Arduino ESP32
  #include <soc/periph_defs.h>
  #include <esp32-hal-cpu.h>
-#else
- #include <driver/spi_master.h>
 #endif
+#include <driver/spi_master.h>
+
+#if defined ESP_IDF_VERSION_MAJOR && ESP_IDF_VERSION_MAJOR >= 5
+    #include <rom/gpio.h> // dispatched by core
+#elif defined ( CONFIG_IDF_TARGET_ESP32S3 ) && __has_include (<esp32s3/rom/gpio.h>)
+   #include <esp32s3/rom/gpio.h>  // dispatched by config
+#elif defined ( CONFIG_IDF_TARGET_ESP32S2 ) && __has_include (<esp32s2/rom/gpio.h>)
+   #include <esp32s2/rom/gpio.h>  // dispatched by config
+#elif defined ( CONFIG_IDF_TARGET_ESP32 ) && __has_include (<esp32/rom/gpio.h>)
+   #include <esp32/rom/gpio.h>
+#else
+   #include <rom/gpio.h> // dispatched by core
+#endif   
 
 #ifndef SPI_PIN_REG
  #define SPI_PIN_REG SPI_MISC_REG
 #endif
 
-#if defined (SOC_GDMA_SUPPORTED)  // for C3/S3
- #include <driver/spi_common_internal.h>
- #include <hal/gdma_hal.h>
- #include <hal/gdma_ll.h>
+#if defined (SOC_GDMA_SUPPORTED)  // for C3/C6/S3
+ #include <soc/gdma_channel.h>
+ #include <soc/gdma_reg.h>
+ #include <soc/gdma_struct.h>
  #if !defined DMA_OUT_LINK_CH0_REG
   #define DMA_OUT_LINK_CH0_REG       GDMA_OUT_LINK_CH0_REG
   #define DMA_OUTFIFO_STATUS_CH0_REG GDMA_OUTFIFO_STATUS_CH0_REG
   #define DMA_OUTLINK_START_CH0      GDMA_OUTLINK_START_CH0
-  #define DMA_OUTFIFO_EMPTY_CH0      GDMA_OUTFIFO_EMPTY_L3_CH0
+  #if defined (GDMA_OUTFIFO_EMPTY_L3_CH0)
+   #define DMA_OUTFIFO_EMPTY_CH0      GDMA_OUTFIFO_EMPTY_L3_CH0
+  #else
+   #define DMA_OUTFIFO_EMPTY_CH0      GDMA_OUTFIFO_EMPTY_CH0
+  #endif
  #endif
 #endif
 
@@ -122,11 +145,29 @@ namespace lgfx
     _inited = spi::init(_cfg.spi_host, _cfg.pin_sclk, _cfg.pin_miso, _cfg.pin_mosi, dma_ch).has_value();
 
 #if defined ( SOC_GDMA_SUPPORTED )
-    auto attr = spi_bus_get_attr(_cfg.spi_host);
-    if (!attr->dma_enabled) { _cfg.dma_channel = 0; }
-    _spi_dma_out_link_reg  = reg(DMA_OUT_LINK_CH0_REG       + attr->tx_dma_chan * 0xC0);
-    _spi_dma_outstatus_reg = reg(DMA_OUTFIFO_STATUS_CH0_REG + attr->tx_dma_chan * 0xC0);
+    // 割当られたDMAチャネル番号を取得する
+
+#if defined ( SOC_GDMA_TRIG_PERIPH_SPI3 )
+    int peri_sel = (_spi_port == 3) ? SOC_GDMA_TRIG_PERIPH_SPI3 : SOC_GDMA_TRIG_PERIPH_SPI2;
+#else
+    int peri_sel = SOC_GDMA_TRIG_PERIPH_SPI2;
 #endif
+
+    int assigned_dma_ch = search_dma_out_ch(peri_sel);
+
+    if (assigned_dma_ch >= 0)
+    { // DMAチャンネルが特定できたらそれを使用する;
+      _spi_dma_out_link_reg  = reg(DMA_OUT_LINK_CH0_REG       + assigned_dma_ch * sizeof(GDMA.channel[0]));
+      _spi_dma_outstatus_reg = reg(DMA_OUTFIFO_STATUS_CH0_REG + assigned_dma_ch * sizeof(GDMA.channel[0]));
+    }
+#elif defined ( CONFIG_IDF_TARGET_ESP32 ) || !defined ( CONFIG_IDF_TARGET )
+
+    dma_ch = (*reg(DPORT_SPI_DMA_CHAN_SEL_REG) >> (_cfg.spi_host * 2)) & 3;
+    // ESP_LOGE("LGFX", "SPI_HOST: %d / DMA_CH: %d", _cfg.spi_host, dma_ch);
+
+#endif
+
+    _dma_ch = dma_ch;
 
     return _inited;
   }
@@ -135,8 +176,9 @@ namespace lgfx
   {
     if (pin >= GPIO_NUM_MAX) return;
     gpio_reset_pin( (gpio_num_t)pin);
-    gpio_matrix_out((gpio_num_t)pin, 0x100, 0, 0);
-    gpio_matrix_in( (gpio_num_t)pin, 0x100, 0   );
+    gpio_matrix_out((gpio_num_t)pin, SIG_GPIO_OUT_IDX, 0, 0);
+    // gpio_matrix_in には、ArduinoESP32 v1.0.x系では重大なバグがある。(無関係なピンに対して設定変更が行われることがある)
+    // gpio_matrix_in( (gpio_num_t)pin, 0x100, 0   );
   }
 
   void Bus_SPI::release(void)
@@ -165,7 +207,6 @@ namespace lgfx
       dc_control(true);
       pinMode(_cfg.pin_dc, pin_mode_t::output);
     }
-    if (_cfg.dma_channel)  _next_dma_reset = true;
 
     auto spi_mode = _cfg.spi_mode;
     uint32_t pin  = (spi_mode & 2) ? SPI_CK_IDLE_EDGE : 0;
@@ -178,13 +219,16 @@ namespace lgfx
     *reg(SPI_PIN_REG(spi_port)) = pin;
     *reg(SPI_CLOCK_REG(spi_port)) = clkdiv_write;
 #if defined ( SPI_UPDATE )
-    *_spi_cmd_reg |= SPI_UPDATE;
+    *_spi_cmd_reg = SPI_UPDATE;
 #endif
   }
 
   void Bus_SPI::endTransaction(void)
   {
     dc_control(true);
+#if defined ( LGFX_SPIDMA_WORKAROUND )
+    if (_dma_ch) { spicommon_dmaworkaround_idle(_dma_ch); }
+#endif
     if (_cfg.use_lock) spi::endTransaction(_cfg.spi_host);
 #if defined (ARDUINO) // Arduino ESP32
     *_spi_user_reg = SPI_USR_MOSI | SPI_USR_MISO | SPI_DOUTDIN; // for other SPI device (e.g. SD card)
@@ -378,10 +422,13 @@ namespace lgfx
         len = (limit << 1) <= length ? limit : length;
         if (limit <= 256) limit <<= 1;
         auto dmabuf = _flip_buffer.getBuffer(len * bytes);
+        if (dmabuf == nullptr) {
+          break;
+        }
         param->fp_copy(dmabuf, 0, len, param);
         writeBytes(dmabuf, len * bytes, true, true);
       } while (length -= len);
-      return;
+      if (length == 0) return;
     }
 
 /// ESP32-C3 で HIGHPART を使用すると異常動作するため分岐する;
@@ -485,10 +532,12 @@ namespace lgfx
     {
       if (false == use_dma && length < 1024)
       {
-        use_dma = true;
         auto buf = _flip_buffer.getBuffer(length);
-        memcpy(buf, data, length);
-        data = buf;
+        if (buf) {
+          memcpy(buf, data, length);
+          data = buf;
+          use_dma = true;
+        }
       }
       if (use_dma)
       {
@@ -498,12 +547,25 @@ namespace lgfx
         *spi_dma_out_link_reg = 0;
         _setup_dma_desc_links(data, length);
 #if defined ( SOC_GDMA_SUPPORTED )
+        auto dma = reg(SPI_DMA_CONF_REG(_spi_port));
+        *dma = 0; /// Clear previous transfer
         uint32_t len = ((length - 1) & ((SPI_MS_DATA_BITLEN)>>3)) + 1;
         *spi_dma_out_link_reg = DMA_OUTLINK_START_CH0 | ((int)(&_dmadesc[0]) & 0xFFFFF);
-        auto dma = reg(SPI_DMA_CONF_REG(_spi_port));
         *dma = SPI_DMA_TX_ENA;
         _clear_dma_reg = dma;
 #else
+        auto dma_conf_reg = reg(SPI_DMA_CONF_REG(_spi_port));
+        auto dma_conf = *dma_conf_reg & ~(SPI_OUT_DATA_BURST_EN | SPI_AHBM_RST | SPI_AHBM_FIFO_RST | SPI_OUT_RST);
+        *dma_conf_reg = dma_conf | SPI_AHBM_RST | SPI_AHBM_FIFO_RST | SPI_OUT_RST;
+
+        // 送信長が4の倍数の場合のみバーストモードを使用する
+        // ※ 以下の3つの条件が揃うと、DMA転送の末尾付近でデータが化ける現象が起きる。
+        //    1.送信クロック80MHz (APBクロックと1:1)
+        //    2.DMAバースト読出し有効
+        //    3.送信データ長が4の倍数ではない (1Byte~3Byteの端数がある場合)
+        dma_conf |= (length & 3) ? (SPI_OUTDSCR_BURST_EN) : (SPI_OUTDSCR_BURST_EN | SPI_OUT_DATA_BURST_EN);
+
+        *dma_conf_reg = dma_conf;
         uint32_t len = length;
         *spi_dma_out_link_reg = SPI_OUTLINK_START | ((int)(&_dmadesc[0]) & 0xFFFFF);
         _clear_dma_reg = spi_dma_out_link_reg;
@@ -517,7 +579,9 @@ namespace lgfx
 #elif defined (SPI_DMA_OUTFIFO_EMPTY)
         while (*_spi_dma_outstatus_reg & SPI_DMA_OUTFIFO_EMPTY ) {}
 #else
-        spicommon_dmaworkaround_transfer_active(_cfg.dma_channel);
+ #if defined ( LGFX_SPIDMA_WORKAROUND )
+        if (_dma_ch) { spicommon_dmaworkaround_transfer_active(_dma_ch); }
+ #endif
 #endif
         exec_spi();
 
@@ -614,14 +678,6 @@ label_start:
 
   }
 
-  void Bus_SPI::initDMA(void)
-  {
-    if (_cfg.dma_channel)
-    {
-      _spi_dma_reset();
-    }
-  }
-
   void Bus_SPI::addDMAQueue(const uint8_t* data, uint32_t length)
   {
     if (!_cfg.dma_channel)
@@ -678,10 +734,6 @@ label_start:
 
     dc_control(true);
     *_spi_dma_out_link_reg = 0;
-    if (_next_dma_reset)
-    {
-      _spi_dma_reset();
-    }
 
 #if defined ( SOC_GDMA_SUPPORTED )
     *_spi_dma_out_link_reg = DMA_OUTLINK_START_CH0 | ((int)(&_dmadesc[0]) & 0xFFFFF);
@@ -690,6 +742,12 @@ label_start:
     _clear_dma_reg = dma;
     uint32_t len = ((_dma_queue_bytes - 1) & ((SPI_MS_DATA_BITLEN)>>3)) + 1;
 #else
+    auto dma_conf_reg = reg(SPI_DMA_CONF_REG(_spi_port));
+    auto dma_conf = *dma_conf_reg & ~(SPI_OUT_DATA_BURST_EN | SPI_AHBM_RST | SPI_AHBM_FIFO_RST | SPI_OUT_RST);
+    dma_conf |= SPI_OUTDSCR_BURST_EN;
+    *dma_conf_reg = dma_conf | SPI_AHBM_RST | SPI_AHBM_FIFO_RST | SPI_OUT_RST;
+    *dma_conf_reg = dma_conf;
+
     *_spi_dma_out_link_reg = SPI_OUTLINK_START | ((int)(&_dmadesc[0]) & 0xFFFFF);
     _clear_dma_reg = _spi_dma_out_link_reg;
     uint32_t len = _dma_queue_bytes;
@@ -703,9 +761,10 @@ label_start:
 #elif defined (SPI_DMA_OUTFIFO_EMPTY)
     while (*_spi_dma_outstatus_reg & SPI_DMA_OUTFIFO_EMPTY ) {}
 #else
-    spicommon_dmaworkaround_transfer_active(_cfg.dma_channel);
+ #if defined ( LGFX_SPIDMA_WORKAROUND )
+    if (_dma_ch) { spicommon_dmaworkaround_transfer_active(_dma_ch); }
+ #endif
 #endif
-
     exec_spi();
 
 #if defined ( SOC_GDMA_SUPPORTED )
@@ -793,9 +852,17 @@ label_start:
     if (_cfg.dma_channel && use_dma) {
       wait_spi();
       set_read_len(length << 3);
+
+      auto dma_conf_reg = reg(SPI_DMA_CONF_REG(_spi_port));
+      auto dma_conf = *dma_conf_reg & ~(SPI_AHBM_RST | SPI_AHBM_FIFO_RST | SPI_OUT_RST);
+      *dma_conf_reg = dma_conf | SPI_AHBM_RST | SPI_AHBM_FIFO_RST | SPI_IN_RST;
+      *dma_conf_reg = dma_conf | SPI_INDSCR_BURST_EN;
+
       _setup_dma_desc_links(dst, length);
       *reg(SPI_DMA_IN_LINK_REG(_spi_port)) = SPI_INLINK_START | ((int)(&_dmadesc[0]) & 0xFFFFF);
-      spicommon_dmaworkaround_transfer_active(_cfg.dma_channel);
+ #if defined ( LGFX_SPIDMA_WORKAROUND )
+      if (_dma_ch) { spicommon_dmaworkaround_transfer_active(_dma_ch); }
+ #endif
       exec_spi();
     }
     else
@@ -815,7 +882,9 @@ label_start:
         if (0 == (length -= len1)) {
           len2 = len1;
           wait_spi();
-          memcpy(dst, (void*)spi_w0_reg, (len2 + 3) & ~3u);
+          uint8_t tmp[32];
+          memcpy(tmp, (void*)spi_w0_reg, (len2 + 3) & ~3u);
+          memcpy(dst, tmp, len2);
         } else {
           if (length < len1) {
             len1 = length;
@@ -939,7 +1008,6 @@ label_start:
 
   void Bus_SPI::_spi_dma_reset(void)
   {
-    _next_dma_reset = false;
 #if defined( SOC_GDMA_SUPPORTED )  // for C3/S3
 
 #elif defined( CONFIG_IDF_TARGET_ESP32S2 )
@@ -960,10 +1028,6 @@ label_start:
   {          //spicommon_setup_dma_desc_links
     if (!_cfg.dma_channel) return;
 
-    if (_next_dma_reset)
-    {
-      _spi_dma_reset();
-    }
     if (_dmadesc_size * SPI_MAX_DMA_LEN < len)
     {
       _alloc_dmadesc(len / SPI_MAX_DMA_LEN + 1);

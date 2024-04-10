@@ -33,7 +33,7 @@ namespace lgfx
  {
 //----------------------------------------------------------------------------
 
-  static constexpr uint8_t Bayer[16] = { 8, 136, 40, 168, 200, 72, 232, 104, 56, 184, 24, 152, 248, 120, 216, 88 };
+  static constexpr uint8_t Bayer[] = { 8, 136, 40, 168, 200, 72, 232, 104, 56, 184, 24, 152, 248, 120, 216, 88, 8, 136, 40, 168, 200, 72, 232, 104, 56, 184, 24, 152, 248, 120, 216, 88 };
 
   inline static uint32_t to_gray(uint8_t r, uint8_t g, uint8_t b)
   {
@@ -42,6 +42,11 @@ namespace lgfx
           + (g * g * 38771)    // G 0.587
           + (b * b *  7530)    // B 0.114
           ) >> 24;
+  }
+
+  void Panel_1bitOLED::setTilePattern(uint_fast8_t i)
+  {
+    _bayer_offset = Bayer[i & 15] >> 4;
   }
 
   color_depth_t Panel_1bitOLED::setColorDepth(color_depth_t depth)
@@ -76,7 +81,7 @@ namespace lgfx
     startWrite(true);
     _bus->beginRead();
     uint8_t buf;
-    bool res = _bus->readBytes(&buf, 1, true);
+    bool res = _bus->readBytes(&buf, 1, true, true);
     _bus->endRead();
 
     if (res)
@@ -131,11 +136,11 @@ namespace lgfx
     {
       x = xs;
       uint32_t idx = x + (y >> 3) * _cfg.panel_width;
-      auto btbl = &Bayer[(y & 3) << 2];
+      auto btbl = &Bayer[((y + (_bayer_offset >> 2)) & 3) << 2];
       uint32_t mask = 1 << (y&7);
       do
       {
-        bool flg = 256 <= value + btbl[x & 3];
+        bool flg = 256 <= value + btbl[(x + _bayer_offset) & 3];
         if (flg) _buf[idx] |=   mask;
         else     _buf[idx] &= ~ mask;
         ++idx;
@@ -223,7 +228,7 @@ namespace lgfx
       uint32_t idx = 0;
       do
       {
-        readbuf[idx] = _read_pixel(x + idx, y) ? ~0u : 0;
+        readbuf[idx] = _read_pixel(x + idx, y) ? -1 : 0;
       } while (++idx != w);
       param->src_x32 = 0;
       readpos = param->fp_copy(dst, readpos, readpos + w, param);
@@ -235,7 +240,7 @@ namespace lgfx
     _rotate_pos(x, y);
     uint32_t idx = x + (y >> 3) * _cfg.panel_width;
     uint32_t mask = 1 << (y&7);
-    bool flg = 256 <= value + Bayer[(x & 3) | (y & 3) << 2];
+    bool flg = 256 <= value + Bayer[ + (((x + _bayer_offset) & 3) | ((y + (_bayer_offset >> 2)) & 3) << 2)];
     if (flg) _buf[idx] |=  mask;
     else     _buf[idx] &= ~mask;
   }
@@ -364,6 +369,53 @@ namespace lgfx
 
       auto buf = &_buf[xs + ys * _cfg.panel_width];
       _bus->writeBytes(buf, xe - xs + 1, true, true);
+    } while (++ys <= ye);
+
+    _range_mod.top    = INT16_MAX;
+    _range_mod.left   = INT16_MAX;
+    _range_mod.right  = 0;
+    _range_mod.bottom = 0;
+  }
+
+//----------------------------------------------------------------------------
+
+  // void Panel_ST7565::setBrightness(uint8_t brightness) {}
+
+  void Panel_ST7565::display(uint_fast16_t x, uint_fast16_t y, uint_fast16_t w, uint_fast16_t h)
+  {
+    if (0 < w && 0 < h)
+    {
+      _range_mod.left   = std::min<int_fast16_t>(_range_mod.left  , x        );
+      _range_mod.right  = std::max<int_fast16_t>(_range_mod.right , x + w - 1);
+      _range_mod.top    = std::min<int_fast16_t>(_range_mod.top   , y        );
+      _range_mod.bottom = std::max<int_fast16_t>(_range_mod.bottom, y + h - 1);
+    }
+    if (_range_mod.empty()) { return; }
+
+    // xeの位置を2ライン単位の位置にしないと次の描画位置がずれる事があったため調整
+    uint_fast8_t xs = _range_mod.left     ;
+    uint_fast8_t xe = (_range_mod.right+2) & ~1;
+    uint_fast8_t ys = _range_mod.top    >> 3;
+    uint_fast8_t ye = _range_mod.bottom >> 3;
+
+    uint_fast8_t offset_y = _cfg.offset_y >> 3;
+    uint_fast8_t offset_x = _cfg.offset_x + xs;
+
+    int retry = 3;
+    do
+    {
+      while (!_bus->writeCommand(  CMD_SETPAGEADDR | (ys + offset_y)
+                                | (CMD_SETHIGHCOLUMN + (offset_x >> 4)) << 8
+                                | (CMD_SETLOWCOLUMN  + (offset_x & 0x0F)) << 16
+                                , 24) && --retry)
+      {
+        _bus->endTransaction();
+        _bus->beginTransaction();
+      }
+      if (!retry) { break; }
+
+      auto buf = &_buf[xs + ys * _cfg.panel_width];
+      _bus->writeBytes(buf, xe - xs, true, true);
     } while (++ys <= ye);
 
     _range_mod.top    = INT16_MAX;

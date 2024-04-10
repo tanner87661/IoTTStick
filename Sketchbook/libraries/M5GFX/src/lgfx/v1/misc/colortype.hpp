@@ -97,6 +97,7 @@ namespace lgfx
     inline rgb332_t& operator=(const bgr888_t&   );
     inline rgb332_t& operator=(const bgra8888_t& );
     inline rgb332_t& operator=(const grayscale_t&);
+    explicit inline operator uint32_t(void) const { return pgm_read_byte(this); }
     explicit inline operator uint8_t(void) const { return pgm_read_byte(this); }
     explicit inline operator bool(void) const { return pgm_read_byte(this); }
     static constexpr uint8_t A8(void) { return 255; }
@@ -143,6 +144,7 @@ namespace lgfx
     inline rgb565_t& operator=(const bgr888_t&   );
     inline rgb565_t& operator=(const bgra8888_t& );
     inline rgb565_t& operator=(const grayscale_t&);
+    explicit inline operator uint32_t(void) const { return pgm_read_word(this); }
     explicit inline operator uint16_t(void) const { return pgm_read_word(this); }
     explicit inline operator bool(void) const { return pgm_read_word(this); }
     static constexpr uint8_t A8(void) { return 255; }
@@ -286,6 +288,7 @@ namespace lgfx
     inline swap565_t& operator=(const bgr888_t&   );
     inline swap565_t& operator=(const bgra8888_t& );
     inline swap565_t& operator=(const grayscale_t&);
+    explicit inline operator uint32_t(void) const { return pgm_read_word(this); }
     explicit inline operator uint16_t(void) const { return pgm_read_word(this); }
     explicit inline operator bool(void) const { return pgm_read_word(this); }
     static constexpr uint8_t A8(void) { return 255; }
@@ -414,7 +417,7 @@ namespace lgfx
     static constexpr color_depth_t depth = argb8888_4Byte;
     constexpr bgra8888_t(void) : raw{0} {};
     constexpr bgra8888_t(const bgra8888_t&) = default;
-    constexpr bgra8888_t(uint8_t r8, uint8_t g8, uint8_t b8) : r(r8), g(g8), b(b8) {}
+    constexpr bgra8888_t(uint8_t r8, uint8_t g8, uint8_t b8) : a(255), r(r8), g(g8), b(b8) {}
     constexpr bgra8888_t(uint8_t a8, uint8_t r8, uint8_t g8, uint8_t b8) : a(a8), r(r8), g(g8), b(b8) {}
     constexpr bgra8888_t(uint32_t bgra8888) : raw(bgra8888) {}
     inline bgra8888_t& operator=(uint32_t rhs) { *reinterpret_cast<uint32_t*>(this) = rhs; return *this; }
@@ -472,6 +475,7 @@ namespace lgfx
     inline grayscale_t& operator=(const bgr888_t&   );
     inline grayscale_t& operator=(const bgra8888_t& );
     inline grayscale_t& operator=(const grayscale_t&) = default;
+    explicit inline operator uint32_t(void) const { return pgm_read_byte(this); }
     explicit inline operator uint8_t(void) const { return pgm_read_byte(this); }
     explicit inline operator bool(void) const { return pgm_read_byte(this); }
     static constexpr uint8_t A8(void) { return 255; }
@@ -586,13 +590,15 @@ namespace lgfx
   template<> LGFX_INLINE uint32_t color_convert<bgra8888_t , bgr666_t   >(uint32_t c) { c<<=2; return (c << 8) + ((c & 0xC0C0C0) << 2) + 0xFF; }
   template<> LGFX_INLINE uint32_t color_convert<bgra8888_t , bgr888_t   >(uint32_t c) { return (c << 8) + 0xFF; }
   template<> LGFX_INLINE uint32_t color_convert<bgra8888_t , grayscale_t>(uint32_t c) { return (((c << 8) + c) << 16) + (c << 8) + 0xFF; }
-  template<> LGFX_INLINE uint32_t color_convert<grayscale_t, rgb332_t   >(uint32_t c) { uint_fast16_t t = ((c>>5)*0x49); t += ((c>>2)&7)*0x92; t += (c&3) * 0xAA; return t >> 3; }
-  template<> LGFX_INLINE uint32_t color_convert<grayscale_t, rgb565_t   >(uint32_t c) { uint_fast16_t g = ( c & 0x07E0); g |= g >> 6; uint_fast16_t rb = ((c>>11)+(c&0x1F))*0x21; return (rb+g)>>4; }
-  template<> LGFX_INLINE uint32_t color_convert<grayscale_t, rgb888_t   >(uint32_t c) { uint_fast16_t g = ( c >> 8) & 0xFF; g = (g << 1) + (g >> 7); return (g + ((c>>16)&0xFF)+(c&0xFF))>>2; }
-  template<> LGFX_INLINE uint32_t color_convert<grayscale_t, argb8888_t >(uint32_t c) { uint_fast16_t g = ( c >> 8) & 0xFF; g = (g << 1) + (g >> 7); return (g + ((c>>16)&0xFF)+(c&0xFF))>>2; }
-  template<> LGFX_INLINE uint32_t color_convert<grayscale_t, swap565_t  >(uint32_t c) { uint_fast16_t rb = ((((c>>3)&0x1F) + ((c>>8)&0x1F)) * 0x21) >> 2; uint_fast16_t g = (c & 7); g = (((g << 3) + (c >> 13)) << 3) + g; return (rb+g) >> 2; }
-  template<> LGFX_INLINE uint32_t color_convert<grayscale_t, bgr666_t   >(uint32_t c) { uint_fast16_t g = ((c >> 8) & 0x3F)*0x82; uint_fast16_t rb = ((c>>16) + (c&0x3F))*0x41; return (rb+g)>>6; }
-  template<> LGFX_INLINE uint32_t color_convert<grayscale_t, bgr888_t   >(uint32_t c) { uint_fast16_t g = ( c >> 8) & 0xFF; g = (g << 1) + (g >> 7); return (g + ((c>>16)&0xFF)+(c&0xFF))>>2; }
+
+// ITU-R BT.601 RGB to Y convert  R 0.299 + G 0.587 + B 0.114
+  template<> LGFX_INLINE uint32_t color_convert<grayscale_t, rgb332_t   >(uint32_t c) { return (((c >>  5) & 0x07) *  43 + ((c >>  2) & 0x07) *  86 +  (c        & 0x03) *  39) >> 2; }
+  template<> LGFX_INLINE uint32_t color_convert<grayscale_t, rgb565_t   >(uint32_t c) { return (((c >> 11) & 0x1F) *  79 + ((c >>  5) & 0x3F) *  76 +  (c        & 0x1F) *  30) >> 5; }
+  template<> LGFX_INLINE uint32_t color_convert<grayscale_t, rgb888_t   >(uint32_t c) { return (((c >> 16) & 0xFF) *  77 + ((c >>  8) & 0xFF) * 151 +  (c        & 0xFF) *  29) >> 8; }
+  template<> LGFX_INLINE uint32_t color_convert<grayscale_t, argb8888_t >(uint32_t c) { return (((c >> 24) & 0xFF) *  77 + ((c >> 16) & 0xFF) * 151 + ((c >>  8) & 0xFF) *  29) >> 8; }
+  template<> LGFX_INLINE uint32_t color_convert<grayscale_t, swap565_t  >(uint32_t c) { return (((c >>  3) & 0x1F) *  79+(((c<<3)+(c>>13))&0x3F)*76 + ((c >>  8) & 0x1F) *  30) >> 5; }
+  template<> LGFX_INLINE uint32_t color_convert<grayscale_t, bgr666_t   >(uint32_t c) { return (( c        & 0x3F) *  39 + ((c >>  8) & 0x3F) *  76 + ((c >> 16) & 0x3F) *  15) >> 5; }
+  template<> LGFX_INLINE uint32_t color_convert<grayscale_t, bgr888_t   >(uint32_t c) { return (( c        & 0xFF) *  77 + ((c >>  8) & 0xFF) * 151 + ((c >> 16) & 0xFF) *  29) >> 8; }
   template<> LGFX_INLINE uint32_t color_convert<grayscale_t, bgra8888_t >(uint32_t c) { return color_convert<grayscale_t, bgr888_t>(c>>8); }
 
   LGFX_INLINE rgb332_t&    rgb332_t   ::operator=(const rgb565_t&    c) { set(color_convert<rgb332_t   , rgb565_t   >(c.get())); return *this; }
@@ -699,7 +705,7 @@ namespace lgfx
   template<typename T> class get_depth : public decltype(get_depth_impl::check<T>(nullptr)) {};
 
   template <typename TSrc>
-  static auto get_fp_convert_src(color_depth_t dst_depth, bool has_palette) -> uint32_t(*)(uint32_t)
+  static auto get_fp_convert_src(color_depth_t dst_depth) -> uint32_t(*)(uint32_t)
   {
     if (std::is_same<TSrc, rgb332_t>::value || std::is_same<TSrc, uint8_t>::value) {
       switch (dst_depth) {
@@ -707,9 +713,8 @@ namespace lgfx
       case rgb888_3Byte  : return color_convert<bgr888_t  , rgb332_t>;
       case rgb666_3Byte  : return color_convert<bgr666_t  , rgb332_t>;
       case rgb565_2Byte  : return color_convert<swap565_t , rgb332_t>;
-      case rgb332_1Byte  : return has_palette
-                                ? convert_uint32_to_palette8
-                                : no_convert;
+      case rgb332_1Byte  : return no_convert;
+      case grayscale_8bit: return color_convert<grayscale_t, rgb332_t>;
       default: break;
       }
     } else if (std::is_same<TSrc, rgb888_t>::value || std::is_same<TSrc, uint32_t>::value) {
@@ -718,9 +723,8 @@ namespace lgfx
       case rgb888_3Byte  : return getSwap24;
       case rgb666_3Byte  : return color_convert<bgr666_t  , rgb888_t>;
       case rgb565_2Byte  : return color_convert<swap565_t , rgb888_t>;
-      case rgb332_1Byte  : return has_palette
-                                ? convert_uint32_to_palette8
-                                : color_convert<rgb332_t  , rgb888_t>;
+      case rgb332_1Byte  : return color_convert<rgb332_t  , rgb888_t>;
+      case grayscale_8bit: return color_convert<grayscale_t,rgb888_t>;
       default: break;
       }
     } else if (std::is_same<TSrc, argb8888_t>::value) {
@@ -729,9 +733,8 @@ namespace lgfx
       case rgb888_3Byte  : return color_convert<bgr888_t , rgb888_t>;
       case rgb666_3Byte  : return color_convert<bgr666_t , rgb888_t>;
       case rgb565_2Byte  : return color_convert<swap565_t, rgb888_t>;
-      case rgb332_1Byte  : return has_palette
-                                ? convert_uint32_to_palette8
-                                : color_convert<rgb332_t , rgb888_t>;
+      case rgb332_1Byte  : return color_convert<rgb332_t , rgb888_t>;
+      case grayscale_8bit: return color_convert<grayscale_t,rgb888_t>;
       default: break;
       }
     } else if (std::is_same<TSrc, bgr888_t>::value) {
@@ -740,9 +743,8 @@ namespace lgfx
       case rgb888_3Byte  : return no_convert;
       case rgb666_3Byte  : return color_convert<bgr666_t  , bgr888_t>;
       case rgb565_2Byte  : return color_convert<swap565_t , bgr888_t>;
-      case rgb332_1Byte  : return has_palette
-                                ? convert_uint32_to_palette8
-                                : color_convert<rgb332_t  , bgr888_t>;
+      case rgb332_1Byte  : return color_convert<rgb332_t  , bgr888_t>;
+      case grayscale_8bit: return color_convert<grayscale_t,bgr888_t>;
       default: break;
       }
     } else { // if (std::is_same<TSrc, rgb565_t>::value || std::is_same<TSrc, uint16_t>::value || std::is_same<TSrc, int>::value)
@@ -751,21 +753,20 @@ namespace lgfx
       case rgb888_3Byte  : return color_convert<bgr888_t  , rgb565_t>;
       case rgb666_3Byte  : return color_convert<bgr666_t  , rgb565_t>;
       case rgb565_2Byte  : return getSwap16;
-      case rgb332_1Byte  : return has_palette
-                                ? convert_uint32_to_palette8
-                                : color_convert<rgb332_t  , rgb565_t>;
+      case rgb332_1Byte  : return color_convert<rgb332_t  , rgb565_t>;
+      case grayscale_8bit: return color_convert<grayscale_t,rgb565_t>;
       default: break;
       }
     }
 
-    switch (dst_depth) {
-    case palette_4bit: return convert_uint32_to_palette4;
-    case palette_2bit: return convert_uint32_to_palette2;
-    case palette_1bit: return convert_uint32_to_palette1;
+    switch (dst_depth & color_depth_t::bit_mask) {
+    case 8:   return convert_uint32_to_palette8;
+    case 4:   return convert_uint32_to_palette4;
+    case 2:   return convert_uint32_to_palette2;
+    case 1:   return convert_uint32_to_palette1;
     default:           return no_convert;
     }
   }
-
 
   struct color_conv_t
   {
@@ -774,52 +775,72 @@ namespace lgfx
     uint32_t (*convert_rgb888)(uint32_t);
     uint32_t (*convert_rgb565)(uint32_t);
     uint32_t (*convert_rgb332)(uint32_t);
-    color_depth_t depth;
+    uint32_t (*revert_rgb888)(uint32_t);
     uint32_t colormask;
+    union
+    {
+      color_depth_t depth;
+      struct
+      {
+        uint8_t bits;
+        uint8_t attrib;
+      };
+    };
     uint8_t bytes;
-    uint8_t bits;
-    uint8_t x_mask;
 
     color_conv_t(const color_conv_t&) = default;
     color_conv_t()
     {
-      setColorDepth(color_depth_t::rgb565_2Byte, false);
+      setColorDepth(color_depth_t::rgb565_2Byte);
     }
-    color_conv_t(color_depth_t depth, bool has_palette = false)
+    color_conv_t(uint_fast8_t bpp, bool has_palette = false)
     {
-      setColorDepth(depth, has_palette);
+      setColorDepth(bpp, has_palette);
+    }
+    color_conv_t(color_depth_t depth_)
+    {
+      setColorDepth(depth_);
     }
 
-    void setColorDepth(color_depth_t depth, bool has_palette = false)
+    void setColorDepth(uint_fast8_t bpp, bool has_palette)
     {
-      x_mask = 0;
-      bits = depth & color_depth_t::bit_mask;
-      has_palette = has_palette || (depth & color_depth_t::has_palette);
-
-      if (depth != rgb666_3Byte)
+      color_depth_t d;
+      if (     bpp > 24) { d = argb8888_4Byte; }
+      else if (bpp > 18) { d =   rgb888_3Byte; }
+      else if (bpp > 16) { d =   rgb666_3Byte; }
+      else if (bpp >  8) { d =   rgb565_2Byte; }
+      else if (bpp >  4) { d =   rgb332_1Byte; }
+      else if (bpp >  2) { d = grayscale_4bit; }
+      else if (bpp == 2) { d = grayscale_2bit; }
+      else               { d = grayscale_1bit; }
+      if (has_palette && bpp <= 8)
       {
-        if (     bits > 24) { depth = argb8888_4Byte; bits = 32; }
-        else if (bits > 18) { depth =   rgb888_3Byte; bits = 24; }
-        else if (bits > 16) { depth =   rgb666_3Byte; bits = 24; }
-        else if (bits >  8) { depth =   rgb565_2Byte; bits = 16; }
-        else if (bits >  4) { depth =   rgb332_1Byte; bits =  8; }
-        else if (bits >  2) { depth = grayscale_4bit; bits =  4; x_mask = 0b0001; }
-        else if (bits == 2) { depth = grayscale_2bit; bits =  2; x_mask = 0b0011; }
-        else                { depth = grayscale_1bit; bits =  1; x_mask = 0b0111; }
-        if (has_palette && bits <= 8)
-        {
-          depth = (color_depth_t)((int)depth | color_depth_t::has_palette);
-        }
+        d = (color_depth_t)((d & color_depth_t::bit_mask) | color_depth_t::has_palette);
       }
-      this->depth = depth;
+      setColorDepth(d);
+    }
+
+    void setColorDepth(color_depth_t depth_)
+    {
+      depth = depth_;
       bytes = bits >> 3;
       colormask = (1 << bits) - 1;
 
-      convert_argb8888 = get_fp_convert_src<argb8888_t>(depth, has_palette);
-      convert_rgb888   = get_fp_convert_src<rgb888_t  >(depth, has_palette);
-      convert_rgb565   = get_fp_convert_src<rgb565_t  >(depth, has_palette);
-      convert_rgb332   = get_fp_convert_src<rgb332_t  >(depth, has_palette);
-      convert_bgr888   = get_fp_convert_src<bgr888_t  >(depth, has_palette);
+      convert_argb8888 = get_fp_convert_src<argb8888_t>(depth_);
+      convert_rgb888   = get_fp_convert_src<rgb888_t  >(depth_);
+      convert_rgb565   = get_fp_convert_src<rgb565_t  >(depth_);
+      convert_rgb332   = get_fp_convert_src<rgb332_t  >(depth_);
+      convert_bgr888   = get_fp_convert_src<bgr888_t  >(depth_);
+
+      switch (depth_) {
+      case argb8888_4Byte: revert_rgb888 = color_convert<rgb888_t, bgra8888_t >; break;
+      case rgb888_3Byte:   revert_rgb888 = color_convert<rgb888_t, bgr888_t   >; break;
+      case rgb666_3Byte:   revert_rgb888 = color_convert<rgb888_t, bgr666_t   >; break;
+      case rgb565_2Byte:   revert_rgb888 = color_convert<rgb888_t, swap565_t  >; break;
+      case rgb332_1Byte:   revert_rgb888 = color_convert<rgb888_t, rgb332_t   >; break;
+      case grayscale_8bit: revert_rgb888 = color_convert<rgb888_t, grayscale_t>; break;
+      default:             revert_rgb888 = no_convert;
+      }
     }
 
 #define TYPECHECK(dType) template < typename T, typename std::enable_if < (sizeof(T) == sizeof(dType)) && (std::is_signed<T>::value == std::is_signed<dType>::value), std::nullptr_t >::type=nullptr > LGFX_INLINE
@@ -914,6 +935,14 @@ namespace lgfx
     uint_fast16_t _g8a;
     uint_fast16_t _b8a;
   };
+
+
+  struct colors_t
+  {
+    const rgb888_t *colors;
+    const uint32_t count;
+  };
+
 
 //----------------------------------------------------------------------------
 #undef LGFX_INLINE

@@ -160,6 +160,8 @@ MQTTESP32::MQTTESP32(Client& client):PubSubClient(client)
 void MQTTESP32::initializeMQTT(uint8_t newMode)
 {
 	Serial.printf("Init MQTT %i \n", newMode);
+    if (MQTT_MAX_PACKET_SIZE < 512)
+		setBufferSize(512);
 	workMode = newMode; // //0: LN Gateway; 1: DCC Client; 2: NativeMQTT; 3: LN Client; 4: DCC Server
 	switch (workMode)
 	{
@@ -408,7 +410,11 @@ bool MQTTESP32::sendMQTTMessage(lnReceiveBuffer txData)
 		case 1: byte i = 0;
 				while (i < lnMaxMsgSize)
 				{
-					data.add(char(txData.lnData[i]));
+//to be verified with LCB device
+					uint8_t dtEl = char(txData.lnData[i]);
+					data.add(dtEl);
+//					data.add(txData.lnData[i]);
+//					data.add(char(txData.lnData[i]));
 					if (char(txData.lnData[i]) == ';')
 						break;
 					i++;

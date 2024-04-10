@@ -23,7 +23,7 @@
 
 #include "Arduino.h"
 #include "defines.h"
-#include "RingStream.h"
+
 
 #ifndef COMMAND_BUFFER_SIZE
  #define COMMAND_BUFFER_SIZE 100
@@ -33,13 +33,13 @@ class SerialManager {
 public:
   static void init();
   static void loop();
-  static void broadcast(RingStream * ring);
+  static void broadcast(char * stringBuffer);
   
 private:  
   static SerialManager * first;
   SerialManager(Stream * myserial);
   void loop2();
-  void broadcast2(RingStream * ring);
+  void broadcast2(char * stringBuffer);
   Stream * serial;
   SerialManager * next;
   byte bufferLength;

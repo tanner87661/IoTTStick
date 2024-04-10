@@ -43,6 +43,30 @@ namespace lgfx
       info_t h;
     };
 
+    // ピクセルクロックの設定用構造体
+    struct video_clock_t
+    {
+      // ピクセルクロックの求め方
+      // (入力クロック74.25MHz) * feedback_divider / input_divider = pixel clock (出力クロック)
+
+      // 制約: 値の範囲は 1<= input_divider <= 24 であること
+      uint8_t input_divider = 2;
+
+      // 制約: 値の範囲は 1<= feedback_divider <= 64 であること
+      uint8_t feedback_divider = 2;
+
+      // 制約: output_divider は次のいずれかであること。 2,4,8,16,32, 48, 64, 80, 96, 112, 128
+      uint8_t output_divider = 8;
+
+      // また、 pixel_clock * output_divider = vco_clock
+      // 制約: 400MHz <= vco_clock <= 1200MHz であること。800MHzが理想値。
+
+      // ビデオ処理回路の駆動にピクセルクロックの半分を使うかどうか。デフォルトはfalse
+      // Full HD @ 60Hz (ピクセルクロック = 148.5MHz) の映像信号のみを受け付ける Xreal Airのような機器に対して、
+      // FPGA側ビデオ出力は半分のクロックで動いており、2ピクセルクロック分同じデータを出力していることにして対応するために使う。
+      bool use_half_clock = false;
+    };
+
     Panel_M5HDMI(void)
     {
       _cfg.memory_width  = _cfg.panel_width = 1280;
@@ -84,7 +108,7 @@ namespace lgfx
     void writeImageARGB(uint_fast16_t x, uint_fast16_t y, uint_fast16_t w, uint_fast16_t h, pixelcopy_t* param) override;
     void copyRect(uint_fast16_t dst_x, uint_fast16_t dst_y, uint_fast16_t w, uint_fast16_t h, uint_fast16_t src_x, uint_fast16_t src_y) override;
 
-    uint32_t readCommand(uint_fast8_t, uint_fast8_t, uint_fast8_t) override { return 0; }
+    uint32_t readCommand(uint_fast16_t, uint_fast8_t, uint_fast8_t) override { return 0; }
     uint32_t readData(uint_fast8_t, uint_fast8_t) override { return 0; }
     void readRect(uint_fast16_t x, uint_fast16_t y, uint_fast16_t w, uint_fast16_t h, void* dst, pixelcopy_t* param) override;
 
@@ -97,6 +121,7 @@ namespace lgfx
       uint16_t output_height  = 0;
       uint8_t scale_w         = 0;
       uint8_t scale_h         = 0;
+      uint32_t pixel_clock    = 74250000;
     };
 
     void config_resolution( const config_resolution_t& cfg_resolution );
@@ -108,27 +133,25 @@ namespace lgfx
                       , uint16_t output_height  = 0
                       , uint8_t scale_w         = 0
                       , uint8_t scale_h         = 0
+                      , uint32_t pixel_clock    = 74250000
                       );
 
+    size_t readEDID(uint8_t* EDID, size_t len);
     void setVideoTiming(const video_timing_t* param);
     void setScaling(uint_fast8_t x_scale, uint_fast8_t y_scale);
     void setViewPort(uint_fast16_t x, uint_fast16_t y);
 
     static constexpr uint8_t CMD_NOP          = 0x00; // 1Byte 何もしない;
     static constexpr uint8_t CMD_READ_ID      = 0x04; // 1Byte ID読出し  スレーブからの回答は4Byte ([0]=0x48 [1]=0x44 [2]=メジャーバージョン [3]=マイナーバージョン);
-//  static constexpr uint8_t CMD_READ_BUFCOUNT= 0x09; // 1Byte コマンドバッファの空き取得。回答は1Byte、受信可能なコマンド数が返される。数字が小さいほどバッファの余裕がない。;
+
     static constexpr uint8_t CMD_SCREEN_SCALING=0x18; // 8Byte 表示倍率設定 [1]=横倍率 [2]=縦倍率 [3~4]=横論理解像度 [5~6]=縦論理解像度 [7]=チェックサム ( ~([0]+[1]+[2]+[3]+[4]+[5]+[6]) );
     static constexpr uint8_t CMD_SCREEN_ORIGIN= 0x19; // 6Byte 表示起点座標 [1~2]=X座標 [3~4]=Y座標 [5]=チェックサム ( ~([0]+[1]+[2]+[3]+[4]) );
 //  static constexpr uint8_t CMD_INVOFF       = 0x20; // 1Byte 色反転を解除;
 //  static constexpr uint8_t CMD_INVON        = 0x21; // 1Byte 色反転を有効;
-//  static constexpr uint8_t CMD_BRIGHTNESS   = 0x22; // 2Byte バックライト data[1]==明るさ 0~255
+
     static constexpr uint8_t CMD_COPYRECT     = 0x23; //13Byte 矩形範囲コピー [1~2]==XS [3~4]==YS [5~6]==XE [7~8]==YE [9~10]==DST_X [11~12]==DST_Y
     static constexpr uint8_t CMD_CASET        = 0x2A; // 5Byte X方向の範囲選択 data[1~2]==XS  data[3~4]==XE
     static constexpr uint8_t CMD_RASET        = 0x2B; // 5Byte Y方向の範囲選択 data[1~2]==YS  data[3~4]==YE
-//  static constexpr uint8_t CMD_ROTATE       = 0x36; // 2Byte 回転処理 [1]==回転方向 0:通常 1:右90度 2:180度 3:270度 4~7は0~3の上下反転;
-//  static constexpr uint8_t CMD_SET_POWER    = 0x38; // 2Byte data[1] 0:低速ローパワー / 1:通常 / 2:高速ハイパワー;
-//  static constexpr uint8_t CMD_SET_SLEEP    = 0x39; // 2Byte data[1] 0:スリープ解除 / 1:スリープ開始;
-//  static constexpr uint8_t CMD_SET_BYTESWAP = 0x3A; // 2Byte data[1] 色データのバイトスワップ転送の有無を指定。デフォルトは0 / 0:バイトスワップなし / 1:バイトスワップあり;
 
     static constexpr uint8_t CMD_WRITE_RAW    = 0x40;
     static constexpr uint8_t CMD_WRITE_RAW_8  = 0x41; // 不定長 RGB332   1Byteのピクセルデータを連続送信;
@@ -172,6 +195,7 @@ namespace lgfx
 
     static constexpr uint8_t CMD_VIDEO_TIMING_V = 0xB0; // 10Byte 垂直信号のビデオタイミングパラメータ設定
     static constexpr uint8_t CMD_VIDEO_TIMING_H = 0xB1; // 10Byte 水平信号のビデオタイミングパラメータ設定
+    static constexpr uint8_t CMD_VIDEO_CLOCK    = 0xB2; // 7Byte  ビデオ信号のピクセルクロック用パラメータ設定
 
 //  static constexpr uint8_t CMD_UPDATE_BEGIN = 0xF0;
 //  static constexpr uint8_t CMD_UPDATE_DATA  = 0xF1;
@@ -191,26 +215,16 @@ namespace lgfx
     private:
       config_t HDMI_Trans_config;
 
-      std::uint8_t readRegister(std::uint8_t register_address)
-      {
-        std::uint8_t buffer;
-        lgfx::i2c::transactionWriteRead(this->HDMI_Trans_config.i2c_port, this->HDMI_Trans_config.i2c_addr, &register_address, 1, &buffer, 1);
-        return buffer;
-      }
-      std::uint16_t readRegister16(std::uint8_t register_address)
-      {
-        std::uint8_t buffer[2];
-        lgfx::i2c::transactionWriteRead(this->HDMI_Trans_config.i2c_port, this->HDMI_Trans_config.i2c_addr, &register_address, 1, buffer, 2);
-        return (static_cast<std::uint16_t>(buffer[0]) << 8) | buffer[1];
-      }
-      bool writeRegister(std::uint8_t register_address, std::uint8_t value);
+      uint8_t readRegister(uint8_t register_address);
+      uint16_t readRegister16(uint8_t register_address);
+      bool writeRegister(uint8_t register_address, uint8_t value);
       bool writeRegisterSet(const uint8_t *reg_value_pair, size_t len);
 
     public:
 
       struct ChipID
       {
-        std::uint8_t id[3];
+        uint8_t id[3];
       };
 
       HDMI_Trans(const lgfx::Bus_I2C::config_t& i2c_config) : HDMI_Trans_config(i2c_config) {}
@@ -219,6 +233,7 @@ namespace lgfx
       ChipID readChipID(void);
       void reset(void);
       bool init(void);
+      size_t readEDID(uint8_t* EDID, size_t len);
     };
 
     class LOAD_FPGA
@@ -271,7 +286,6 @@ namespace lgfx
 
   protected:
     HDMI_Trans::config_t _HDMI_Trans_config;
-  
     uint32_t _raw_color = ~0u;
     uint32_t _xpos;
     uint32_t _ypos;
@@ -280,6 +294,8 @@ namespace lgfx
     uint8_t _scale_w = 1;
     uint8_t _scale_h = 1;
     float _refresh_rate = 60.0f;
+    uint32_t _pixel_clock = 74250000;
+    bool _in_transaction = false;
 
     bool _init_resolution(void);
     void _set_window(uint_fast16_t xs, uint_fast16_t ys, uint_fast16_t xe, uint_fast16_t ye, uint_fast8_t cmd);
@@ -287,7 +303,9 @@ namespace lgfx
     void _check_busy(uint32_t length, bool force = false);
     void _rotate_pixelcopy(uint_fast16_t& x, uint_fast16_t& y, uint_fast16_t& w, uint_fast16_t& h, pixelcopy_t* param, uint32_t& nextx, uint32_t& nexty);
     void _set_video_timing(const video_timing_t::info_t* param, uint8_t cmd);
+    void _set_video_clock(const video_clock_t* param);
     void _copy_rect(uint32_t dst_xy, uint32_t src_xy, uint32_t wh);
+    uint32_t _read_fpga_id(void);
   };
 
 //----------------------------------------------------------------------------

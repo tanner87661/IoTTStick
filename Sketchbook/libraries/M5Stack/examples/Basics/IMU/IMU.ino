@@ -1,16 +1,16 @@
 /*
 *******************************************************************************
-* Copyright (c) 2022 by M5Stack
+* Copyright (c) 2023 by M5Stack
 *                  Equipped with M5Core sample source code
 *                          配套  M5Core 示例源代码
 * Visit for more information: https://docs.m5stack.com/en/core/gray
 * 获取更多资料请访问: https://docs.m5stack.com/zh_CN/core/gray
 *
 * Describe: MPU6886 example.  惯性传感器
-* Date: 2021/7/21
+* Date: 2022/9/8
 *******************************************************************************
 */
-#define M5STACK_MPU6886
+
 #include <M5Stack.h>
 
 float accX = 0.0F;  // Define variables for storing inertial sensor data

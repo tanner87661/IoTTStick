@@ -2,15 +2,7 @@
 
 TCP Access library to send LocoNet commands to an lbServer or act as lbServer
 * 
-* The library makes use of two topics to deal with LocoNet commands:
-* 
-* Broadcast command (default is lnIn) is used for regular message flow. A Loconet device within the MQTT network can send a message using the broadcast topic to send it
-* to the gateway. The gateway will send it to LocoNet. 
-* 
-* Echo topic (default is nlEcho) is used by teh gateway to send confirmation that a received message has been sent to the gateway. This way any application can have positive confirmation that a 
-* sent message was indeed sent to Loconet.
 
-Concept and implementation by Hans Tanner. See https://youtu.be/e6NgUr4GQrk for more information
 See Digitrax LocoNet PE documentation for more information
 
 This library is free software; you can redistribute it and/or
@@ -33,7 +25,15 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
 #define ESP_getChipId()   ((uint32_t)ESP.getEfuseMac())
 
+String fctConfigEX = "Ligth/Bell/Horn";
+String fctConfigWI = "]\[Headlight]\[Bell]\[Whistle]\[F3]\[F4]\[F5]\[F6]\[";
 
+void dccBypassCallback(std::vector<ppElement> * txData)
+{
+//	Serial.println("dccBypassCallback");
+	if (wiThServer != NULL)
+		wiThServer->receiveDCCGeneratorBypass(txData);
+}
 
 //cbFct lbsCallback = NULL;
 
@@ -91,10 +91,12 @@ void handleTopWIPoll(void *arg, AsyncClient *client)        //every 125ms when c
 	thisServer->handleWIPoll(client);
 }
 
-void wiAddrCallback(std::vector<ppElement>* ppList)
+void wiAddrCallback(ppElement* ppList)
 {
-	if (wiServer != NULL)
-		wiServer->wiAddrCallback(ppList);
+	if (wiThServer != NULL)
+		wiThServer->wiAddrCallback(ppList);
+	else
+		Serial.println("no WiServer");
 }
 
 tcpDef::tcpDef()
@@ -115,16 +117,16 @@ tcpDef::~tcpDef()
 
 void tcpDef::addLoco(uint16_t locoAddr, char thID)
 {
-//	Serial.printf("Add Loco %i\n", locoAddr);
 	lnTransmitMsg txData;
 	locoDef * thisLoco = getLocoByAddr(NULL, locoAddr, thID);
 	if (!thisLoco)
 	{
+//		Serial.printf("Add Loco %i to %i\n", locoAddr, thID);
 		locoDef newLoco;
-//		if (useExCmd == 0)
+		if (thID == '?')
+			newLoco.throttleID = '0' + slotList.size();
+		else
 			newLoco.throttleID = thID;
-//		else
-//			newLoco.throttleID = slotList.size();
 		newLoco.locoAddr = locoAddr;
 		newLoco.slotStatus = 0;
 		newLoco.activeSlot = false;
@@ -132,6 +134,7 @@ void tcpDef::addLoco(uint16_t locoAddr, char thID)
 	}
 	prepLocoAddrReqMsg(&txData, locoAddr);
 	sendMsg(txData);
+//	Serial.printf("Done Adding Loco %i to %i\n", locoAddr, thID);
 }
 
 void tcpDef::removeLoco(uint16_t locoAddr, char thID)
@@ -153,7 +156,8 @@ void tcpDef::removeLoco(uint16_t locoAddr, char thID)
 				slotList.erase(slotList.begin() + i);
 			}
 		}
-		sprintf(replBuf, "M%c-*<;>r\r\n", thID);
+		if (useExCmd == 0)
+			sprintf(replBuf, "M%c-*<;>r\r\n", thID);
 	}
 	else
 	{
@@ -162,7 +166,8 @@ void tcpDef::removeLoco(uint16_t locoAddr, char thID)
 		{
 			prepSlotStat1Msg(&txData, thisLoco->slotNum, 0x13);
 			sendMsg(txData);
-			sprintf(replBuf, "M%c-%c%i<;>r\r\n", thID, thisLoco->locoAddr > 127 ? 'L' : 'S', thisLoco->locoAddr);
+			if (useExCmd == 0)
+				sprintf(replBuf, "M%c-%c%i<;>r\r\n", thID, thisLoco->locoAddr > 127 ? 'L' : 'S', thisLoco->locoAddr);
 			for (uint8_t i = 0; i < slotList.size(); i++)	
 				if (&slotList[i] == thisLoco)
 				{	
@@ -181,7 +186,8 @@ void tcpDef::removeLoco(uint16_t locoAddr, char thID)
 
 void tcpDef::confirmLoco(uint8_t slotAddr, uint16_t locoAddr, char thID, uint8_t slotStat, uint8_t slotSpeed, uint16_t dirFctFlags)
 {
-	char replBuf[20] = {'\0'};
+//	Serial.printf("confirmLoco %i %i %i \n", slotAddr, locoAddr, thID);
+	char replBuf[200] = {'\0'};
 	locoDef * thisLoco = getLocoByAddr(NULL, locoAddr, thID);
 	if (thisLoco)
 	{
@@ -198,11 +204,31 @@ void tcpDef::confirmLoco(uint8_t slotAddr, uint16_t locoAddr, char thID, uint8_t
 		//if loco is assigned, reply with steal request, otherwise, assign it
 //		Serial.printf("Ref: %i\n", refreshStat);
 		if (refreshStat == 0x03) //in Use
-			sprintf(replBuf, "M%cS%c%i<;>\r\n", thisLoco->throttleID, thisLoco->locoAddr > 127 ? 'L' : 'S', thisLoco->locoAddr);
+			if (useExCmd > 0)
+			{
+//				sprintf(replBuf, "<t 0 %i %i %i>", thisLoco->locoAddr, 0,0);
+				stealLoco(locoAddr, thID);
+			}
+			else
+			{
+				sprintf(replBuf, "M%cS%c%i<;>\r\n", thisLoco->throttleID, thisLoco->locoAddr > 127 ? 'L' : 'S', thisLoco->locoAddr);
+				thisClient->add(replBuf, strlen(replBuf));
+				sprintf(replBuf, "M%cL%c%i<;>%s\r\n", thisLoco->throttleID, thisLoco->locoAddr > 127 ? 'L' : 'S', thisLoco->locoAddr, fctConfigWI.c_str());
+			}
 		else
 		{
 			thisLoco->activeSlot = true;
-			sprintf(replBuf, "M%c+%c%i<;>\r\n", thisLoco->throttleID, thisLoco->locoAddr > 127 ? 'L' : 'S', thisLoco->locoAddr);
+			if (useExCmd > 0)
+			{
+				sprintf(replBuf, "<t 0 %i %i %i>", thisLoco->locoAddr, 0,0);
+			}
+			else
+			{
+				sprintf(replBuf, "M%c+%c%i<;>\r\n", thisLoco->throttleID, thisLoco->locoAddr > 127 ? 'L' : 'S', thisLoco->locoAddr);
+				thisClient->add(replBuf, strlen(replBuf));
+				sprintf(replBuf, "M%cL%c%i<;>%s\r\n", thisLoco->throttleID, thisLoco->locoAddr > 127 ? 'L' : 'S', thisLoco->locoAddr, fctConfigWI.c_str());
+//				sprintf(replBuf, "M%cL%c%i<;>]\\[Headlight]\\[Bell]\\[Whistle]\\[F3]\\[F4]\\[F5]\\[F6]\\[\r\n", thisLoco->throttleID, thisLoco->locoAddr > 127 ? 'L' : 'S', thisLoco->locoAddr);
+			}
 			lnTransmitMsg txData;
 			prepSlotMoveMsg(&txData, slotAddr, slotAddr);
 			sendMsg(txData);
@@ -220,20 +246,24 @@ void tcpDef::confirmLoco(uint8_t slotAddr, uint16_t locoAddr, char thID, uint8_t
 
 void tcpDef::stealLoco(uint16_t locoAddr, char thID)
 {
-	char replBuf[20] = {'\0'};
+//	Serial.printf("stealLoco %i %i \n", locoAddr, thID);
+	char replBuf[25] = {'\0'};
 	locoDef * thisLoco = getLocoByAddr(NULL, locoAddr, thID);
 	if (thisLoco)
 	{
 		if (thisLoco->activeSlot) return;
 		bool consistCheck = (thisLoco->slotStatus & 0x40) == 0; //not a submember in a consist
 		if (!consistCheck) return;
-		sprintf(replBuf, "M%c+%c%i<;>\r\n", thisLoco->throttleID, thisLoco->locoAddr > 127 ? 'L' : 'S', thisLoco->locoAddr);
+		if (useExCmd == 0)
+			sprintf(replBuf, "M%c+%c%i<;>\r\n", thisLoco->throttleID, thisLoco->locoAddr > 127 ? 'L' : 'S', thisLoco->locoAddr);
+		if (useExCmd == 1)
+			sprintf(replBuf, "<t 1 %i %i %i>", thisLoco->locoAddr, 0,0);
 		thisLoco->activeSlot = true;
 		lnTransmitMsg txData;
 		prepSlotMoveMsg(&txData, thisLoco->slotNum, thisLoco->slotNum);
 		sendMsg(txData);
 //		Serial.println(replBuf);
-		if (thisClient->space() > strlen(replBuf)+2)
+		if (thisClient->space() > strlen(replBuf))
 		{
 			thisClient->add(replBuf, strlen(replBuf));
 			thisClient->send();
@@ -254,6 +284,7 @@ void tcpDef::setTurnout(char pos, char* addr)
 
 locoDef* tcpDef::getLocoByAddr(locoDef* startAt, uint16_t locoAddr, char thID)
 {
+//	Serial.printf("getLocoByAddr %i %i %i \n", startAt, locoAddr, thID);
 	bool trigOK = (startAt == NULL);
 	for (uint8_t i = 0; i < slotList.size(); i++)
 	{
@@ -268,6 +299,7 @@ locoDef* tcpDef::getLocoByAddr(locoDef* startAt, uint16_t locoAddr, char thID)
 
 locoDef* tcpDef::getLocoBySlot(locoDef* startAt, uint8_t slotAddr, char thID)
 {
+//	Serial.printf("getLocoBySlot %i %i %i \n", startAt, slotAddr, thID);
 	bool trigOK = (startAt == NULL);
 	for (uint8_t i = 0; i < slotList.size(); i++)
 	{
@@ -282,6 +314,7 @@ locoDef* tcpDef::getLocoBySlot(locoDef* startAt, uint8_t slotAddr, char thID)
 
 locoDef* tcpDef::getLocoFromList(locoDef* startAt, char thID)
 {
+//	Serial.printf("getLocoFromList %i %i \n", startAt, thID);
 	bool trigOK = (startAt == NULL);
 	for (uint8_t i = 0; i < slotList.size(); i++)
 	{
@@ -294,7 +327,7 @@ locoDef* tcpDef::getLocoFromList(locoDef* startAt, char thID)
 	return NULL;
 }
 
-void tcpDef::setLocoAction(uint16_t locoAddr, char thID, const char* ActionCode, uint16_t extFctMask)
+void tcpDef::setLocoAction(uint16_t locoAddr, char thID, const char* ActionCode, uint32_t extFctMask)
 {
 //	Serial.printf("Loco Action Throttle %c Addr %i %s\n", thID, locoAddr, ActionCode);
 	char replBuf[800] = {'\0'};
@@ -313,39 +346,46 @@ void tcpDef::setLocoAction(uint16_t locoAddr, char thID, const char* ActionCode,
 			{
 				paramVal = ActionCode[1] - '0';
 				uint8_t fctNum = strtol(&ActionCode[2], NULL, 10);
-				uint16_t fctMask = 0;
+				uint32_t fctMask = 0;
 				
 				if (fctNum == 0) fctMask = 0x1000;
-				else if (fctNum <= 4) fctMask = (0x0100 << (fctNum - 1));
-				else if (fctNum <= 8) fctMask = (0x0001 << (fctNum - 5));
+				else if (fctNum <= 4) fctMask = (0x00000100 << (fctNum - 1));
+				else if (fctNum <= 8) fctMask = (0x00000001 << (fctNum - 5));
+				else if (fctNum <= 12) fctMask = (0x00000010 << (fctNum - 9));
+				else if (fctNum <= 28) fctMask = (0x00010000 << (fctNum - 13));
 				else return;
 
 				if ((thisLoco) && ((thisLoco->throttleID == thID) || (thID == '*')))
 				{
 					while (thisLoco)
 					{
+//						Serial.printf("Prep 1 Fct %i %2X\n", fctNum, fctMask);
 						bool isMomentary = (fctMask & thisLoco->noLatchFct) || forceVal;
-						if ((paramVal == 0) && (!isMomentary))
+						if ((paramVal == 0) && (!isMomentary) && (useExCmd == 0))
 						{
+//							Serial.println("No Action");
 							thisLoco = getLocoByAddr(thisLoco, locoAddr, thID);
 							continue; //no button release action for latching function)
 						}
-						uint16_t currFct = (digitraxBuffer->slotBuffer[thisLoco->slotNum][3] << 8) + digitraxBuffer->slotBuffer[thisLoco->slotNum][7];
+						uint32_t currFct = digitraxBuffer->getLocoFctStatus(&digitraxBuffer->slotBuffer[thisLoco->slotNum]);
 						if (isMomentary)
 							currFct = (paramVal != 0) ? (currFct | fctMask) : (currFct & (~fctMask));
 						else
 							currFct = (currFct ^ fctMask);
-						currFct &= 0x7F7F; //clear leading bits
+//						currFct &= 0x7F7F; //clear leading bits
 						if (fctNum <= 4)
 							prepSlotDirFMsg(&txData, thisLoco->slotNum, currFct >> 8);
 						else if (fctNum <= 8)
-							prepSlotSndMsg(&txData, thisLoco->slotNum, currFct & 0x7F);
+							prepSlotSndMsg(&txData, thisLoco->slotNum, currFct);
+						else if (fctNum <= 28)
+							prepSlotExtFctMsg(&txData, locoAddr, fctNum, currFct);
 						else 
 						{
 							thisLoco = getLocoByAddr(thisLoco, locoAddr, thID);
 							continue; //no button release action for latching function)
 						}
-//					Serial.printf("Num: %i Stat: %i Mask: 0x%2X Fct Val: 0x%2X\n", fctNum, paramVal, fctMask, thisLoco->dirFct);
+//						Serial.printf("Num: %i Stat: %i Mask: 0x%2X Fct Val: 0x%2X\n", fctNum, paramVal, fctMask, thisLoco->dirFct);
+//						dispMsg(&txData.lnData[0]);
 						sendMsg(txData);
 						thisLoco = getLocoByAddr(thisLoco, locoAddr, thID);
 					}
@@ -353,27 +393,36 @@ void tcpDef::setLocoAction(uint16_t locoAddr, char thID, const char* ActionCode,
 				else
 					for (uint8_t i = 0; i < slotList.size(); i++)
 					{
-						if ((slotList[i].throttleID == thID) || (thID == '*'))
+//						Serial.printf("Prep 2 Fct %i %2X\n", fctNum, fctMask);
+						if ((slotList.at(i).throttleID == thID) || (thID == '*'))
 						{
-							bool isMomentary = (fctMask & slotList[i].noLatchFct) || forceVal;
-							if ((paramVal == 0) && (!isMomentary))
+							slotData * thisSlot = digitraxBuffer->getSlotData(slotList.at(i).slotNum);
+							bool isMomentary = (fctMask & slotList.at(i).noLatchFct) || forceVal;
+							if ((paramVal == 0) && (!isMomentary) && (useExCmd == 0))
+							{
+//								Serial.println("No Action");
 								continue; //no button release action for latching function)
-							uint16_t currFct = (digitraxBuffer->slotBuffer[slotList[i].slotNum][3] << 8) + digitraxBuffer->slotBuffer[slotList[i].slotNum][7];
+							}
+							uint32_t currFct = digitraxBuffer->getLocoFctStatus(thisSlot);
 							if (isMomentary)
 								currFct = (paramVal != 0) ? (currFct | fctMask) : (currFct & (~fctMask));
 							else
 								currFct = (currFct ^ fctMask);
-							currFct &= 0x7F7F; //clear leading bits
+//							currFct &= 0x7F7F; //clear leading bits
 							if (fctNum <= 4)
-								prepSlotDirFMsg(&txData, slotList[i].slotNum, currFct >> 8);
+								prepSlotDirFMsg(&txData, slotList.at(i).slotNum, currFct >> 8);
 							else if (fctNum <= 8)
-								prepSlotSndMsg(&txData, slotList[i].slotNum, currFct & 0x7F);
+								prepSlotSndMsg(&txData, slotList.at(i).slotNum, currFct);
+							else if (fctNum <= 28)
+								prepSlotExtFctMsg(&txData, slotList.at(i).locoAddr, fctNum, currFct);
 							else continue;
 //							Serial.printf("Addr: %i Num: %i Stat: %i Mask: 0x%2X Fct Val: 0x%2X\n", slotList[i].locoAddr, fctNum, paramVal, fctMask, slotList[i].dirFct);
+//							dispMsg(&txData.lnData[0]);
 							sendMsg(txData);
 						}
 					}
 			}
+//			Serial.println("Done");
 			break;
 		case 'q':
 			{
@@ -381,78 +430,133 @@ void tcpDef::setLocoAction(uint16_t locoAddr, char thID, const char* ActionCode,
 				{
 					if ((slotList[i].throttleID == thID) || (thID == '*'))
 					{
-						slotData * thisSlot = digitraxBuffer->getSlotData(slotList[i].slotNum);
+						slotData * thisSlot = digitraxBuffer->getSlotData(slotList.at(i).slotNum);
 						if (!thisSlot) return;
-//						Serial.printf("Slots %i:  %2x %2X\n", slotList[i].slotNum, (*thisSlot)[2],(*thisSlot)[3]);
+//						Serial.printf("Slots %i:  %2X %2X\n", slotList[i].slotNum, (*thisSlot)[2],(*thisSlot)[3]);
+						(*thisSlot)[TRK] = 0; //reset purge timer
 						switch (ActionCode[1])
 						{
 							case 'V': 
-									sprintf(replBuf, "M%cA%c%i<;>V%i\r\n", slotList[i].throttleID, slotList[i].locoAddr > 127 ? 'L' : 'S', slotList[i].locoAddr, (*thisSlot)[2]); 
+									sprintf(replBuf, "M%cA%c%i<;>V%i\r\n", slotList.at(i).throttleID, slotList.at(i).locoAddr > 127 ? 'L' : 'S', slotList.at(i).locoAddr, (*thisSlot)[2]); 
+									thisClient->add(replBuf, strlen(replBuf));
 									break;
 							case 'R': 
 								{
-									uint16_t currFct = (digitraxBuffer->slotBuffer[slotList[i].slotNum][3] << 8) + digitraxBuffer->slotBuffer[slotList[i].slotNum][7];
+									uint16_t currFct = (digitraxBuffer->slotBuffer[slotList.at(i).slotNum][3] << 8) + digitraxBuffer->slotBuffer[slotList.at(i).slotNum][7];
 //									Serial.printf("Curr Dir %i\n", currFct & 0x2000);
-									uint16_t fctChgMask = currFct ^ slotList[i].dirFct;
+									uint16_t fctChgMask = currFct ^ slotList.at(i).dirFct;
 //									Serial.printf("Fct: %2X Curr: %2X Chg: %2X\n", currFct, slotList[i].dirFct, fctChgMask);
 									if (fctChgMask & 0x2000)
-										slotList[i].dirFct ^= 0x2000;
+										slotList.at(i).dirFct ^= 0x2000;
 //									Serial.printf("Return Dir %i\n", slotList[i].dirFct & 0x2000);
 //									sprintf(replBuf, "M%cA%c%i<;>R%i\r\n", slotList[i].throttleID, slotList[i].locoAddr > 127 ? 'L' : 'S', slotList[i].locoAddr, (((*thisSlot)[3] & 0x20) >> 5) ^ 0x01); 
-									sprintf(replBuf, "M%cA%c%i<;>R%i\r\n", slotList[i].throttleID, slotList[i].locoAddr > 127 ? 'L' : 'S', slotList[i].locoAddr, ((slotList[i].dirFct & 0x2000) >> 13) ^ 0x01);
+									sprintf(replBuf, "M%cA%c%i<;>R%i\r\n", slotList.at(i).throttleID, slotList.at(i).locoAddr > 127 ? 'L' : 'S', slotList.at(i).locoAddr, ((slotList.at(i).dirFct & 0x2000) >> 13) ^ 0x01);
+									thisClient->add(replBuf, strlen(replBuf));
 								}
 								break;
 							case 'F': 
 								{
 //									uint16_t currFct = slotList[i].dirFct;
-									uint16_t currFct = (digitraxBuffer->slotBuffer[thisLoco->slotNum][3] << 8) + digitraxBuffer->slotBuffer[thisLoco->slotNum][7];
-									uint16_t fctChgMask = (currFct ^ slotList[i].dirFct);
+									uint32_t currFct = digitraxBuffer->getLocoFctStatus(thisSlot);
+									uint32_t fctChgMask = (currFct ^ slotList.at(i).dirFct);
 									if (extFctMask) 
-										fctChgMask = (extFctMask & 0x1F0F);
-									uint16_t bitMaskF = 0x0100;
-									uint16_t bitMaskS = 0x0001;
-//									Serial.printf("Fct: %2X Curr: %2X Chg: %2X\n", currFct, slotList[i].dirFct, fctChgMask);
+										fctChgMask = (extFctMask & 0xFFFF1FFF);
+									uint32_t bitMaskF   = 0x00000100;
+									uint32_t bitMaskS   = 0x00000001;
+									uint32_t bitMask912 = 0x00000010;
+									uint32_t bitMaskH1  = 0x00010000;
+									uint32_t bitMaskH2  = 0x00100000;
+									uint32_t bitMaskH3  = 0x01000000;
+									uint32_t bitMaskH4  = 0x10000000;
+//									Serial.printf("Fct: %2X Curr: %2X Chg: %2X\n", currFct, slotList.at(i).dirFct, fctChgMask);
 									if (fctChgMask)
 									{
 										if (fctChgMask & 0x1000)
-											nextBuf += sprintf(nextBuf, "M%cA%c%i<;>F%i%i\r\n", slotList[i].throttleID, slotList[i].locoAddr > 127 ? 'L' : 'S', slotList[i].locoAddr, (currFct & 0x1000)>>12, 0);
+										{
+											nextBuf += sprintf(replBuf, "M%cA%c%i<;>F%i%i\r\n", slotList.at(i).throttleID, slotList.at(i).locoAddr > 127 ? 'L' : 'S', slotList.at(i).locoAddr, (currFct & 0x1000)>>12, 0);
+											thisClient->add(replBuf, strlen(replBuf));
+										}
 										for (uint8_t j = 0; j < 4; j++)
 										{
 											if (fctChgMask & bitMaskF)
-												nextBuf += sprintf(nextBuf, "M%cA%c%i<;>F%i%i\r\n", slotList[i].throttleID, slotList[i].locoAddr > 127 ? 'L' : 'S', slotList[i].locoAddr, (currFct & bitMaskF)>>(j+8), j+1);
+											{
+												sprintf(replBuf, "M%cA%c%i<;>F%i%i\r\n", slotList.at(i).throttleID, slotList.at(i).locoAddr > 127 ? 'L' : 'S', slotList.at(i).locoAddr, (currFct & bitMaskF)>>(j+8), j+1);
+												thisClient->add(replBuf, strlen(replBuf));
+											}
 											if (fctChgMask & bitMaskS)
-												nextBuf += sprintf(nextBuf, "M%cA%c%i<;>F%i%i\r\n", slotList[i].throttleID, slotList[i].locoAddr > 127 ? 'L' : 'S', slotList[i].locoAddr, (currFct & bitMaskS)>>j, j+5);
+											{
+												sprintf(replBuf, "M%cA%c%i<;>F%i%i\r\n", slotList.at(i).throttleID, slotList.at(i).locoAddr > 127 ? 'L' : 'S', slotList.at(i).locoAddr, (currFct & bitMaskS)>>j, j+5);
+												thisClient->add(replBuf, strlen(replBuf));
+											}
+											if (fctChgMask & bitMask912)
+											{
+												sprintf(replBuf, "M%cA%c%i<;>F%i%i\r\n", slotList.at(i).throttleID, slotList.at(i).locoAddr > 127 ? 'L' : 'S', slotList.at(i).locoAddr, (currFct & bitMask912)>>(j+4), j+9);
+												thisClient->add(replBuf, strlen(replBuf));
+											}
+											if (fctChgMask & bitMaskH1)
+											{
+												sprintf(replBuf, "M%cA%c%i<;>F%i%i\r\n", slotList.at(i).throttleID, slotList.at(i).locoAddr > 127 ? 'L' : 'S', slotList.at(i).locoAddr, (currFct & bitMaskH1)>>(j+16), j+13);
+												thisClient->add(replBuf, strlen(replBuf));
+											}
+											if (fctChgMask & bitMaskH2)
+											{
+												sprintf(replBuf, "M%cA%c%i<;>F%i%i\r\n", slotList.at(i).throttleID, slotList.at(i).locoAddr > 127 ? 'L' : 'S', slotList.at(i).locoAddr, (currFct & bitMaskH2)>>(j+20), j+17);
+												thisClient->add(replBuf, strlen(replBuf));
+											}
+											if (fctChgMask & bitMaskH3)
+											{
+												sprintf(replBuf, "M%cA%c%i<;>F%i%i\r\n", slotList.at(i).throttleID, slotList.at(i).locoAddr > 127 ? 'L' : 'S', slotList.at(i).locoAddr, (currFct & bitMaskH3)>>(j+24), j+21);
+												thisClient->add(replBuf, strlen(replBuf));
+											}
+											if (fctChgMask & bitMaskH4)
+											{
+												sprintf(replBuf, "M%cA%c%i<;>F%i%i\r\n", slotList.at(i).throttleID, slotList.at(i).locoAddr > 127 ? 'L' : 'S', slotList.at(i).locoAddr, (currFct & bitMaskH4)>>(j+28), j+25);
+												thisClient->add(replBuf, strlen(replBuf));
+											}
 											bitMaskF <<= 1;
 											bitMaskS <<= 1;
+											bitMask912 <<= 1;
+											bitMaskH1 <<= 1;
+											bitMaskH2 <<= 1;
+											bitMaskH3 <<= 1;
+											bitMaskH4 <<= 1;
 										}
 											
 									}
-									slotList[i].dirFct = currFct;
+									slotList.at(i).dirFct = currFct;
+//									Serial.println(&replBuf[0]);
+								}
+								break;
+							case 'X': //DCC EX throttle
+								{
+//									sprintf(replBuf, "<t 1 %i %i %i>\r\n", slotList.at(i).locoAddr, (*thisSlot)[2], ((slotList.at(i).dirFct & 0x2000) >> 13) ^ 0x01);
+									uint32_t currFct = digitraxBuffer->getLocoFctStatus(thisSlot);
+									uint32_t exFct = ((currFct & 0x00001000) >> 12) + ((currFct & 0x00000F00) >> 7)  + ((currFct & 0x0000000F) << 5)  + ((currFct & 0x000000F0) << 7)  + ((currFct & 0xFFFF0000) >> 3);
+									uint32_t fctChgMask = (currFct ^ slotList.at(i).dirFct);
+									if (extFctMask) 
+										fctChgMask = (extFctMask & 0xFFFF1FFF);
+									uint8_t currSpeed = ((*thisSlot)[2] & 0x7F) + (((currFct & 0x00002000) >> 6) ^ 0x80);
+//									Serial.printf("Func: %2X ExFct: %2X Speed: %i\n", currFct, exFct,currSpeed);
+									sprintf(replBuf, "<l %i %i %i %i>\r\n", slotList.at(i).locoAddr, slotList.at(i).slotNum, currSpeed, exFct);
+									thisClient->add(replBuf, strlen(replBuf));
 								}
 								break;
 							default: Serial.println("No code"); return;
 						}
 					}
 				}
-				if (thisClient->space() > strlen(replBuf))
-				{
-//					Serial.print(thisClient->remoteIP());
-//					Serial.print(" Out: ");
-//					Serial.println(strlen(replBuf));
-					thisClient->add(replBuf, strlen(replBuf));
-					thisClient->send();
-				}
 			}
+			thisClient->send();
 			break;
-		case 'R':
+		case 'R': //DIRF
 			{
 				paramVal = strtol(paramStr, NULL, 10);
-				uint16_t targetFct = 0;
+				uint32_t targetFct = 0;
 				if ((thisLoco) && ((thisLoco->throttleID == thID) || (thID == '*')))
 				{
+					uint32_t currFct = digitraxBuffer->getLocoFctStatus(&digitraxBuffer->slotBuffer[thisLoco->slotNum]);
 //					Serial.printf("Curr Dir %i to %i\n", thisLoco->dirFct & 0x2000, paramVal);
-					targetFct = ((paramVal == 0) ? (thisLoco->dirFct | 0x2000) : (thisLoco->dirFct & ~0x2000));
-					targetFct &= 0x7F7F; //clear leading bits
+					targetFct = ((paramVal == 0) ? (currFct | 0x00002000) : (currFct & ~0x00002000));
 //					Serial.printf("Set Dir %i\n", targetFct & 0x2000);
 					prepSlotDirFMsg(&txData, thisLoco->slotNum, targetFct >> 8);
 					sendMsg(txData);
@@ -462,15 +566,18 @@ void tcpDef::setLocoAction(uint16_t locoAddr, char thID, const char* ActionCode,
 					{
 						if ((slotList[i].throttleID == thID) || (thID == '*'))
 						{
-							targetFct = paramVal == 0 ? (slotList[i].dirFct | 0x2000) : (slotList[i].dirFct & ~0x2000);
-							targetFct &= 0x7F7F; //clear leading bits
+							slotData * thisSlot = digitraxBuffer->getSlotData(slotList.at(i).slotNum);
+							uint32_t currFct = digitraxBuffer->getLocoFctStatus(thisSlot);
+							targetFct = ((paramVal == 0) ? (currFct | 0x00002000) : (currFct & ~0x00002000));
+							//targetFct = paramVal == 0 ? (slotList[i].dirFct | 0x2000) : (slotList[i].dirFct & ~0x2000);
+//							Serial.printf("Set Dir %i\n", targetFct & 0x2000);
 							prepSlotDirFMsg(&txData, slotList[i].slotNum, targetFct >> 8);
 							sendMsg(txData);
 						}
 					}
 			}
 			break;
-		case 'V':
+		case 'V': // speed
 			{
 				paramVal = strtol(paramStr, NULL, 10);
 				currSpeed = paramVal;
@@ -486,6 +593,7 @@ void tcpDef::setLocoAction(uint16_t locoAddr, char thID, const char* ActionCode,
 						{
 							prepSlotSpeedMsg(&txData, slotList[i].slotNum, paramVal);
 							sendMsg(txData);
+//							dispMsg(&txData.lnData[0]);
 						}
 					}
 			}
@@ -597,22 +705,19 @@ void IoTT_LBServer::initLBServer(bool serverMode)
 
 void IoTT_LBServer::initMDNS()
 {
-	if (MDNS.begin(WiFi.getHostname())) 
-	{
-		Serial.println("mDNS responder started");
+	Serial.println("mDNS responder started");
 		// Add service to MDNS-SD
-        MDNS.addService("withrottle", "tcp", lbs_Port);
-//        Serial.println("mDNS WiThrottle Service added");
-	}
-	else
-		Serial.println("Error setting up MDNS responder");
+	if (isWiThrottle)
+        MDNS.addService("withrottle", "tcp", lbs_ServerPort);
+    else
+        MDNS.addService("lbserver", "tcp", lbs_ServerPort);
 }
 
-void IoTT_LBServer::initWIServer(bool serverMode)
+void IoTT_LBServer::initWIServer(bool serverMode, bool ExMode)
 {
 	isServer = serverMode;
 	isWiThrottle = true;
-	if (isServer) //add code here to support server mode
+	if (isServer) 
 	{
 		Serial.println("Init WiThrottle Server");
 		lntcpServer = new AsyncServer(WiFi.localIP(), lbs_ServerPort);
@@ -621,6 +726,7 @@ void IoTT_LBServer::initWIServer(bool serverMode)
 	else //client mode
 	{
 		Serial.println("Init WiThrottle Client");
+		isDCCEXCmd = ExMode;
 		lntcpClient = new AsyncClient();
 		lntcpClient->onData(handleTopDataFromClient, this);
 		lntcpClient->onConnect(handleTopConnect, this);
@@ -633,8 +739,7 @@ void IoTT_LBServer::startServer()
 	if (isServer && lntcpServer)
 	{
 		lntcpServer->begin();
-		if (isWiThrottle)
-			initMDNS();
+		initMDNS();
 	}
 }
 
@@ -646,7 +751,7 @@ void IoTT_LBServer::handleNewClient(AsyncClient* client)
 	newClientData = new tcpDef();
 	// add to list
 	newClientData->thisClient = client;
-//	newClientData->sendInitSeq = numInitSeq; //currently 10 init messages
+//	newClientData->sendInitSeq = numInitSeq; //currently 13 init messages
 	clients.push_back(newClientData);
 	Serial.printf("New total is %i client(s)\n", clients.size());
 //	delay(100);
@@ -673,22 +778,25 @@ void IoTT_LBServer::handleError(AsyncClient* client, int8_t error)
 
 void IoTT_LBServer::handleDisconnect(AsyncClient* client) 
 {
-	Serial.println("Delete Client");
 //	Serial.println(String(ESP.getFreeHeap()));
 	for (int i = 0; i < clients.size(); i++)
 	{
 		if (clients[i]->thisClient == client)
 		{
-//			if (clients[i]->wiHWIdentifier)
-//				free(clients[i]->wiHWIdentifier);
-//			if (clients[i]->wiDeviceName)
-//				free(clients[i]->wiDeviceName);
+			Serial.print("Delete Client");
+//			Serial.println(clients[i]->thisClient->remoteIP());
 			delete(clients[i]);
 			clients.erase(clients.begin() + i);
 			break;
 		}
 	}
+	if (isWiThrottle)
+		verifyBypass();
 	Serial.printf("Client disconnected. %i clients remaining \n", clients.size());
+	for (int i = 0; i < clients.size(); i++)
+	{
+		Serial.println(clients[i]->thisClient->remoteIP());
+	}
 	updateClientList();
 //	Serial.println(String(ESP.getFreeHeap()));
 	yield();
@@ -711,7 +819,7 @@ void IoTT_LBServer::loadLBServerCfgJSON(DynamicJsonDocument doc)
 {
 	if (doc.containsKey("PortNr"))
 		lbs_Port = doc["PortNr"];
-	if (doc.containsKey("PortNr"))
+	if (doc.containsKey("ServerPortNr"))
 		lbs_ServerPort = doc["ServerPortNr"];
 	if (doc.containsKey("ServerIP"))
 	{
@@ -727,7 +835,8 @@ void IoTT_LBServer::loadLBServerCfgJSON(DynamicJsonDocument doc)
 		if (doc.containsKey("Turnouts"))
 		{
 			JsonArray turnoutList = doc["Turnouts"];
-			for (uint16_t i = 0; i < turnoutList.size(); i++)
+			uint16_t dLen = turnoutList.size();
+			for (uint16_t i = 0; i < dLen; i++)
 			{
 				turnoutSupport.push_back((uint16_t) turnoutList[i]);
 			}
@@ -738,6 +847,34 @@ void IoTT_LBServer::loadLBServerCfgJSON(DynamicJsonDocument doc)
 			for (uint16_t i = 0; i < locoList.size(); i++)
 			{
 				locoSupport.push_back((uint16_t) locoList[i]);
+			}
+		}
+		if (doc.containsKey("Functions"))
+		{
+			String ConfigWI = "]\\[";
+			String ConfigEX = "";
+			
+			JsonArray fctList = doc["Functions"];
+			for (uint16_t i = 0; i < fctList.size(); i++)
+			{
+				const char * thisFct = fctList[i];
+//				Serial.println(thisFct);
+				ConfigWI += String(thisFct) + "]\\[";
+				if (i > 0)
+					ConfigEX += "/";
+				ConfigEX += thisFct;
+			}
+			fctConfigEX = ConfigEX;
+			fctConfigWI = ConfigWI;
+//			Serial.println(fctConfigEX);
+//			Serial.println(fctConfigWI);
+		}	
+		if (doc.containsKey("Sensors"))
+		{
+			JsonArray sensorList = doc["Sensors"];
+			for (uint16_t i = 0; i < sensorList.size(); i++)
+			{
+				sensorSupport.push_back((uint16_t) sensorList[i]);
 			}
 		}
 	}
@@ -760,7 +897,8 @@ uint8_t IoTT_LBServer::getConnectionStatus()
 
 uint16_t IoTT_LBServer::lnWriteMsg(lnTransmitMsg* txData)
 {
-//	Serial.printf("LN over TCP Tx %02X\n", txData.lnData[0]);
+//	Serial.printf("LN over TCP Tx %02X\n", txData->lnData[0]);
+//	dispMsg(&txData->lnData[0]);
 	uint8_t hlpQuePtr = (que_wrPos + 1) % queBufferSize;
     if (hlpQuePtr != que_rdPos) //override protection
     {
@@ -784,10 +922,8 @@ uint16_t IoTT_LBServer::lnWriteMsg(lnTransmitMsg* txData)
 
 uint16_t IoTT_LBServer::lnWriteMsg(lnReceiveBuffer* txData)
 {
-// 	Serial.printf("LN TCP Tx %02X", txData.lnData[0]);
-// 	for (int i = 1; i < txData.lnMsgSize; i++)
-//		Serial.printf(" %02X", txData.lnData[i]);
-//	Serial.println();
+// 	Serial.printf("LN TCP Tx %02X", txData->lnData[0]);
+//	dispMsg(&txData->lnData[0]);
     uint8_t hlpQuePtr = (que_wrPos + 1) % queBufferSize;
     if (hlpQuePtr != que_rdPos) //override protection
     {
@@ -809,6 +945,23 @@ uint16_t IoTT_LBServer::lnWriteMsg(lnReceiveBuffer* txData)
 	}
 }
 
+void IoTT_LBServer::verifyBypass()
+{
+	IoTT_SerInjector* dccPort = digitraxBuffer->getDccPort();
+	if (dccPort)
+	{
+		for (int i = 0; i < clients.size(); i++)
+			if (clients[i]->useExCmd)
+			{
+				dccPort->setDCCCallback(dccBypassCallback, 1);
+//				Serial.println("Install Bypass");
+				return;
+			}
+		dccPort->setDCCCallback(NULL, 1);
+//		Serial.println("Remove Bypass");
+	}
+}
+
 void IoTT_LBServer::handleDataFromServer(AsyncClient* client, void *data, size_t len) 
 {
 	//identify client
@@ -817,8 +970,8 @@ void IoTT_LBServer::handleDataFromServer(AsyncClient* client, void *data, size_t
 	{
 		if (clients[i]->thisClient == client)
 		{
-//			Serial.print("Message from ");
-//			Serial.println(clients[i].thisClient->remoteIP());
+//			Serial.print("Message from Client ");
+//			Serial.println(clients[i]->thisClient->remoteIP());
 //			Serial.write((uint8_t *)data, len);
 //			Serial.println();
 			currClient = clients[i];
@@ -837,9 +990,9 @@ void IoTT_LBServer::handleDataFromServer(AsyncClient* client, void *data, size_t
 
 void IoTT_LBServer::handleDataFromClient(AsyncClient* client, void *data, size_t len) 
 {
-//	Serial.println("handleDataFromClient");
+//	Serial.println("Message from Server");
 //	Serial.write((uint8_t *)data, len);
-//	Serial.println(len);
+//	Serial.println();
 	if (lntcpClient == client) 
 	{
 		
@@ -891,17 +1044,16 @@ void IoTT_LBServer::handleData(AsyncClient* client, char *data, size_t len)
 			}
 		else
 			Serial.println("No delimiter");
-
+//	if (isWiThrottle)
+//		Serial.println("--");
 }
 
 void IoTT_LBServer::handleLNPoll(AsyncClient *client)        //every 125ms when connected
 {
-//	nextPingPoint = millis() + pingInterval;
 }
 
 void IoTT_LBServer::handleWIPoll(AsyncClient *client)        //every 125ms when connected
 {
-//	nextPingPoint = millis() + pingInterval;
 }
 
 void IoTT_LBServer::strToWI(char * str, lnReceiveBuffer * recData)
@@ -942,50 +1094,122 @@ bool IoTT_LBServer::processWIMessage(AsyncClient* client, char * c)
 
 	if (isServer) //Server Mode, handle incoming commands from client
 	{
-		return processWIServerMessage(client, c);
+		tcpDef * currClient = NULL;
+		bool isDCCEX = (c[0] == '<'); 
+		for (int i = 0; i < clients.size(); i++)
+		{
+			if (clients.at(i)->thisClient == client)
+			{
+				currClient = clients.at(i);
+				if (currClient->useExCmd < 0) //data format not determined
+				{
+					currClient->useExCmd = isDCCEX ? 1 : 0;
+					if ((digitraxBuffer->isCS()) && currClient->useExCmd)
+						verifyBypass(); //install bypass
+					else
+						currClient->sendInitSeq = numInitSeq; //start init sequence, if not command station
+				}
+				break;
+			}
+		}
+		if (currClient == NULL) return false; //client not found. Should not happen
+		
+		if (currClient->useExCmd)
+			if (digitraxBuffer->isCS())
+				return processWIServerMessageBypass(currClient, c);
+			else
+				return processWIServerMessageEX(currClient, c);
+		else
+			return processWIServerMessageWI(currClient, c);
 	}
 	else //client mode, handle incoming commands from server
 		return processWIClientMessage(client, c);
 }
 
 //this is called from Digitrax Buffers to send loco address after CV read, including long format
-void IoTT_LBServer::wiAddrCallback(std::vector<ppElement>* ppList)
+void IoTT_LBServer::wiAddrCallback(ppElement* ppList)
 {
-	for (uint16_t i = 0; i < clients.size(); i++)
+	for (uint16_t i = 0; i < clients.size(); i++) //Server Mode
 	{
-		if (clients[i]->useExCmd > 0) //DCC EX
+		if ((clients[i]->useExCmd > 0) && (!digitraxBuffer->isCS())) //DCC EX
 		{
 			char outBuf[10];
-			sprintf(outBuf, "r %i", ppList->at(1).payload.longVal);
+			sprintf(outBuf, "r %i", ppList->payload.longVal);
 			sendWIClientMessage(clients[i]->thisClient, outBuf, clients[i]->useExCmd > 0);
 		}
 	}
 }
 
-//this is called when data is received in server mode
-bool IoTT_LBServer::processWIServerMessage(AsyncClient* client, char * c)
+uint16_t IoTT_LBServer::receiveDCCGeneratorBypass(std::vector<ppElement> * txData)
 {
-	uint16_t len = strlen(c);
-	tcpDef * currClient = NULL;
-//	bool isDCCEX = (strcmp(c, "<s>") == 0); 
-	bool isDCCEX = (c[0] == '<'); 
-	for (int i = 0; i < clients.size(); i++)
+	uint8_t paramCount = txData->at(0).numParams;
+//	Serial.printf("Bypass: %i\n", paramCount);
+	String cmdStr = String(txData->at(0).payload.strVal[0]);
+	char opCode = txData->at(0).payload.strVal[0];
+//	char opCode2 = txData->at(1).payload.strVal[0];
+	char prmBuf[100];
+	for (uint8_t i = 1; i < paramCount; i++)
 	{
-		if (clients.at(i)->thisClient == client)
+		if (i == 1) 
 		{
-			currClient = clients.at(i);
-			if (currClient->useExCmd < 0) //data format not determined
+			switch (opCode)
 			{
-				currClient->useExCmd = isDCCEX ? 1 : 0;
-				currClient->sendInitSeq = numInitSeq; //start init sequence
+				case 'i':;
+				case 'j':;
+				case 'p':;
+					break;
+				default: cmdStr += " "; break;
+			}
+		}
+		else
+			cmdStr += " "; 
+			
+		switch (txData->at(i).dataType)
+		{
+			case 0:  sprintf(prmBuf, "%s", txData->at(i).payload.strPtr); break;
+			case 10: sprintf(prmBuf, "%i", txData->at(i).payload.longVal); break;
+			case 20: sprintf(prmBuf, "%.2f",txData->at(i).payload.floatVal); break;
+			default: sprintf(prmBuf, "%s", txData->at(i).payload.strVal); break;
+		}
+		cmdStr += String(prmBuf);
+	}
+
+	switch (opCode)
+	{
+		case 'H':;
+		case 'i':;
+		case 'j':;
+		case 'l':;
+		case 'p':;
+		case 'q':;
+		case 'Q':;
+		case 'r':;
+		case 'v':;
+		case '#':;
+//			Serial.print("Send to app: ");
+//			Serial.println(cmdStr);
+			for (int i = 0; i < clients.size(); i++) //Server Mode
+			{
+				if (clients.at(i)->useExCmd)
+					sendWIClientMessage(clients.at(i)->thisClient, cmdStr, true);
 			}
 			break;
-		}
+		default: 
+//			Serial.print("Blocked to app: ");
+//			Serial.println(cmdStr);
+			break;
 	}
-	if (currClient)
-	{
-		if (currClient->useExCmd > 0)
-		{
+	return 0;
+}
+
+//this is called when data is received in server mode
+bool IoTT_LBServer::processWIServerMessageEX(tcpDef * currClient, char * c)
+{
+	uint16_t len = strlen(c);
+	String repStr;
+	char outBuf[50] = {'\0'};
+//	Serial.printf("WiClient to DCC EX via Loconet message %i bytes: %s\n", len, c);
+
 			locoDef * thisLoco = NULL;
 			lnTransmitMsg exInBuffer;
 			std::vector<ppElement> ppList;
@@ -1039,8 +1263,23 @@ bool IoTT_LBServer::processWIServerMessage(AsyncClient* client, char * c)
 						case '#': 
 						{
 							if (paramCount == 1) // <#>
-								return sendWIServerMessageStringEX(currClient->thisClient, 1); 
+								return sendWIServerMessageString(currClient, 1); 
 							break;
+						}
+						case 'F':
+						{
+							if (ppList.at(0).numParams == 4) //<F cab stat fct>
+							{
+								thisLoco = currClient->getLocoByAddr(thisLoco, ppList.at(1).payload.longVal, '*');
+								if (thisLoco)
+								{
+									uint16_t newFctNr = ppList.at(2).payload.longVal;
+									uint8_t newFctStat = ppList.at(3).payload.longVal;
+									sprintf(outBuf, "F%i%i", newFctStat, newFctNr);
+									currClient->setLocoAction(thisLoco->locoAddr, thisLoco->throttleID, outBuf);
+//									Serial.printf("Send Function F%i Status %i for loco %i\n", newFctNr, newFctStat, ppList.at(1).payload.longVal);
+								}
+							}
 						}
 						case 'J': 
 						{
@@ -1050,13 +1289,15 @@ bool IoTT_LBServer::processWIServerMessage(AsyncClient* client, char * c)
 									case 'R': //Roster
 									{
 										if (paramCount == 2) //<JR>
-											return sendWIServerMessageStringEX(currClient->thisClient, 4); 
-
+										{
+											repStr = getLocalTopicRequestEX(5);
+//											return sendWIClientMessage(currClient->thisClient, repStr, currClient->useExCmd);
+										}
 										if (paramCount == 3) //<JR addr> request
 										{
-											String outStr = digitraxBuffer->getRosterInfo(ppList.at(2).payload.longVal, true);
-//											Serial.println(outStr);
-											return sendWIClientMessage(currClient->thisClient, outStr, true);
+//											repStr = "jR " + String(ppList.at(2).payload.longVal) + " \"" + String(ppList.at(2).payload.longVal) + "\" \" Head Light/Bell/Horn/F3/F4/F5EX\"";;
+											repStr = "jR " + String(ppList.at(2).payload.longVal) + " \"" + String(ppList.at(2).payload.longVal) + "\" \"" + fctConfigEX + "\"";
+											return sendWIClientMessage(currClient->thisClient, repStr, currClient->useExCmd);
 										}
 									}
 									break;
@@ -1064,25 +1305,29 @@ bool IoTT_LBServer::processWIServerMessage(AsyncClient* client, char * c)
 									{
 //										Serial.printf("Params: %i\n", myParams[0].numParams);
 										if (paramCount == 2) //<JT>
-											return sendWIServerMessageStringEX(currClient->thisClient, 3); 
+										{
+											repStr = getLocalTopicRequestEX(4);
+//											return sendWIClientMessage(currClient->thisClient, repStr, currClient->useExCmd);
+										}
 										if (paramCount == 3) //<JT id>
 										{
-											String outStr = digitraxBuffer->getTurnoutInfo(ppList.at(2).payload.longVal, true);
-//											Serial.println(outStr);
-											return sendWIClientMessage(currClient->thisClient, outStr, true);
+											repStr = "jT " + String(ppList.at(2).payload.longVal) + " " + String(digitraxBuffer->getSwiPosition(ppList.at(2).payload.longVal)) + " \"IoTT\"";
+											return sendWIClientMessage(currClient->thisClient, repStr, currClient->useExCmd);
 										}
 									}
 									break; //Turnouts
-									case 'A': //Automations
+									case 'A': //Automations not supported in remote EX Format
 									{
+/*
 										if (paramCount == 2) //<JA>
-											return sendWIServerMessageStringEX(currClient->thisClient, 5); 
+											return sendWIServerMessageString(currClient, 7); 
 										if (paramCount == 3) //<JA id>
 										{
 											String outStr = digitraxBuffer->getRouteInfo(ppList.at(2).payload.longVal, true);
 //											Serial.println(outStr);
 											return sendWIClientMessage(currClient->thisClient, outStr, true);
 										}
+*/
 									}
 									break;
 								}
@@ -1094,23 +1339,17 @@ bool IoTT_LBServer::processWIServerMessage(AsyncClient* client, char * c)
 							if (paramCount == 1) //<R> Read Address
 								digitraxBuffer->readAddrOnly();
 							if (paramCount == 2) //<R cv> Read Address
-								digitraxBuffer->readProg(0, 0, 0, ppList.at(1).payload.longVal);
+								digitraxBuffer->progCVProc(0, 0x01, ppList.at(1).payload.longVal, 0); //direct read byte
 						
 						}
 						break;
 						case 'S':
 						{
 //							Serial.println("Send Sensor List");
-							int numSensors = (digitraxBuffer->getSensorInfo(0xFFFF, true)).toInt();
-							if (numSensors > 0)
+							for (uint8_t i = 0; i < sensorSupport.size(); i++)
 							{
-								char outStr[20] = {'\0'};
-								for (uint16_t i = 0; i < numSensors; i++)
-								{
-//									Serial.println(digitraxBuffer->getSensorInfo(i, true));
-									if (!sendWIClientMessage(currClient->thisClient, digitraxBuffer->getSensorInfo(i, true), true))
-										return false;
-								}
+								sprintf(outBuf, "Q %i 0 %i", sensorSupport.at(i), digitraxBuffer->getBDStatus(sensorSupport.at(i)));
+								sendWIClientMessage(currClient->thisClient, String(outBuf), currClient->useExCmd);
 							}
 						} 
 						break;
@@ -1123,30 +1362,61 @@ bool IoTT_LBServer::processWIServerMessage(AsyncClient* client, char * c)
 							updateClientList();
 						} 
 						break; 
-/*
+
 						case 't':
 						{
-							if (myParams[0].numParams == 2) //<t cab>
+							if (ppList.at(0).numParams == 2) //<t cab>
 							{
-								thisLoco = currClient->getLocoByAddr(thisLoco, myParams[1].payload.longVal, '*');
+//								Serial.printf("request loco slot %i \n", ppList.at(1).payload.longVal);
+								thisLoco = currClient->getLocoByAddr(thisLoco, ppList.at(1).payload.longVal, '*');
+								if (!thisLoco)
+								{
+									currClient->addLoco(ppList.at(1).payload.longVal, '?');
+									thisLoco = currClient->getLocoByAddr(thisLoco, ppList.at(1).payload.longVal, '*');
+								}
+//								Serial.printf("returns %c\n", ppList.at(1).payload.longVal, thisLoco->throttleID);
 								if (thisLoco)
 								{
-									Serial.println("request loco info");
+									currClient->setLocoAction(thisLoco->locoAddr, thisLoco->throttleID, "qX");
+//									return sendWIServerMessageString(currClient, 1); 
+								
 								}
 							}
-							if (myParams[0].numParams == 5) //<t reg cab speed dir>
+							if ((ppList.at(0).numParams == 4) || (ppList.at(0).numParams == 5)) //<t cab speed dir> or <t reg cab speed dir> (legacy format)
 							{
-								thisLoco = currClient->getLocoByAddr(thisLoco, myParams[2].payload.longVal, '*');
+								uint8_t cmdOfs = ppList.at(0).numParams - 4;
+								thisLoco = currClient->getLocoByAddr(thisLoco, ppList.at(1 + cmdOfs).payload.longVal, '*');
 								if (thisLoco)
 								{
-									Serial.println("Send Speed / Dir / F");
+									uint16_t newSpeed = ppList.at(2 + cmdOfs).payload.longVal;
+									uint8_t newDir = ppList.at(3 + cmdOfs).payload.longVal;
+									sprintf(outBuf, "V%i", newSpeed);
+									currClient->setLocoAction(thisLoco->locoAddr, thisLoco->throttleID, outBuf);
+									sprintf(outBuf, "R%i", newDir);
+									currClient->setLocoAction(thisLoco->locoAddr, thisLoco->throttleID, outBuf);
+//									Serial.printf("Send Speed %i Dir %i for loco %i\n", ppList.at(2 + cmdOfs).payload.longVal, ppList.at(3 + cmdOfs).payload.longVal, ppList.at(1 + cmdOfs).payload.longVal);
 //								<l	 cab reg speedByte functMap>
 								}
 							}
-							
+/*
+							if (ppList.at(0).numParams == 5) //
+							{
+								thisLoco = currClient->getLocoByAddr(thisLoco, ppList.at(2).payload.longVal, '*');
+								if (thisLoco)
+								{
+									uint16_t newSpeed = ppList.at(3).payload.longVal;
+									uint8_t newDir = ppList.at(4).payload.longVal;
+									sprintf(outBuf, "V%i", newSpeed);
+									currClient->setLocoAction(thisLoco->locoAddr, thisLoco->throttleID, outBuf);
+									sprintf(outBuf, "R%i", newDir);
+									currClient->setLocoAction(thisLoco->locoAddr, thisLoco->throttleID, outBuf);
+									Serial.printf("Send Speed %i Dir %i for loco %i\n", ppList.at(3).payload.longVal, ppList.at(4).payload.longVal, ppList.at(2).payload.longVal);
+//								<l	 cab reg speedByte functMap>
+								}
+							}
+*/							
 						}
 						break;
-*/
 						case 'T':
 						{
 							if (paramCount == 3) //<T 55 T>
@@ -1175,28 +1445,152 @@ bool IoTT_LBServer::processWIServerMessage(AsyncClient* client, char * c)
 						case 'w':
 						{
 							if (paramCount == 4) //<w cab cv value> write cv on the main
-								digitraxBuffer->writeProg(ppList.at(1).payload.longVal, 1, 0, ppList.at(2).payload.longVal, ppList.at(3).payload.longVal);
+								digitraxBuffer->progCVProc(ppList.at(1).payload.longVal, 0x0C, ppList.at(2).payload.longVal, ppList.at(3).payload.longVal); //direct write byte
 						}
 						break;
 						case 'W':
 						{
-							if (paramCount == 2) //<R val> Read Address
-								digitraxBuffer->writeProg(0, 0, 0, 1, ppList.at(1).payload.longVal);
-							if (paramCount == 3) //<R cv val> Read Address
-								digitraxBuffer->writeProg(0, 0, 0, ppList.at(1).payload.longVal, ppList.at(2).payload.longVal);
+							if (paramCount == 2) //<W val> Write Address
+								digitraxBuffer->writeAddrOnly(ppList.at(1).payload.longVal);
+							if (paramCount == 3) //<W cv val> Write Address
+								digitraxBuffer->progCVProc(0, 0x09, ppList.at(1).payload.longVal, ppList.at(2).payload.longVal); //direct write byte
 						}
+						break;
+						default:
+							Serial.printf("Unprocessed Native DCC EX message %i bytes: %s\n", len-2, c);
 						break;
 					}
 				}
-//				Serial.printf("Unprocessed Native DCC EX message %i bytes: %s\n", len-2, c);
 				i++;
 			}
 			return false;
-		}
-		else
+}
+
+bool IoTT_LBServer::processWIServerMessageBypass(tcpDef * currClient, char * c)
+{
+	lnTransmitMsg txBuffer;
+	char* outStr = (char*)&txBuffer.lnData[0];
+	char outBuf[50] = {'\0'};
+	String repStr;
+	uint16_t len = strlen(c)-2; //eliminate <>
+	IoTT_SerInjector* dccPort = digitraxBuffer->getDccPort();
+
+	if  ((defSource == 0) && ((c[1]=='S')||(c[1]=='J'))) //local data
+	{
+		switch (c[1])
 		{
-//			Serial.printf("WiClient message %i bytes: %s\n", len, c);
-			currClient->nextPing = millis() + pingInterval + random(500);
+			case 'S':
+				for (uint8_t i = 0; i < sensorSupport.size(); i++)
+				{
+					sprintf(outBuf, "Q %i 0 %i", sensorSupport.at(i), digitraxBuffer->getBDStatus(sensorSupport.at(i)));
+					sendWIClientMessage(currClient->thisClient, String(outBuf), currClient->useExCmd);
+				}
+				break;
+			case 'J':
+				switch (c[2])
+				{
+					case 'T':
+						if (strlen(c) == 4) //<JT>
+						{
+							repStr = getLocalTopicRequestEX(4);
+//							Serial.println(repStr);
+							sendWIClientMessage(currClient->thisClient, repStr, currClient->useExCmd);
+						}
+						else
+						{
+							c[strlen(c)] = '\0';
+							uint16_t turnoutID = String(&c[4]).toInt();
+							repStr = "jT " + String(turnoutID) + " " + String(digitraxBuffer->getSwiPosition(turnoutID)) + " \"IoTT\"";
+//							Serial.println(repStr);
+							sendWIClientMessage(currClient->thisClient, repStr, currClient->useExCmd);
+						}
+						break;
+					case 'R':
+						if (strlen(c) == 4) //<JR>
+						{
+							repStr = getLocalTopicRequestEX(5);
+//							Serial.println(repStr);
+							sendWIClientMessage(currClient->thisClient, repStr, currClient->useExCmd);
+						}
+						else
+						{
+							c[strlen(c)] = '\0';
+							uint16_t locoID = String(&c[4]).toInt();
+							repStr = "jR " + String(locoID) + " \"" + String(locoID) + "\" \"" + fctConfigEX + "\"";
+//							repStr = "jR " + String(locoID) + " \"" + String(locoID) + "\" \"Head Light/Bell/Horn/F3/F4/F5Wi\"";
+//							Serial.println(repStr);
+							sendWIClientMessage(currClient->thisClient, repStr, currClient->useExCmd);
+						}
+						break;
+						case 'A':
+							break;
+					}
+				break;
+		}
+	}
+	else
+	{
+		switch (c[1])
+		{
+			case 's': 
+			{
+				String dispStr = String(EDExDispStrBP);
+				currClient->wiDeviceName = (char*) realloc(currClient->wiDeviceName, dispStr.length() + 1);
+				strcpy(&currClient->wiDeviceName[0], dispStr.c_str());
+				updateClientList();
+			} 
+			break;
+		}
+
+		if (dccPort)
+		{
+//			Serial.printf("Send to DCC EX: %s\n", c);
+			memcpy(outStr, &c[1], len);
+			outStr[len] = '\0';
+			sprintf(outStr, "%s", c);
+			txBuffer.lnMsgSize = strlen(outStr);
+			dccPort->lnWriteMsg(txBuffer);
+		}
+		switch (c[1])
+		{
+			case 'w':
+				len = strlen(c);
+				std::vector<ppElement> ppList;
+				lnTransmitMsg exInBuffer;
+				exInBuffer.lnData[0] = 0;
+				exInBuffer.lnMsgSize = 0;
+				exInBuffer.requestID = 0;
+				exInBuffer.msgType = DCCEx;
+				exInBuffer.reqRecTime = 0xFF;
+				uint8_t i = 0;
+				while (i < len) //read GridConnect protocol and package by message
+				{
+					if (parseDCCExNew(&c[i], &exInBuffer, &ppList))
+					{
+						uint16_t cvNr = ppList.at(2).payload.longVal-1;
+						uint16_t cvVal = ppList.at(3).payload.longVal;
+						for (uint16_t i = 0; i < clients.size(); i++)
+							if (clients[i]->useExCmd > 0) //DCC EX
+							{
+								sprintf(outBuf, "r %i %i", cvNr+1, cvVal); //read and write have same answer
+								sendWIClientMessage(clients[i]->thisClient, outBuf, clients[i]->useExCmd > 0);
+							}
+						break;
+					}
+					i++;
+				}
+			break;	
+		}
+
+	}
+	return true;
+}
+
+bool IoTT_LBServer::processWIServerMessageWI(tcpDef * currClient, char * c)
+{
+	uint16_t len = strlen(c);
+//	Serial.printf("WiClient to Server message %i bytes: %s\n", len, c);
+	currClient->nextPing = millis() + pingInterval + random(500);
 			char* strList[5];
 			untokstr(strList, 4, c, "<;>"); //IoTT_CommDef
 			switch (c[0])
@@ -1211,8 +1605,10 @@ bool IoTT_LBServer::processWIServerMessage(AsyncClient* client, char * c)
 						{
 							uint16_t locoAddr = 0xFFFF;
 							if (c[3] != '*')
+							{
 								locoAddr = strtol(&c[4], &strList[1]-3, 10);
-//							Serial.println(locoAddr);
+//								Serial.println(locoAddr);
+							}
 							switch (c[2])
 							{
 								case 'A': //Action
@@ -1273,7 +1669,7 @@ bool IoTT_LBServer::processWIServerMessage(AsyncClient* client, char * c)
 							strcpy(&currClient->wiDeviceName[0], &c[1]);
 							updateClientList();
 						}
-						sendWIServerMessageStringWI(currClient->thisClient, 9); //ping time
+						sendWIServerMessageString(currClient, 11); //ping time
 //						Serial.printf("Device Name: %s\n", currClient->wiDeviceName);
 						//send wiReply *HeartBeatInterval
 						return true;
@@ -1316,7 +1712,7 @@ bool IoTT_LBServer::processWIServerMessage(AsyncClient* client, char * c)
 													currClient->setTrackPowerStatus(0x82); //ON
 												else
 													currClient->setTrackPowerStatus(0x85); //Idle
-										sendWIServerMessageStringWI(currClient->thisClient, 2); //power status
+										sendWIServerMessageString(currClient, 2); //power status
 //										Serial.println("Power State");
 										return true;
 								}
@@ -1340,21 +1736,179 @@ bool IoTT_LBServer::processWIServerMessage(AsyncClient* client, char * c)
 					if (currClient->thisClient->connected())
 						currClient->thisClient->stop(); 
 				}
-				break; 
-				default: 	Serial.printf("Unprocessed WiClient message %i bytes: %s\n", len, c); break;
-
-			}
-			return false;
-		}
+		break; 
+		default: 	Serial.printf("Unprocessed WiClient message %i bytes: %s\n", len, c); break;
 	}
-	else
-		return false;
+	return false;
 }
 
 //this is called when data is received in client mode
 bool IoTT_LBServer::processWIClientMessage(AsyncClient* client, char * c)
 {
-//	Serial.print("In: ");
+	if (isDCCEXCmd)
+		return processWIEXClientMessage(client, c);
+	else
+		return processWINatClientMessage(client, c);
+}
+
+bool IoTT_LBServer::processWIEXClientMessage(AsyncClient* client, char * c)
+{
+	uint16_t len = strlen(c);
+//	Serial.println("processWIEXClientMessage");
+//	Serial.println(c);
+	if (lntcpClient == client)  //client mode, handle message from server
+	{
+		lnTransmitMsg exInBuffer;
+		exInBuffer.lnData[0] = 0;
+		exInBuffer.lnMsgSize = 0;
+		exInBuffer.requestID = 0;
+		exInBuffer.msgType = DCCEx;
+		exInBuffer.reqRecTime = 0xFF;
+		std::vector<ppElement> ppList;
+		uint8_t i = 0;
+		while (i < len) //read GridConnect protocol and package by message
+		{
+			if (parseDCCExNew(&c[i], &exInBuffer, &ppList))
+			{
+				pingSent = false;
+				nextPingPoint = millis() + pingInterval - random(500);
+				uint8_t paramCount = ppList.at(0).numParams;
+				char opCode = ppList.at(0).payload.strVal[0];
+				switch (opCode)
+				{
+					case '#' : 
+						//numSlots = ppList.at(1).payload.intVal
+						return true;
+					case 'i' : 	
+						wiServerDescription = (char*) realloc(wiServerDescription, len-3);
+						memcpy(&wiServerDescription[0], &c[2], len-4);
+						wiServerDescription[len-4] = '\0';
+//						Serial.println(wiServerDescription);
+						return true;
+					case 'j' :
+						switch (ppList.at(1).payload.strVal[0])
+						{
+							case 'T': Serial.println("receive Turnout list"); return true;
+							case 'R': Serial.println("receive Roster list"); return true;
+							case 'A': Serial.println("receive Automation list"); return true;
+						}
+						return true;
+					case 'H' :
+						{
+							uint16_t swiAddr = ppList.at(1).payload.longVal;
+							uint8_t swiPos = ppList.at(2).payload.longVal;
+							digitraxBuffer->setSwiStatus(swiAddr, swiPos, 0);
+							return true;
+						}
+					case 'l' :
+						{
+							uint16_t dccAddr = ppList.at(1).payload.longVal;
+							uint8_t slotNr = digitraxBuffer->getSlotOfAddr(dccAddr & 0x7F, (dccAddr >> 7 & 0x7F));
+//							Serial.println(slotNr);
+							slotData * thisSlot = NULL;
+							if (slotNr != 0xFF)
+								thisSlot = digitraxBuffer->getSlotData(slotNr);
+							lnReceiveBuffer recBuffer;
+							lnTransmitMsg * txBuffer = (lnTransmitMsg*)&recBuffer;
+							currentWIDCC = dccAddr;
+							if (thisSlot)
+							{
+								(*thisSlot)[1] = dccAddr & 0x7F;
+								(*thisSlot)[6] = (dccAddr >> 7);
+								(*thisSlot)[0] = 0x33; //set slot status to in use, refreshed
+								(*thisSlot)[2] = ppList.at(3).payload.longVal & 0X7F; //set slot SPEED
+								(*thisSlot)[3] = (ppList.at(3).payload.longVal & 0x80)> 0 ? (*thisSlot)[3] | 0x20 : (*thisSlot)[3] & ~0x20; //set slot direction
+								//add code for slot # processing
+								//add code for function status updates
+								prepSlotReadMsg(txBuffer, slotNr);
+								recBuffer.reqRecTime = micros();
+								callbackLocoNetMessage(&recBuffer);
+							}
+						}
+						return true;
+					case 'q' : //sensor frew
+						digitraxBuffer->setBDStatus(ppList.at(1).payload.longVal, false);
+						return true;
+					case 'Q' : //sensor occupied
+						digitraxBuffer->setBDStatus(ppList.at(1).payload.longVal, true);
+						return true;
+					case 'r' : //read cv 0 reply
+						{
+							int cvNr = 0;
+							int cvVal = 0;
+							if (ppList.size() > 2)
+								cvNr = ppList.at(1).payload.longVal - 1;
+							slotData * thisSlot = digitraxBuffer->getSlotData(0x7C);
+							lnReceiveBuffer recBuffer;
+							lnTransmitMsg * txBuffer = (lnTransmitMsg*)&recBuffer;
+							(*thisSlot)[0] = 0x28;
+							if (ppList.at(ppList.size()-1).dataType == 10) //integer
+							{
+								cvVal = ppList.at(ppList.size()-1).payload.longVal;
+								(*thisSlot)[1] = 0;
+							}
+							else
+							  (*thisSlot)[1] = 0x03;
+
+							(*thisSlot)[2] = 0;
+							(*thisSlot)[3] = 0;
+							(*thisSlot)[7] = (cvVal & 0x7F);
+							(*thisSlot)[5] = ((cvVal & 0x0080) >> 6) + ((cvNr & 0x80) >> 5)  + ((cvNr & 0x0300) >> 4); //<CVH> High 3 BITS of CV#, and ms bit of DATA.7 <0,0,CV9,CV8 - 0,0, D7,CV7>
+							(*thisSlot)[6] = cvNr & 0x7F;
+							prepSlotReadMsg(txBuffer, 0x7C);
+							recBuffer.reqRecTime = micros();
+							callbackLocoNetMessage(&recBuffer);
+						}
+						return true;
+
+					case 'v' : //read cv 1-1023 reply
+						{
+							slotData * thisSlot = digitraxBuffer->getSlotData(0x7C);
+							lnReceiveBuffer recBuffer;
+							lnTransmitMsg * txBuffer = (lnTransmitMsg*)&recBuffer;
+							int cvVal = 0;
+							(*thisSlot)[0] = 0x28;
+							if (ppList.at(2).dataType == 10) //integer
+							{
+								cvVal = ppList.at(2).payload.longVal;
+								(*thisSlot)[1] = 0;
+							}
+							else
+							  (*thisSlot)[1] = 0x03;
+							(*thisSlot)[2] = 0;
+							(*thisSlot)[3] = 0;
+							(*thisSlot)[5] = (((ppList.at(1).payload.longVal-1) & 0x0080) >> 7) + (((ppList.at(1).payload.longVal-1) & 0x0300) >> 4) + ((cvVal & 0x0080) >> 6); //<CVH> High 3 BITS of CV#, and ms bit of DATA.7 <0,0,CV9,CV8 - 0,0, D7,CV7>
+							(*thisSlot)[6] = (ppList.at(1).payload.longVal-1) & 0x7F;
+							(*thisSlot)[7] = (cvVal & 0x7F);
+							prepSlotReadMsg(txBuffer, 0x7C);
+							recBuffer.reqRecTime = micros();
+							callbackLocoNetMessage(&recBuffer);
+						}
+						return true;
+
+					default: 
+						for (uint8_t i = 0; i < paramCount; i++)
+						{
+							switch (ppList.at(i).dataType)
+							{
+								case 0:  Serial.printf("Param %i %i String %s \n", i, ppList.at(i).paramNr, ppList.at(i).payload.strPtr); break;
+								case 10: Serial.printf("Param %i %i Int = %i\n", i, ppList.at(i).paramNr, ppList.at(i).payload.longVal); break;
+								case 20: Serial.printf("Param %i %i Float = %.2f\n", i, ppList.at(i).paramNr, ppList.at(i).payload.floatVal); break;
+								default: Serial.printf("Param %i %i Short String %s\n", i, ppList.at(i).paramNr, ppList.at(i).payload.strVal); break;
+							}
+						}
+						break;
+				}
+			}
+			i++;
+		}
+	}
+	return false;
+}
+
+bool IoTT_LBServer::processWINatClientMessage(AsyncClient* client, char * c)
+{
+//	Serial.print("Nat In: ");
 //	Serial.println(c);
 	uint16_t len = strlen(c);
 	if (lntcpClient == client)  //client mode, handle message from server
@@ -1632,13 +2186,14 @@ void IoTT_LBServer::processLNServerMessage(AsyncClient* client, char * data)
 		{
 			tcpToLN(p, &recData);
 //			Serial.println("Process SEND");
-			if (recData.errorFlags == 0)
+			if ((recData.errorFlags & ~msgEcho) == 0) //echo not possible here, is incoming message
 			{
 //				Serial.write(data);
 //				Serial.println();
 //				Serial.printf("Sending %i bytes to LocoNet\n", recData.lnMsgSize);
 				recData.requestID = random(0xFF);
 				recData.requestID |= fromLBServer;
+				recData.errorFlags &= ~msgEcho;
 				sendMsg(*txData);
 //				if (lbsCallback)
 //					lbsCallback(&recData);
@@ -1696,20 +2251,26 @@ void IoTT_LBServer::processLNServerMessage(AsyncClient* client, char * data)
 
 void IoTT_LBServer::handleConnect(AsyncClient *client)
 {
-	nextPingPoint = millis() + pingInterval + random(4500);
 	reconnectInterval = lbs_reconnectStartVal;  //if not connected, try to reconnect every 10 Secs initially, then increase if failed
-	pingSent = false;
-	sendID = true;
 	if (isWiThrottle)
 	{
-		Serial.printf("WiThrottle client is now connected to server %s on port %d \n", client->remoteIP().toString().c_str(), isServer ? lbs_ServerPort : lbs_Port);
+		if (isDCCEXCmd)
+		{
+			Serial.printf("WiThrottle for DCC EX client is now connected to server %s on port %d \n", client->remoteIP().toString().c_str(), isServer ? lbs_ServerPort : lbs_Port);
+//			sendWIClientMessage(client, "s", true); //send init code
+		}
+		else
+			Serial.printf("WiThrottle client is now connected to server %s on port %d \n", client->remoteIP().toString().c_str(), isServer ? lbs_ServerPort : lbs_Port);
 		pingInterval = 10000;
 	}
 	else
 	{
 		Serial.printf("LocoNet over TCP client is now connected to server %s on port %d \n", client->remoteIP().toString().c_str(), isServer ? lbs_ServerPort : lbs_Port);
-		pingInterval = 10000;
+		pingInterval = lbPingInterval;
 	}
+	nextPingPoint = millis() + pingInterval + random(500);
+	pingSent = false;
+	sendID = true;
 }
 
 void IoTT_LBServer::clearWIThrottle(AsyncClient * thisClient)
@@ -1720,6 +2281,79 @@ void IoTT_LBServer::clearWIThrottle(AsyncClient * thisClient)
 		sendWIClientMessage(thisClient, outStr, false);
 		currentWIDCC = -1;
 	}
+}
+
+String IoTT_LBServer::getWIMessageStringEX(AsyncClient * thisClient, lnReceiveBuffer thisMsg) //used in client mode
+{
+	char outStrBuf[100];
+	String outStr;
+//	Serial.println(thisMsg.lnData[0]);
+	switch (thisMsg.lnData[0])
+	{
+		case 0xBF : //request Loco Addr
+		{
+			uint16_t locoAddr =  (thisMsg.lnData[1] << 7) + thisMsg.lnData[2];
+			if (currentWIDCC > 0)
+				clearWIThrottle(thisClient);
+			sprintf(outStrBuf, "t %i", locoAddr);
+			outStr = String(outStrBuf);
+		}
+		break;
+		case 0xA0 : //Set slot speed
+		{
+			slotData * thisSlot = &digitraxBuffer->slotBuffer[thisMsg.lnData[1]];
+			sprintf(outStrBuf, "t 1 %i %i %i", currentWIDCC, thisMsg.lnData[2], ((*thisSlot)[3] & 0x20)>>5);
+			outStr = String(outStrBuf);
+		}
+		break;
+		case 0xA1 : //Set slot DIRF
+		{
+//			slotData * thisSlot = &digitraxBuffer->slotBuffer[thisMsg.lnData[1]];
+			sprintf(outStrBuf, "t 1 %i %i %i", currentWIDCC, 0, (thisMsg.lnData[2] & 0x20)>>5);
+//			sprintf(outStrBuf, "t 1 %i %i %i", currentWIDCC, (*thisSlot)[2], (thisMsg.lnData[2] & 0x20)>>5);
+			outStr = String(outStrBuf);
+		}
+		break;
+		case 0xEF : 
+			if (thisMsg.lnData[1] == 0x0E) //write slot data
+			{
+				switch (thisMsg.lnData[2])
+				{
+					case 0x7C: //Prog Slot
+//						slotData * thisSlot = &digitraxBuffer->slotBuffer[0x7C];
+//						(*thisSlot)[5] = thisMsg.lnData[8]; 
+//						(*thisSlot)[6] = thisMsg.lnData[9]; 
+//						(*thisSlot)[7] = thisMsg.lnData[10]; 
+						bool readOp = (thisMsg.lnData[3] & 0x40) == 0;
+						bool serviceMode = (thisMsg.lnData[3] & 0x04) == 0;
+						bool validData = true; //(thisMsg.lnData[4] & 0x0F) == 0;
+						uint16_t cvNr = (thisMsg.lnData[9] & 0x7F) + ((thisMsg.lnData[8] & 0x01) << 7) + ((thisMsg.lnData[8] & 0x30) << 4);
+						uint8_t cvVal = (thisMsg.lnData[10] & 0x7F) + ((thisMsg.lnData[8] & 0x02) << 6);
+						if (serviceMode)
+						{
+							if (readOp) //R cv callbacknum callbacksub
+								sprintf(outStrBuf, "R %i", cvNr+1);
+							else //<W cv value>
+								sprintf(outStrBuf, "W %i %i%", cvNr+1, validData ? cvVal : -1);
+						}
+						else
+						{
+							if (readOp) //R cv callbacknum callbacksub
+								sprintf(outStrBuf, ""); //not supported by DCC EX
+							else //<w cab cv valule>
+								sprintf(outStrBuf, "w %i %i %i%", currentWIDCC, cvNr+1, validData ? cvVal : -1);
+						}
+						outStr = String(outStrBuf);
+
+						break;
+				}
+			}
+		break;
+		//add commands for programming in case of DCC EX format
+	}
+//	Serial.print("out: ");
+//	Serial.println(outStr);
+	return outStr;
 }
 
 String IoTT_LBServer::getWIMessageString(AsyncClient * thisClient, lnReceiveBuffer thisMsg) //used in client mode
@@ -1755,96 +2389,185 @@ String IoTT_LBServer::getWIMessageString(AsyncClient * thisClient, lnReceiveBuff
 	return outStr;
 }
 
-bool IoTT_LBServer::sendWIServerMessageStringEX(AsyncClient * thisClient, uint8_t replyType)
+String IoTT_LBServer::getLocalTopicRequestEX(uint8_t topic)
 {
-	String outStr;
-//	char outBuf[50] = {'\0'};
-	switch (replyType)
+	String outStr = "";
+	char tempBuf[10] = {'\0'};
+	switch (topic)
 	{
-		case 0: outStr = "iDCC-EX V-4.2.14 / " + String(WiTVersion); break;
-		case 1: outStr = "# 50"; break; //number of available loco slots
-		case 2: outStr = "p" + String(digitraxBuffer->getPowerStatus() & 0x01); break;
-		case 3: 
-			outStr = digitraxBuffer->getTurnoutInfo(0, true);
-			break;	
+		case 0: //version info
+			outStr = "iDCC-EX V-4.1.5 / " + String(WiTVersion);
+			break;
+		case 1: //number of available loco slots
+			outStr = "# 50";  
+			break;
+		case 2: //power status
+			outStr = "p" + String(digitraxBuffer->getPowerStatus() & 0x01); break;
+			break;
+		case 3: break; //turnout configuration, not used
 		case 4: 
-			outStr = digitraxBuffer->getRosterInfo(0, true);
+			outStr = "jT";
+			for (uint16_t i = 0; i < turnoutSupport.size(); i++)
+			{
+				sprintf(tempBuf, " %i", turnoutSupport[i]);
+				outStr += String(tempBuf);
+			}
+			break;	
+		case 5:
+			outStr = "jR";
+			for (uint16_t i = 0; i < locoSupport.size(); i++)
+			{
+				sprintf(tempBuf, " %i", locoSupport[i]);
+				outStr += String(tempBuf);
+			}
 			break;
-		case 5: 
-			outStr = digitraxBuffer->getRouteInfo(0, true);
+		case 6: //route/automation configuration, not used
 			break;
-		case 10: break; //reserved for FastClock Update			
+		case 7: outStr = digitraxBuffer->getRouteInfo(0, true);
+			break;
+		case 8: 
+			break; 
+		default: break;
 	}
-//	Serial.printf("%i %s\n", replyType, outStr.c_str());
-	if (thisClient && (outStr != ""))
-		return(sendWIClientMessage(thisClient, outStr, true));
-	else
-		return false;
+//	Serial.printf("Send (%i): %s\n", topic, outStr);
+	return outStr;
 }
 
-bool IoTT_LBServer::sendWIServerMessageStringWI(AsyncClient * thisClient, uint8_t replyType) //server mode
+String IoTT_LBServer::getLocalTopicRequestWI(uint8_t topic)
 {
-	String outStr;
+	String outStr = "";
 	char outBuf[100];
-//	extern String BBVersion;
-	switch (replyType)
+	switch (topic)
 	{
-		case 0: outStr = "VN2.0"; break;
-		case 1: switch (defSource)
+		case 0: //version info
+			outStr = "VN2.0"; break;
+			break;
+		case 1: //not used
+			break;
+		case 2: 
+			outStr = "PPA" + String(digitraxBuffer->getPowerStatus()); 
+			break;
+		case 3: //turnouts options
+			outStr = "PTT]\\[Turnouts}|{Turnout]\\[Closed}|{2]\\[Thrown}|{4]\\[Unknown}|{1]\\[Inconsistent}|{8"; 
+			break; 
+		case 4: //turnouts list
+			outStr = "PTL";
+			for (uint16_t i = 0; i < turnoutSupport.size(); i++)
+				outStr += "]\\[" + String(turnoutSupport[i]) + "}|{" + "IoTT" + "}|{" + ((digitraxBuffer->getSwiPosition(turnoutSupport[i]) > 0) ? "4" : "2");
+			break;
+		case 5: //roster
+			outStr = "RL" + String(locoSupport.size());
+			if (locoSupport.size() > 0)
+				for (uint16_t i = 0; i < locoSupport.size(); i++)
 				{
-					case 0: 
-					{
-						outStr = "RL" + String(locoSupport.size());
-						if (locoSupport.size() > 0)
-							for (uint16_t i = 0; i < locoSupport.size(); i++)
-							{
-								sprintf(outBuf, "]\\[%i}|{%i}|{%c", locoSupport[i], locoSupport[i], locoSupport[i] > 127 ? 'L' : 'S');
-								outStr += String(outBuf);
-							}
-					}
-					break;
-					case 1: outStr = digitraxBuffer->getRosterInfo(0, false); 
-					break;
-//					default: outStr = ""; break;
+					sprintf(outBuf, "]\\[%i}|{%i}|{%c", locoSupport[i], locoSupport[i], locoSupport[i] > 127 ? 'L' : 'S');
+					outStr += String(outBuf);
 				}
-				break;
-		case 2: outStr = "PPA" + String(digitraxBuffer->getPowerStatus()); break;
-		case 3: outStr = "PTT]\\[Turnouts}|{Turnout]\\[Closed}|{2]\\[Thrown}|{4]\\[Unknown}|{1]\\[Inconsistent}|{8"; // break; 
-				sendWIClientMessage(thisClient, outStr, false);
-				switch (defSource)
-				{
-					case 0: 
-					{
-						outStr = "PTL";
-						for (uint16_t i = 0; i < turnoutSupport.size(); i++)
-							outStr += "]\\[" + String(turnoutSupport[i]) + "}|{" + "IoTT" + "}|{" + ((digitraxBuffer->getSwiPosition(turnoutSupport[i]) > 0) ? "4" : "2");
-					}
-					break;
-					case 1: outStr = digitraxBuffer->getTurnoutInfo(0, false); break;
-//					default: outStr = ""; break;
-				}
-				break;
-		case 4: outStr = "PRT]\[Routes}|{Route]\[Active}|{2]\[Inactive}|{4]\[Unknown}|{0]\[Inconsistent}|{8";
-				sendWIClientMessage(thisClient, outStr, false);
-				switch (defSource)
-				{
-//					case 1: outStr = digitraxBuffer->getRouteInfo(0, false); break;
-					default: outStr = ""; break;
-				}
-				break;
-		case 5: outStr = "RCC0"; break;
-		case 6: outStr = "HTDCC-EX"; break;
-//		case 6: outStr = "HTIoTT"; break;
-		case 7: outStr = "Ht" + String(WiTVersion); break;
-//		case 8: outStr = "PW" + String(lbs_Port); break; //web port
-		case 9: outStr = "*" + String((int)round(pingInterval/1000)); break;
-		case 10: outStr = "PFT" + String(digitraxBuffer->getFCTime()) + "<;>" + String((int)digitraxBuffer->slotBuffer[0x7B][0]); break;
-//---------------------->> Init sequence end^
-		default: outStr = ""; break;
+			break;
+		case 6: outStr = "PRT]\[Routes}|{Route]\[Active}|{2]\[Inactive}|{4]\[Unknown}|{0]\[Inconsistent}|{8";
+			break;
+		case 7: //not used for local WI server
+			break;
+		case 8: outStr = "RCC0"; 
+			break;
+		case 9: outStr = "HTDCC-EX"; 
+			break;
+		case 10: outStr = "Ht" + String(WiTVersion); 
+			break;
+		case 11: outStr = "*" + String((int)round(pingInterval/1000)); 
+			break;
+		case 12: outStr = "PFT" + String(digitraxBuffer->getFCTime()) + "<;>" + String((int)digitraxBuffer->slotBuffer[0x7B][0]); 
+			break;
+//		case 13: outStr = "PW" + String(lbs_Port); break; //web port
+		default: break;
+	}
+	return outStr;
+}
+
+String IoTT_LBServer::getCSTopicRequestWI(uint8_t topic)
+{
+	String outStr = "";
+	switch (topic)
+	{
+		case 0: //version info
+			outStr = "VN2.0"; break;
+			break;
+		case 1: //not used
+			break;
+		case 2: 
+			outStr = "PPA" + String(digitraxBuffer->getPowerStatus()); 
+			break;
+		case 3: //turnouts options
+			outStr = "PTT]\\[Turnouts}|{Turnout]\\[Closed}|{2]\\[Thrown}|{4]\\[Unknown}|{1]\\[Inconsistent}|{8"; 
+			break; 
+		case 4: //turnouts list
+			outStr = digitraxBuffer->getTurnoutInfo(0, false);
+			break;	
+		case 5:
+			outStr = digitraxBuffer->getRosterInfo(0, false); 
+			break;
+		case 6: outStr = "PRT]\[Routes}|{Route]\[Active}|{2]\[Inactive}|{4]\[Unknown}|{0]\[Inconsistent}|{8";
+			break;
+		case 7: //route/automation list
+			outStr = digitraxBuffer->getRouteInfo(0, false);
+			break;
+		case 8: outStr = "RCC0"; 
+			break;
+		case 9: outStr = "HTDCC-EX"; 
+			break;
+		case 10: outStr = "Ht" + String(WiTVersion); 
+			break;
+		case 11: outStr = "*" + String((int)round(pingInterval/1000)); 
+			break;
+		case 12: outStr = "PFT" + String(digitraxBuffer->getFCTime()) + "<;>" + String((int)digitraxBuffer->slotBuffer[0x7B][0]); 
+			break;
+//		case 13: outStr = "PW" + String(lbs_Port); break; //web port
+		default: break;
+	}
+	return outStr;
+}
+/*
+ * 0: Board Version / Server Version
+ * 1: # of slots in CS (DCC EX)
+ * 2: Power Status
+ * 3: turnout command options
+ * 4: turnout list
+ * 5: roster list
+ * 6: route options
+ * 7: route list
+ * 8: consist list (always empty)
+ * 9: Server ID short
+ * 10: Server ID long
+ * 11: ping interval
+ * 12: Fast Clock time
+ * 13: Train Server IP
+*/
+
+bool IoTT_LBServer::sendWIServerMessageString(tcpDef * ClientNode, uint8_t replyType)
+{
+//	Serial.println("sendWIServerMessageString");
+	String outStr = "";
+	switch (ClientNode->useExCmd)
+	{
+		case 0:
+			switch (defSource)
+			{
+				case 0: outStr = getLocalTopicRequestWI(replyType); break;
+				case 1: outStr = getCSTopicRequestWI(replyType); break;
+			}
+			break;
+		case 1:
+			switch (defSource)
+			{
+				case 0: outStr = getLocalTopicRequestEX(replyType); break;
+				case 1: break; //handled by Bypass
+			}
+			break;
+		default: return false;
 	}
 //	Serial.printf("%i %s\n", replyType, outStr.c_str());
-	if (thisClient && (outStr != ""))
-		return(sendWIClientMessage(thisClient, outStr, false));
+	if (ClientNode->thisClient && (outStr != ""))
+		return(sendWIClientMessage(ClientNode->thisClient, outStr, ClientNode->useExCmd));
 	else
 		return false;
 }
@@ -1864,6 +2587,8 @@ bool IoTT_LBServer::sendWIClientMessage(AsyncClient * thisClient, String cmdMsg,
 			}
 			if (thisClient->space() > strlen(lnStr.c_str())+2)
 			{
+//				Serial.println();
+//				Serial.println(lnStr);
 				thisClient->add(lnStr.c_str(), strlen(lnStr.c_str()));
 				nextPingPoint = millis() + pingInterval - random(500);
 				return thisClient->send();
@@ -1898,7 +2623,8 @@ bool IoTT_LBServer::sendLNClientMessage(AsyncClient * thisClient, String cmdMsg,
 	if (thisClient)
 		if (thisClient->canSend())
 		{
-//			Serial.print("sending... ");
+//			Serial.printf("sending %s \n ", cmdMsg);
+//			dispMsg(&thisMsg.lnData[0]);
 			String lnStr = cmdMsg;
 			char hexbuf[13];
 			for (uint8_t i = 0; i < thisMsg.lnMsgSize; i++)
@@ -1926,6 +2652,11 @@ String IoTT_LBServer::getServerIP()
 	return isServer ? "" : lbs_IP.toString();
 }
 
+String IoTT_LBServer::getServerDescr()
+{
+	return String(wiServerDescription);
+}
+
 void IoTT_LBServer::processLoop()
 {
 	if (isWiThrottle)
@@ -1943,38 +2674,19 @@ void IoTT_LBServer::processLoopWI() //process function for WiThrottle
 		{
 			for (uint16_t i = 0; i < clients.size(); i++)
 			{
-				if (clients[i]->useExCmd >= 0) //known format
+				if (clients[i]->sendInitSeq >= 0) //only valid after format is clear
 				{
-					if (clients[i]->sendInitSeq >= 0) //only valid after format is clear
-					{
-//						Serial.printf("%i %i \n", i, clients[i]->sendInitSeq);
-						if (clients[i]->useExCmd > 0)
-						{
-							if (numInitSeq - clients[i]->sendInitSeq <= 2)
-								sendWIServerMessageStringEX(clients[i]->thisClient, numInitSeq - clients[i]->sendInitSeq);
-						}
-						else
-						{
-//							Serial.printf("Loop %i\n", numInitSeq - clients[i]->sendInitSeq);
-							sendWIServerMessageStringWI(clients[i]->thisClient, numInitSeq - clients[i]->sendInitSeq);
-//							Serial.println("done");
-
-						}
-						clients[i]->sendInitSeq--;
-					}
-					else
-						if (trunc(clients[i]->lastFC/60) != trunc(digitraxBuffer->getFCTime()/60))
-						{
-//						if (fcUpdate)
-							if (clients[i]->useExCmd > 0)
-								sendWIServerMessageStringEX(clients[i]->thisClient, 10); //not implemented in DCC EX, does nothing
-							else
-							{
-								sendWIServerMessageStringWI(clients[i]->thisClient, 10);
-							}
-							clients[i]->lastFC = digitraxBuffer->getFCTime();
-						}
+//					Serial.printf("%i %i \n", i, clients[i]->sendInitSeq);
+					sendWIServerMessageString(clients.at(i), numInitSeq - clients.at(i)->sendInitSeq);
+					clients.at(i)->sendInitSeq--;
 				}
+				else
+					if (trunc(clients[i]->lastFC/60) != trunc(digitraxBuffer->getFCTime()/60))
+					{
+//						if (fcUpdate)
+//						sendWIServerMessageString(clients.at(i), 12); //not implemented in DCC EX, does nothing
+						clients.at(i)->lastFC = digitraxBuffer->getFCTime();
+					}
 			}
 			if (que_wrPos != que_rdPos)
 			{
@@ -1985,15 +2697,8 @@ void IoTT_LBServer::processLoopWI() //process function for WiThrottle
 					case 0x82:;
 					case 0x83:;
 					case 0x85:
-						{
-							for (uint16_t i = 0; i < clients.size(); i++)
-							{
-								if (clients[i]->useExCmd > 0)
-									sendWIServerMessageStringEX(clients[i]->thisClient, 2);
-								else
-									sendWIServerMessageStringWI(clients[i]->thisClient, 2);
-							}
-						}
+						for (uint16_t i = 0; i < clients.size(); i++)
+							sendWIServerMessageString(clients.at(i), 2); //power update
 						break;
 					case 0xB2:
 						{
@@ -2001,13 +2706,14 @@ void IoTT_LBServer::processLoopWI() //process function for WiThrottle
 							sprintf(outBuf, (transmitQueue[hlpQuePtr].lnData[2] & 0x10) > 0 ? "Q %i" : "q %i", inpNr);
 							for (uint16_t i = 0; i < clients.size(); i++)
 							{
-								if (clients[i]->useExCmd > 0)
+								if ((clients[i]->useExCmd > 0) && (!digitraxBuffer->isCS()))
 									sendWIClientMessage(clients[i]->thisClient, outBuf, clients[i]->useExCmd > 0);
 							}
 						}
 						break;
 
 					case 0xB4: //OPC_LONG_ACK
+						
 						switch (transmitQueue[hlpQuePtr].lnData[1])
 						{
 							case 0x3C: //OPC_SW_STATE
@@ -2015,13 +2721,47 @@ void IoTT_LBServer::processLoopWI() //process function for WiThrottle
 								{
 									for (uint16_t i = 0; i < clients.size(); i++)
 									{
-										if (clients[i]->useExCmd > 0) //DCC EX
-											sprintf(outBuf, "H %i %i", (lastSwiAddr, transmitQueue[hlpQuePtr].lnData[2] & 0x70) == 0x30 ? 0 : 1);
-//											sprintf(outBuf, "H %i %c", transmitQueue[hlpQuePtr].lnData[1] + ((transmitQueue[hlpQuePtr].lnData[2] & 0x0F)<<7), transmitQueue[hlpQuePtr].lnData[2] & 0x20 ? 'C' : 'T');
-										else //native Wi
-											sprintf(outBuf, "PTA%c%i", (lastSwiAddr, transmitQueue[hlpQuePtr].lnData[2] & 0x70) == 0x30 ? '2' : '4', lastSwiAddr);
-										sendWIClientMessage(clients[i]->thisClient, outBuf, clients[i]->useExCmd > 0);
+										bool sendWI = clients[i]->useExCmd == 0;
+										bool sendEX = (clients[i]->useExCmd > 0) && (!digitraxBuffer->isCS());
+										if (sendWI || sendEX)
+										{
+											if (sendEX) //DCC EX
+												sprintf(outBuf, "H %i %i", (lastSwiAddr, transmitQueue[hlpQuePtr].lnData[2] & 0x70) == 0x30 ? 0 : 1);
+//												sprintf(outBuf, "H %i %c", transmitQueue[hlpQuePtr].lnData[1] + ((transmitQueue[hlpQuePtr].lnData[2] & 0x0F)<<7), transmitQueue[hlpQuePtr].lnData[2] & 0x20 ? 'C' : 'T');
+											else //native Wi
+												sprintf(outBuf, "PTA%c%i", (lastSwiAddr, transmitQueue[hlpQuePtr].lnData[2] & 0x70) == 0x30 ? '2' : '4', lastSwiAddr);
+											sendWIClientMessage(clients[i]->thisClient, outBuf, clients[i]->useExCmd > 0);
+										}
 									}
+								}
+								break;
+							case 0x6F:
+								{
+									slotData * thisSlot = digitraxBuffer->getSlotData(0x7C);
+									uint16_t cvNr = ((*thisSlot)[6] & 0x7F) + (((*thisSlot)[5] & 0x01) << 7) + (((*thisSlot)[5] & 0x30) << 4);
+									uint8_t cvVal = ((*thisSlot)[7] & 0x7F) + (((*thisSlot)[5] & 0x02) << 6);
+									for (uint16_t i = 0; i < clients.size(); i++)
+										if ((clients[i]->useExCmd > 0) && (!digitraxBuffer->isCS())) //DCC EX
+										{
+											switch (transmitQueue[hlpQuePtr].lnData[2])
+											{
+												case 0x01: break;
+												case 0x00:;
+												case 0x7F:
+												default:
+												{
+													sprintf(outBuf, "r %i %i", cvNr+1, -1); //read and write have same answer
+													sendWIClientMessage(clients[i]->thisClient, outBuf, clients[i]->useExCmd > 0);
+													break;
+												}
+												case 0x40:
+												{
+													sprintf(outBuf, "r %i %i", cvNr+1, cvVal); //read and write have same answer
+													sendWIClientMessage(clients[i]->thisClient, outBuf, clients[i]->useExCmd > 0);
+													break;
+												}
+											}
+										}
 								}
 								break;
 						}
@@ -2035,18 +2775,24 @@ void IoTT_LBServer::processLoopWI() //process function for WiThrottle
 						{
 							for (uint16_t i = 0; i < clients.size(); i++)
 							{
-								if (clients[i]->useExCmd > 0) //DCC EX
-									sprintf(outBuf, "H %i %i", transmitQueue[hlpQuePtr].lnData[1] + ((transmitQueue[hlpQuePtr].lnData[2] & 0x0F)<<7), transmitQueue[hlpQuePtr].lnData[2] & 0x20 ? 0 : 1);
-//									sprintf(outBuf, "H %i %c", transmitQueue[hlpQuePtr].lnData[1] + ((transmitQueue[hlpQuePtr].lnData[2] & 0x0F)<<7), transmitQueue[hlpQuePtr].lnData[2] & 0x20 ? 'C' : 'T');
-								else //native Wi
-									sprintf(outBuf, "PTA%c%i", transmitQueue[hlpQuePtr].lnData[2] & 0x20 ? '2' : '4', transmitQueue[hlpQuePtr].lnData[1] + ((transmitQueue[hlpQuePtr].lnData[2] & 0x0F)<<7));
-								sendWIClientMessage(clients[i]->thisClient, outBuf, clients[i]->useExCmd > 0);
+								bool sendWI = clients[i]->useExCmd == 0;
+								bool sendEX = (clients[i]->useExCmd > 0) && (!digitraxBuffer->isCS());
+								if (sendWI || sendEX)
+								{
+									if (sendEX) //DCC EX
+										sprintf(outBuf, "H %i %i", transmitQueue[hlpQuePtr].lnData[1] + ((transmitQueue[hlpQuePtr].lnData[2] & 0x0F)<<7), transmitQueue[hlpQuePtr].lnData[2] & 0x20 ? 0 : 1);
+//										sprintf(outBuf, "H %i %c", transmitQueue[hlpQuePtr].lnData[1] + ((transmitQueue[hlpQuePtr].lnData[2] & 0x0F)<<7), transmitQueue[hlpQuePtr].lnData[2] & 0x20 ? 'C' : 'T');
+									else //native Wi
+										sprintf(outBuf, "PTA%c%i", transmitQueue[hlpQuePtr].lnData[2] & 0x20 ? '2' : '4', transmitQueue[hlpQuePtr].lnData[1] + ((transmitQueue[hlpQuePtr].lnData[2] & 0x0F)<<7));
+									sendWIClientMessage(clients[i]->thisClient, outBuf, clients[i]->useExCmd > 0);
+								}
 							}
 						}
 						break;					
 					case 0xA0:; //OPC_LOCO_SPD
 					case 0xA1:; //OPC_LOCO_DIRF
 					case 0xA2: //OPC_LOCO_SND
+					case 0xA3: //OPC_F912
 						{
 							for (uint16_t i = 0; i < clients.size(); i++)
 							{
@@ -2056,13 +2802,22 @@ void IoTT_LBServer::processLoopWI() //process function for WiThrottle
 //									Serial.printf("LN Slot: %i Mem Slot: %i ThID: %c\n", transmitQueue[hlpQuePtr].lnData[1], thisLoco->slotNum, thisLoco->throttleID);
 									uint16_t currFct = (digitraxBuffer->slotBuffer[thisLoco->slotNum][3] << 8) + digitraxBuffer->slotBuffer[thisLoco->slotNum][7];
 									uint16_t fctChgMask = currFct ^ thisLoco->dirFct;
-									if (transmitQueue[hlpQuePtr].lnData[0] == 0xA0) clients[i]->setLocoAction(thisLoco->locoAddr, thisLoco->throttleID, "qV");
-									if ((fctChgMask & 0x2000))
-										if (transmitQueue[hlpQuePtr].lnData[0] == 0xA1) clients[i]->setLocoAction(thisLoco->locoAddr, thisLoco->throttleID, "qR");
-									if ((fctChgMask & 0x1F00))
-										if (transmitQueue[hlpQuePtr].lnData[0] == 0xA1) clients[i]->setLocoAction(thisLoco->locoAddr, thisLoco->throttleID, "qF");
-									if ((fctChgMask & 0x000F))
-										if (transmitQueue[hlpQuePtr].lnData[0] == 0xA2) clients[i]->setLocoAction(thisLoco->locoAddr, thisLoco->throttleID, "qF");
+									if (clients[i]->useExCmd > 0)
+									{
+										clients[i]->setLocoAction(thisLoco->locoAddr, thisLoco->throttleID, "qX");
+									}
+									else
+									{
+										if (transmitQueue[hlpQuePtr].lnData[0] == 0xA0) clients[i]->setLocoAction(thisLoco->locoAddr, thisLoco->throttleID, "qV");
+										if ((fctChgMask & 0x2000))
+											if (transmitQueue[hlpQuePtr].lnData[0] == 0xA1) clients[i]->setLocoAction(thisLoco->locoAddr, thisLoco->throttleID, "qR");
+										if ((fctChgMask & 0x1F00))
+											if (transmitQueue[hlpQuePtr].lnData[0] == 0xA1) clients[i]->setLocoAction(thisLoco->locoAddr, thisLoco->throttleID, "qF");
+										if ((fctChgMask & 0x000F))
+											if (transmitQueue[hlpQuePtr].lnData[0] == 0xA2) clients[i]->setLocoAction(thisLoco->locoAddr, thisLoco->throttleID, "qF");
+										if ((fctChgMask & 0x00F0))
+											if (transmitQueue[hlpQuePtr].lnData[0] == 0xA3) clients[i]->setLocoAction(thisLoco->locoAddr, thisLoco->throttleID, "qF");
+									}
 									thisLoco = clients[i]->getLocoBySlot(thisLoco, transmitQueue[hlpQuePtr].lnData[1], '*');
 								}
 							}
@@ -2086,13 +2841,20 @@ void IoTT_LBServer::processLoopWI() //process function for WiThrottle
 											while (thisLoco)
 											{
 												clients[i]->confirmLoco(transmitQueue[hlpQuePtr].lnData[2], locoAddr, thisLoco->throttleID, transmitQueue[hlpQuePtr].lnData[3], transmitQueue[hlpQuePtr].lnData[5], (transmitQueue[hlpQuePtr].lnData[6]<<8) + transmitQueue[hlpQuePtr].lnData[10]);
-//												Serial.printf("Send Loco %i Throttle %c\n", thisLoco->locoAddr, thisLoco->throttleID);
-												//send dir, speed, fcts
-												clients[i]->setLocoAction(thisLoco->locoAddr, thisLoco->throttleID, "qV");
-												clients[i]->setLocoAction(thisLoco->locoAddr, thisLoco->throttleID, "qR");
-												clients[i]->setLocoAction(thisLoco->locoAddr, thisLoco->throttleID, "qF", 0xFFFF);
-//												Serial.println("Send Loco UpData done");
+												if (clients[i]->useExCmd > 0)
+												{
+													clients[i]->setLocoAction(thisLoco->locoAddr, thisLoco->throttleID, "qX", 0xFFFFFFFF);
+												}
+												else
+												{
+//													Serial.printf("Send Loco %i Throttle %c\n", thisLoco->locoAddr, thisLoco->throttleID);
+													//send dir, speed, fcts
+													clients[i]->setLocoAction(thisLoco->locoAddr, thisLoco->throttleID, "qV");
+													clients[i]->setLocoAction(thisLoco->locoAddr, thisLoco->throttleID, "qR");
+													clients[i]->setLocoAction(thisLoco->locoAddr, thisLoco->throttleID, "qF", 0xFFFFFFFF);
+//													Serial.println("Send Loco UpData done");
 												
+												}
 												thisLoco = clients[i]->getLocoByAddr(thisLoco, locoAddr, '*');
 											}
 										}
@@ -2105,27 +2867,27 @@ void IoTT_LBServer::processLoopWI() //process function for WiThrottle
 												{
 //													for (uint16_t i = 0; i < clients.size(); i++)
 //													{
-//														sendWIServerMessageString(clients[i]->thisClient, 10); //fast clock update
+//														sendWIServerMessageString(clients[i]->thisClient, 12); //fast clock update
 //														clients[i]->lastFC = digitraxBuffer->getFCTime();
 //													}
 												}
 											break;
 											case 0x7C: //Prog Slot
 												{
+													bool readOp = (transmitQueue[hlpQuePtr].lnData[3] & 0x40) == 0;
+													bool serviceMode = (transmitQueue[hlpQuePtr].lnData[3] & 0x04) == 0;
+													bool validData = (transmitQueue[hlpQuePtr].lnData[4] & 0x0F) == 0;
+													uint16_t cvNr = (transmitQueue[hlpQuePtr].lnData[9] & 0x7F) + ((transmitQueue[hlpQuePtr].lnData[8] & 0x01) << 7) + ((transmitQueue[hlpQuePtr].lnData[8] & 0x30) << 4);
+													uint8_t cvVal = (transmitQueue[hlpQuePtr].lnData[10] & 0x7F) + ((transmitQueue[hlpQuePtr].lnData[8] & 0x02) << 6);
 													for (uint16_t i = 0; i < clients.size(); i++)
-														if (clients[i]->useExCmd > 0) //DCC EX
+														if ((clients[i]->useExCmd > 0) && (!digitraxBuffer->isCS())) //DCC EX
 														{
-															bool readOp = (transmitQueue[hlpQuePtr].lnData[3] & 0x40) == 0;
-															bool serviceMode = (transmitQueue[hlpQuePtr].lnData[3] & 0x04) == 0;
-															bool validData = (transmitQueue[hlpQuePtr].lnData[4] & 0x0F) == 0;
-															uint16_t cvNr = (transmitQueue[hlpQuePtr].lnData[9] & 0x7F) + ((transmitQueue[hlpQuePtr].lnData[8] & 0x01) << 7) + ((transmitQueue[hlpQuePtr].lnData[8] & 0x30) << 4);
-															uint8_t cvVal = (transmitQueue[hlpQuePtr].lnData[10] & 0x7F) + ((transmitQueue[hlpQuePtr].lnData[8] & 0x02) << 6);
 															if (serviceMode)
 															{
 																if (cvNr == 0)
 																	sprintf(outBuf, "%c %i", readOp ? 'r' : 'w', validData ? cvVal : -1);
 																else
-																	sprintf(outBuf, "r %i %i%", cvNr+1, validData ? cvVal : -1); //read and write have same answer
+																	sprintf(outBuf, "v %i %i", cvNr+1, validData ? cvVal : -1); //read and write have same answer
 																sendWIClientMessage(clients[i]->thisClient, outBuf, clients[i]->useExCmd > 0);
 															}
 														}
@@ -2136,6 +2898,60 @@ void IoTT_LBServer::processLoopWI() //process function for WiThrottle
 									break;
 								}
 								break;
+							}
+						}
+						break;
+					case 0xED: //IMM_PACKET
+						{
+//							Serial.println("Update Throttle");
+							if ((transmitQueue[hlpQuePtr].lnData[1] == 0x0B) && (transmitQueue[hlpQuePtr].lnData[2] == 0x7F))
+							{
+								byte recData[6];
+								for (int i=0; i < 5; i++)
+								{
+									recData[i] = transmitQueue[hlpQuePtr].lnData[i+4]; //get all the IMM bytes
+									if (i > 0)
+										recData[i] |= ((recData[0] & (0x01<<(i-1)))<<(8-i)); //distribute 8th  its to data bytes
+								}
+								recData[0] = (transmitQueue[hlpQuePtr].lnData[3] >> 4) & 0x07; //# of bytes in IMM packet
+								if (recData[0] >= 3) //extended packet
+								{
+									if (recData[1] < 0x80) //Multi-Function decoders with 7 bit addresses
+									{
+//										Serial.println("Multi-Function decoders with 7 bit address");
+									}
+									else if (recData[1] < 0xC0) //Basic Accessory Decoders with 9 bit addresses and Extended Accessory Decoders with 11-bit addresses
+									{ //signals
+									}
+									else if (recData[1] < 0xE8) //Multi-Function Decoders with 14 bit addresses
+									{ //F9-F28
+										uint16_t locoAddr = ((recData[1] & 0x3F) << 8) + recData[2];
+										slotData * currSlot = digitraxBuffer->getSlotDataByAddr(locoAddr);
+										if (currSlot)
+										{
+											for (uint16_t i = 0; i < clients.size(); i++)
+											{
+												thisLoco = clients[i]->getLocoByAddr(NULL, locoAddr, '*');
+												while (thisLoco)
+												{
+//													Serial.printf("LN Slot: %i Mem Slot: %i ThID: %c\n", transmitQueue[hlpQuePtr].lnData[1], thisLoco->slotNum, thisLoco->throttleID);
+													uint32_t currFct = digitraxBuffer->getLocoFctStatus(currSlot);
+													uint32_t fctChgMask = currFct ^ thisLoco->dirFct;
+													if (clients[i]->useExCmd > 0)
+													{
+														clients[i]->setLocoAction(thisLoco->locoAddr, thisLoco->throttleID, "qX");
+													}
+													else
+													{
+														if ((fctChgMask & 0xFFFF00F0) > 0)
+															clients[i]->setLocoAction(thisLoco->locoAddr, thisLoco->throttleID, "qF");
+													}
+													thisLoco = clients[i]->getLocoByAddr(thisLoco, locoAddr, '*');
+												}
+											}
+										}
+									}
+								}
 							}
 						}
 						break;
@@ -2167,14 +2983,14 @@ void IoTT_LBServer::processLoopWI() //process function for WiThrottle
 				if (lntcpClient->canSend())
 				{
 					int hlpQuePtr = (que_rdPos + 1) % queBufferSize;
-					String msgStr = getWIMessageString(lntcpClient, transmitQueue[hlpQuePtr]);
+					String msgStr = isDCCEXCmd ?  getWIMessageStringEX(lntcpClient, transmitQueue[hlpQuePtr]) : getWIMessageString(lntcpClient, transmitQueue[hlpQuePtr]);
 					if (msgStr != "")
-						if (sendWIClientMessage(lntcpClient, msgStr, false))
+						if (sendWIClientMessage(lntcpClient, msgStr, isDCCEXCmd))
 							que_rdPos = hlpQuePtr; 
 						else
 							return; //if not successful, we try next time
 					else
-						que_rdPos = hlpQuePtr; //invalid message, ignore
+						que_rdPos = hlpQuePtr; //message not implemented, ignore
 				}
 			}
 			else // periodic pinging of server
@@ -2280,7 +3096,7 @@ void IoTT_LBServer::processLoopLN() //process function for LN over TCP
 					else
 					{
 						sendLNPing();
-						nextPingPoint += 2000; //2 secs ping timeout
+						nextPingPoint += lbPingTimeout; //2 secs ping timeout
 					}
 				}
 			}
@@ -2292,23 +3108,34 @@ void IoTT_LBServer::processLoopLN() //process function for LN over TCP
 void IoTT_LBServer::sendWIPing()
 {
 	extern String deviceName;
-//    String hlpStr = "IoTT_Stick_M5_" + String((uint32_t)ESP.getEfuseMac());
-	sendWIClientMessage(lntcpClient, "N" + 	deviceName, false);
-    if (sendID)
-    {
-		sendID = false;
-		sendWIClientMessage(lntcpClient, "HU" + WiFi.localIP().toString(), false);
+//    String hlpStr = "Ping IoTT_Stick_M5_" + String((uint32_t)ESP.getEfuseMac());
+	if (isDCCEXCmd)
+	{
+		if (sendID)
+		{
+			sendWIClientMessage(lntcpClient, "s", true);
+			sendID = false;
+		}
+		else
+			sendWIClientMessage(lntcpClient, "#", true);
+	}
+	else
+	{
+		sendWIClientMessage(lntcpClient, "N" + 	deviceName, false);
+		if (sendID)
+		{
+			sendID = false;
+			sendWIClientMessage(lntcpClient, "HU" + WiFi.localIP().toString(), false);
+		}
 	}
 	pingSent = true;
 }
 
 void IoTT_LBServer::sendLNPing()
 {
-//	Serial.println("LN Ping request");
+	Serial.println("LN Ping request");
 	lnTransmitMsg txData;
-	txData.lnMsgSize = 2;
-	txData.lnData[0] = 0x81;
-	txData.lnData[1] = 0x7E;
+	prepSlotRequestMsg(&txData, 0x7B); //Fast Clock Read
 	lnWriteMsg(&txData);
 	pingSent = true;
 }
@@ -2324,6 +3151,11 @@ void IoTT_LBServer::updateClientList()
 		doc["Cmd"] = "ClientList";
 		JsonObject Data = doc.createNestedObject("Data");
 		Data["WIType"] = isWiThrottle;
+		if (isWiThrottle)
+		{
+			Data["EXType"] = isDCCEXCmd;
+			Data["CSServer"] = digitraxBuffer->isCS();
+		}
 		JsonArray clArray = Data.createNestedArray("cl");
 		for (int i = 0; i < clients.size(); i++)
 		{

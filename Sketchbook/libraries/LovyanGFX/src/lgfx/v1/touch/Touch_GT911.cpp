@@ -62,6 +62,7 @@ namespace lgfx
       lgfx::gpio_lo(_cfg.pin_rst);
       lgfx::delay(1);
       lgfx::gpio_hi(_cfg.pin_rst);
+      lgfx::delay(1);
     }
 
     if (_cfg.pin_int >= 0)
@@ -69,38 +70,49 @@ namespace lgfx
       lgfx::lgfxPinMode(_cfg.pin_int, pin_mode_t::input);
     }
 
-    _inited = lgfx::i2c::init(_cfg.i2c_port, _cfg.pin_sda, _cfg.pin_scl).has_value() && _writeBytes(gt911cmd_getdata, 3);
-
-    if (_inited)
+    for (int retry = 6; retry; --retry)
     {
-      uint8_t buf[] = { 0x80, 0x56, 0x00 };
-      _writeBytes(buf, 3);
-      _writeReadBytes(buf, 2, &buf[2], 1);
-      _refresh_rate = 5 + (buf[2] & 0x0F);
-/*
+      if (lgfx::i2c::init(_cfg.i2c_port, _cfg.pin_sda, _cfg.pin_scl).has_value() && _writeBytes(gt911cmd_getdata, 3))
       {
-        uint8_t writedata[4] = { 0x80, 0x40 };
-
-        uint8_t readdata[193] = {0};
-        writeReadBytes(writedata, 2, readdata, 193);
-        uint32_t addr = 0x8040;
-        for (int i = 0; i < 12; ++i) {
-          Serial.printf("%04x:" , addr);
-          for (int j = 0; j < 4; ++j) {
-            for (int k = 0; k < 4; ++k) {
-              int l = i * 16 + j * 4 + k;
-              Serial.printf("%02x ", readdata[l]);
-            }
-            Serial.print(" ");
-          }
-          Serial.println();
-          addr += 16;
-        }
+        _inited = true;
+        uint8_t buf[] = { 0x80, 0x56, 0x00 };
+        _writeBytes(buf, 3);
+        _writeReadBytes(buf, 2, &buf[2], 1);
+        _refresh_rate = 5 + (buf[2] & 0x0F);
+        return true;
       }
-//*/
+      lgfx::delay(1);
+      if (_cfg.i2c_addr == default_addr_1) {
+        _cfg.i2c_addr = default_addr_2;
+      } else if (_cfg.i2c_addr == default_addr_2) {
+        _cfg.i2c_addr = default_addr_1;
+      }
     }
-    return _inited;
+    return false;
   }
+
+/*
+  void debug_regdump(void)
+  {
+    uint8_t writedata[4] = { 0x80, 0x40 };
+
+    uint8_t readdata[193] = {0};
+    writeReadBytes(writedata, 2, readdata, 193);
+    uint32_t addr = 0x8040;
+    for (int i = 0; i < 12; ++i) {
+      Serial.printf("%04x:" , addr);
+      for (int j = 0; j < 4; ++j) {
+        for (int k = 0; k < 4; ++k) {
+          int l = i * 16 + j * 4 + k;
+          Serial.printf("%02x ", readdata[l]);
+        }
+        Serial.print(" ");
+      }
+      Serial.println();
+      addr += 16;
+    }
+  }
+//*/
 
   void Touch_GT911::wakeup(void)
   {
@@ -158,15 +170,19 @@ namespace lgfx
     if ((_cfg.pin_int < 0 || !gpio_in(_cfg.pin_int)))
     {
       /// GT911は値を0x814Eに0を書くまで同じ値を維持する挙動となっているため、;
-      /// 前回からの間隔が長すぎると古い情報が得られるので更新のため2回取得する;
-      bool flg = (diff_msec > _refresh_rate << 4);
-      if (!_update_data() || flg)
+      /// 前回からの間隔が長すぎると古い情報を得てしまうので、
+      /// 一旦データを破棄してしばらくリトライを繰返す
+      if (diff_msec >= 128)
       {
-        if (flg)
+        _writeBytes(gt911cmd_getdata, 3);
+        size_t retry = 24;
+        do
         {
-          _readdata[0] = 0;
-          delay(_refresh_rate);
-        }
+          delay(1);
+        } while (!_update_data() && --retry);
+      }
+      else
+      {
         _update_data();
       }
     }

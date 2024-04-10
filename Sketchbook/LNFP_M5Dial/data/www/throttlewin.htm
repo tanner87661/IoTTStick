@@ -1,0 +1,608 @@
+<!DOCTYPE html>
+<html HTML>
+<!--
+    This program is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program.  If not, see <https://www.gnu.org/licenses/>.
+	
+	Authors: Mani Kumar
+             Fred Decker
+             Matt
+    
+	This file is part of the DCC++ EX Project for model railroading and more.
+	For more information, visit use at dcc-ex.com
+-->
+    <head>
+        <link rel="manifest" href="manifest.json">
+        <script>
+            var version = "1.3.3";
+        </script>
+
+        <link href="images/favicon.ico" rel="shortcut icon" type="image/x-icon">
+        <link href="images/favicon.ico" rel="icon"          type="image/x-icon">
+        <link href="css/jquery-ui.css"              rel="stylesheet" type="text/css">
+        <link href="css/layout.css"                 rel="stylesheet" type="text/css">
+        <link href="css/roundslider.min.css"        rel="stylesheet" type="text/css"/>
+        <link href="css/throttle.css"               rel="stylesheet" type="text/css">
+        <link href="css/jquery.rotaryswitch.css"    rel="stylesheet" type="text/css">
+        <link href="css/icons.css"                  rel="stylesheet" type="text/css">
+        <link href="css/settings.css"               rel="stylesheet" type="text/css">
+        <script  type="text/javascript" src="js/jquery-3.2.1.min.js"></script>  
+        <script  type="text/javascript" src="js/jquery-ui.min.js"></script>                       
+        <script  type="text/javascript" src="js/roundslider.min.js"></script>
+        <script  type="text/javascript" src="js/jquery.rotaryswitch.js"></script>
+        <script  type="text/javascript" src="js/fnMaster.js"></script> 
+        <script  type="text/javascript" src="js/commandController.js"></script>
+        <script  type="text/javascript" src="js/storageController.js"></script> 
+        <script  type="text/javascript" src="js/addloco.js"></script> 
+        <script  type="text/javascript" src="js/emulator.js"></script>
+        <script  type="text/javascript" src="js/exwebthrottle.js"></script>
+        <script  type="text/javascript" src="js/pwa.js"></script>
+
+<!--
+    NOTE: You can replace the above links with these if you like if you will always run when
+          connected to the internet. Using the links above, they must be installed on your machine.
+          This program will search for them online and import them if you use this method instead.
+        <link href="https://cdn.jsdelivr.net/npm/round-slider@1.6.1/dist/roundslider.min.css" rel="stylesheet" />
+        <script type="text/javascript" src="https://code.jquery.com/jquery-3.2.1.js"></script>  
+        <script type="text/javascript" src="https://code.jquery.com/ui/1.12.1/jquery-ui.js"></script>                                 
+        <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/round-slider@1.6.1/dist/roundslider.min.js"></script>
+        <script type="text/javascript" src="js/exwebthrottle.js"></script>  		  
+-->
+
+        <title>DCC++ EX Web Throttle</title>
+        <meta name="description" content="Chromium browser based web throttle for a DCC++ EX Command Station to control model trains">
+        <html lang="en">
+    </head>
+
+    <body>
+        <nav class="menu" id="side-menu" tabindex="0">
+            <header class="avatar">
+                <button class="nav-btn in" id="nav-close">&times;</button> 
+                <img src="images/cover.jpg" />
+            </header>
+            <ul>
+                <li tabindex="0" class="throttle" id="throttle-nav"><span>Throttle</span></li>
+                <li tabindex="0" class="locomotives" id="loco-nav"><span>Locomotives</span></li>
+                <li tabindex="0" class="function-maps" id="fn-map-nav"><span>Function Maps</span></li>
+                <li tabindex="0" class="progtool" id="prog-nav"><span>CV Programmer</span></li>
+                <li tabindex="0" class="settings" id="settings-nav"><span>Settings</span></li>
+            </ul>
+        </nav>
+        <div class="topnav">
+            <div class="row">
+                <div class="column-2">
+                    <button class="nav-btn" id="nav-open">☰</button>
+                </div>
+                <div class="column-6 align-center">
+                    <div  class="throttle-heading"> 
+                        <a href="http://www.dcc-ex.com" target="_blank" rel="noopener noreferrer"><div class="wt-logo"></div></a>
+                        <!--img src="images/WebThrottle.png" /> -->
+                        <!-- <p>Version 1.2.0</p> -->
+                    </div>
+                </div>
+                <div class="column-2">
+                    <button class="btn-expand" id="fs-toggle" state="ws" title="Fullscreen">&#10530;</button>
+                    <button class="btn-info" id="info-tooltip" state="ws" title="Information"><span class="icon-info"></span></button>
+                    <button class="btn-info" id="help-button" state="ws" title="Help" onclick=" window.open('https://dcc-ex.com/throttles/software/ex-webthrottle.html', '_blank')"><span class="icon-question"></span></button>
+                </div>
+            </div> 
+        </div>
+        <div id="rendered-form">
+            <div class="rendered-form">
+                <section id="throttle-window" class="section">
+                    <div Class="details-panel" id="details-panel">
+                        <div class="row">
+                            <div class="column-5">
+                                <div class="loco-list-container row">
+                                    <div class="column-5 loco-list-ctrl">
+                                        <label for="ex-locoid" class="formbuilder-text-label">
+                                            Locomotive ID <span class="formbuilder-required">*</span>
+                                        </label>
+                                        <input id="ex-locoid" type="text" loco-cv="0" name="Locomotives"/>
+                                    </div>
+                                    <div class="column-2 formbuilder-button acquire-wrap">
+                                        <button id="button-getloco" class="acq-loco-btn btn" data-acquired="false"> 
+                                            <span class="icon-circle-right"></span> 
+                                        </button>
+                                    </div>
+                                    <div class="column-2 formbuilder-button acquire-wrap">
+                                    </div>                                   
+                                </div>
+                            </div>
+                            <div class="server-button column-5">
+                                <select id="select-method" class="select-control select-xl" name="selectMethod" title="Change the connection method">
+                                    <option value="serial">Serial</option>
+                                    <option value="emulator">Emulator</option>
+                                    <option value="websock">WebSocket</option>
+                                </select>
+                                <button type="button" class="btn-default btn" title="Connect to the Command Station" aria-state="connected" name="button-connect" access="false" id="button-connect">
+                                    <span class="con-ind"></span>Connect DCC++ EX
+                                </button>
+                                <!-- <button class="btn-grey" id="fs-toggle" state="ws" title="Fullscreen">&#10530;</button> -->
+                            </div>
+                        </div>
+                        <hr>
+                    </div>
+                    <div class="row  pos-rel">                                              
+                        <button type="button" class="btn-default btn btn-hide" title="Hide the top bar" name="button-hide" access="false" id="button-hide">
+                            <span class="icon-circle-up"></span>
+                        </button> 
+                    </div>
+                 
+ 
+                    <div class="row flex-center">
+                        <div class="column-5 mobile-100 throttle-container">
+                            <div class="row mobile-100  width100 flexx">
+                                <div class="column-7 flexx">
+                                    <div class="flexx btns">
+                                        <button type="button" title="Decrease speed" class="btn-default btn btn btn-speed btn-left" name="button-left" access="false" id="button-left">
+                                            <span class="left" style="line-height: 12px;">&nbsp;-&nbsp;</span>
+                                        </button>
+                                    </div> 
+                                    <div class="Throttlewrap">
+                                        <div id="vertical-throttle" class="vertical-throttle speedController">                              
+                                            <div id="v-throttle">                                           
+                                            </div>
+                                            <div id="speed-indicator" class="progress-numb">
+                                                0
+                                            </div>
+                                        </div>
+                                            <div id="knobthrottle" class="speedController">
+                                                <input type="text" class="rotarySwitch" value="0">
+                                                <div id="knob-value" class="knob-value">0</div>
+                                            </div>
+                                            <div id="circular-throttle" class="circular-throttle speedController">     
+                                            
+                                            </div>
+                                        </div>
+                                        <div class="flexx btns">
+                                            <button type="button" title="Increase speed" class="btn-default btn btn-speed btn-right" name="button-right" access="false" id="button-right">
+                                                <span class="right">&nbsp;+&nbsp;</span>
+                                            </button> 
+                                        </div>
+                                    </div>
+                                    
+                                    <div class=" column-2">
+                                        <div class="em-btn">
+                                            <button class="em-stop" id="emergency-stop" title="Emergency Stop">
+                                                <span class="icon-stop"></span>
+                                            </button>
+                                        </div>
+                                        <div class="dir-toggle">
+                                            <button class="dir-btn forward selected" id="dir-f" aria-label="forward" ><span class="arrow-up icon-up"></span></button>
+                                            <button class="dir-btn stop" id="dir-S" aria-label="stop"> <span class="stop"></span></button>
+                                            <button class="dir-btn backward" id="dir-b" aria-label="backward"> <span class="arrow-down icon-down"></button>        
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="functionKeys column-5 mobile-100">
+                                <div class="row mobile-100">
+                                    <div class="power-slider column-4 formbuilder-button " id="power-switch-div" title="Enable track power">
+                                        <label class="switch">
+                                            <input type="checkbox" id="power-switch">
+                                            <span class="slider round"></span>
+                                        </label>
+                                        <span class="pow-status">
+                                            Power <span id="power-status">Off</span>
+                                        </span>
+                                    </div> 
+                                    <div class="note-msg column-6">
+                                        <select id="select-map" class="btn select-map select-control" name="selectMap" title="Load a Saved Map">
+                                        </select>                                   
+                                    </div>
+                                </div>
+                                <div class="row" id="fn-wrapper">
+
+                                </div>
+                            </div>
+                        </div>                             
+
+                    <div class="row">
+                        <div class="console-slider column-4" title="Enable the debug console">
+                            <label class="debug switch">
+                                <input type="checkbox" id="console-toggle">
+                                <span class="slider round debug-slider"></span>
+                            </label>
+                            <span class="debug-status">
+                                Debug Console
+                            </span>
+                        </div>   
+                    </div>
+                    <div id="debug-console" hidden="true">
+                        <hr>
+                        <div class="row mobile-margin-top20">
+                            <div class="formbuilder-text column-8">
+                                <input placeholder="Direct Command (without &lt; &gt;)" class="form-control" name="cmd-direct" access="false" id="cmd-direct">
+                            </div>
+                    
+                            <div class="formbuilder-button column-1">
+                                <button type="button" class="btn-default btn" name="sendCmd" access="false" data-acquired="false"  id="button-sendCmd">
+                                    Send
+                                </button>
+                            </div>
+                            <div class="formbuilder-button  dcmd-clear column-1">
+                                <button type="button" class="btn-default btn" name="clearLog" access="false" data-acquired="false"  id="button-clearLog">
+                                    Clear Log
+                                </button>
+                            </div>
+                        </div>
+                        <div class="log-msg" id="log-box">
+                        </div>
+                    </div>
+                </section>
+
+                <section id="prog-window" class="section" hidden="true">
+                    <div class="row settings-heading">
+                        <div class="column-7 pl0 hdng">
+                            CV Programmer
+                        </div>
+                    </div>
+                    <div class="row settings-content">
+                        <div class="side-panel">
+                            <ul>
+                                <li id="settings-general">Programming Mode</li>
+                                <li id="settings-storage">Address Programming</li>
+                                <li id="settings-app">CV Programming</li>
+                            </ul>
+                        </div>
+
+                        <div class="settings-panel scrollbar" id="settings-panel">
+                            <div class="settings-section" id="progsettings-section">
+                                <div class="settings-subheading">
+                                    Programming Mode
+                                </div>
+                                <div class="settings-group">
+                                    <div class="row setting-entry">
+                                        <label class="setting-label">
+                                            Select Mode
+                                        </label>
+                                        <div class="setting-content">
+                                            <select id="progmode-selector" class="btn progmode-selector select-control" name="progmodeselector" title="Change Programming Mode">
+                                                <option value="ServiceMode"> Service Mode </option>
+                                                <option value="OpsMode"> Operations Mode </option>
+                                            </select> 
+                                        </div> 
+									</div>
+                                    <div class="row setting-entry" id="opsadrinput">
+										<label class="setting-label">
+											DCC Address
+										</label>
+										<div class="setting-content">
+											<input class="column-2 align-right" type="integer" id="opsaddress" placeholder="" name="opsaddress" required> 
+										</div> 
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="settings-section" id="addrprog-section">
+                                <div class="settings-subheading">
+                                    Address Programming
+                                </div>
+                                <div class="settings-group">
+                                    <div class="row setting-entry">
+                                        <label class="setting-label">
+                                            New DCC Address:
+                                        </label>
+                                        <div class="setting-content">
+                                            <input class="column-2 align-right" type="integer" id="dccaddress" name="dccaddress" required> 
+                                        </div> 
+                                    </div>
+                                    <div class="row setting-entry">
+                                        <label class="setting-label">
+                                            <button id="prog-read-addr">Read Address</button>
+                                        </label>
+                                        <label class="setting-label">
+                                            <button id="prog-write-addr">Write Address</button>
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="settings-section" id="cvprog-section">
+                                <div class="settings-subheading">
+                                    CV Programming
+                                </div>
+                                <div class="settings-group">
+                                    <div class="row setting-entry">
+                                        <label class="setting-label">
+                                            CV #:
+                                        </label>
+                                        <div class="setting-content">
+                                            <input class="column-2 align-right" type="integer" id="cvaddress" name="cvaddress" required> 
+                                        </div> 
+                                        <label class="setting-label">
+                                            CV Value:
+                                        </label>
+                                        <div class="setting-content">
+                                            <input class="column-2 align-right" type="integer" id="cvvalue" name="cvvalue" required> 
+                                        </div> 
+                                    </div>
+                                    <div class="row setting-entry">
+                                        <label class="setting-label">
+                                            <button id="prog-read-cv">Read CV</button>
+                                        </label>
+                                        <label class="setting-label">
+                                            <button id="prog-write-cv">Write CV</button>
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+            
+                <section id="loco-window" class="section" hidden="true">
+                    <div class="row settings-heading">
+                        <div class="column-7 pl0 hdng">
+                            Locomotives
+                        </div>
+                        <div class="column-3 pr0">
+                            <div class="option-btns formbuilder-button row">
+                                <div class="column-2">&nbsp;</div> 
+                                <div class="column-4">
+                                    <button id="add-loco" class="add-loco-btn btn"> 
+                                        <span class="icon-plus"></span> Add New 
+                                    </button>
+                                    <div id="loco-form-content" class="add-loco-form">
+                                        <form id="loco-form" class="form-inline">
+                                            <div class="fn-modal-header row">
+                                                <h4 class="fn-heading add-loco-head">Add Locomotive</h4>    
+                                                <span class="close" id="close-addloco-model">×</span>
+                                            </div>
+                                            <!-- <div class="add-loco-head">s
+                                                Add Locomotive
+                                                <>
+                                                <hr>
+                                            </div> -->
+                                            <div class="row">
+                                                <label class="column-4"for="name">Name:*</label>
+                                                <input class="column-6" type="text" id="name" placeholder="Enter name" name="name" required>
+                                            </div>
+                                            <div class="row">
+                                                <label class="column-4"for="cv">CV:*</label>
+                                                <input class="column-6" type="number" id="cv" placeholder="Enter CV" name="cv" required>
+                                            </div>
+                                            <div class="row">
+                                                <label class="column-4"for="type">Engine Type:</label>
+                                                <select class="column-6 add-select" id="type" placeholder="Select Type" name="type">
+                                                    <option value="Diesel"> Diesel </option>
+                                                    <option value="Steam"> Steam </option>
+                                                    <option value="Electric"> Electric </option>
+                                                    <option value="Other"> Other </option>
+                                                </select>
+                                            </div>
+                                            <div class="row">
+                                                <label class="column-4"for="brand">Brand:</label>
+                                                <input class="column-6" type="text" id="brand" placeholder="Brand Name" name="brand">
+                                            </div>
+                                            <div class="row">
+                                                <label class="column-4"for="decoder">Decoder:</label>
+                                                <input class="column-6" type="text" id="decoder" placeholder="Decoder Name" name="decoder">
+                                            </div>
+                                            <div class="row">
+                                                <label class="column-4"for="map">Function map:*</label>
+                                                <input id="function-maps" class="column-6" type="text" id="map" placeholder="Select Map" name="map" required>
+                                            </div>
+                                                <div class="spacer">
+                                                
+                                                </div>
+                                            <div class="row">
+                                                <div class="column-2"></div>
+                                                <button id="loco-submit" loco-mode="add" class="column-6" type="submit">Submit</button>
+                                                <div class="column-2"></div>
+                                            </div>
+                                        </form>
+                                    </div>
+                                </div> 
+                                <div class="column-2">  
+                                    <button class="add-loco-btn btn" id="export-locolist" title="Export Locomotives"><span class="icon-upload3"></span></button>
+                                </div>
+                                <div class="column-2">
+                                    <button class="add-loco-btn btn" id="import-locolist" title="Import Locomotives"><span class="icon-download3"></span></button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="row settings-content">
+                        <div class="settings-panel" id="locomotives-panel">
+                             <div class="settings-group">
+                                 Select a Locomotive
+                             </div>
+                        </div>
+                    </div>
+                </section>
+
+                <section id="fn-map-window" class="section" hidden="true">
+                    <div class="row settings-heading">
+                        <div class="column-7 pl0 hdng">
+                            Function Mappings
+                        </div>
+                        <div class="column-3 pr0">
+                            <div class="option-btns formbuilder-button row">
+                                <div class="column-2">&nbsp;</div> 
+                                <div class="column-4">
+                                    <button id="add-map" class="add-loco-btn btn"> 
+                                        <span class="icon-plus"></span> New Map
+                                    </button>
+                                </div> 
+                                <div class="column-2">  
+                                    <button class="add-loco-btn btn" id="export-all-maps" title="Export Map" ><span class="icon-upload3"></span></button>
+                                </div>
+                                <div class="column-2">
+                                    <button class="add-loco-btn btn" id="import-all-maps" title="Import Map"><span class="icon-download3"></span></button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="row settings-content">
+                        <div class="side-panel">
+                            <ul id="function-mappings">
+                            </ul>
+                        </div>
+                        <div class="settings-panel" id="mapping-panel">
+
+                             <div class="settings-group placeholder">
+                                 <p>Select a Map</p>
+                             </div>
+                        </div>
+                    </div>
+                </section>
+                
+                <section id="settings-window" class="section" hidden="true">
+                    <div class="row">
+                        <div class="settings-heading hdng">
+                            Settings
+                        </div>
+                    </div>
+                    <div class="row settings-content">
+                        <div class="side-panel">
+                            <ul>
+                                <li id="settings-general">General</li>
+                                <li id="settings-storage">Storage</li>
+                                <li id="settings-app">App</li>
+                            </ul>
+                        </div>
+                        <div class="settings-panel scrollbar" id="settings-panel">
+                            <div class="settings-section" id="general-section">
+                                <div class="settings-subheading">
+                                    General
+                                </div>
+                                <div class="settings-group">
+                                    <div class="row setting-entry">
+                                        <label class="setting-label">
+                                            Theme
+                                        </label>
+                                        <div class="setting-content">
+                                            <select id="theme-selector" class="btn theme-selector select-control" name="themeselector" title="Change Theme">
+                                                <option value="simple"> Simple </option>
+                                                <option value="metallic"> Metallic </option>
+                                                <option value="dark"> Dark </option>
+                                            </select> 
+                                        </div> 
+                                    </div>
+                                    <div class="row setting-entry">
+                                        <label class="setting-label">
+                                            Speed Controller
+                                        </label>
+                                        <div class="setting-content">
+                                            <select id="throttle-selector" class="btn throttle-selector select-control" name="throttleselector" title="Change Throttle Controller">
+                                                <option value="vertical"> Vertical </option>
+                                                <option value="knob"> Knob </option>
+                                                <option value="circular"> Circular </option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <div class="row setting-entry">
+                                        <label class="setting-label">
+                                            Programming Track Mode
+                                        </label>
+                                        <div class="setting-content">
+                                            <select id="joinmode-selector" class="btn joinmode-selector select-control" name="joinmodeselector" title="Change Prog Track Mode">
+                                                <option value="joined"> JOIN Mode </option>
+                                                <option value="individual"> Programming only </option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="settings-section" id="storage-section">
+                                <div class="settings-subheading">
+                                    Storage
+                                </div>
+                                <div class="settings-group">
+                                    <!--<div class="row setting-entry">
+                                        <label class="setting-label">
+                                            Some placeholder
+                                        </label>
+                                        <div class="setting-content">
+                                            <input /> 
+                                        </div> 
+                                    </div>
+                                    <div class="row setting-entry">
+                                        <label class="setting-label">
+                                            Some placeholder
+                                        </label>
+                                        <div class="setting-content">
+                                            <input /> 
+                                        </div>
+                                    </div>-->
+                                    <!--<div class="hr"></div>-->
+                                    <div class="row setting-entry">
+                                        <label class="setting-label">
+                                            <button id="backup-app-settings">&#10514;&nbsp; Export App data</button>
+                                        </label>
+                                    </div>
+                                    <div class="row setting-entry">
+                                        <label class="setting-label">
+                                            <button id="restore-app-settings">&#10515;&nbsp; Import App data</button>
+                                        </label>
+                                    </div>
+                                    <div class="row setting-entry">
+                                        <label class="setting-label">
+                                            <button id="wipe-app-settings">&#10539;&nbsp; Wipe App data</button>
+                                        </label>
+                                    </div>
+                                </div>
+                            <div class="settings-section" id="app-section">
+                                <div class="settings-subheading">
+                                    App
+                                </div>
+                                <div class="settings-group">
+                                    <div class="row setting-entry">
+                                        <label class="setting-label">
+                                            Install as an app
+                                        </label>
+                                        <label class="setting-label">
+                                            <button class="add-button">Install</button>
+                                            <label class="installed-label">App Installed</label>
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+            </div>
+        </div>
+        
+        <div id="fnModal" class="fn-modal">
+            <!-- Modal content -->          
+            <div class="fn-modal-header row">
+             <h4 class="fn-heading" > New Map </h4>    
+             <span class="close" id="close-model">&times;</span>
+            </div>
+            <div class="fn-modal-content">
+                Content
+            </div>
+            <div class="fn-modal-footer row">
+                <button type="button" mode="new" class="btn-default btn save-fn" name="save-fn"  id="save-fn-map">
+                    Save Map
+                </button>
+            </div>
+        </div>
+        <input id="map-upload"  type="file" hidden/>
+        <input id="maps-upload" type="file" hidden/>
+        <input id="cabs-upload" type="file" hidden/>
+        <input id="app-upload"  type="file" hidden/>
+    </body>
+
+</html>
+
+<script>
+    if('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('sw.js')
+        .then(function() {
+              console.log('Service Worker Registered');
+        });
+    }
+</script>

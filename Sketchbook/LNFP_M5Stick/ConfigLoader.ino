@@ -19,24 +19,26 @@ int getFileSize(String fileName)
 
 bool deleteFile(String fileName)
 {
-  Serial.printf("Deleting %s\n", &fileName[0]);
+//  Serial.printf("Deleting %s\n", &fileName[0]);
   if (SPIFFS.exists(fileName))
   {
     SPIFFS.remove(fileName);
     return true;
   }
+//  else
+//    Serial.println("File not found");
   return false;
 }
 
 void deleteAllFiles(String ofNameType, String startDir, String fileExt, bool lastOnly)
 {
-  Serial.println("Delete all " + ofNameType);
+  Serial.printf("Delete all %s %i\n", ofNameType, lastOnly);
   File root = SPIFFS.open(startDir);
   File thisFile = root.openNextFile();
   String lastFileName;
   while (thisFile)
   {
-    String hlpStr = thisFile.name();
+    String hlpStr = startDir + "/" + thisFile.name();
 //    Serial.println(hlpStr);
     uint8_t extDot = hlpStr.lastIndexOf('.');
     for (int i = 0; i < 3; i++)
@@ -50,16 +52,29 @@ void deleteAllFiles(String ofNameType, String startDir, String fileExt, bool las
       if (lastOnly)
         lastFileName = thisFile.name();
       else
-        deleteFile(thisFile.name());
+        deleteFile(startDir + "/" + thisFile.name());
     if (hlpStr == startDir + "/" + ofNameType + "?." + fileExt)
       if (lastOnly)
         lastFileName = thisFile.name();
       else
-        deleteFile(thisFile.name());
+        deleteFile(startDir + "/" + thisFile.name());
     thisFile = root.openNextFile();
   }
   if (lastOnly)
-    deleteFile(lastFileName);
+    deleteFile(startDir + "/" + lastFileName);
+/*
+  Serial.println("End");
+  root = SPIFFS.open(startDir);
+  thisFile = root.openNextFile();
+  while (thisFile)
+  {
+    String hlpStr = startDir + "/" + thisFile.name();
+    Serial.println(hlpStr);
+    thisFile = root.openNextFile();
+    yield();
+  }  
+  Serial.println("End verify");
+*/
 }
 
 uint32_t readFileToBuffer(String fileName, char * thisBuffer, uint32_t maxSize)
@@ -181,3 +196,55 @@ void prepareShutDown()
     mySwitchList->saveRunTimeData();
   delay(150);
 }
+
+/*
+void initWire(uint8_t pinSDA, uint8_t pinSCL)
+{
+  Serial.println("Init TwoWire");  
+  Wire.setPins(pinSDA,pinSCL);
+  Wire.begin();
+  delay(10);
+  Wire.setClock(i2cClock);
+  delay(10);
+
+//        Wire.begin(hatSDA, hatSCL);//, 400000); //initialize the I2C interface 400kHz
+  check_if_exist_I2C();
+  delay(10);
+}
+
+void check_if_exist_I2C() 
+{
+  byte error, address;
+  int nDevices;
+  nDevices = 0;
+//for (address = 0x36; address < 0x37; address++ )  
+  for (address = 1; address < 127; address++ )  
+  {
+    // The i2c_scanner uses the return value of
+    // the Write.endTransmisstion to see if
+    // a device did acknowledge to the address.
+    Wire.beginTransmission(address);
+    delay(10);
+    error = Wire.endTransmission();
+
+    if (error == 0){
+      Serial.print("I2C device found at address 0x");
+      if (address < 16)
+        Serial.print("0");
+      Serial.print(address, HEX);
+      Serial.println("  !");
+      nDevices++;
+    } else if (error == 4) {
+      Serial.print("Unknow error at address 0x");
+      if (address < 16)
+        Serial.print("0");
+      Serial.println(address, HEX);
+    }
+  } //for loop
+  if (nDevices == 0)
+    Serial.println("No I2C devices found");
+  else
+    Serial.println("**********************************\n");
+  //delay(1000);           // wait 1 seconds for next scan, did not find it necessary
+}
+*/

@@ -1,5 +1,8 @@
 # M5Stack Library
 
+[![Arduino Lint](https://github.com/m5stack/M5Stack/actions/workflows/Arduino-Lint-Check.yml/badge.svg)](https://github.com/m5stack/M5Stack/actions/workflows/Arduino-Lint-Check.yml)
+[![Clang Format](https://github.com/m5stack/M5Stack/actions/workflows/clang-format-check.yml/badge.svg)](https://github.com/m5stack/M5Stack/actions/workflows/clang-format-check.yml)
+
 English | [中文](docs/getting_started_cn.md) | [日本語](docs/getting_started_ja.md)
 
 <img src="https://static-cdn.m5stack.com/resource/docs/static/assets/img/product_pics/core/gray/gray_01.webp" alt="gray" width="350" height="350">
@@ -10,7 +13,9 @@ English | [中文](docs/getting_started_cn.md) | [日本語](docs/getting_starte
 
 * **For the Detailed documentation of Basic, please [Click here](https://docs.m5stack.com/en/core/basic_v2.6)**
 
-* **In order to buy Basic, please [Click here](https://shop.m5stack.com/collections/m5-controllers/products/esp32-basic-core-iot-development-kit-v2-6)**
+* **In order to buy Gray, please [Click here](https://shop.m5stack.com/products/grey-development-core)**
+
+* **In order to buy Basic, please [Click here](https://shop.m5stack.com/products/esp32-basic-core-iot-development-kit-v2-6)**
 
 *We have several master M5Cores with different configurations, this is the difference between them [Compared](https://docs.m5stack.com/en/products_selector).*
 

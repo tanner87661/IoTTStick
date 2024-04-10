@@ -19,13 +19,23 @@ Contributors:
 
 #include <string.h>
 
-#if __has_include(<rom/lldesc.h>)
- #include <rom/lldesc.h>
-#else
+#if defined (CONFIG_IDF_TARGET_ESP32S3) && __has_include(<esp32s3/rom/lldesc.h>)
+ #include <esp32s3/rom/lldesc.h>
+#elif defined (CONFIG_IDF_TARGET_ESP32S2) && __has_include(<esp32s2/rom/lldesc.h>)
+ #include <esp32s2/rom/lldesc.h>
+#elif defined (CONFIG_IDF_TARGET_ESP32C3) && __has_include(<esp32c3/rom/lldesc.h>)
+ #include <esp32c3/rom/lldesc.h>
+#elif __has_include(<esp32/rom/lldesc.h>)
  #include <esp32/rom/lldesc.h>
+#else
+ #include <rom/lldesc.h>
 #endif
 
-#if __has_include(<driver/spi_common_internal.h>)
+#if __has_include(<esp_private/spi_common_internal.h>)
+ // ESP-IDF v5
+ #include <esp_private/spi_common_internal.h>
+#elif __has_include(<driver/spi_common_internal.h>)
+ // ESP-IDF v4
  #include <driver/spi_common_internal.h>
 #endif
 
@@ -54,7 +64,7 @@ namespace lgfx
 
   class Bus_SPI : public IBus
   {
-#if !defined (SPI_MOSI_DLEN_REG)
+#if defined ( SPI_UPDATE )
     static constexpr uint32_t SPI_EXECUTE = SPI_USR | SPI_UPDATE;
     #define SPI_MOSI_DLEN_REG(i) (REG_SPI_BASE(i) + 0x1C)
     #define SPI_MISO_DLEN_REG(i) (REG_SPI_BASE(i) + 0x1C)
@@ -99,6 +109,8 @@ namespace lgfx
     bool busy(void) const override;
     uint32_t getClock(void) const override { return _cfg.freq_write; }
     void setClock(uint32_t freq) override { if (_cfg.freq_write != freq) { _cfg.freq_write = freq; _last_freq_apb = 0; } }
+    uint32_t getReadClock(void) const override { return _cfg.freq_read; }
+    void setReadClock(uint32_t freq) override { if (_cfg.freq_read != freq) { _cfg.freq_read = freq; _last_freq_apb = 0; } }
 
     void flush(void) override {}
     bool writeCommand(uint32_t data, uint_fast8_t bit_length) override;
@@ -107,7 +119,7 @@ namespace lgfx
     void writePixels(pixelcopy_t* pc, uint32_t length) override;
     void writeBytes(const uint8_t* data, uint32_t length, bool dc, bool use_dma) override;
 
-    void initDMA(void) override;
+    void initDMA(void) override {}
     void addDMAQueue(const uint8_t* data, uint32_t length) override;
     void execDMAQueue(void) override;
     uint8_t* getDMABuffer(uint32_t length) override { return _flip_buffer.getBuffer(length); }
@@ -182,7 +194,7 @@ namespace lgfx
     uint32_t _dma_queue_size = 0;
     uint32_t _dma_queue_capacity = 0;
     uint8_t _spi_port = 0;
-    bool _next_dma_reset = false;
+    uint8_t _dma_ch = 0;
     bool _inited = false;
   };
 

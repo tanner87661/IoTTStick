@@ -104,7 +104,7 @@ namespace lgfx
     auto dev = &I2C0;
 #endif
 
-#if defined (CONFIG_IDF_TARGET_ESP32C3) || defined (CONFIG_IDF_TARGET_ESP32S3)
+#if defined (CONFIG_IDF_TARGET_ESP32C3) || defined (CONFIG_IDF_TARGET_ESP32C6) || defined (CONFIG_IDF_TARGET_ESP32S3)
     while (dev->sr.bus_busy) { taskYIELD(); }
 #else
     while (dev->status_reg.bus_busy) { taskYIELD(); }
@@ -119,7 +119,7 @@ namespace lgfx
     auto dev = &I2C0;
 #endif
 
-#if defined (CONFIG_IDF_TARGET_ESP32C3) || defined (CONFIG_IDF_TARGET_ESP32S3)
+#if defined (CONFIG_IDF_TARGET_ESP32C3) || defined (CONFIG_IDF_TARGET_ESP32C6) || defined (CONFIG_IDF_TARGET_ESP32S3)
     return dev->sr.bus_busy;
 #else
     return dev->status_reg.bus_busy;
@@ -237,10 +237,10 @@ namespace lgfx
     return res;
   }
 
-  bool Bus_I2C::readBytes(uint8_t* dst, uint32_t length, bool use_dma)
+  bool Bus_I2C::readBytes(uint8_t* dst, uint32_t length, bool use_dma, bool last_nack)
   {
     beginRead();
-    return i2c::readBytes(_cfg.i2c_port, dst, length).has_value();
+    return i2c::readBytes(_cfg.i2c_port, dst, length, last_nack).has_value();
   }
 
   void Bus_I2C::readPixels(void* dst, pixelcopy_t* param, uint32_t length)

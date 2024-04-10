@@ -1,6 +1,6 @@
 /*
 *******************************************************************************
-* Copyright (c) 2022 by M5Stack
+* Copyright (c) 2023 by M5Stack
 *                  Equipped with M5Core sample source code
 *                          配套  M5Core 示例源代码
 * Visit for more information: https://docs.m5stack.com/en/core/gray
@@ -14,9 +14,9 @@
 */
 
 #include "M5Stack.h"
-#include "M5_BM8563.h"
+#include "Unit_RTC.h"
 
-BM8563 RTC;
+Unit_RTC RTC;
 
 rtc_time_type RTCtime;
 rtc_date_type RTCdate;

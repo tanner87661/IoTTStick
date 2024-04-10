@@ -59,10 +59,10 @@ class IoTT_AspectGenerator
 
 
 class IoTT_SecurityElement; //forward declaration
-class IoTT_SecurityElementModel; //forward declaration
+class IoTT_SecurityElementSection; //forward declaration
 class IoTT_SecurityElementList; //forward declaration
 
-class IoTT_SecElLeg
+class IoTT_SecElLeg //one single leg (A,B or C) with entry signal and connector to neighboringleg
 {
 	public:
 		IoTT_SecElLeg();
@@ -105,7 +105,7 @@ class IoTT_SecElLeg
 		
 };
 
-class IoTT_SecurityElement
+class IoTT_SecurityElement //one single element with up to 3 legs
 {
 	public:
 		IoTT_SecurityElement();
@@ -144,10 +144,10 @@ class IoTT_SecurityElement
 		char stationName[50];
 
 		//SE Leg Data
-		IoTT_SecElLeg** connLeg = NULL; //0=A, 1=B, if present, 2=C
-		IoTT_SecurityElementModel * parentSEModel = NULL;
+		std::vector<IoTT_SecElLeg*> connLeg; //0=A, 1=B, if present, 2=C
+		IoTT_SecurityElementSection * parentSEModel = NULL;
 		IoTT_SecurityElementList * parentSEL = NULL;
-		uint8_t numLegs = 0;
+//		uint8_t numLegs = 0;
 		uint8_t selectedLeg = 1; //defaults to B, in case of no switch
 		
 		bool autoProtect = false;
@@ -160,11 +160,11 @@ class IoTT_SecurityElement
 		bool dirOut = false;// from B/C to A
 };
 
-class IoTT_SecurityElementModel
+class IoTT_SecurityElementSection //one section terminated by stopping tracks at each end, sharing the same control model
 {
 	public:
-		IoTT_SecurityElementModel();
-		~IoTT_SecurityElementModel();
+		IoTT_SecurityElementSection();
+		~IoTT_SecurityElementSection();
 		void loadSecElCfgJSON(JsonObject thisObj);
 		IoTT_SecElLeg * getLegPtr(uint16_t destSENr, uint8_t destSELeg);
 		void resolveLegConnectors();
@@ -174,8 +174,7 @@ class IoTT_SecurityElementModel
 //		void processLocoNetMsg(lnReceiveBuffer * newData);
 	private:
 		void freeObjects();
-		IoTT_SecurityElement** secElList = NULL;
-		uint16_t numSecEl = 0;
+		std::vector<IoTT_SecurityElement*> secElList;
 	public:
 		char modelName[50] = "";
 		bool isActive = false;
@@ -184,7 +183,7 @@ class IoTT_SecurityElementModel
 		IoTT_SpeedTable* staticSpeedModel = NULL;
 };
 
-class IoTT_SecurityElementList
+class IoTT_SecurityElementList //admin node holding rulebooks, signal definitions, and list of SESections
 {
 	public:
 		IoTT_SecurityElementList();
@@ -198,16 +197,16 @@ class IoTT_SecurityElementList
 //		void processLocoNetMsg(lnReceiveBuffer * newData);
 	private:
 		void freeObjects();
-		IoTT_SecurityElementModel** secModelList = NULL;
+		IoTT_SecurityElementSection** secModelList = NULL;
 		void resolveLinks();
 		uint16_t numSecModel = 0;
 	public:
-		IoTT_AspectGenerator** aspGenList = NULL;
-		IoTT_SpeedTable** staticSpeedList = NULL;
-		IoTT_SpeedTable** dynamicSpeedList = NULL;
-		uint16_t numStaticSpeedSets = 0;
-		uint16_t numDynamicSpeedSets = 0;
-		uint16_t numAspectGenerators = 0;
+		std::vector<IoTT_AspectGenerator*> aspGenList;
+		std::vector<IoTT_SpeedTable*> staticSpeedList;
+		std::vector<IoTT_SpeedTable*> dynamicSpeedList;
+//		uint16_t numStaticSpeedSets = 0;
+//		uint16_t numDynamicSpeedSets = 0;
+//		uint16_t numAspectGenerators = 0;
 };
 
 extern void sendSwitchCommand(uint16_t swiNr, uint8_t swiTargetPos, uint8_t coilStatus) __attribute__ ((weak)); //switch

@@ -4,8 +4,15 @@
 #ifndef __M5_RTC8563_CLASS_H__
 #define __M5_RTC8563_CLASS_H__
 
+#include "m5unified_common.h"
+
 #include "I2C_Class.hpp"
 
+#if __has_include(<sys/time.h>)
+#include <sys/time.h>
+#else
+typedef void timezone;
+#endif
 #include <time.h>
 
 namespace m5
@@ -16,10 +23,16 @@ namespace m5
     std::int8_t minutes;
     std::int8_t seconds;
 
-    rtc_time_t(std::int8_t hours = -1, std::int8_t minutes = -1, std::int8_t seconds = -1)
-    : hours   { hours   }
-    , minutes { minutes }
-    , seconds { seconds }
+    rtc_time_t(std::int8_t hours_ = -1, std::int8_t minutes_ = -1, std::int8_t seconds_ = -1)
+    : hours   { hours_   }
+    , minutes { minutes_ }
+    , seconds { seconds_ }
+    {}
+
+    rtc_time_t(const tm& t)
+    : hours   { (int8_t)t.tm_hour }
+    , minutes { (int8_t)t.tm_min  }
+    , seconds { (int8_t)t.tm_sec  }
     {}
   };
 
@@ -37,11 +50,18 @@ namespace m5
     /// weekDay 0:sun / 1:mon / 2:tue / 3:wed / 4:thu / 5:fri / 6:sat
     std::int8_t weekDay;
   
-    rtc_date_t(std::int16_t year = 2000, std::int8_t month = 1, std::int8_t date = -1, std::int8_t weekDay = -1)
-    : year    { year    }
-    , month   { month   }
-    , date    { date    }
-    , weekDay { weekDay }
+    rtc_date_t(std::int16_t year_ = 2000, std::int8_t month_ = 1, std::int8_t date_ = -1, std::int8_t weekDay_ = -1)
+    : year    { year_    }
+    , month   { month_   }
+    , date    { date_    }
+    , weekDay { weekDay_ }
+    {}
+
+    rtc_date_t(const tm& t)
+    : year    { (int16_t)(t.tm_year + 1900) }
+    , month   { (int8_t )(t.tm_mon  + 1   ) }
+    , date    { (int8_t ) t.tm_mday         }
+    , weekDay { (int8_t ) t.tm_wday         }
     {}
   };
 
@@ -49,6 +69,12 @@ namespace m5
   {
     rtc_date_t date;
     rtc_time_t time;
+    rtc_datetime_t() = default;
+    rtc_datetime_t(const rtc_date_t& d, const rtc_time_t& t) : date { d }, time { t } {};
+    rtc_datetime_t(const tm& t) : date { t }, time { t } {}
+    tm get_tm(void) const;
+    void set_tm(tm& time);
+    void set_tm(tm* t) { if (t) set_tm(*t); }
   };
 
   class RTC8563_Class : public I2C_Device
@@ -80,14 +106,8 @@ namespace m5
     {
       if (datetime)
       {
-        setDate( { (int16_t)(datetime->tm_year + 1900)
-                 , (int8_t)(datetime->tm_mon + 1)
-                 , (int8_t)(datetime->tm_mday)
-                 } );
-        setTime( { (int8_t)(datetime->tm_hour)
-                 , (int8_t)(datetime->tm_min)
-                 , (int8_t)(datetime->tm_sec)
-                 } );
+        rtc_datetime_t dt { *datetime };
+        setDateTime(dt);
       }
     }
 
@@ -100,7 +120,7 @@ namespace m5
     int setAlarmIRQ(const rtc_time_t &time);
     int setAlarmIRQ(const rtc_date_t &date, const rtc_time_t &time);
 
-    void setSystemTimeFromRtc(void);
+    void setSystemTimeFromRtc(struct timezone* tz = nullptr);
 
     bool getIRQstatus(void);
     void clearIRQ(void);

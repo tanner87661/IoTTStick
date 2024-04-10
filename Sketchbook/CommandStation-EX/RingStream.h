@@ -21,22 +21,38 @@
  */
 
 #include <Arduino.h>
+#include "FSH.h"
   
 class RingStream : public Print {
 
   public:
     RingStream( const uint16_t len);
-  
+    static const int THIS_IS_A_RINGSTREAM=777;
     virtual size_t write(uint8_t b);
+
+    // This availableForWrite function is subverted from its original intention so that a caller 
+    // can destinguish between a normal stream and a RingStream. 
+    // The Arduino compiler does not support runtime dynamic cast to perform
+    // an instranceOf check. 
+    // This is necessary since the Print functions are mostly not virtual so 
+    // we cant override the print(__FlashStringHelper *) function.
+   virtual int availableForWrite() override;
     using Print::write;
+    size_t printFlash(const FSH * flashBuffer);
     int read();
     int count();
     int freeSpace();
     void mark(uint8_t b);
     bool commit();
     uint8_t peekTargetMark();
-    void printBuffer(Print * streamer);
     void flush();
+    void info();
+    byte readRawByte();
+    inline int peek() {
+      if ((_pos_read==_pos_write) && !_overflow) return -1;  // empty
+      return _buffer[_pos_read];
+    };
+    static const byte NO_CLIENT=255;
  private:
    int _len;
    int _pos_write;
@@ -45,6 +61,8 @@ class RingStream : public Print {
    int _mark;
    int _count;
    byte * _buffer;
+   char * _flashInsert;
+   byte _ringClient = NO_CLIENT;
 };
 
 #endif

@@ -69,10 +69,12 @@ protected:
     uint16_t id;
   } _turnoutData;  // 3 bytes
 
+#ifndef DISABLE_EEPROM
   // Address in eeprom of first byte of the _turnoutData struct (containing the closed flag).
   // Set to zero if the object has not been saved in EEPROM, e.g. for newly created Turnouts, and 
   // for all LCN turnouts.
   uint16_t _eepromAddress = 0;
+#endif
 
   // Pointer to next turnout on linked list.
   Turnout *_nextTurnout = 0;
@@ -171,9 +173,14 @@ public:
   // Save all turnout definitions
   static void store();
 #endif
-  static void printAll(Print *stream) {
+  static bool printAll(Print *stream) {
+    bool gotOne=false;
     for (Turnout *tt = _firstTurnout; tt != 0; tt = tt->_nextTurnout)
-      if (!tt->isHidden()) StringFormatter::send(stream, F("<H %d %d>\n"),tt->getId(), tt->isThrown());
+      if (!tt->isHidden()) {
+	gotOne=true;
+	StringFormatter::send(stream, F("<H %d %d>\n"),tt->getId(), tt->isThrown());
+      }
+    return gotOne;
   }
 
 

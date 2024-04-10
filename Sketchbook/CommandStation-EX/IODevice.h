@@ -1,4 +1,5 @@
 /*
+ *  © 2023, Paul Antoine, Discord user @ADUBOURG
  *  © 2021, Neil McKechnie. All rights reserved.
  *  
  *  This file is part of DCC++EX API
@@ -93,6 +94,8 @@ public:
     CONFIGURE_INPUT = 1,
     CONFIGURE_SERVO = 2,
     CONFIGURE_OUTPUT = 3,
+    CONFIGURE_ANALOGOUTPUT = 4,
+    CONFIGURE_ANALOGINPUT = 5,
   } ConfigTypeEnum;
 
   typedef enum : uint8_t {
@@ -109,6 +112,10 @@ public:
   // begin is invoked to create any standard IODevice subclass instances.
   // Also, the _begin method of any existing instances is called from here.
   static void begin();
+
+  // reset function to invoke all driver's _begin() methods again, to
+  // reset the state of the devices and reinitialise.
+  static void reset();
 
   // configure is used invoke an IODevice instance's _configure method
   static bool configure(VPIN vpin, ConfigTypeEnum configType, int paramCount, int params[]);
@@ -143,6 +150,7 @@ public:
 
   // read invokes the IODevice instance's _readAnalogue method.
   static int readAnalogue(VPIN vpin);
+  static int configureAnalogIn(VPIN vpin);
 
   // loop invokes the IODevice instance's _loop method.
   static void loop();
@@ -160,24 +168,12 @@ public:
   // once the GPIO port concerned has been read.
   void setGPIOInterruptPin(int16_t pinNumber);
 
-  
-protected:
-  
-  // Constructor
-  IODevice(VPIN firstVpin=0, int nPins=0) {
-    _firstVpin = firstVpin;
-    _nPins = nPins;
-    _nextEntryTime = 0;
-  }
+  // Method to check if pins will overlap before creating new device. 
+  static bool checkNoOverlap(VPIN firstPin, uint8_t nPins=1, I2CAddress i2cAddress=0);
 
- // Method to perform initialisation of the device (optionally implemented within device class)
-  virtual void _begin() {}
-
-  // Method to configure device (optionally implemented within device class)
-  virtual bool _configure(VPIN vpin, ConfigTypeEnum configType, int paramCount, int params[]) { 
-    (void)vpin; (void)configType; (void)paramCount; (void)params; // Suppress compiler warning.
-    return false;
-  };
+  // Method used by IODevice filters to locate slave pins that may be overlayed by their own
+  // pin range.  
+  IODevice *findDeviceFollowing(VPIN vpin);
 
   // Method to write new state (optionally implemented within device class)
   virtual void _write(VPIN vpin, int value) {
@@ -185,7 +181,7 @@ protected:
   };
 
   // Method to write an 'analogue' value (optionally implemented within device class)
-  virtual void _writeAnalogue(VPIN vpin, int value, uint8_t param1, uint16_t param2) {
+  virtual void _writeAnalogue(VPIN vpin, int value, uint8_t param1=0, uint16_t param2=0) {
     (void)vpin; (void)value; (void) param1; (void)param2;
   };
 
@@ -197,6 +193,33 @@ protected:
 
   // Method to read analogue pin state (optionally implemented within device class)
   virtual int _readAnalogue(VPIN vpin) { 
+    (void)vpin; 
+    return 0;
+  };
+
+protected:
+  
+  // Constructor
+  IODevice(VPIN firstVpin=0, int nPins=0) {
+    _firstVpin = firstVpin;
+    _nPins = nPins;
+    _nextEntryTime = 0;
+    _I2CAddress=0;
+  }
+
+  // Method to perform initialisation of the device (optionally implemented within device class)
+  virtual void _begin() {}
+
+  // Method to check whether the vpin corresponds to this device
+  bool owns(VPIN vpin);
+
+  // Method to configure device (optionally implemented within device class)
+  virtual bool _configure(VPIN vpin, ConfigTypeEnum configType, int paramCount, int params[]) { 
+    (void)vpin; (void)configType; (void)paramCount; (void)params; // Suppress compiler warning.
+    return false;
+  };
+
+  virtual int _configureAnalogIn(VPIN vpin) { 
     (void)vpin; 
     return 0;
   };
@@ -220,32 +243,29 @@ protected:
   // Common object fields.
   VPIN _firstVpin;
   int _nPins;
-
+  I2CAddress _I2CAddress;
   // Flag whether the device supports callbacks.
   bool _hasCallback = false;
 
   // Pin number of interrupt pin for GPIO extender devices.  The extender module will pull this
   //  pin low if an input changes state.
   int16_t _gpioInterruptPin = -1;
-
+    
   // Static support function for subclass creation
-  static void addDevice(IODevice *newDevice);
+  static void addDevice(IODevice *newDevice, IODevice *slaveDevice = NULL);
+
+  // Method to find device handling Vpin
+  static IODevice *findDevice(VPIN vpin);
 
   // Current state of device
   DeviceStateEnum _deviceState = DEVSTATE_DORMANT;
 
 private:
-  // Method to check whether the vpin corresponds to this device
-  bool owns(VPIN vpin);
-  // Method to find device handling Vpin
-  static IODevice *findDevice(VPIN vpin);
-
   IODevice *_nextDevice = 0;
   unsigned long _nextEntryTime;
   static IODevice *_firstDevice;
 
   static IODevice *_nextLoopDevice;
-  static bool _initPhase;
 };
 
 
@@ -256,9 +276,7 @@ private:
  
 class PCA9685 : public IODevice {
 public:
-  static void create(VPIN vpin, int nPins, uint8_t I2CAddress);
-  // Constructor
-  PCA9685(VPIN vpin, int nPins, uint8_t I2CAddress);
+  static void create(VPIN vpin, int nPins, I2CAddress i2cAddress, uint16_t frequency = 50);
   enum ProfileType : uint8_t {
     Instant = 0,  // Moves immediately between positions (if duration not specified)
     UseDuration = 0, // Use specified duration
@@ -270,6 +288,8 @@ public:
   };
 
 private:
+  // Constructor
+  PCA9685(VPIN vpin, int nPins, I2CAddress i2cAddress, uint16_t frequency);
   // Device-specific initialisation
   void _begin() override;
   bool _configure(VPIN vpin, ConfigTypeEnum configType, int paramCount, int params[]) override;
@@ -281,8 +301,7 @@ private:
   void updatePosition(uint8_t pin);
   void writeDevice(uint8_t pin, int value);
   void _display() override;
-
-  uint8_t _I2CAddress; // 0x40-0x43 possible
+  
 
   struct ServoData {
     uint16_t activePosition : 12; // Config parameter
@@ -300,13 +319,14 @@ private:
   struct ServoData *_servoData [16];
 
   static const uint8_t _catchupSteps = 5; // number of steps to wait before switching servo off
-  static const byte FLASH _bounceProfile[30];
+  static const uint8_t FLASH _bounceProfile[30];
 
   const unsigned int refreshInterval = 50; // refresh every 50ms
 
   // structures for setting up non-blocking writes to servo controller
   I2CRB requestBlock;
   uint8_t outputBuffer[5];
+  uint8_t prescaler; // clock prescaler for setting PWM frequency
 };
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -317,10 +337,10 @@ private:
 class DCCAccessoryDecoder: public IODevice {
 public:
   static void create(VPIN firstVpin, int nPins, int DCCAddress, int DCCSubaddress);
-  // Constructor
-  DCCAccessoryDecoder(VPIN firstVpin, int nPins, int DCCAddress, int DCCSubaddress);
 
 private:
+  // Constructor
+  DCCAccessoryDecoder(VPIN firstVpin, int nPins, int DCCAddress, int DCCSubaddress);
   // Device-specific write function.
   void _begin() override;
   void _write(VPIN vpin, int value) override;
@@ -340,13 +360,13 @@ public:
     addDevice(new ArduinoPins(firstVpin, nPins));
   }
   
-  // Constructor
-  ArduinoPins(VPIN firstVpin, int nPins);
-
   static void fastWriteDigital(uint8_t pin, uint8_t value);
   static bool fastReadDigital(uint8_t pin);
 
 private:
+  // Constructor
+  ArduinoPins(VPIN firstVpin, int nPins);
+
   // Device-specific pin configuration
   bool _configure(VPIN vpin, ConfigTypeEnum configType, int paramCount, int params[]) override;
   // Device-specific write function.
@@ -354,6 +374,7 @@ private:
   // Device-specific read functions.
   int _read(VPIN vpin) override;
   int _readAnalogue(VPIN vpin) override;
+  int _configureAnalogIn(VPIN vpin) override;
   void _display() override;
 
 
@@ -363,9 +384,164 @@ private:
 };
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////
+/*
+ * IODevice subclass for EX-Turntable.
+ */
+ 
+class EXTurntable : public IODevice {
+public:
+  static void create(VPIN firstVpin, int nPins, I2CAddress I2CAddress);
+  // Constructor
+  EXTurntable(VPIN firstVpin, int nPins, I2CAddress I2CAddress);
+  enum ActivityNumber : uint8_t {
+    Turn = 0,             // Rotate turntable, maintain phase
+    Turn_PInvert = 1,     // Rotate turntable, invert phase
+    Home = 2,             // Initiate homing
+    Calibrate = 3,        // Initiate calibration sequence
+    LED_On = 4,           // Turn LED on
+    LED_Slow = 5,         // Set LED to a slow blink
+    LED_Fast = 6,         // Set LED to a fast blink
+    LED_Off = 7,          // Turn LED off
+    Acc_On = 8,           // Turn accessory pin on
+    Acc_Off = 9,          // Turn accessory pin off
+  };
+
+private:
+  // Device-specific write function.
+  void _begin() override;
+  void _loop(unsigned long currentMicros) override;
+  int _read(VPIN vpin) override;
+  void _writeAnalogue(VPIN vpin, int value, uint8_t activity, uint16_t duration) override;
+  void _display() override;
+  uint8_t _stepperStatus;
+};
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////
+
+
+// IODevice framework for invoking user-written functions.
+// To use, define a function that you want to be regularly
+// invoked, and then create an instance of UserAddin.  
+// For example, you can show the status, on screen 3, of the first eight
+// locos in the speed table:
+// 
+// void updateLocoScreen() {
+//   for (int i=0; i<8; i++) {
+//     if (DCC::speedTable[i].loco > 0) {
+//       int speed = DCC::speedTable[i].speedCode;
+//       SCREEN(3, i, F("Loco:%4d %3d %c"), DCC::speedTable[i].loco,
+//         speed & 0x7f, speed & 0x80 ? 'R' : 'F');
+//     }
+//   }
+// }
+//
+// void halSetup() {
+//   ...
+//   UserAddin(updateLocoScreen, 1000);  // Update every 1000ms
+//   ...
+// }
+//
+class UserAddin : public IODevice {
+private:
+  void (*_invokeUserFunction)();
+  int _delay; // milliseconds
+public:
+  UserAddin(void (*func)(), int delay) {
+    _invokeUserFunction = func; 
+    _delay = delay; 
+    addDevice(this); 
+  }
+  // userFunction has no return value, no parameter.  delay is in milliseconds.
+  static void create(void (*userFunction)(), int delay) {
+    new UserAddin(userFunction, delay);
+  }
+protected:
+  void _begin() { _display(); }
+  void _loop(unsigned long currentMicros) override {
+    _invokeUserFunction();
+    // _loop won't be called again until _delay ms have elapsed.
+    delayUntil(currentMicros + _delay * 1000UL);
+  }
+  void _display() override {
+    DIAG(F("UserAddin run every %dms"), _delay);
+  }
+};
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////
+// 
+// This HAL device driver is intended for communication in automation
+// sequences.  A VPIN can be SET or RESET within a sequence, and its
+// current state checked elsewhere using IF, IFNOT, AT etc. or monitored
+// from JMRI using a Sensor object (DCC-EX <S ...> command).
+// Alternatively, the flag can be set from JMRI and other interfaces
+// using the <Z ...> command, to enable or disable actions within a sequence.
+// 
+// Example of configuration in halSetup.h:
+// 
+//  FLAGS::create(32000, 128);
+// 
+// or in myAutomation.h:
+//  
+//  HAL(FLAGS, 32000, 128);
+// 
+// Both create 128 flags numbered with VPINs 32000-32127.
+// 
+//
+
+class FLAGS : IODevice {
+private:
+  uint8_t *_states = NULL;
+
+public:
+  static void create(VPIN firstVpin, unsigned int nPins) {
+    if (checkNoOverlap(firstVpin, nPins))
+        new FLAGS(firstVpin, nPins);
+  }
+
+protected:
+  // Constructor performs static initialisation of the device object
+  FLAGS (VPIN firstVpin, int nPins) {
+    _firstVpin = firstVpin;
+    _nPins = nPins;
+    _states = (uint8_t *)calloc(1, (_nPins+7)/8);
+    if (!_states) {
+      DIAG(F("FLAGS: ERROR Memory Allocation Failure"));
+      return;
+    }
+
+    addDevice(this);
+  }
+
+  int _read(VPIN vpin) override {
+    int pin = vpin - _firstVpin;
+    if (pin >= _nPins || pin < 0) return 0;
+    uint8_t mask = 1 << (pin & 7);
+    return (_states[pin>>3] & mask) ? 1 : 0;
+  }
+
+  void _write(VPIN vpin, int value) override {
+    int pin = vpin - _firstVpin;
+    if (pin >= _nPins || pin < 0) return;
+    uint8_t mask = 1 << (pin & 7);
+    if (value) 
+      _states[pin>>3] |= mask;
+    else
+      _states[pin>>3] &= ~mask;
+  }
+
+  void _display() override {
+    DIAG(F("FLAGS configured on VPINs %u-%u"),
+      _firstVpin, _firstVpin+_nPins-1);
+  }
+
+};
 
 #include "IO_MCP23008.h"
 #include "IO_MCP23017.h"
 #include "IO_PCF8574.h"
+#include "IO_PCF8575.h"
+#include "IO_duinoNodes.h"
+#include "IO_EXIOExpander.h"
+
 
 #endif // iodevice_h

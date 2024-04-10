@@ -241,7 +241,7 @@ namespace lgfx
     return true;
   }
 
-  void Panel_RA8875::_write_reg(uint8_t reg, uint8_t data)
+  void Panel_RA8875::_write_reg(uint_fast16_t reg, uint_fast16_t data)
   {
     _flg_memorywrite = false;
     if (_flg_serialbus)
@@ -650,14 +650,14 @@ namespace lgfx
       {
         _bus->flush();
         uint32_t reg = 0x02;
-        uint_fast8_t len = 8;
+        uint_fast8_t len_ = 8;
         if (_cfg.dlen_16bit)
         {
-          len <<= 1;
+          len_ <<= 1;
           reg <<= 8;
         }
         _wait_busy();
-        _bus->writeCommand(reg, len);
+        _bus->writeCommand(reg, len_);
       }
 
       _bus->beginRead(_cfg.dummy_read_pixel);

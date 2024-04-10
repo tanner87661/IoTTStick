@@ -3,10 +3,32 @@
 
 #include "RTC8563_Class.hpp"
 
-#include <sys/time.h>
+#include <stdlib.h>
 
 namespace m5
 {
+  tm rtc_datetime_t::get_tm(void) const
+  {
+    tm t_st = {
+      time.seconds,
+      time.minutes,
+      time.hours,
+      date.date,
+      date.month - 1,
+      date.year - 1900,
+      date.weekDay,
+      0,
+      0,
+    };
+    return t_st;
+  }
+
+  void rtc_datetime_t::set_tm(tm& datetime)
+  {
+    date = rtc_date_t { datetime };
+    time = rtc_time_t { datetime };
+  }
+
   static std::uint8_t bcd2ToByte(std::uint8_t value)
   {
     return ((value >> 4) * 10) + (value & 0x0F);
@@ -96,8 +118,15 @@ namespace m5
     std::uint8_t w = date.weekDay;
     if (w > 6 && date.year >= 1900 && ((std::size_t)(date.month - 1)) < 12)
     { /// weekDay auto adjust
-      std::int_fast16_t y = date.year / 100;
-      w = (date.year + (date.year >> 2) - y + (y >> 2) + (13 * date.month + 8) / 5 + date.date) % 7;
+      int32_t year = date.year;
+      int32_t month = date.month;
+      int32_t day = date.date;
+      if (month < 3) {
+        year--;
+        month += 12;
+      }
+      int32_t ydiv100 = year / 100;
+      w = (year + (year >> 2) - ydiv100 + (ydiv100 >> 2) + (13 * month + 8) / 5 + day) % 7;
     }
 
     std::uint8_t buf[] =
@@ -211,11 +240,11 @@ namespace m5
 
     if (irq_enable)
     {
-      bitOn(0x01, 1 << 1);
+      bitOn(0x01, 0x02);
     }
     else
     {
-      bitOff(0x01, 1 << 1);
+      bitOff(0x01, 0x02);
     }
 
     return irq_enable;
@@ -236,7 +265,7 @@ namespace m5
   {
     if (!_init) { return; }
     // disable alerm (bit7:1=disabled)
-    std::uint8_t buf[4] = { 0x80, 0x80, 0x80, 0x80 };
+    static constexpr const std::uint8_t buf[4] = { 0x80, 0x80, 0x80, 0x80 };
     writeRegister(0x09, buf, 4);
 
     // disable timer (bit7:0=disabled)
@@ -246,8 +275,9 @@ namespace m5
     writeRegister8(0x01, 0x00);
   }
 
-  void RTC8563_Class::setSystemTimeFromRtc(void)
+  void RTC8563_Class::setSystemTimeFromRtc(struct timezone* tz)
   {
+#if !defined (M5UNIFIED_PC_BUILD)
     rtc_datetime_t dt;
     if (getDateTime(&dt))
     {
@@ -260,9 +290,20 @@ namespace m5
       t_st.tm_min  = dt.time.minutes;
       t_st.tm_sec  = dt.time.seconds;
       timeval now;
+      // mktime(3) uses localtime, force UTC
+      char *oldtz = getenv("TZ");
+      setenv("TZ", "GMT0", 1);
+      tzset(); // Workaround for https://github.com/espressif/esp-idf/issues/11455
       now.tv_sec = mktime(&t_st);
+      if (oldtz)
+      {
+        setenv("TZ", oldtz, 1);
+      } else {
+        unsetenv("TZ");
+      }
       now.tv_usec = 0;
-      settimeofday(&now, nullptr);
+      settimeofday(&now, tz);
     }
+#endif
   }
 }

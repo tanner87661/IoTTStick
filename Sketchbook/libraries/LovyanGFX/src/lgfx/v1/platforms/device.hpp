@@ -50,6 +50,8 @@ Contributors:
   #include "esp32/Bus_SPI.hpp"
   #include "esp32/Bus_I2C.hpp"
   #include "esp32/Bus_Parallel8.hpp"
+  #include "esp32/Bus_HUB75.hpp"
+  #include "esp32/Panel_CVBS.hpp"
 
  #endif
 
@@ -78,11 +80,18 @@ Contributors:
 
 #elif defined (ARDUINO_ARCH_MBED_RP2040) || defined(ARDUINO_ARCH_RP2040)
 
+#include "rp2040/Light_PWM.hpp"
+#include "rp2040/Bus_I2C.hpp"
 #include "rp2040/Bus_SPI.hpp"
 
 #elif defined (ARDUINO)
 
 #include "arduino_default/Bus_SPI.hpp"
+
+#elif __has_include(<SDL2/SDL.h>) || __has_include(<SDL.h>)
+
+#include "sdl/Bus_I2C.hpp"
+#include "sdl/Panel_sdl.hpp"
 
 #endif
 

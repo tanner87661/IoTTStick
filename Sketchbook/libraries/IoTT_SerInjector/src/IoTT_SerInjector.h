@@ -45,6 +45,8 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #define txBufferSize 64
 #define verBufferSize 48
 
+#define genInBufLen 200
+
 #define queInjBufferSize 50 //messages that can be written in one burst before buffer overflow
 
 class IoTT_DigitraxBuffers;
@@ -62,9 +64,10 @@ public:
 	uint16_t lnWriteMsg(lnReceiveBuffer txData);
 
 	void setTxCallback(txFct newCB);
-	void setDCCCallback(dccCbFct newDCCCB);
+	void setDCCCallback(dccCbFct newDCCCB, uint8_t ptrNr);
 	void loadLNCfgJSON(DynamicJsonDocument doc);
-
+	void toggleBoosterOutput();
+	void dccToBooster(uint8_t opCode, uint16_t devAddr, uint8_t devData);
 private:
    
    // Member functions
@@ -77,15 +80,13 @@ private:
 	void processLCBTransmit();
 	void processDCCExReceive();
 	void processDCCExTransmit();
-//	void processDCCExTransmit2();
-//	int parseDCCExParam(char** startAt, uint8_t ppNum, ppElement * outBuffer);
-//	bool parseDCCEx(lnTransmitMsg* thisEntry, lnTransmitMsg* txBuffer);
+	void processBoosterReceive();
+	void processBoosterTransmit();
 	
    // Member variables
    lnTransmitMsg transmitQueue[queInjBufferSize];
    uint8_t que_rdPos, que_wrPos = 0;
    lnTransmitMsg lnInBuffer;
-//   char exInBuffer[512] = '\0';
    std::vector<ppElement> ppList;
    int m_rxPin, m_txPin;
    bool m_invert = true;
@@ -107,15 +108,17 @@ private:
 										//DCC EX Awaiting param nr, 0xFF after completion
 	//now use lnInBuffer.reqRecTime instead
 
+	char inBuffer[genInBufLen];
    uint8_t    lnBufferPtr = 0; //index of next msg buffer location to read
    uint8_t    lnXOR = 0;
    uint8_t    lnExpLen = 0;
    
 };
 
-//extern IoTT_DigitraxBuffers* digitraxBuffer; //pointer to DigitraxBuffers
-//extern IoTT_SerInjector* usbSerial;
+extern void sendBlockDetectorCommand(uint16_t bdNr, uint8_t bdStatus);
+extern void sendSignalCommand(uint16_t signalNr, uint8_t signalAspect);
+extern void sendButtonCommand(uint16_t btnNr, uint8_t  btnEvent);
+extern void sendSwitchCommand(uint8_t opCode, uint16_t swiNr, uint8_t swiTargetPos, uint8_t coilStatus);
+extern void sendSVCommand2(uint8_t SRC, uint8_t SV_CMD,uint16_t DST, uint16_t ADDR, uint8_t DTA[4]);
 
-//this is the callback function. Provide a function of this name and parameter in your application and it will be called when a new message is received
-//extern void onLocoNetMessage(lnReceiveBuffer* recData) __attribute__ ((weak));
 #endif

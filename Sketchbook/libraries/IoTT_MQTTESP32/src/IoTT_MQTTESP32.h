@@ -23,8 +23,8 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #define IoTT_MQTTESP32_h
 
 #include <stdlib.h>
-#include <arduino.h>
-#include <Math.h>
+#include <Arduino.h>
+#include <math.h>
 #include <inttypes.h>
 #include <WiFi.h>
 #include <IoTT_CommDef.h>
@@ -117,9 +117,9 @@ private:
 //this is the callback function. Provide a function of this name and parameter in your application and it will be called when a new message is received
 //extern void onMQTTMessage(lnReceiveBuffer * recData) __attribute__ ((weak));
 
-extern uint16_t sendMsg(lnTransmitMsg txData);
-extern void callbackLocoNetMessage(lnReceiveBuffer * newData);
-extern void dccClientCallback(char* topic, byte *  payload, unsigned int length);
-extern void nativeClientCallback(char* topic, byte *  payload, unsigned int length);
+extern uint16_t sendMsg(lnTransmitMsg txData) __attribute__ ((weak));
+extern void callbackLocoNetMessage(lnReceiveBuffer * newData) __attribute__ ((weak));
+extern void dccClientCallback(char* topic, byte *  payload, unsigned int length) __attribute__ ((weak));
+extern void nativeClientCallback(char* topic, byte *  payload, unsigned int length) __attribute__ ((weak));
 
 #endif

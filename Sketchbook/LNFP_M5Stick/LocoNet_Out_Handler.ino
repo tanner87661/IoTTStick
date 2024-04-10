@@ -1,6 +1,29 @@
+
 //routines to prepare LocoNet Messages and send them to IoTT_LocoNetESP32
 //used by ButtonHandler library to send commands to LocoNet
 
+void sendSVCommand2(uint8_t SRC, uint8_t SV_CMD, uint16_t DST, uint16_t ADDR, uint8_t DTA[4])
+{
+  lnTransmitMsg txData;
+  txData.lnData[0] = 0xE5;
+  txData.lnData[1] = 0x10;
+  txData.lnData[2] = SRC;
+  txData.lnData[3] = SV_CMD;
+  txData.lnData[4] = 0x02;
+  txData.lnData[5] = 0x10 + ((ADDR & 0x8000) >> 12)  + ((ADDR & 0x0080) >> 5)  + ((DST & 0x8000) >> 14)  + ((DST & 0x0080) >> 7);  
+  txData.lnData[6] = DST & 0x007F;
+  txData.lnData[7] = (DST & 0x7F00) >> 8;
+  txData.lnData[8] = ADDR & 0x007F;
+  txData.lnData[9] = (ADDR & 0x7F00) >> 8;
+  txData.lnData[10]= 0x10 + ((DTA[3] & 0x80) >> 4)  + ((DTA[2] & 0x80) >> 5)  + ((DTA[1] & 0x80) >> 6)  + ((DTA[0] & 0x80) >> 7);  
+  txData.lnData[11]= (DTA[0] & 0x7F);
+  txData.lnData[12]= (DTA[1] & 0x7F);
+  txData.lnData[13]= (DTA[2] & 0x7F);
+  txData.lnData[14]= (DTA[3] & 0x7F);
+  txData.lnMsgSize = 16;
+  setXORByte(&txData.lnData[0]);
+  sendMsg(txData);
+}
 
 void sendSwitchCommand(uint8_t opCode, uint16_t swiNr, uint8_t swiTargetPos, uint8_t coilStatus)
 {
@@ -105,7 +128,7 @@ void sendButtonCommand(uint16_t btnNr, uint8_t  btnEvent)
   txData.lnData[3] = 0x71;
   txData.lnData[4] = 0x02;
   
-  txData.lnData[5] = 0x00;
+  txData.lnData[5] = 0x10;
   txData.lnData[6] = 0x00;
   txData.lnData[7] = 0x00;
   
@@ -153,7 +176,7 @@ void sendAnalogCommand(uint16_t btnNr, uint16_t analogVal)
 
 void sendPowerCommand(uint8_t cmdType, uint8_t pwrStatus)
 { 
-//  Serial.printf("Power Command %i %i %i\n", cmdType, pwrStatus, getPowerStatus());
+//  Serial.printf("Power Command %i %i %i\n", cmdType, pwrStatus, digitraxBuffer->getPowerStatus());
   lnTransmitMsg txData;
   txData.lnMsgSize = 2;
   if (cmdType == toggleVal)
@@ -178,6 +201,7 @@ void sendPowerCommand(uint8_t cmdType, uint8_t pwrStatus)
   txData.lnMsgSize = 2;
   setXORByte(&txData.lnData[0]);
   sendMsg(txData);
+//  dispMsg(&txData.lnData[0]);
 }
 
 uint16_t sendLocoNetReply(lnTransmitMsg txData)

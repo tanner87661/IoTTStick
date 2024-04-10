@@ -1,0 +1,16 @@
+{
+  "name": "ATOM_DTU_CAT1",
+  "description": "Library for ATOM DTU CAT1 development kit",
+  "keywords": "M5STACK ATOM DTU CAT1",
+  "authors": {
+    "name": "M5Stack",
+    "url": "http://www.m5stack.com"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/m5stack/ATOM_DTU_CAT1.git"
+  },
+  "version": "0.0.1",
+  "frameworks": "arduino",
+  "platforms": "espressif32"
+}

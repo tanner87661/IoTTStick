@@ -1,0 +1,8 @@
+Fix sequence problem in aspect selection (event handler, switch, led chain)
+Buffer Transponder events in DigitraxBuffers
+LED Chain offset by one after switching from Yellow to Blue
+LEDChain on Blue not working after starting up JMRI (TCP Client)
+Add button setup wizard
+allow up to 3 buttons in event handler (up/down only)
+add swi_ack command to event handler
+

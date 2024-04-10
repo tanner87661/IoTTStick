@@ -1,6 +1,7 @@
 #include "AXP192.h"
 
-AXP192::AXP192() {}
+AXP192::AXP192() {
+}
 
 void AXP192::begin(bool disableLDO2, bool disableLDO3, bool disableRTC,
                    bool disableDCDC1, bool disableDCDC3, bool disableLDO0) {
@@ -136,25 +137,34 @@ void AXP192::ReadBuff(uint8_t Addr, uint8_t Size, uint8_t *Buff) {
     }
 }
 
-void AXP192::ScreenBreath(uint8_t brightness) {
-    if (brightness > 12) {
-        brightness = 12;
-    } else if (brightness < 7) {
-        brightness = 7;
-    }
+void AXP192::ScreenBreath(int brightness) {
+    if (brightness > 100 || brightness < 0) return;
+    int vol = map(brightness, 0, 100, 2500, 3200);
+    // Serial.printf("brightness:%d\n", brightness);
+    // Serial.printf("vol:%d\n", vol);
+    vol = (vol < 1800) ? 0 : (vol - 1800) / 100;
+    // Serial.printf("vol:%d\n", vol);
+
+    // Serial.printf("vol:%x\n\n", (uint16_t)vol);
     uint8_t buf = Read8bit(0x28);
-    Write1Byte(0x28, ((buf & 0x0f) | (brightness << 4)));
+
+    // Serial.printf("buf:%hhu\n", buf);
+    // Serial.printf("buf:%d\n", buf);
+    // Serial.printf("buf:%x\n", buf);
+
+    // Serial.printf("result:%x\n---\n", ((buf & 0x0f) | ((uint16_t)vol << 4)));
+    Write1Byte(0x28, ((buf & 0x0f) | ((uint16_t)vol << 4)));
 }
 
 void AXP192::ScreenSwitch(bool state) {
-    uint8_t brightness;
     if (state == false) {
-        brightness = 0;
+        uint8_t buf = Read8bit(0x28);
+        Serial.printf("buf:%d\n", buf);
+        Write1Byte(0x28, ((buf & 0x0f)));
+        Serial.printf("buf:%d\n", Read8bit(0x28));
     } else if (state == true) {
-        brightness = 12;
+        ScreenBreath(80);
     }
-    uint8_t buf = Read8bit(0x28);
-    Write1Byte(0x28, ((buf & 0x0f) | (brightness << 4)));
 }
 
 // Return True = Battery Exist
@@ -166,10 +176,14 @@ bool AXP192::GetBatState() {
 }
 
 // Input Power Status
-uint8_t AXP192::GetInputPowerStatus() { return Read8bit(0x00); }
+uint8_t AXP192::GetInputPowerStatus() {
+    return Read8bit(0x00);
+}
 
 // Battery Charging Status
-uint8_t AXP192::GetBatteryChargingStatus() { return Read8bit(0x01); }
+uint8_t AXP192::GetBatteryChargingStatus() {
+    return Read8bit(0x01);
+}
 
 //---------coulombcounter_from_here---------
 // enable: void EnableCoulombcounter(void);
@@ -180,19 +194,29 @@ uint8_t AXP192::GetBatteryChargingStatus() { return Read8bit(0x01); }
 // get discharge data: uint32_t GetCoulombdischargeData(void);
 // get coulomb val affter calculation: float GetCoulombData(void);
 //------------------------------------------
-void AXP192::EnableCoulombcounter(void) { Write1Byte(0xB8, 0x80); }
+void AXP192::EnableCoulombcounter(void) {
+    Write1Byte(0xB8, 0x80);
+}
 
-void AXP192::DisableCoulombcounter(void) { Write1Byte(0xB8, 0x00); }
+void AXP192::DisableCoulombcounter(void) {
+    Write1Byte(0xB8, 0x00);
+}
 
-void AXP192::StopCoulombcounter(void) { Write1Byte(0xB8, 0xC0); }
+void AXP192::StopCoulombcounter(void) {
+    Write1Byte(0xB8, 0xC0);
+}
 
 void AXP192::ClearCoulombcounter(void) {
     Write1Byte(0xB8, Read8bit(0xB8) | 0x20);  // Only set the Clear Flag
 }
 
-uint32_t AXP192::GetCoulombchargeData(void) { return Read32bit(0xB0); }
+uint32_t AXP192::GetCoulombchargeData(void) {
+    return Read32bit(0xB0);
+}
 
-uint32_t AXP192::GetCoulombdischargeData(void) { return Read32bit(0xB4); }
+uint32_t AXP192::GetCoulombdischargeData(void) {
+    return Read32bit(0xB4);
+}
 
 float AXP192::GetCoulombData(void) {
     uint32_t coin           = GetCoulombchargeData();
@@ -306,6 +330,13 @@ void AXP192::SetSleep(void) {
     Write1Byte(0x12, Read8bit(0x12) & 0xA1);  // Disable all outputs but DCDC1
 }
 
+void AXP192::WakeUpDisplayAfterLightSleep(void) {
+    // LDO2 is LCD Backlight
+    // LDO3 is LCD Power
+    // Enable Ext, LDO3, LDO2, DCDC1
+    Write1Byte(0x12, Read8bit(0x12) | 0x4D);
+}
+
 uint8_t AXP192::GetWarningLeve(void) {
     Wire1.beginTransmission(0x34);
     Wire1.write(0x47);
@@ -328,12 +359,14 @@ void AXP192::DeepSleep(uint64_t time_in_us) {
 }
 
 void AXP192::LightSleep(uint64_t time_in_us) {
+    SetSleep();
     if (time_in_us > 0) {
         esp_sleep_enable_timer_wakeup(time_in_us);
     } else {
         esp_sleep_disable_wakeup_source(ESP_SLEEP_WAKEUP_TIMER);
     }
     esp_light_sleep_start();
+    WakeUpDisplayAfterLightSleep();
 }
 
 // Return 0 = not press, 0x01 = long press(1.5s), 0x02 = short press
@@ -349,7 +382,9 @@ uint8_t AXP192::GetBtnPress() {
 // Low Volt Level 2, when APS Volt Output < 3.3992 V, then this flag is SET
 // (0x01) Flag will reset once battery volt is charged above Low Volt Level 1
 // Note: now AXP192 have the Shutdown Voltage of 3.0V (B100) Def in REG 31H
-uint8_t AXP192::GetWarningLevel(void) { return Read8bit(0x47) & 0x01; }
+uint8_t AXP192::GetWarningLevel(void) {
+    return Read8bit(0x47) & 0x01;
+}
 
 float AXP192::GetBatVoltage() {
     float ADCLSB    = 1.1 / 1000.0;
@@ -424,7 +459,9 @@ float AXP192::GetBatCoulombOut() {
     return ReData * 65536 * 0.5 / 3600 / 25.0;
 }
 
-void AXP192::SetCoulombClear() { Write1Byte(0xB8, 0x20); }
+void AXP192::SetCoulombClear() {
+    Write1Byte(0xB8, 0x20);
+}
 
 // Can turn LCD Backlight OFF for power saving
 void AXP192::SetLDO2(bool State) {
@@ -562,4 +599,13 @@ void AXP192::Write6BytesStorage(uint8_t *bufPtr) {
     Wire1.write(0x0B);
     Wire1.write(bufPtr[5]);
     Wire1.endTransmission();
+}
+
+void AXP192::SetPeripherialsPower(uint8_t state) {
+    if (!state)
+        Write1Byte(0x10, Read8bit(0x10) & 0XFB);
+    else if (state)
+        Write1Byte(0x10, Read8bit(0x10) | 0X04);
+    // uint8_t data;
+    // Set EXTEN to enable 5v boost
 }

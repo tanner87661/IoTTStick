@@ -1,0 +1,26 @@
+{
+	"Pages":[
+		{"Menue":"Node Configuration", "ProdSel":[-1], "CommSel":[], "ServerSel":[], "ALMSel":[], "WebPage": "index.htm", "ID":"pgNodeCfg", "FileName": "node"}, 
+		{"Menue":"MQTT Client", "ProdSel":[], "CommSel":[3,8,10], "ServerSel":[], "ALMSel":[],  "WebPage": "MQTTCfg.htm", "URLParam":"c", "ID":"pgMQTTCfg", "FileName": "mqtt"}, 
+		{"Menue":"LN TCP Client", "ProdSel":[], "CommSel":[12], "ServerSel":[], "ALMSel":[],  "WebPage": "LBServer.htm", "URLParam":"c", "ID":"pgLBSCfg", "FileName": "lbserver"}, 
+		{"Menue":"WiThrottle Client", "ProdSel":[], "CommSel":[17,18], "ServerSel":[], "ALMSel":[],  "WebPage": "WiThrottle.htm", "URLParam":"c", "ID":"pgWiCfg", "FileName": "wiclient"}, 
+		{"Menue":"MQTT Broker", "ProdSel":[], "CommSel":[], "ServerSel":[0], "ALMSel":[],  "WebPage": "MQTTCfg.htm", "URLParam":"s", "ID":"pgMQTTCfg", "FileName": "mqtt"}, 
+		{"Menue":"LN TCP Server", "ProdSel":[], "CommSel":[], "ServerSel":[1], "ALMSel":[],  "WebPage": "LBServer.htm", "URLParam":"s", "ID":"pgLBSCfg", "FileName": "lbserver"}, 
+		{"Menue":"WiThrottle Server", "ProdSel":[], "CommSel":[], "ServerSel":[2], "ALMSel":[],  "WebPage": "WiThrottle.htm", "URLParam":"s", "ID":"pgWiCfg", "FileName": "wiclient"}, 
+		{"Menue":"USB Serial", "ProdSel":[2], "CommSel":[], "ServerSel":[], "ALMSel":[],  "WebPage": "USBSerial.htm", "ID":"pgUSBCfg", "FileName": "usb"}, 
+		{"Menue":"Event Handler Setup", "ProdSel":[], "CommSel":[], "ServerSel":[], "ALMSel":[0],  "WebPage": "BtnHdlrCfg.htm", "ID":"pgBtnHdlrCfg", "FileName": "btnevt"}, 
+		{"Menue":"Security Elements Setup", "ProdSel":[], "CommSel":[], "ServerSel":[], "ALMSel":[1],  "WebPage": "SecElCfg.htm", "ID":"pgSecElCfg", "FileName": "secel"},
+		{"Menue":"Voice Watcher Setup", "ProdSel":[], "CommSel":[], "ServerSel":[], "ALMSel":[],  "WebPage": "VoiceWatch.htm", "ID":"pgVoiceWCfg", "FileName": "vwcfg"}, 
+		{"Menue":"RedHat Shield", "ProdSel":[6], "CommSel":[], "ServerSel":[], "ALMSel":[],  "WebPage": "RedHat.htm", "ID":"pgRedHatCfg", "FileName": "rhcfg"}, 
+		{"Menue":"PurpleHat", "ProdSel":[7], "CommSel":[], "ServerSel":[], "ALMSel":[],  "WebPage": "PurpleHat.htm", "ID":"pgPrplHatCfg", "FileName": "phcfg"}, 
+		{"Menue":"Smart Throttle", "ProdSel":[5], "CommSel":[], "ServerSel":[], "ALMSel":[],  "WebPage": "Throttle.htm", "ID":"pgThrottleCfg", "FileName": "throttle"}, 
+		{"Menue":"GreenHat", "ProdSel":[4], "CommSel":[], "ServerSel":[], "ALMSel":[],  "WebPage": "GreenHat.htm", "ID":"pgGreenHatCfg", "FileName": "greenhat"}, 
+		{"Menue":"SilverHat Booster", "ProdSel":[8], "CommSel":[], "ServerSel":[], "ALMSel":[],  "WebPage": "SilverHat.htm", "ID":"pgSilverHatCfg", "FileName": ""}, 
+		{"Menue":"LED Chain Setup", "ProdSel":[1,3,6], "CommSel":[], "ServerSel":[], "ALMSel":[],  "WebPage": "LEDCfg.htm", "ID":"pgLEDCfg", "FileName": "led"},
+		{"Menue":"Hardware Button Setup", "ProdSel":[3], "CommSel":[], "ServerSel":[], "ALMSel":[],  "WebPage": "HWBtnCfg.htm", "ID":"pgHWBtnCfg", "FileName": "btn"}, 
+		{"Menue":"LocoNet Viewer", "ProdSel":[], "CommSel":[2,3,4,11,12,13,14,15,16], "ServerSel":[], "ALMSel":[],  "WebPage": "LNViewer.htm", "ID":"pgLNViewer", "FileName": ""},
+		{"Menue":"OpenLCB Viewer", "ProdSel":[], "CommSel":[5,6,7], "ServerSel":[], "ALMSel":[],  "WebPage": "OLCBViewer.htm", "ID":"pgOLCBViewer", "FileName": ""},
+		{"Menue":"MQTT Viewer", "ProdSel":[], "CommSel":[8], "ServerSel":[], "ALMSel":[],  "WebPage": "MQTTViewer.htm", "ID":"pgMQTTViewer", "FileName": ""},
+		{"Menue":"DCC Viewer", "ProdSel":[], "CommSel":[1,10], "ServerSel":[], "ALMSel":[],  "WebPage": "DCCViewer.htm", "ID":"pgDCCViewer", "FileName": ""}
+		]
+}

@@ -4,13 +4,36 @@
 * available on Arduino.cc and later improved by user Krodal and Nick Gammon (www.gammon.com.au/forum/?id=10896)
 * 
 */
+#if defined ( ARDUINO )
+#include <Arduino.h>
+#include <SD.h>
+#include <SPIFFS.h>
+#endif
+#include <M5AtomDisplay.h>
+//#include <M5UnitLCD.h>
+//#include <M5UnitOLED.h>
+#include <M5Unified.h>
 
 #include <Wire.h>
 
 void setup() {
+  auto cfg = M5.config();
+  cfg.serial_baudrate = 115200;   // default=115200. if "Serial" is not needed, set it to 0.
+  cfg.clear_display = true;  // default=true. clear the screen when begin.
+  cfg.output_power  = true;  // default=true. use external port 5V output.
+  cfg.internal_imu  = true;  // default=true. use internal IMU.
+  cfg.internal_rtc  = true;  // default=true. use internal RTC.
+  cfg.internal_spk  = false;  // default=true. use internal speaker.
+  cfg.internal_mic  = true;  // default=true. use internal microphone.
+  cfg.external_imu  = false;  // default=false. use Unit Accel & Gyro.
+  cfg.external_rtc  = false;  // default=false. use Unit RTC.
+  cfg.external_spk  = false; // default=false. use SPK_HAT / ATOMIC_SPK
+  cfg.led_brightness = 0;   // default= 0. system LED brightness (0=off / 255=max) (※ not NeoPixel)
 
-  Serial.begin(115200);
-  while (!Serial);             // Leonardo: wait for serial monitor
+  M5.begin(cfg);
+
+//  Serial.begin(115200);
+//  while (!Serial);             // Leonardo: wait for serial monitor
   Serial.println("\n\nI2C Scanner to scan for devices on each port pair D0 to D7\n");
   scanPorts();
 }
@@ -33,8 +56,10 @@ void scanPorts() {
       if (i != j)
       {
         Serial.println("Scanning (SDA : SCL) - " + portMap[i] + " : " + portMap[j] + " - ");
-        Serial.println(Wire.setPins(portArray[i], portArray[j]));
+        Serial.println(Wire.setPins(26,0));
+//        Serial.println(Wire.setPins(portArray[i], portArray[j]));
 //        Wire.begin(portArray[i], portArray[j]); //for ESP32
+        Serial.println(portArray[i], portArray[j]);
         Wire.begin(); //for Arduino, Nano
         delay(10);
         Serial.println(Wire.getClock());
@@ -52,6 +77,7 @@ void check_if_exist_I2C()
   byte error, address;
   int nDevices;
   nDevices = 0;
+//for (address = 0x36; address < 0x37; address++ )  
   for (address = 1; address < 127; address++ )  
   {
     // The i2c_scanner uses the return value of

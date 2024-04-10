@@ -459,7 +459,10 @@ void IoTT_LEDHandler::updateChainDataForColor(uint8_t colorNr, IoTT_LEDCmdList *
 			parentObj->setCurrColHSV(ledAddrList[colorNr], currentColor[colorNr]);
 		else
 			for (int i = 0; i < ledAddrListLen; i++)
+			{
+//				Serial.println(ledAddrList[i]);
 				parentObj->setCurrColHSV(ledAddrList[i], currentColor[colorNr]);
+			}
 	}
 }
 
@@ -727,7 +730,7 @@ void IoTT_LEDHandler::updatePowerStatus()
 	}
 	if (nextInd >= 0)
 	{
-//    Serial.printf("Updating Power Status to Status %i Cmd %i \n", getPowerStatus(), nextInd);
+//    Serial.printf("Updating Power Status to Status %i Cmd %i \n", digitraxBuffer->getPowerStatus(), nextInd);
 		cmdDef = cmdList[nextInd];
 		updateChainData(cmdDef);
 	}
@@ -1062,6 +1065,11 @@ CRGB * IoTT_ledChain::initChain(word numLEDs)
 	return ledChain;
 }
 
+void IoTT_ledChain::setFastPin(uint8_t pinNr)
+{
+	fastPin = pinNr;
+}
+
 void IoTT_ledChain::setMQTTMode(mqttTxFct txFct)
 {
 	txMQTT = txFct;
@@ -1090,11 +1098,12 @@ void IoTT_ledChain::setCurrColHSV(uint16_t ledNr, CHSV newCol)
 	    switch (chainMode)
 	    {
 			case hatDirect:
-//			    Serial.printf("Set LED %i to %i %i %i\n", ledNr, newCol.h, newCol.s, newCol.v);
+//			    Serial.printf("Set LED %i to HSV %i %i %i\n", ledNr, newCol.h, newCol.s, newCol.v);
 				ledChain[ledNr] = newCol;
 				break;
 			case hatI2C:
-//			    Serial.printf("call setI2CLED for LED %i\n", ledNr);
+//				if (ledNr == 1)
+//					Serial.printf("call setI2CLED for LED %i Color %i %i %i \n", ledNr, newCol.h, newCol.s, newCol.v);
 				setI2CLED(ledNr, newCol);
 //			    Serial.println("call SerComm Done");
 				break;
@@ -1201,7 +1210,8 @@ void IoTT_ledChain::showI2CLED()
 
 void IoTT_ledChain::setI2CLED(uint16_t ledNr, CHSV newCol)
 {
-//	Serial.printf("LED to %2X data %2X %2X %2X %2X %2X \n", I2CAddr, (ledNr & 0xFF00)>>8, ledNr & 0x00FF, newCol.h, newCol.s, newCol.v);
+	if (ledNr == 1)
+	Serial.printf("LED to %2X data %2X %2X %2X %2X %2X \n", I2CAddr, (ledNr & 0xFF00)>>8, ledNr & 0x00FF, newCol.h, newCol.s, newCol.v);
 	thisWire->beginTransmission(I2CAddr);
 	thisWire->write((ledNr & 0xFF00)>>8);
 	thisWire->write(ledNr & 0x00FF);
@@ -1421,6 +1431,7 @@ void IoTT_ledChain::processChain()
 	    {
 			case hatDirect:
 //				Serial.printf("refresh LEDs Direct %i %i\n", needUpdate, refreshAnyway);
+				digitalWrite(fastPin,0);
 				FastLED.show();
 				break;
 			case hatI2C:
@@ -1428,13 +1439,13 @@ void IoTT_ledChain::processChain()
 				showI2CLED();
 				break;
 		}
+#ifdef useRTOS
+		xSemaphoreGive(ledBaton);
+#endif
 		needUpdate = false;
 		if (refreshAnyway > 0)
 			refreshAnyway--;
 //	Serial.println("Clear Refresh/ NeedUpdate");
-#ifdef useRTOS
-		xSemaphoreGive(ledBaton);
-#endif
 	}
 }
 
@@ -1561,6 +1572,7 @@ bool IoTT_ledChain::processMQTTCmd(char * topic, DynamicJsonDocument doc)
 		switch (chainMode)
 		{
 			case hatDirect:
+				digitalWrite(fastPin,0);
 				FastLED.show();
 				break;
 			case hatI2C:

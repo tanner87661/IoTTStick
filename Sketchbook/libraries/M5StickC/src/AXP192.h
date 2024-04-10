@@ -51,7 +51,7 @@ class AXP192 {
     void begin(bool disableLDO2 = false, bool disableLDO3 = false,
                bool disableRTC = false, bool disableDCDC1 = false,
                bool disableDCDC3 = false, bool disableLDO0 = false);
-    void ScreenBreath(uint8_t brightness);
+    void ScreenBreath(int brightness);
     void ScreenSwitch(bool state);
     bool GetBatState();
 
@@ -86,6 +86,7 @@ class AXP192 {
 
     // -- sleep
     void SetSleep(void);
+    void WakeUpDisplayAfterLightSleep(void);
     void DeepSleep(uint64_t time_in_us = 0);
     void LightSleep(uint64_t time_in_us = 0);
     uint8_t GetWarningLeve(void) __attribute__((deprecated));
@@ -114,6 +115,7 @@ class AXP192 {
     void SetGPIO0(bool State);
     void SetAdcState(bool State);
     void SetAdcRate(uint8_t rate);
+    void SetPeripherialsPower(uint8_t state);
 
     // -- Power Off
     void PowerOff();

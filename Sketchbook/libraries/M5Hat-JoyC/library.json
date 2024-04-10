@@ -1,0 +1,16 @@
+{
+  "name": "M5Hat-JoyC",
+  "description": "Library for M5Stack JoyC",
+  "keywords": "M5Stack JoyC",
+  "authors": {
+    "name": "M5Stack",
+    "url": "http://www.m5stack.com"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/m5stack/M5Hat-JoyC.git"
+  },
+  "version": "0.0.1",
+  "frameworks": "arduino",
+  "platforms": "espressif32"
+}

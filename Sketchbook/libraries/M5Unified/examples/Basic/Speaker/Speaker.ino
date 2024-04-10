@@ -1,6 +1,31 @@
+
+// If you use ATOMDisplay, write this.
+#include <M5AtomDisplay.h>
+
+// If you use ModuleDisplay, write this.
+#include <M5ModuleDisplay.h>
+
+// If you use ModuleRCA, write this.
+// #include <M5ModuleRCA.h>
+
+// If you use Unit LCD, write this.
 #include <M5UnitLCD.h>
+
+// If you use Unit OLED, write this.
 #include <M5UnitOLED.h>
+
+// If you use UnitRCA (for Video output), write this.
+// #include <M5UnitRCA.h>
+
+// * The display header must be included before the M5Unified library.
+
+//----------------------------------------------------------------
+
+// Include this to enable the M5 global instance.
 #include <M5Unified.h>
+
+
+//----------------------------------------------------------------
 
 /// 8bit unsigned 44.1kHz mono (exclude wav header)
 extern const uint8_t wav_unsigned_8bit_click[46000];
@@ -122,28 +147,35 @@ void hold_menu(bool holding)
   }
 }
 
-#if !defined ( ARDUINO )
-void delay(uint32_t msec)
-{
-  vTaskDelay(msec / portTICK_PERIOD_MS);
-}
-#endif
-
 void setup(void)
 {
   auto cfg = M5.config();
 
-//cfg.external_spk = true;    /// use external speaker (SPK HAT / ATOMIC SPK)
-//cfg.external_spk_detail.omit_atomic_spk = true; // exclude ATOMIC SPK
-//cfg.external_spk_detail.omit_spk_hat    = true; // exclude SPK HAT
+  // If you want to play sound from ATOMIC Speaker, write this
+  cfg.external_speaker.atomic_spk     = true;
+
+  // If you want to play sound from ModuleDisplay, write this
+  cfg.external_speaker.module_display = true;
+
+  // If you want to play sound from ModuleRCA, write this
+//  cfg.external_speaker.module_rca     = true;
+
+  // If you want to play sound from HAT Speaker, write this
+//  cfg.external_speaker.hat_spk        = true;
+
+  // If you want to play sound from HAT Speaker2, write this
+//  cfg.external_speaker.hat_spk2       = true;
 
   M5.begin(cfg);
 
-  { /// I2S custom setting
+  { /// I2S Custom configurations are available if you desire.
     auto spk_cfg = M5.Speaker.config();
 
+    if (spk_cfg.use_dac || spk_cfg.buzzer)
+    {
     /// Increasing the sample_rate will improve the sound quality instead of increasing the CPU load.
-    spk_cfg.sample_rate = 96000; // default:64000 (64kHz)  e.g. 48000 , 50000 , 80000 , 96000 , 100000 , 128000 , 144000 , 192000 , 200000
+      spk_cfg.sample_rate = 192000; // default:64000 (64kHz)  e.g. 48000 , 50000 , 80000 , 96000 , 100000 , 128000 , 144000 , 192000 , 200000
+    }
 /*
     spk_cfg.pin_data_out=8;
     spk_cfg.pin_bck=7;
@@ -168,6 +200,16 @@ void setup(void)
     M5.Display.setRotation(M5.Display.getRotation() ^ 1);
   }
 
+// If an external display is to be used as the main display, it can be listed in order of priority.
+  M5.setPrimaryDisplayType( {
+      m5::board_t::board_M5ModuleDisplay,
+      m5::board_t::board_M5AtomDisplay,
+      m5::board_t::board_M5ModuleRCA,
+   // m5::board_t::board_M5UnitOLED,
+   // m5::board_t::board_M5UnitLCD,
+   // m5::board_t::board_M5UnitRCA,
+  } );
+
   if (M5.Display.width() < 100)
   {
     menu_x = 0;
@@ -184,36 +226,36 @@ void setup(void)
   if (!M5.Speaker.isEnabled())
   {
     M5.Display.print("Speaker not found...");
-    for (;;) { delay(1); }
+    for (;;) { M5.delay(1); }
   }
 
   M5.Display.setEpdMode(epd_mode_t::epd_fastest);
   M5.Display.fillScreen(TFT_DARKGRAY);
   M5.Display.print("SOUND TEST");
 
-  /// The setVolume function can be set the master volume in the range of 0-255.
+  /// The setVolume function can be set the master volume in the range of 0-255. (default : 64)
   M5.Speaker.setVolume(64);
 
-  /// The setAllChannelVolume function can be set the all virtual channel volume in the range of 0-255.
-  M5.Speaker.setAllChannelVolume(64);
+  /// The setAllChannelVolume function can be set the all virtual channel volume in the range of 0-255. (default : 255)
+  M5.Speaker.setAllChannelVolume(255);
 
-  /// The setChannelVolume function can be set the specified virtual channel volume in the range of 0-255.
-  M5.Speaker.setChannelVolume(0, 64);
+  /// The setChannelVolume function can be set the specified virtual channel volume in the range of 0-255. (default : 255)
+  M5.Speaker.setChannelVolume(0, 255);
 
   /// play 2000Hz tone sound, 100 msec. 
   M5.Speaker.tone(2000, 100);
 
-  delay(100);
+  M5.delay(100);
 
   /// play 1000Hz tone sound, 100 msec. 
   M5.Speaker.tone(1000, 100);
 
-  delay(100);
+  M5.delay(100);
 
   /// stop output sound.
   M5.Speaker.stop();
 
-  delay(500);
+  M5.delay(500);
 
   /// The playRaw function can play raw wave data.
   /// 1st argument : data pointer, (supported  int8_t / uint8_t / int16_t)
@@ -224,63 +266,63 @@ void setup(void)
   /// 6th argument : virtual channel number (If omitted, use an available channel.)
   M5.Speaker.playRaw( wav_unsigned_8bit_click, sizeof(wav_unsigned_8bit_click) / sizeof(wav_unsigned_8bit_click[0]), 44100, false);
 
-  while (M5.Speaker.isPlaying()) { delay(1); } // Wait for the output to finish.
+  while (M5.Speaker.isPlaying()) { M5.delay(1); } // Wait for the output to finish.
 
-  delay(500);
+  M5.delay(500);
 
   // The 2nd argument of the tone function can be used to specify the output time (milliseconds).
   M5.Speaker.tone(440, 1000);  // 440Hz sound  output for 1 seconds.
 
-  while (M5.Speaker.isPlaying()) { delay(1); } // Wait for the output to finish.
+  while (M5.Speaker.isPlaying()) { M5.delay(1); } // Wait for the output to finish.
 
-  delay(500);
+  M5.delay(500);
 
   M5.Speaker.setVolume(0);
-  M5.Speaker.tone(220);  // tone 220Hz sound output. (Keeps output until it stops.)
+  M5.Speaker.tone(880);  // tone 880Hz sound output. (Keeps output until it stops.)
   for (int i = 0; i <= 64; i++)
   {
     M5.Speaker.setVolume(i); // Volume can be changed during sound output.
-    delay(25);
+    M5.delay(25);
   }
   M5.Speaker.stop();  // stop sound output.
 
-  delay(500);
+  M5.delay(500);
 
   // The tone function can specify a virtual channel number as its 3rd argument.
   // If the tone function is used on the same channel number, the previous tone will be stopped and a new tone will be played.
   M5.Speaker.tone(261.626, 1000, 1);  // tone 261.626Hz  output for 1 seconds, use channel 1
-  delay(200);
+  M5.delay(200);
   M5.Speaker.tone(329.628, 1000, 1);  // tone 329.628Hz  output for 1 seconds, use channel 1
-  delay(200);
+  M5.delay(200);
   M5.Speaker.tone(391.995, 1000, 1);  // tone 391.995Hz  output for 1 seconds, use channel 1
 
-  while (M5.Speaker.isPlaying()) { delay(1); } // Wait for the output to finish.
+  while (M5.Speaker.isPlaying()) { M5.delay(1); } // Wait for the output to finish.
 
-  delay(500);
+  M5.delay(500);
 
   // By specifying different channels, multiple sounds can be output simultaneously.
   M5.Speaker.tone(261.626, 1000, 1);  // tone 261.626Hz  output for 1 seconds, use channel 1
-  delay(200);
+  M5.delay(200);
   M5.Speaker.tone(329.628, 1000, 2);  // tone 329.628Hz  output for 1 seconds, use channel 2
-  delay(200);
+  M5.delay(200);
   M5.Speaker.tone(391.995, 1000, 3);  // tone 391.995Hz  output for 1 seconds, use channel 3
 
-  while (M5.Speaker.isPlaying()) { delay(1); } // Wait for the output to finish.
+  while (M5.Speaker.isPlaying()) { M5.delay(1); } // Wait for the output to finish.
 
-  delay(500);
+  M5.delay(500);
 
   /// tone data (8bit unsigned wav)
   const uint8_t wavdata[64] = { 132,138,143,154,151,139,138,140,144,147,147,147,151,159,184,194,203,222,228,227,210,202,197,181,172,169,177,178,172,151,141,131,107,96,87,77,73,66,42,28,17,10,15,25,55,68,76,82,80,74,61,66,79,107,109,103,81,73,86,94,99,112,121,129 };
 
   /// Using a single wave of data, you can change the tone.
   M5.Speaker.tone(261.626, 1000, 1, true, wavdata, sizeof(wavdata));
-  delay(200);
+  M5.delay(200);
   M5.Speaker.tone(329.628, 1000, 2, true, wavdata, sizeof(wavdata));
-  delay(200);
+  M5.delay(200);
   M5.Speaker.tone(391.995, 1000, 3, true, wavdata, sizeof(wavdata));
-  delay(200);
+  M5.delay(200);
 
-  while (M5.Speaker.isPlaying()) { delay(1); } // Wait for the output to finish.
+  while (M5.Speaker.isPlaying()) { M5.delay(1); } // Wait for the output to finish.
 
   M5.Display.startWrite();
   for (size_t i = 0; i < menu_count; i++)
@@ -296,8 +338,8 @@ void loop(void)
 {
   if (!M5.Display.displayBusy())
   {
-    static uint8_t prev_channelvolume;
-    static uint8_t prev_mastervolume;
+    static int32_t prev_channelvolume;
+    static int32_t prev_mastervolume;
     int32_t m_vol = (M5.Speaker.getVolume()         * (M5.Display.height() - menu_y)) >> 8;
     int32_t c_vol = (M5.Speaker.getChannelVolume(0) * (M5.Display.height() - menu_y)) >> 8;
     if (prev_mastervolume  != m_vol
@@ -315,7 +357,7 @@ void loop(void)
     }
   }
 
-  m5gfx::delay(5);
+  M5.delay(5);
   M5.update();
 
   auto touch_count = M5.Touch.getCount();
@@ -379,7 +421,7 @@ void loop(void)
   }
 }
 
-#if !defined ( ARDUINO )
+#if !defined ( ARDUINO ) && defined ( ESP_PLATFORM )
 extern "C" {
   void loopTask(void*)
   {

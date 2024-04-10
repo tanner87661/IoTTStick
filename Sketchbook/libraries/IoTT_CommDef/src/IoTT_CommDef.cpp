@@ -41,7 +41,7 @@ int8_t getWSClient(int8_t withID)
 
 int8_t getWSClientByPage(uint8_t startFrom, char * toWebPage)
 {
-//	Serial.printf("look %i %s:\n", startFrom, toWebPage);
+//	Serial.printf("look %i %s Total %i:\n", startFrom, toWebPage, globalClients.size());
   if (startFrom >= globalClients.size()) return -1;
   for (int i = startFrom; i < globalClients.size(); i++)
   {
@@ -56,9 +56,9 @@ int8_t getWSClientByPage(uint8_t startFrom, char * toWebPage)
   return -1;
 }
 
-/*
 bool verifySyntax(uint8_t * msgData)
 {
+#ifdef LNDebug
 	if ((msgData[0] & 0x80) == 0)
 		return false;
 	uint8_t msgLen = ((msgData[0] & 0x60) >> 4) + ((msgData[0] & 0x80) >> 7); //-1 for indexing
@@ -68,27 +68,31 @@ bool verifySyntax(uint8_t * msgData)
 		if ((msgData[i] & 0x80) > 0)
 			return false;
 	return getXORCheck(msgData, msgLen + 1);
+#endif
+	return true;
 }
 
 void dispMsg(uint8_t * msgData, uint8_t targetLen)
 {
+#ifdef LNDebug
 	uint8_t msgLen = ((msgData[0] & 0x60) >> 4) + 2;
 	if (msgLen == 8)
 		msgLen = (msgData[1] & 0x7F); 
-	Serial.printf("Msg %i Len %i\n", targetLen, msgLen+1);
+//	Serial.printf("Msg %i Len %i\n", targetLen, msgLen+1);
 	for (uint8_t i = 0; i < msgLen; i++)
 		Serial.printf("%2X ", msgData[i]);
 	Serial.println();
+#endif
 }
 
 void dispSlot(uint8_t * slotBytes)
 {
-	
+#ifdef LNDebug
 	for (uint8_t i = 0; i < 10; i++)
 		Serial.printf("%2X ", slotBytes[i]);
 	Serial.println();
+#endif
 }
-*/
 
 void untokstr(char* strList[], uint8_t listLen, char* inpStr, const char* token)
 {
@@ -155,39 +159,59 @@ bool parseDCCExNew(char* inpStr, lnTransmitMsg* inpStatus, std::vector<ppElement
     reqRecTime used instead of bitRecStatus as parameter counter. 0xFF means invalid, awaiting new message
 */ 	
 	bool returnVal = false;
-//	Serial.println(*inpStr);
+	bool strMode = (inpStatus->lnMsgSize & 0x01) == 0x01;
+//	Serial.print(*inpStr);
 	switch (*inpStr)
 	{
 		case '<' : //start new message
 //			Serial.println("BEGIN");
-			if (inpStatus->reqRecTime != 0xFF) //receiving in progress, something is wrong
+			if (!strMode)
 			{
-				Serial.println("Old Command not complete");
-				inpStatus->requestID = 0xFF; //invalid message
-//				processLNMsg(&lnInBuffer); //get rid of previous (invalid) message
+				if (inpStatus->reqRecTime != 0xFF) //receiving in progress, something is wrong
+				{
+					Serial.println("Old Command not complete");
+					inpStatus->requestID = 0xFF; //invalid message
+//					processLNMsg(&lnInBuffer); //get rid of previous (invalid) message
+				}
+				inpStatus->reqRecTime = 0; //get ready to receive opcode
+				inpStatus->requestID = 0; //reset incoming byte counter
+				inpStatus->msgType = DCCEx;
+				inpStatus->lnMsgSize = 0; //byte ctr for lnData in param 0, temporarily used for string status
 			}
-			inpStatus->reqRecTime = 0; //get ready to receive opcode
-			inpStatus->requestID = 0; //reset incoming byte counter
-			inpStatus->msgType = DCCEx;
-			inpStatus->lnMsgSize = 0; //byte ctr for lnData in param 0, temporarily used for string status
+			else
+			{
+				inpStatus->lnData[inpStatus->requestID] = *inpStr;
+				if (inpStatus->requestID < lnMaxMsgSize-1)
+					inpStatus->requestID++;
+			}
 			break;
 		case '>' : //terminate message
 		{
-			if (inpStatus->reqRecTime < 0xFF) //valid data
+			if (!strMode)
 			{
-				inpStatus->lnData[inpStatus->requestID] = '\0'; //terminate string
-				inpStatus->lnMsgSize = inpStatus->reqRecTime; //set parameter number
-				if (inpStatus->requestID > 0) //there is a parameter received and waiting for processing
+				if (inpStatus->reqRecTime < 0xFF) //valid data
 				{
-					parseDCCExParamNew(inpStatus, paramList);
-					inpStatus->reqRecTime++;
+					inpStatus->lnData[inpStatus->requestID] = '\0'; //terminate string
+					inpStatus->lnMsgSize = inpStatus->reqRecTime; //set parameter number
+					if (inpStatus->requestID > 0) //there is a parameter received and waiting for processing
+					{
+						parseDCCExParamNew(inpStatus, paramList);
+						inpStatus->reqRecTime++;
+					}
+					paramList->at(0).numParams = inpStatus->reqRecTime; //set number of valid paramters
+					returnVal = true;
+//					processDCCEXMsgNew(paramList);
+					inpStatus->reqRecTime = 0xFF; //set status to invalid data, awaiting start of message
+					inpStatus->requestID = 0; //reset byte counter
+					inpStatus->lnMsgSize = strMode ? 0x01 : 0x00; //restore strMode flag
+//					Serial.println("END");
 				}
-				paramList->at(0).numParams = inpStatus->reqRecTime; //set number of valid paramters
-				returnVal = true;
-//				processDCCEXMsgNew(paramList);
-				inpStatus->reqRecTime = 0xFF; //set status to invalid data, awaiting start of message
-				inpStatus->requestID = 0; //reset byte counter
-//				Serial.println("END");
+			}
+			else
+			{
+				inpStatus->lnData[inpStatus->requestID] = *inpStr;
+				if (inpStatus->requestID < lnMaxMsgSize-1)
+					inpStatus->requestID++;
 			}
 		}
 			break;
@@ -196,7 +220,10 @@ bool parseDCCExNew(char* inpStr, lnTransmitMsg* inpStatus, std::vector<ppElement
 			if (*inpStr == '"') 
 			{
 				inpStatus->lnMsgSize = (inpStatus->lnMsgSize ^ 0x01) & 0x01; //toggle string status
-				return returnVal;
+//				inpStatus->lnData[inpStatus->requestID] = *inpStr;
+//				if (inpStatus->requestID < lnMaxMsgSize-1)
+//					inpStatus->requestID++;
+//				return returnVal;
 			}
 			switch (inpStatus->reqRecTime)
 			{

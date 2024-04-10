@@ -112,6 +112,7 @@ typedef struct
 #define CV_VERSION_ID                          7
 #define CV_MANUFACTURER_ID                     8
 #define CV_29_CONFIG                          29
+#define CV_MANUFACTURER_START				  33
 
 #if defined(ESP32)
     #include <esp_spi_flash.h>
@@ -127,7 +128,8 @@ typedef struct
     #define PRIO_SYSTIC     8               // MUST be higher priority than DCC Irq
 #elif defined(ARDUINO_ARCH_RP2040)
     #define MAXCV    256	     				    // todo: maybe somebody knows a good define for it
-
+#elif defined(ARDUINO_SAMD_ZERO) 
+    #define MAXCV    EEPROM_EMULATION_SIZE
 #else
     #define MAXCV    E2END     					// the upper limit of the CV value currently defined to max memory.
 #endif
@@ -173,8 +175,9 @@ typedef enum
     FN_13_20,
     FN_21_28,
     #ifdef NMRA_DCC_ENABLE_14_SPEED_STEP_MODE
-    FN_0				 /** function light is controlled by base line package (14 speed steps) */
+    FN_0,				 /** function light is controlled by base line package (14 speed steps) */
     #endif
+    FN_LAST
 } FN_GROUP;
 
 #define FN_BIT_00	0x10

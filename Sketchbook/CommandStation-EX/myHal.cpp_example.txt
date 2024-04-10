@@ -17,10 +17,13 @@
 
 // Include devices you need.
 #include "IODevice.h"
-#include "IO_HCSR04.h"    // Ultrasonic range sensor
-#include "IO_VL53L0X.h"   // Laser time-of-flight sensor
-#include "IO_DFPlayer.h"  // MP3 sound player
-
+//#include "IO_HALDisplay.h"  // Auxiliary display devices (LCD/OLED)
+//#include "IO_HCSR04.h"    // Ultrasonic range sensor
+//#include "IO_VL53L0X.h"   // Laser time-of-flight sensor
+//#include "IO_DFPlayer.h"  // MP3 sound player
+//#include "IO_TouchKeypad.h  // Touch keypad with 16 keys
+//#include "IO_EXTurntable.h"   // Turntable-EX turntable controller
+//#include "IO_EXFastClock.h"  // FastClock driver
 
 //==========================================================================
 // The function halSetup() is invoked from CS if it exists within the build.
@@ -29,6 +32,61 @@
 //==========================================================================
 
 void halSetup() {
+
+  //=======================================================================
+  // The following directives define auxiliary display devices.
+  // These can be defined in addition to the system display (display
+  // number 0) that is defined in config.h.
+  // A write to a line which is beyond the length of the screen will overwrite
+  // the bottom line, unless the line number is 255 in which case the 
+  // screen contents will scroll up before the text is written to the
+  // bottom line.
+  //=======================================================================
+  // 
+  // Create a 128x32 OLED display device as display number 1 
+  // (line 0 is written by EX-RAIL 'SCREEN(1, 0, "text")').
+
+  //HALDisplay<OLED>::create(1, 0x3d, 128, 32);
+
+  // Create a 20x4 LCD display device as display number 2 
+  // (line 0 is written by EX-RAIL 'SCREEN(2, 0, "text")').
+
+  // HALDisplay<LiquidCrystal>(2, 0x27, 20, 4);
+
+
+  //=======================================================================
+  // User Add-ins
+  //=======================================================================
+  // User add-ins can be created when you want to do something that 
+  // can't be done in EX-RAIL but does not merit a HAL driver.  The 
+  // user add-in is a C++ function that is executed periodically by the
+  // HAL subsystem.
+
+  // Example: The function will be executed once per second and will display, 
+  // on screen #3, the first eight entries (assuming an 8-line display)
+  // from the loco speed table.
+  
+  // Put the following block of code in myHal.cpp OUTSIDE of the 
+  //   halSetup() function:
+  //
+  // void updateLocoScreen() {
+  //   for (int i=0; i<8; i++) {
+  //     if (DCC::speedTable[i].loco > 0) {
+  //       int speed = DCC::speedTable[i].speedCode;
+  //       char direction = (speed & 0x80) ? 'R' : 'F';
+  //       speed = speed & 0x7f;
+  //       if (speed > 0) speed = speed - 1;
+  //       SCREEN(3, i, F("Loco:%4d %3d %c"), DCC::speedTable[i].loco,
+  //         speed, direction);
+  //     }
+  //   }
+  // }
+  //
+  // Put the following line INSIDE the halSetup() function:
+  //
+  // UserAddin::create(updateLocoScreen, 1000);
+  //
+
 
   //=======================================================================
   // The following directive defines a PCA9685 PWM Servo driver module.
@@ -88,6 +146,21 @@ void halSetup() {
 
 
   //=======================================================================
+  // The following directive defines a PCF8575 16-port I2C GPIO Extender module.
+  //=======================================================================
+  // The parameters are: 
+  //   First Vpin=200
+  //   Number of VPINs=16 (numbered 200-215)
+  //   I2C address of module=0x23
+
+  //PCF8575::create(200, 16, 0x23);
+
+
+  // Alternative form using INT pin (see above)
+
+  //PCF8575::create(200, 16, 0x23, 40);
+
+  //=======================================================================
   // The following directive defines an HCSR04 ultrasonic ranging module.
   //=======================================================================
   // The parameters are: 
@@ -140,12 +213,12 @@ void halSetup() {
   // With these parameters, up to 10 files may be played on pins 10000-10009.
   // Play is started from EX-RAIL with SET(10000) for first mp3 file, SET(10001)
   // for second file, etc.  Play may also be initiated by writing an analogue
-  // value to the first pin, e.g. SERVO(10000,23,0) will play the 23rd mp3 file.
-  // SERVO(10000,23,30) will do the same thing, as well as setting the volume to 
+  // value to the first pin, e.g. ANOUT(10000,23,0,0) will play the 23rd mp3 file.
+  // ANOUT(10000,23,30,0) will do the same thing, as well as setting the volume to 
   // 30 (maximum value).
   // Play is stopped by RESET(10000) (or any other allocated VPIN).
   // Volume may also be set by writing an analogue value to the second pin for the player, 
-  // e.g. SERVO(10001,30,0) sets volume to maximum (30).
+  // e.g. ANOUT(10001,30,0,0) sets volume to maximum (30).
   // The EX-RAIL script may check for completion of play by calling WAITFOR(pin), which will only proceed to the
   // following line when the player is no longer busy.
   // E.g.
@@ -154,11 +227,83 @@ void halSetup() {
   //      SET(10003)        // Play fourth MP3 file
   //      LCD(4, "Playing") // Display message on LCD/OLED
   //      WAITFOR(10003)    // Wait for playing to finish
-  //      LCD(4, " ")       // Clear LCD/OLED line 
+  //      LCD(4, "")       // Clear LCD/OLED line 
   //      FOLLOW(1)         // Go back to start
 
   // DFPlayer::create(10000, 10, Serial1);
 
+
+  //=======================================================================
+  // 16-pad capacitative touch key pad based on TP229 IC.
+  //=======================================================================
+  // Parameters below:
+  //   11000 = first VPIN allocated
+  //   16 = number of VPINs allocated
+  //   25 = local GPIO pin number for clock signal
+  //   24 = local GPIO pin number for data signal
+  //
+  // Pressing the key pads numbered 1-16 cause each of the nominated digital VPINs 
+  // (11000-11015 in this case) to be activated.
+
+  // TouchKeypad::create(11000, 16, 25, 24);
+
+
+  //=======================================================================
+  // The following directive defines an EX-Turntable turntable instance.
+  //=======================================================================
+  // EXTurntable::create(VPIN, Number of VPINs, I2C Address)
+  //
+  // The parameters are:
+  //   VPIN=600
+  //   Number of VPINs=1 (Note there is no reason to change this)
+  //   I2C address=0x60
+  //
+  // Note that the I2C address is defined in the EX-Turntable code, and 0x60 is the default.
+
+  //EXTurntable::create(600, 1, 0x60);
+
+
+  //=======================================================================
+  // The following directive defines an EX-IOExpander instance.
+  //=======================================================================
+  // EXIOExpander::create(VPIN, Number of VPINs, I2C Address)
+  //
+  // The parameters are:
+  //   VPIN=an available Vpin
+  //   Number of VPINs=pin count (must match device in use as per documentation)
+  //   I2C address=an available I2C address (default 0x65)
+  //
+  // Note that the I2C address is defined in the EX-IOExpander code, and 0x65 is the default.
+  // The example is for an Arduino Nano.
+
+  //EXIOExpander::create(800, 18, 0x65);
+
+
+  //=======================================================================
+  // The following directive defines a rotary encoder instance.
+  //=======================================================================
+  // The parameters are: 
+  //   firstVpin = First available Vpin to allocate
+  //   numPins= Number of Vpins to allocate, can be either 1 or 2
+  //   i2cAddress = Available I2C address (default 0x70)
+
+  //RotaryEncoder::create(firstVpin, numPins, i2cAddress);
+  //RotaryEncoder::create(700, 1, 0x70);
+  //RotaryEncoder::create(701, 2, 0x71);
+
+ //=======================================================================
+  // The following directive defines an EX-FastClock instance.
+  //=======================================================================
+  // EXFastCLock::create(I2C Address)
+  //
+  // The parameters are:
+  //   
+  //   I2C address=0x55 (decimal 85)
+  //
+  // Note that the I2C address is defined in the EX-FastClock code, and 0x55 is the default.
+
+ 
+  //   EXFastClock::create(0x55);
 
 }
 

@@ -1,7 +1,9 @@
 /*
 IoTT_lbServer.h
 
-MQTT interface to send and receive Loconet messages to and from an MQTT broker
+Interface to send and receive Loconet messages using Withrottle or Loconet over TCP formats.
+Implements server and client
+*Library can be loaded multiple times dynamically with dioffeent modes.
 
 This library is free software; you can redistribute it and/or
 modify it under the terms of the GNU Lesser General Public
@@ -23,13 +25,14 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #define IoTT_lbServer_h
 
 #include <stdlib.h>
-#include <arduino.h>
-#include <Math.h>
+#include <Arduino.h>
+#include <math.h>
 #include <inttypes.h>
 #include <WiFi.h>
 #include <IoTT_CommDef.h>
 #include <IoTT_DigitraxBuffers.h>
-#include <ArduinoJSON.h>
+#include <IoTT_SerInjector.h>
+#include <ArduinoJson.h>
 #include <AsyncTCP.h>
 #include <ESPmDNS.h>
 #include <vector>
@@ -40,15 +43,23 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #define LNTCPVersion "IoTT lbServer 1.0.2"
 #define WiTVersion "IoTT WiThServer 1.0.3"
 #define EDExDispStr "Engine Driver DCC EX Mode"
+#define EDExDispStrBP "Engine Driver DCC EX Bypass"
+
+#define lbPingInterval 30000
+#define lbPingTimeout  3000
+
 
 extern IoTT_DigitraxBuffers * digitraxBuffer;
+extern void prepSlotRequestMsg(lnTransmitMsg * msgData, uint8_t slotNr);
 extern void prepSlotReadMsg(lnTransmitMsg * msgData, uint8_t slotNr);
+extern void prepSlotWriteMsg(lnTransmitMsg * msgData, uint8_t slotNr);
 extern void prepLocoAddrReqMsg(lnTransmitMsg * msgData, uint16_t dccAddr);
 extern void prepSlotMoveMsg(lnTransmitMsg * msgData, uint8_t slotSRC, uint8_t slotDEST);
 extern void prepSlotStat1Msg(lnTransmitMsg * msgData, uint8_t slotNr, uint8_t stat);
 extern void prepSlotSpeedMsg(lnTransmitMsg * msgData, uint8_t slotNr, uint8_t speed);
 extern void prepSlotDirFMsg(lnTransmitMsg * msgData, uint8_t slotNr, uint8_t dirfdata);
 extern void prepSlotSndMsg(lnTransmitMsg * msgData, uint8_t slotNr, uint8_t snddata);
+extern void prepSlotExtFctMsg(lnTransmitMsg * msgData, uint16_t locoAddr, uint8_t fctNr, uint32_t currFct);
 extern void prepTurnoutMsg(lnTransmitMsg * msgData, bool useACK, uint16_t swiAddr, uint8_t swiPos);
 extern void prepTrackPowerMsg(lnTransmitMsg * msgData, uint8_t pwrStatus);
 //extern void writeProg(uint16_t dccAddr, uint8_t progMode, uint8_t progMethod, uint16_t cvNr, uint8_t cvVal);
@@ -62,14 +73,14 @@ typedef struct
 {
 	uint16_t locoAddr = 0;
 	uint8_t slotNum = 0;
-	uint16_t dirFct = 0;
-	uint16_t noLatchFct = 0x0200; //Fct 2 is momentary
+	uint32_t dirFct = 0;
+	uint32_t noLatchFct = 0x00000200; //Fct 2 is momentary
 	uint8_t slotStatus = 0;
 	bool activeSlot = false;
 	char throttleID;
 } locoDef;
 
-#define numInitSeq 11
+#define numInitSeq 13
 
 //typedef struct
 class tcpDef
@@ -85,7 +96,7 @@ public:
 	locoDef* getLocoByAddr(locoDef* startAt, uint16_t locoAddr, char thID);
 	locoDef* getLocoBySlot(locoDef* startAt, uint8_t slotAddr, char thID);
 	locoDef* getLocoFromList(locoDef* startAt, char thID);
-	void setLocoAction(uint16_t locoAddr, char thID, const char* ActionCode, uint16_t extFctMask =0);
+	void setLocoAction(uint16_t locoAddr, char thID, const char* ActionCode, uint32_t extFctMask =0);
 	void setTrackPowerStatus(uint8_t newStatus);
 	uint8_t getThrottleIDList(char * addHere);
 public:
@@ -109,16 +120,18 @@ public:
 	~IoTT_LBServer();
 	IoTT_LBServer(Client& client);
 	void initLBServer(bool serverMode = true);
-	void initWIServer(bool serverMode = false); //server mode not supported at this time
+	void initWIServer(bool serverMode = false, bool ExMode = false); //server mode not supported at this time
 	void startServer();
 	void processLoop();
 	void initMDNS();
-	void wiAddrCallback(std::vector<ppElement>* ppList);
+	void wiAddrCallback(ppElement* ppList);
+	uint16_t receiveDCCGeneratorBypass(std::vector<ppElement> * txData);
 	uint16_t lnWriteMsg(lnTransmitMsg* txData);
 	uint16_t lnWriteMsg(lnReceiveBuffer* txData);
 //	void setLNCallback(cbFct newCB);
 	void loadLBServerCfgJSON(DynamicJsonDocument doc);
 	String getServerIP();
+	String getServerDescr();
 	uint8_t getConnectionStatus();
 
 	void handleError(AsyncClient* client, int8_t error);
@@ -137,6 +150,7 @@ private:
    // Member functions
 //	bool sendLNMessage(lnReceiveBuffer txData);
 
+	void verifyBypass();
 	void handleData(AsyncClient* client, char *data, size_t len);
 	/* clients events */
 
@@ -149,15 +163,19 @@ private:
     AsyncServer * lntcpServer = NULL;
     AsyncClient * lntcpClient = NULL;
     bool isServer = true;
-	
 	uint32_t lastReconnectAttempt = millis();
 	lnReceiveBuffer transmitQueue[queBufferSize];
 	uint8_t que_rdPos = 0, que_wrPos = 0, lastOutMsg = 0;
 	bool sendLNClientText(AsyncClient * thisClient, String cmdMsg, String txtMsg);
     bool sendLNClientMessage(AsyncClient * thisClient, String cmdMsg, lnReceiveBuffer thisMsg);
+	String getWIMessageStringEX(AsyncClient * thisClient, lnReceiveBuffer thisMsg);
 	String getWIMessageString(AsyncClient * thisClient, lnReceiveBuffer thisMsg);
-	bool sendWIServerMessageStringEX(AsyncClient * thisClient, uint8_t replyType);
-	bool sendWIServerMessageStringWI(AsyncClient * thisClient, uint8_t replyType);
+	String getLocalTopicRequestEX(uint8_t topic);
+	String getLocalTopicRequestWI(uint8_t topic);
+	String getCSTopicRequestWI(uint8_t topic);
+//	String getCSTopicRequestEX(uint8_t topic); //not needed, goes via bypass request to CS
+	bool sendWIServerMessageString(tcpDef * ClientNode, uint8_t replyType);
+//	bool sendWIServerMessageStringWI(AsyncClient * thisClient, uint8_t replyType);
     bool sendWIClientMessage(AsyncClient * thisClient, String cmdMsg, bool useEXFormat);
     void sendLNPing();
 	void sendWIPing();
@@ -165,7 +183,12 @@ private:
 	void processLNServerMessage(AsyncClient* client, char * data);
 	bool processWIMessage(AsyncClient* client, char * data);
 	bool processWIClientMessage(AsyncClient* client, char * data);
-	bool processWIServerMessage(AsyncClient* client, char * data);
+	bool processWIEXClientMessage(AsyncClient* client, char * data);
+	bool processWINatClientMessage(AsyncClient* client, char * data);
+//	bool processWIServerMessage(AsyncClient* client, char * data);
+	bool processWIServerMessageEX(tcpDef * currClient, char * c);
+	bool processWIServerMessageWI(tcpDef * currClient, char * c);
+	bool processWIServerMessageBypass(tcpDef * currClient, char * c);
 	uint8_t numWrite, numRead;
    
 	uint32_t respTime;
@@ -180,14 +203,17 @@ private:
 	bool pingSent = false;
 	bool sendID = false;
 	bool isWiThrottle = false;
+	bool isDCCEXCmd = false;
 //	bool fcUpdate = true;
 	int16_t currentWIDCC = 0;
-	uint16_t pingInterval = 10000; //ping every 5-10 secs if there is no other traffic
+	uint16_t pingInterval = lbPingInterval; //ping every 5-10 secs if there is no other traffic
 
 	std::vector<tcpDef*> clients; // a list to hold all clients when in server mode
 	std::vector<uint16_t> turnoutSupport; //a list holding the turnout numbers to be initialized in WiThrottle Server
-	std::vector<uint16_t> locoSupport; //a list holding the turnout numbers to be initialized in WiThrottle Server
-
+	std::vector<uint16_t> locoSupport; //a list holding the loco addresses to be initialized in WiThrottle Server
+	std::vector<uint16_t> sensorSupport; //a list holding the sensor numbers to be initialized in WiThrottle Server
+//	String fctConfigEX = "Ligth/Bell/Horn";
+//	String fctConfigWI = "]\[Headlight]\[Bell]\[Whistle]\[F3]\[F4]\[F5]\[F6]\[";
 	IPAddress lbs_IP;
 	uint16_t lbs_Port = 1234; // = LocoNet over TCP port number, must be set the same in JMRI or other programs
 	uint16_t lbs_ServerPort = 1234; // = LocoNet over TCP port number, must be set the same in JMRI or other programs
@@ -205,6 +231,7 @@ private:
 	lnReceiveBuffer lastTxData;
 };
 
-extern IoTT_LBServer* wiServer; //pointer to wiServer
+extern IoTT_LBServer * wiThServer; //pointer to wiServer
 
 #endif
+

@@ -60,7 +60,7 @@ namespace lgfx
     bool isReadable(void) const override { return true; }
     bool isBusShared(void) const override { return false; }
 
-    uint32_t readCommand(uint_fast8_t, uint_fast8_t, uint_fast8_t) override { return 0; }
+    uint32_t readCommand(uint_fast16_t, uint_fast8_t, uint_fast8_t) override { return 0; }
     uint32_t readData(uint_fast8_t, uint_fast8_t) override { return 0; }
 
 
@@ -114,6 +114,7 @@ namespace lgfx
       setColorDepth(_write_conv.depth);
     }
 
+    LGFX_INLINE LovyanGFX* getParent(void) const { return _parent; }
     LGFX_INLINE void* getBuffer(void) const { return _panel_sprite.getBuffer(); }
     uint32_t bufferLength(void) const { return _panel_sprite.bufferLength(); }
 
@@ -159,7 +160,6 @@ namespace lgfx
       _panel_sprite.setBuffer(buffer, w, h, &_write_conv);
       _img = _panel_sprite.getBuffer();
 
-//      _bitwidth = (w + _write_conv.x_mask) & (~(uint32_t)_write_conv.x_mask);
       _sw = w;
       _clip_r = w - 1;
       _xpivot = w >> 1;
@@ -173,12 +173,11 @@ namespace lgfx
     {
       _img = _panel_sprite.createSprite(w, h, &_write_conv, _psram);
       if (_img) {
-        if (!_palette && 0 == _write_conv.bytes)
+        if (getColorDepth() & color_depth_t::has_palette)
         {
           createPalette();
         }
       }
-//      _bitwidth = (w + _write_conv.x_mask) & (~(uint32_t)_write_conv.x_mask);
       setRotation(getRotation());
 
       _sw = width();
@@ -195,49 +194,22 @@ namespace lgfx
       return _img;
     }
 
-#if defined (SdFat_h)
-  #if SD_FAT_VERSION >= 20102
-   #define LGFX_SDFAT_TYPE SdBase<FsVolume,FsFormatter>
-  #else
-   #define LGFX_SDFAT_TYPE SdBase<FsVolume>
-  #endif
+    bool createFromBmp(DataWrapper* data);
 
-    inline void createFromBmp(LGFX_SDFAT_TYPE &fs, const char *path) { createFromBmpFile(fs, path); }
-    void createFromBmpFile(LGFX_SDFAT_TYPE &fs, const char *path) {
-      SdFatWrapper file;
-      file.setFS(fs);
-      createFromBmpFile(&file, path);
+    bool createFromBmp(const uint8_t *bmp_data, uint32_t bmp_len = ~0u) {
+      PointerWrapper data (bmp_data, bmp_len);
+      return createFromBmp(&data);
     }
 
-  #undef LGFX_SDFAT_TYPE
-#endif
-
-#if defined (ARDUINO)
- #if defined (FS_H) || defined (__SEEED_FS__)
-
-    inline void createFromBmp(fs::FS &fs, const char *path) { createFromBmpFile(fs, path); }
-    void createFromBmpFile(fs::FS &fs, const char *path) {
-      FileWrapper file;
-      file.setFS(fs);
-      createFromBmpFile(&file, path);
+    template <typename T>
+    bool createFromBmpFile(T &fs, const char *path)
+    {
+      DataWrapperT<T> data { &fs };
+      return create_from_bmp_file(&data, path);
     }
 
- #endif
-
-#elif defined (ESP32) || defined (CONFIG_IDF_TARGET_ESP32) || defined (CONFIG_IDF_TARGET_ESP32S2) || defined (ESP_PLATFORM)
-
-    void createFromBmpFile(const char *path) {
-      FileWrapper file;
-      createFromBmpFile(&file, path);
-    }
-
-#endif
-
-    void createFromBmp(const uint8_t *bmp_data, uint32_t bmp_len = ~0u) {
-      PointerWrapper data;
-      data.set(bmp_data, bmp_len);
-      create_from_bmp(&data);
-    }
+    template <typename T>
+    bool createFromBmp(T &fs, const char *path) { return createFromBmpFile(fs, path); }
 
     bool createPalette(void)
     {
@@ -327,13 +299,17 @@ namespace lgfx
       if (_palette && index < _palette_count) { _palette.img24()[index].set(r, g, b); }
     }
 
-    LGFX_INLINE void* setColorDepth(uint8_t bpp) { return setColorDepth((color_depth_t)bpp); }
+    LGFX_INLINE void* setColorDepth(uint8_t bpp)
+    {
+      _write_conv.setColorDepth(bpp, bpp < 8);
+      return setColorDepth(_write_conv.depth);
+    }
     void* setColorDepth(color_depth_t depth)
     {
-      _panel_sprite.setColorDepth(depth);
-
-      _write_conv.setColorDepth(depth, hasPalette());
+      _write_conv.setColorDepth(depth);
       _read_conv = _write_conv;
+
+      _panel_sprite.setColorDepth(_write_conv.depth);
 
       if (_panel_sprite.getBuffer() == nullptr) return nullptr;
       auto w = _panel_sprite._panel_width;
@@ -410,7 +386,6 @@ namespace lgfx
     LovyanGFX* _parent;
 
     SpriteBuffer _palette;
-//    int32_t _bitwidth;
 
     bool _psram = false;
 
@@ -422,111 +397,20 @@ namespace lgfx
 
       size_t palettes = 1 << _write_conv.bits;
       _palette.reset(palettes * sizeof(bgr888_t), AllocationSource::Normal);
-      if (!_palette) {
-        _write_conv.setColorDepth(_write_conv.depth, false);
-        return false;
+      if (!_palette) { return false; }
+
+      if (!(_write_conv.depth & color_depth_t::has_palette))
+      {
+        auto depth = (color_depth_t)(_write_conv.bits | color_depth_t::has_palette);
+        _write_conv.setColorDepth(depth);
+        _read_conv = _write_conv;
+        _panel_sprite.setColorDepth(depth);
       }
       _palette_count = palettes;
-      _write_conv.setColorDepth(_write_conv.depth, true);
       return true;
     }
 
-    void createFromBmpFile(DataWrapper* file, const char *path) {
-      file->need_transaction = false;
-      if (file->open(path)) {
-        create_from_bmp(file);
-        file->close();
-      }
-    }
-
-    bool create_from_bmp(DataWrapper* data)
-    {
-      bitmap_header_t bmpdata;
-
-      if (!bmpdata.load_bmp_header(data)
-       || ( bmpdata.biCompression > 3)) {
-        return false;
-      }
-      uint32_t seekOffset = bmpdata.bfOffBits;
-      uint_fast16_t bpp = bmpdata.biBitCount; // 24 bcBitCount 24=RGB24bit
-      setColorDepth(bpp < 32 ? bpp : 24);
-      uint32_t w = bmpdata.biWidth;
-      int32_t h = bmpdata.biHeight;  // bcHeight Image height (pixels)
-      if (!createSprite(w, h)) return false;
-
-        //If the value of Height is positive, the image data is from bottom to top
-        //If the value of Height is negative, the image data is from top to bottom.
-      int32_t flow = (h < 0) ? 1 : -1;
-      int32_t y = 0;
-      if (h < 0) h = -h;
-      else y = h - 1;
-
-      if (bpp <= 8) {
-        if (!_palette) createPalette();
-        uint_fast16_t palettecount = 1 << bpp;
-        argb8888_t *palette = new argb8888_t[palettecount];
-        data->seek(bmpdata.biSize + 14);
-        data->read((uint8_t*)palette, (palettecount * sizeof(argb8888_t))); // load palette
-        for (uint_fast16_t i = 0; i < _palette_count; ++i) {
-          _palette.img24()[i].set(color_convert<bgr888_t, argb8888_t>(palette[i].get()));
-        }
-        delete[] palette;
-      }
-
-      data->seek(seekOffset);
-
-      auto bitwidth = _panel_sprite._bitwidth;
-
-      size_t buffersize = ((w * bpp + 31) >> 5) << 2;  // readline 4Byte align.
-      auto lineBuffer = (uint8_t*)alloca(buffersize);
-      if (bpp <= 8) {
-        do {
-          if (bmpdata.biCompression == 1) {
-            bmpdata.load_bmp_rle8(data, lineBuffer, w);
-          } else
-          if (bmpdata.biCompression == 2) {
-            bmpdata.load_bmp_rle4(data, lineBuffer, w);
-          } else {
-            data->read(lineBuffer, buffersize);
-          }
-          memcpy(&_img8[y * bitwidth * bpp >> 3], lineBuffer, (w * bpp + 7) >> 3);
-          y += flow;
-        } while (--h);
-      } else if (bpp == 16) {
-        do {
-          data->read(lineBuffer, buffersize);
-          auto img = (uint16_t*)(&_img8[y * bitwidth * bpp >> 3]);
-          y += flow;
-          for (size_t i = 0; i < w; ++i)
-          {
-            img[i] = (lineBuffer[i << 1] << 8) + lineBuffer[(i << 1) + 1];
-          }
-        } while (--h);
-      } else if (bpp == 24) {
-        do {
-          data->read(lineBuffer, buffersize);
-          auto img = &_img8[y * bitwidth * bpp >> 3];
-          y += flow;
-          for (size_t i = 0; i < w; ++i) {
-            img[i * 3    ] = lineBuffer[i * 3 + 2];
-            img[i * 3 + 1] = lineBuffer[i * 3 + 1];
-            img[i * 3 + 2] = lineBuffer[i * 3    ];
-          }
-        } while (--h);
-      } else if (bpp == 32) {
-        do {
-          data->read(lineBuffer, buffersize);
-          auto img = &_img8[y * bitwidth * 3];
-          y += flow;
-          for (size_t i = 0; i < w; ++i) {
-            img[i * 3    ] = lineBuffer[(i << 2) + 2];
-            img[i * 3 + 1] = lineBuffer[(i << 2) + 1];
-            img[i * 3 + 2] = lineBuffer[(i << 2) + 0];
-          }
-        } while (--h);
-      }
-      return true;
-    }
+    bool create_from_bmp_file(DataWrapper* data, const char *path);
 
     void push_sprite(LovyanGFX* dst, int32_t x, int32_t y, uint32_t transp = pixelcopy_t::NON_TRANSP)
     {
@@ -555,7 +439,6 @@ namespace lgfx
     }
 
     RGBColor* getPalette_impl(void) const override { return _palette.img24(); }
-
   };
 
 //----------------------------------------------------------------------------

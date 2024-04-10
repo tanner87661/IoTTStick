@@ -29,10 +29,25 @@ Contributors:
 #include <sdkconfig.h>
 #include <soc/soc.h>
 #include <soc/spi_reg.h>
+#include <soc/i2s_reg.h>
+#include <soc/gpio_struct.h>
+#include <soc/gpio_sig_map.h>
+#include <esp_timer.h>
 
 #if !defined ( REG_SPI_BASE )
-//#define REG_SPI_BASE(i) (DR_REG_SPI0_BASE - (i) * 0x1000)
-#define REG_SPI_BASE(i)     (DR_REG_SPI2_BASE)
+ /// ESP32-S3をターゲットにした際にREG_SPI_BASEが定義されていなかったので応急処置 5.3まで;
+ #if defined ( CONFIG_IDF_TARGET_ESP32S3 )
+  #define REG_SPI_BASE(i)   (DR_REG_SPI1_BASE + (((i)>1) ? (((i)* 0x1000) + 0x20000) : (((~(i)) & 1)* 0x1000 )))
+ #else
+  //#define REG_SPI_BASE(i) (DR_REG_SPI0_BASE - (i) * 0x1000)
+  #define REG_SPI_BASE(i)     (DR_REG_SPI2_BASE)
+ #endif
+#endif
+
+#if defined ( ESP_IDF_VERSION_VAL )
+ #if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 0, 0)
+  #define LGFX_IDF_V5
+ #endif
 #endif
 
 namespace lgfx
@@ -43,7 +58,14 @@ namespace lgfx
 
   __attribute__ ((unused)) static inline unsigned long millis(void) { return (unsigned long) (esp_timer_get_time() / 1000ULL); }
   __attribute__ ((unused)) static inline unsigned long micros(void) { return (unsigned long) (esp_timer_get_time()); }
-  __attribute__ ((unused)) static inline void delayMicroseconds(uint32_t us) { ets_delay_us(us); }
+  __attribute__ ((unused)) static inline void delayMicroseconds(uint32_t us)
+  {
+#if defined ( LGFX_IDF_V5 )
+    esp_rom_delay_us(us);
+#else
+    ets_delay_us(us);
+#endif
+  }
   __attribute__ ((unused)) static inline void delay(uint32_t ms)
   {
     uint32_t time = micros();
@@ -54,15 +76,22 @@ namespace lgfx
       time = micros() - time;
       if (time < ms)
       {
-        ets_delay_us(ms - time);
+        delayMicroseconds(ms - time);
       }
     }
   }
 
   static inline void* heap_alloc(      size_t length) { return heap_caps_malloc(length, MALLOC_CAP_8BIT);  }
   static inline void* heap_alloc_dma(  size_t length) { return heap_caps_malloc((length + 3) & ~3, MALLOC_CAP_DMA);  }
-  static inline void* heap_alloc_psram(size_t length) { return heap_caps_malloc(length, MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);  }
+  static inline void* heap_alloc_psram(size_t length) { return heap_caps_malloc((length + 3) & ~3, MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);  }
   static inline void heap_free(void* buf) { heap_caps_free(buf); }
+
+  /// 引数のポインタが組込RAMか判定する  true=内部RAM / false=外部RAMやROM等;
+#if defined ( CONFIG_IDF_TARGET_ESP32S3 )
+  static inline bool isEmbeddedMemory(const void* ptr) { return (((uintptr_t)ptr & 0x3FF80000u) == 0x3FC80000u); }
+#else
+  static inline bool isEmbeddedMemory(const void* ptr) { return (((uintptr_t)ptr & 0x3FF80000u) == 0x3FF00000u); }
+#endif
 
   enum pin_mode_t
   { output
@@ -77,7 +106,7 @@ namespace lgfx
     pinMode(pin, mode);
   }
 
-#if defined ( CONFIG_IDF_TARGET_ESP32C3 )
+#if defined ( CONFIG_IDF_TARGET_ESP32C3 ) || defined ( CONFIG_IDF_TARGET_ESP32C6 )
   static inline volatile uint32_t* get_gpio_hi_reg(int_fast8_t pin) { return &GPIO.out_w1ts.val; }
   static inline volatile uint32_t* get_gpio_lo_reg(int_fast8_t pin) { return &GPIO.out_w1tc.val; }
   static inline bool gpio_in(int_fast8_t pin) { return GPIO.in.val & (1 << (pin & 31)); }
@@ -95,109 +124,134 @@ namespace lgfx
   uint32_t FreqToClockDiv(uint32_t fapb, uint32_t hz);
 
   /// for I2S and LCD_CAM peripheral clock
-  void calcClockDiv(size_t* div_a, size_t* div_b, size_t* div_n, size_t* clkcnt, size_t baseClock, size_t targetFreq);
+  void calcClockDiv(uint32_t* div_a, uint32_t* div_b, uint32_t* div_n, uint32_t* clkcnt, uint32_t baseClock, uint32_t targetFreq);
 
   // esp_efuse_get_pkg_ver
   uint32_t get_pkg_ver(void);
 
+  // Find GDMA assigned to a peripheral;
+  int32_t search_dma_out_ch(int peripheral_select);
+  int32_t search_dma_in_ch(int peripheral_select);
+
+  void debug_memory_dump(const void* src, size_t len);
+
 //----------------------------------------------------------------------------
 
 #if defined (ARDUINO)
- #if defined (FS_H)
+ #if defined (_SD_H_)
+   #define LGFX_FILESYSTEM_SD SD
+ #endif
+ #if defined (_LITTLEFS_H_) || defined (__LITTLEFS_H) || defined (_LiffleFS_H_)
+   #define LGFX_FILESYSTEM_LITTLEFS LittleFS
+ #endif
+ #if defined (_SPIFFS_H_)
+   #define LGFX_FILESYSTEM_SPIFFS SPIFFS
+ #endif
+ #if defined (_FFAT_H_)
+   #define LGFX_FILESYSTEM_FFAT FFat
+ #endif
 
-  struct FileWrapper : public DataWrapper
-  {
-private:
-#if defined (_SPIFFS_H_)
-    bool _check_need_transaction(void) const { return _fs != &SPIFFS; }
-#else
-    bool _check_need_transaction(void) const { return true; }
-#endif
+ #if defined (FS_H) \
+  || defined (LGFX_FILESYSTEM_SD) \
+  || defined (LGFX_FILESYSTEM_LITTLEFS) \
+  || defined (LGFX_FILESYSTEM_SPIFFS) \
+  || defined (LGFX_FILESYSTEM_FFAT)
 
-public:
-    FileWrapper() : DataWrapper()
-    {
-#if defined (_SD_H_)
-      _fs = &SD;
-#elif defined (_SPIFFS_H_)
-      _fs = &SPIFFS;
-#else
-      _fs = nullptr;
-#endif
-      need_transaction = _check_need_transaction();
-      _fp = nullptr;
+  template <>
+  struct DataWrapperT<fs::File> : public DataWrapper {
+    DataWrapperT(fs::File* fp = nullptr) : DataWrapper{}, _fp { fp } {
+      need_transaction = true;
     }
-
-    fs::FS* _fs;
+    int read(uint8_t *buf, uint32_t len) override { return _fp->read(buf, len); }
+    void skip(int32_t offset) override { _fp->seek(offset, SeekCur); }
+    bool seek(uint32_t offset) override { return _fp->seek(offset, SeekSet); }
+    bool seek(uint32_t offset, SeekMode mode) { return _fp->seek(offset, mode); }
+    void close(void) override { if (_fp) _fp->close(); }
+    int32_t tell(void) override { return _fp->position(); }
+protected:
     fs::File *_fp;
-    fs::File _file;
+  };
 
-    FileWrapper(fs::FS& fs, fs::File* fp = nullptr) : DataWrapper(), _fs(&fs), _fp(fp) { need_transaction = _check_need_transaction(); }
-    void setFS(fs::FS& fs) {
-      _fs = &fs;
-      need_transaction = _check_need_transaction();
-    }
-
-    bool open(fs::FS& fs, const char* path)
-    {
-      setFS(fs);
-      return open(path);
+  template <>
+  struct DataWrapperT<fs::FS> : public DataWrapperT<fs::File> {
+    DataWrapperT(fs::FS* fs, fs::File* fp = nullptr) : DataWrapperT<fs::File> { fp }, _fs { fs } {
+#if defined (LGFX_FILESYSTEM_SD)
+      need_transaction = (fs == &LGFX_FILESYSTEM_SD);
+#endif
     }
     bool open(const char* path) override
     {
       _file = _fs->open(path, "r");
-      _fp = &_file;
+      DataWrapperT<fs::File>::_fp = &_file;
       return _file;
     }
-    int read(uint8_t *buf, uint32_t len) override { return _fp->read(buf, len); }
-    void skip(int32_t offset) override { seek(offset, SeekCur); }
-    bool seek(uint32_t offset) override { return seek(offset, SeekSet); }
-    bool seek(uint32_t offset, SeekMode mode) { return _fp->seek(offset, mode); }
-    void close(void) override { if (_fp) _fp->close(); }
-    int32_t tell(void) override { return _fp->position(); }
-  };
- #else
-  // dummy
-  struct FileWrapper : public DataWrapper
-  {
-    FileWrapper() : DataWrapper()
-    {
-      need_transaction = true;
-    }
-    void* _fp;
 
-    template <typename T>
-    void setFS(T& fs) {}
-
-    bool open(const char* path, const char* mode) { return false; }
-    int read(uint8_t *buf, uint32_t len) override { return false; }
-    void skip(int32_t offset) override { }
-    bool seek(uint32_t offset) override { return false; }
-    bool seek(uint32_t offset, int origin) { return false; }
-    void close() override { }
-    int32_t tell(void) override { return 0; }
+protected:
+    fs::FS* _fs;
+    fs::File _file;
   };
 
+  #if defined (LGFX_FILESYSTEM_SD)
+  template <>
+  struct DataWrapperT<fs::SDFS> : public DataWrapperT<fs::FS> {
+    DataWrapperT(fs::FS* fs, fs::File* fp = nullptr) : DataWrapperT<fs::FS>(fs, fp) {}
+  };
+  #endif
+  #if defined (LGFX_FILESYSTEM_SPIFFS)
+  template <>
+  struct DataWrapperT<fs::SPIFFSFS> : public DataWrapperT<fs::FS> {
+    DataWrapperT(fs::FS* fs, fs::File* fp = nullptr) : DataWrapperT<fs::FS>(fs, fp) {}
+  };
+  #endif
+  #if defined (LGFX_FILESYSTEM_LITTLEFS)
+  template <>
+  struct DataWrapperT<fs::LittleFSFS> : public DataWrapperT<fs::FS> {
+    DataWrapperT(fs::FS* fs, fs::File* fp = nullptr) : DataWrapperT<fs::FS>(fs, fp) {}
+  };
+  #endif
+  #if defined (LGFX_FILESYSTEM_FFAT)
+  template <>
+  struct DataWrapperT<fs::F_Fat> : public DataWrapperT<fs::FS> {
+    DataWrapperT(fs::FS* fs, fs::File* fp = nullptr) : DataWrapperT<fs::FS>(fs, fp) {}
+  };
+  #endif
  #endif
-#else // ESP-IDF
-
-  struct FileWrapper : public DataWrapper
-  {
-    FileWrapper() : DataWrapper()
-    {
-      need_transaction = true;
-    }
-    FILE* _fp;
-    bool open(const char* path) override { return (_fp = fopen(path, "r")); }
-    int read(uint8_t *buf, uint32_t len) override { return fread((char*)buf, 1, len, _fp); }
-    void skip(int32_t offset) override { seek(offset, SEEK_CUR); }
-    bool seek(uint32_t offset) override { return seek(offset, SEEK_SET); }
-    bool seek(uint32_t offset, int origin) { return fseek(_fp, offset, origin); }
-    void close() override { if (_fp) fclose(_fp); }
-    int32_t tell(void) override { return ftell(_fp); }
-  };
-
 #endif
+
+//----------------------------------------------------------------------------
+
+  namespace gpio
+  {
+    class pin_backup_t
+    {
+    public:
+      pin_backup_t(int pin_num);
+      void backup(void);
+      void restore(void);
+
+    private:
+      uint32_t _io_mux_gpio_reg;
+      uint32_t _gpio_pin_reg;
+      uint32_t _gpio_func_out_reg;
+      gpio_num_t _pin_num;
+      bool _gpio_enable;
+    };
+
+    enum command_t : uint8_t
+    {
+      command_end = 0,              // コマンド終了
+      command_read,                 // [1]=GPIO番号 1bit読みとる
+      command_write_low,            // [1]=GPIO番号 LOW出力
+      command_write_high,           // [1]=GPIO番号 HIGH出力
+      command_mode_output,          // [1]=GPIO番号 outputモードに変更する
+      command_mode_input,           // [1]=GPIO番号 inputモードに変更する
+      command_mode_input_pulldown,  // [1]=GPIO番号 input pulldownモードに変更する
+      command_mode_input_pullup,    // [1]=GPIO番号 input pullupモードに変更する
+      command_delay,                // [1]=停止する時間[ミリ秒]
+    };
+    bool command(command_t cmd, uint8_t pin);
+    uint32_t command(const uint8_t* cmd_list);
+  }
 
 //----------------------------------------------------------------------------
 
