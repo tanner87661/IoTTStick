@@ -577,13 +577,19 @@ IoTT_DigitraxBuffers::~IoTT_DigitraxBuffers()
 {
 }
 
-void IoTT_DigitraxBuffers::loadRHCfgJSON(DynamicJsonDocument doc)
+void IoTT_DigitraxBuffers::loadRHCfgJSON(DynamicJsonDocument doc, bool useAltPort)
 {
 //	Serial.println("Load JSON");
-	if (doc.containsKey("RxD"))
-		rxPin = doc["RxD"];
-	if (doc.containsKey("TxD"))
-		txPin = doc["TxD"];
+	if (useAltPort)
+	{
+		if (doc.containsKey("AltRxD")) { rxPin = doc["AltRxD"]; }
+		if (doc.containsKey("AltTxD")) { txPin = doc["AltTxD"]; }
+	}
+	else
+	{
+		if (doc.containsKey("RxD")) { rxPin = doc["RxD"]; }
+		if (doc.containsKey("TxD")) { txPin = doc["TxD"]; }
+	}
 	if (doc.containsKey("DevSettings"))
 	{
 		JsonObject thisObj = doc["DevSettings"];
@@ -765,12 +771,12 @@ bool IoTT_DigitraxBuffers::cnTreeValid(uint8_t ofSlot, uint8_t cnLevel)
 	return true;
 }
 
-void IoTT_DigitraxBuffers::setRedHatMode(txFct lnReply, DynamicJsonDocument doc)
+void IoTT_DigitraxBuffers::setRedHatMode(txFct lnReply, DynamicJsonDocument doc, bool useAltPort)
 {
 	memcpy(&slotBuffer[0x7B], &stdSlot[0], 10);
 	memcpy(&slotBuffer[0x7C], &stdSlot[0], 10);
 	lnReplyFct = lnReply;
-	loadRHCfgJSON(doc);
+	loadRHCfgJSON(doc, useAltPort);
 	isCommandStation = lnReply != NULL;
 	if (dccPort == NULL)
 	{

@@ -1,4 +1,5 @@
 Download from the Sketchbook directory!
+https://github.com/tanner87661/IoTTStick/tree/master/Sketchbook/ATMEGA328PYellowHat
 
 Firmware for YellowHat ATMEGA 328P
 Compile for Arduino Uno or Arduino Nano

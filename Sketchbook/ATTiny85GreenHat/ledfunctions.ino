@@ -41,11 +41,15 @@ void initLEDChain()
   }
 
   strip->begin();
+//<<<<<<< Prerelease
   strip->clear();
   strip->setBrightness(255); // set full brightness
 //  strip->show(); // Initialize all pixels to 'off'
-  fillStrip(0x000000); //initialize dark
+//=======
+  strip->setBrightness(255); // set full brightness
   strip->show(); // Initialize all pixels to 'off'
+//  fillStrip(0x000000); //initialize dark
+//  strip->show(); // Initialize all pixels to 'off'
 }
 #endif
 /*

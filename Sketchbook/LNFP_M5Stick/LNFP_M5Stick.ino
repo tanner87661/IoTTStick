@@ -763,7 +763,7 @@ void setup()
     else 
       Serial.println("LED Chain not activated");
 
-    if (useHat.devId == 2) //BrownHat USB Serial Injector
+    if (useHat.devId == 2 || (useHat.devId == 6 && useInterface.devId == 18)) //BrownHat USB Serial Injector -or- BrownHat running RedHat-style LocoNet Serial to DCC++EX
     {
       jsonDataObj = getDocPtr("/configdata/usb.cfg", false);
       if (jsonDataObj != NULL)
@@ -921,7 +921,8 @@ void setup()
       {
         Serial.println("Load DCC++Ex communication interface"); 
         subnetMode = fullMaster;
-        digitraxBuffer->setRedHatMode(sendLocoNetReply, *jsonDataObj); //function hooks in DigitraxBuffers
+        bool useAltPort = (useInterface.devId == 18);  //use alternate port with the LocoNet serial interface
+        digitraxBuffer->setRedHatMode(sendLocoNetReply, *jsonDataObj, useAltPort); //function hooks in DigitraxBuffers
         if (lnSerial)
         {
           lnSerial->setNetworkType(subnetMode); 
