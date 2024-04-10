@@ -1,0 +1,30 @@
+<html>
+	
+<head>
+
+<script type="text/javascript" src="/pgSrc/GreenHatCfg.js"></script>
+<script type="text/javascript" src="/pgBase/dynloader.js"></script>
+   
+</head>
+
+<body>
+<div class="pagemain">
+	<div id="MenueHolder" class="menuesectionbox"></div>	
+	<div id="TabHolder" class="tabsectionbox"></div>
+
+	<div id="FooterHolder" class="footersectionbox">
+		<div class = "inputtext_float"> 
+			<p><a href="https://www.myiott.org" target="_blank"><img src="iottlogo.jpg" alt="myIoTT.org"></a></p>
+		</div>
+	</div>
+</div>
+
+<script>
+	var url = window.location.pathname;
+	var fileName = url.substring(url.lastIndexOf('/')+1);
+	setTimeout(function(){ initPage() }, 150);
+</script>
+
+</body>
+
+</html>

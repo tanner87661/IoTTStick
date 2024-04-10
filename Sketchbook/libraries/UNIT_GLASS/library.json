@@ -1,0 +1,16 @@
+{
+  "name": "UNIT_GLASS",
+  "description": "Library for M5Stack UNIT GLASS",
+  "keywords": "M5Stack UNIT GLASS",
+  "authors": {
+    "name": "M5Stack",
+    "url": "http://www.m5stack.com"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/m5stack/M5Unit-GLASS.git"
+  },
+  "version": "0.0.1",
+  "frameworks": "arduino",
+  "platforms": "espressif32"
+}

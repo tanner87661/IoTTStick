@@ -3,7 +3,17 @@
 
 #define LNDebug
 
-#include <arduino.h>
+#define DebugPrint
+
+#ifdef DebugPrint
+	#define SerialDebug(x) Serial.println(x)
+	#define SerialDebugf(x) Serial.printf(x)
+#else
+	#define SerialDebug(x)
+	#define SerialDebugf(x)
+#endif
+
+#include <Arduino.h>
 #include <inttypes.h>
 #include <AsyncTCP.h>
 #include <ESPAsyncWebServer.h>
@@ -136,11 +146,9 @@ int8_t getWSClientByPage(uint8_t startFrom, char * toWebPage);
 void untokstr(char* strList[], uint8_t listLen, char* inpStr, const char* token); 
 bool isSameMsg(lnReceiveBuffer* msgA, lnReceiveBuffer* msgB);
 
-#ifdef LNDebug
 	void dispMsg(uint8_t * msgData, uint8_t targetLen = 0);
 	void dispSlot(uint8_t * slotBytes);
 	bool verifySyntax(uint8_t * msgData);
-#endif
 
 class rmsBuffer
 {

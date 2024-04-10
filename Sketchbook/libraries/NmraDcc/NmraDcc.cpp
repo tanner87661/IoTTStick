@@ -47,7 +47,11 @@
 //------------------------------------------------------------------------
 
 #include "NmraDcc.h"
+#ifdef ARDUINO_SAMD_ZERO
+#include <FlashStorage_SAMD.h>
+#else
 #include "EEPROM.h"
+#endif
 
 // Uncomment to print DEBUG messages
 // #define DEBUG_PRINT
@@ -258,8 +262,11 @@
 #elif defined ( ESP32 )
     static byte  ISREdge;   // Holder of the Next Edge we're looking for: RISING or FALLING
     static byte  ISRWatch;  // Interrupt Handler Edge Filter
-#elif defined ( ARDUINO_AVR_NANO_EVERY ) || defined(ARDUINO_ARCH_RP2040)
-    static PinStatus ISREdge;
+#elif defined ( ARDUINO_AVR_NANO_EVERY )
+    static PinStatus ISREdge;	// Holder of the Next Edge we're looking for: RISING or FALLING
+#elif defined ( ARDUINO_ARCH_RP2040)
+    static PinStatus ISREdge;	// Holder of the Next Edge we're looking for: RISING or FALLING
+    static byte  ISRWatch;  // Interrupt Handler Edge Filter
 #else
     static byte  ISREdge;   // Holder of the Next Edge we're looking for: RISING or FALLING
     static byte  ISRWatch;  // Interrupt Handler Edge Filter
@@ -339,7 +346,7 @@ DCC_PROCESSOR_STATE DccProcState ;
 {
     SET_TP3;
 
-    #ifdef ESP32
+    #if defined(ESP32) || defined ( ARDUINO_ARCH_RP2040)
 //   switch (ISRWatch)
 //   {
 //     case RISING: if (digitalRead(DccProcState.ExtIntPinNum)) break;
@@ -416,7 +423,7 @@ DCC_PROCESSOR_STATE DccProcState ;
         #if defined ( __STM32F1__ )
         detachInterrupt (DccProcState.ExtIntNum);
         #endif
-        #ifdef ESP32
+        #if defined(ESP32) || defined ( ARDUINO_ARCH_RP2040)
         ISRWatch = ISREdge;
         #else
         attachInterrupt (DccProcState.ExtIntNum, ExternalInterruptHandler, ISREdge);
@@ -507,7 +514,7 @@ DCC_PROCESSOR_STATE DccProcState ;
                     #if defined ( __STM32F1__ )
                     detachInterrupt (DccProcState.ExtIntNum);
                     #endif
-                    #if defined(ESP32)
+                    #if defined(ESP32) || defined ( ARDUINO_ARCH_RP2040)
                     ISRWatch = ISREdge;
                     #else
                     attachInterrupt (DccProcState.ExtIntNum, ExternalInterruptHandler, ISREdge);
@@ -564,7 +571,7 @@ DCC_PROCESSOR_STATE DccProcState ;
             #if defined ( __STM32F1__ )
             detachInterrupt (DccProcState.ExtIntNum);
             #endif
-            #if defined(ESP32)
+            #if defined(ESP32) || defined ( ARDUINO_ARCH_RP2040)
             ISRWatch = ISREdge;
             #else
             attachInterrupt (DccProcState.ExtIntNum, ExternalInterruptHandler, ISREdge);
@@ -613,7 +620,7 @@ DCC_PROCESSOR_STATE DccProcState ;
             detachInterrupt (DccProcState.ExtIntNum);
             #endif
 
-            #if defined(ESP32)
+            #if defined(ESP32) || defined ( ARDUINO_ARCH_RP2040)
             ISRWatch = ISREdge;
             #else
             attachInterrupt (DccProcState.ExtIntNum, ExternalInterruptHandler, ISREdge);
@@ -743,7 +750,7 @@ DCC_PROCESSOR_STATE DccProcState ;
                     #if defined ( __STM32F1__ )
                     detachInterrupt (DccProcState.ExtIntNum);
                     #endif
-                    #ifdef ESP32
+                    #if defined(ESP32) || defined ( ARDUINO_ARCH_RP2040)
                     ISRWatch = CHANGE;
                     #else
                     attachInterrupt (DccProcState.ExtIntNum, ExternalInterruptHandler, CHANGE);
@@ -801,9 +808,18 @@ uint8_t readEEPROM (unsigned int CV)
 void writeEEPROM (unsigned int CV, uint8_t Value)
 {
     EEPROM.write (CV, Value) ;
+    
+	#if defined(ESP8266)
+	noInterrupts();
+	#endif
+
     #if defined(ESP8266) ||  defined(ESP32) || defined(ARDUINO_ARCH_RP2040)
     EEPROM.commit();
     #endif
+    
+	#if defined(ESP8266)
+	interrupts();
+	#endif
 }
 
 bool readyEEPROM()
@@ -995,16 +1011,15 @@ void processMultiFunctionMessage (uint16_t Addr, DCC_ADDR_TYPE AddrType, uint8_t
     {
         // and this isn't an Ops Mode Write or we are NOT faking the Multifunction Ops mode address in CV 33+34 or
         // it's not our fake address, then return
-/*        if ( (CmdMasked != 0b11100000) || (DccProcState.OpsModeAddressBaseCV == 0))
-			if (DccProcState.Flags == FLAGS_DCC_ACCESSORY_DECODER)
-				return ;
+        if ( (CmdMasked != 0b11100000) || (DccProcState.OpsModeAddressBaseCV == 0))
+            return ;
 
         uint16_t FakeOpsAddr = readCV (DccProcState.OpsModeAddressBaseCV) | (readCV (DccProcState.OpsModeAddressBaseCV + 1) << 8) ;
         uint16_t OpsAddr = Addr & 0x3FFF ;
 
         if (OpsAddr != FakeOpsAddr)
             return ;
- */   }
+    }
 
     // We are looking for FLAGS_MY_ADDRESS_ONLY but it does not match and it is not a Broadcast Address then return
     else if ( (DccProcState.Flags & FLAGS_MY_ADDRESS_ONLY) && (Addr != getMyAddr()) && (Addr != 0))
@@ -1615,7 +1630,7 @@ void NmraDcc::init (uint8_t ManufacturerId, uint8_t VersionId, uint8_t Flags, ui
     ISRLevel = DccProcState.ExtIntMask;
     ISRChkMask = DccProcState.ExtIntMask;
 
-    #ifdef ESP32
+    #if defined(ESP32)|| defined ( ARDUINO_ARCH_RP2040)
     ISRWatch = ISREdge;
     attachInterrupt (DccProcState.ExtIntNum, ExternalInterruptHandler, CHANGE);
     #else

@@ -1,3 +1,4 @@
+
 typedef struct
 {
   uint32_t lastUpdate;
@@ -66,7 +67,7 @@ void dccClientCallback(char* topic, byte *  payload, unsigned int length) //this
         String tempStr2 = doc["addr_type"];
         DCC_ADDR_TYPE param4 = (tempStr2 == "long")? DCC_ADDR_LONG:DCC_ADDR_SHORT;
         param1 = doc["func_group"];
-        FN_GROUP param3= FN_0;
+        FN_GROUP param3 = FN_0;
         switch (param1)
         {
           case 0: param3 = FN_0; break;

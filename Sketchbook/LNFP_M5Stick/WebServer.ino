@@ -1,3 +1,4 @@
+
 #define keepAliveInterval 30000 //send message every 30 secs to keep connection alive
 uint32_t keepAlive = millis(); //timer used for periodic message sent over wifi to keep alive while browser is connected. Sent over websocket connection
 
@@ -145,6 +146,12 @@ void processStatustoWebClient()
   doc["Cmd"] = "STATS";
   JsonObject Data = doc.createNestedObject("Data");
   float float1 = (millisRollOver * 4294967296) + millis(); //calculate millis including rollovers
+  #ifdef StickPlus2
+  Data["stp"] = 2; //stick type for web page display
+  #endif
+  #ifdef StickPlus
+  Data["stp"] = 0; //stick type for web page display
+  #endif
   Data["uptime"] = round(float1);
 //  Data["uptime"] = millis();
   if (useNTP)// && ntpOK) no longer needed in stick as we have RTC
@@ -166,6 +173,7 @@ void processStatustoWebClient()
 
   Data["temp"] = axpIntTemp;
   Data["ubat"] = axpBattVoltage;
+  Data["lbat"] = axpBattLevel;
   Data["ibat"] =  axpBattCurr;
   Data["pwrbat"] = axpBattPower;
   Data["ubus"] = axpVBUSVoltage;

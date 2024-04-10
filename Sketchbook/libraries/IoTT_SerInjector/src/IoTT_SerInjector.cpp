@@ -404,6 +404,8 @@ void IoTT_SerInjector::processDCCExTransmit()
 		strcat(txMsg, ">\n\r");
 		write(txMsg);
 		que_rdPos = hlpQuePtr;
+		SerialDebug("test");
+		SerialDebugf("\"sent %i %i\n\", que_rdPos, que_wrPos");
 //		Serial.printf("sent %i %i\n", que_rdPos, que_wrPos);
 	}
 }
@@ -466,7 +468,7 @@ void IoTT_SerInjector::processBoosterReceive()
 						}
 						if (doc["Cmd"] == "SVR") //SV response if no web client
 						{
-							Serial.println("Prepare and send SV Msg");
+//							Serial.println("Prepare and send SV Msg");
 							JsonArray svData = doc["Prm"]["Vals"];
 							uint8_t svrData[4];
 							for (uint8_t i = 0; i < 4; i++)
@@ -474,8 +476,6 @@ void IoTT_SerInjector::processBoosterReceive()
 									svrData[i] = svData[i];
 								else
 									svrData[i] = 0;
-							//void sendSVCommand2(uint8_t SRC, uint8_t SV_CMD, uint16_t DST, uint16_t ADDR, uint8_t DTA[4])
-							//"{\"Cmd\":\"SVR\",\"Prm\":{\"Src\":%i,\"Opc\":%i,\"Addr\":%i,\"Vals\":[%i,%i,%i,%i]}}\n"
 							//{"Cmd":"SVR","Prm":{"Src":1234,"Opc":70,"Addr":284,"Vals":[129,0,31,0]}}
 							sendSVCommand2(0x50, doc["Prm"]["Opc"], doc["Prm"]["Src"], doc["Prm"]["Addr"], svrData);
 

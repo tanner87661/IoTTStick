@@ -1,0 +1,51 @@
+#######################################
+# Syntax Coloring Map For DFRobot_PAJ7620
+#######################################
+
+#######################################
+# Datatypes (KEYWORD1)
+#######################################
+
+DFRobot_PAJ7620U2	KEYWORD1
+
+#######################################
+# Methods and Functions (KEYWORD2)
+#######################################
+
+begin	KEYWORD2
+setNormalOrGamingMode	KEYWORD2
+setGestureHighRate	KEYWORD2
+gestureDescription	KEYWORD2
+getGesture	KEYWORD2
+
+#######################################
+# Instances (KEYWORD2)
+#######################################
+
+
+#######################################
+# Constants (LITERAL1)
+#######################################
+ERR_OK	LITERAL1
+ERR_DATA_BUS	LITERAL1
+ERR_IC_VERSION	LITERAL1
+
+eGesture_t	LITERAL1
+eBank_t	LITERAL1
+eRateMode_t	LITERAL1
+sGestureDescription_t	LITERAL1
+
+eGestureNone	LITERAL1
+eGestureRight	LITERAL1
+eGestureLeft	LITERAL1
+eGestureUp	LITERAL1
+eGestureDown	LITERAL1
+eGestureForward	LITERAL1
+eGestureBackward	LITERAL1
+eGestureClockwise	LITERAL1
+eGestureAntiClockwise	LITERAL1
+eGestureWave	LITERAL1
+eGestureWaveSlowlyDisorder	LITERAL1
+eGestureWaveSlowlyLeftRight	LITERAL1
+eGestureWaveSlowlyUpDown	LITERAL1
+eGestureWaveSlowlyForwardBackward	LITERAL1

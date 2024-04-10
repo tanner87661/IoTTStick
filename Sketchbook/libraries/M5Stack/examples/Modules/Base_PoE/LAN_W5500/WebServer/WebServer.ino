@@ -1,12 +1,6 @@
-/*
-    Description: Start the Web Server in the local network and the user can
-   obtain the page response by accessing the assigned IP address. Please install
-   library before compiling: Ethernet2: file in M5stack lib examples -> modules
-   -> W5500 -> Ethernet2.zip （unzip the lib zip file to the Arduino Lib path）
-*/
 #include <M5Stack.h>
 #include <SPI.h>
-#include <Ethernet2.h>
+#include <M5_Ethernet.h>
 #define SCK  18
 #define MISO 19
 #define MOSI 23

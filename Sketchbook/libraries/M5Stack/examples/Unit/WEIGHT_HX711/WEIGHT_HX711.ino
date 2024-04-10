@@ -1,6 +1,6 @@
 /*
 *******************************************************************************
-* Copyright (c) 2022 by M5Stack
+* Copyright (c) 2023 by M5Stack
 *                  Equipped with M5Core sample source code
 *                          配套  M5Core 示例源代码
 * Visit for more information: https://docs.m5stack.com/en/core/gray
@@ -15,8 +15,8 @@ M5Core,Press ButtonA to calibrate 请连接端口B,使用WEIGHT
 Unit读取压力传感器返回的模拟值，将其转换为直观的重量数据，发送到M5Core，按下按钮A进行校准
 */
 
-#include <M5GFX.h>
 #include <M5Stack.h>
+#include <M5GFX.h>
 
 #include "HX711.h"
 

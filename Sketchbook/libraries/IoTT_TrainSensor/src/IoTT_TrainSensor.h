@@ -114,6 +114,8 @@ typedef struct
 	uint8_t poiIndex = 0; //val 0 = initial table test val 1 = refinement phase
 	float_t testSpeedMax = 0;
 	uint8_t maxSpeedCtr = 0;
+	uint8_t maxTestSpeedStep = 0;
+	bool trackLimitViolation = false;
 	bool vMaxComplete = false;
 }dirData;
 
@@ -147,6 +149,7 @@ typedef struct
 } speedTable;
 
 extern std::vector<wsClientInfo> globalClients; // a list to hold all clients when in server mode
+//extern char* wsTxBuffer; //use the existing buffer 16kb to send mqtt messages
 
 class IoTT_TrainSensor
 {

@@ -138,7 +138,7 @@ bool writeJSONFile(String fileName, const char * fileStr)
 DynamicJsonDocument * getDocPtr(String cmdFile, bool duplData)
 {
   uint32_t jsonData = readFileToBuffer(cmdFile, wsTxBuffer, wsBufferSize);
-  USBSerial.println(wsTxBuffer);
+//  USBSerial.println(wsTxBuffer);
   if (jsonData > 0)
   {
     uint16_t docSize = 4096 * (trunc((3 * jsonData) / 4096) + 1);  //.length();

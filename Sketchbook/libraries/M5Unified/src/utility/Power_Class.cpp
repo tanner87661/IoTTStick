@@ -12,6 +12,7 @@
 #include <sdkconfig.h>
 
 #include <esp_adc_cal.h>
+#include <soc/soc_caps.h>
 #include <soc/adc_channel.h>
 
 #if __has_include (<esp_idf_version.h>)
@@ -31,15 +32,15 @@ namespace m5
 {
   static constexpr const uint32_t i2c_freq = 100000;
 #if defined (CONFIG_IDF_TARGET_ESP32S3)
-  static constexpr int aw9523_i2c_addr = 0x58;
+  static constexpr uint8_t aw9523_i2c_addr = 0x58;
+
+#elif defined (CONFIG_IDF_TARGET_ESP32C6)
+  static constexpr int M5NanoC6_LED_PIN = 7;
 
 #elif !defined (CONFIG_IDF_TARGET) || defined (CONFIG_IDF_TARGET_ESP32)
-  static constexpr int CoreInk_POWER_HOLD_PIN = 12;
-  static constexpr int M5Paper_POWER_HOLD_PIN =  2;
   static constexpr int TimerCam_POWER_HOLD_PIN = 33;
   static constexpr int TimerCam_LED_PIN = 2;
   static constexpr int M5Paper_EXT5V_ENABLE_PIN = 5;
-  static constexpr int StickCPlus2_POWER_HOLD_PIN = 4;
   static constexpr int StickCPlus2_LED_PIN = 19;
 #endif
 
@@ -73,22 +74,24 @@ namespace m5
       Axp2101.writeRegister8Array(reg_data_array, sizeof(reg_data_array));
       break;
 
-    case board_t::board_M5Dial:
-      _pwrHoldPin = GPIO_NUM_46;
+    case board_t::board_M5Capsule:
+      _batAdcCh = ADC1_GPIO6_CHANNEL;
+      _batAdcUnit = 1;
+      _pmic = pmic_t::pmic_adc;
+      _adc_ratio = 2.0f;
       break;
 
-    case board_t::board_M5Capsule:
-      _pwrHoldPin = GPIO_NUM_46;
-      _batAdc = (adc1_channel_t) ADC1_GPIO6_CHANNEL;
+    case board_t::board_M5AirQ:
+      _batAdcCh = ADC2_GPIO14_CHANNEL;
+      _batAdcUnit = 2;
       _pmic = pmic_t::pmic_adc;
       _adc_ratio = 2.0f;
       break;
 
     case board_t::board_M5DinMeter:
-      _pwrHoldPin = GPIO_NUM_46;
-      NON_BREAK;
     case board_t::board_M5Cardputer:
-      _batAdc = (adc1_channel_t) ADC1_GPIO10_CHANNEL;
+      _batAdcCh = ADC1_GPIO10_CHANNEL;
+      _batAdcUnit = 1;
       _pmic = pmic_t::pmic_adc;
       _adc_ratio = 2.0f;
       break;
@@ -103,30 +106,30 @@ namespace m5
       break;
 
     case board_t::board_M5TimerCam:
-      _pwrHoldPin = TimerCam_POWER_HOLD_PIN;
       m5gfx::pinMode(TimerCam_POWER_HOLD_PIN, m5gfx::pin_mode_t::output);
       m5gfx::gpio_hi(TimerCam_POWER_HOLD_PIN);
       m5gfx::pinMode(TimerCam_LED_PIN, m5gfx::pin_mode_t::output);
       m5gfx::gpio_lo(TimerCam_LED_PIN);  // system LED off
-      _batAdc = (adc1_channel_t) ADC1_GPIO38_CHANNEL;
+      _batAdcCh = ADC1_GPIO38_CHANNEL;
+      _batAdcUnit = 1;
       _pmic = pmic_t::pmic_adc;
       _adc_ratio = 1.513f;
       break;
 
     case board_t::board_M5StackCoreInk:
-      _pwrHoldPin = CoreInk_POWER_HOLD_PIN;
       _wakeupPin = GPIO_NUM_27; // power button;
       _rtcIntPin = GPIO_NUM_19;
-      _batAdc = (adc1_channel_t) ADC1_GPIO35_CHANNEL;
+      _batAdcCh = ADC1_GPIO35_CHANNEL;
+      _batAdcUnit = 1;
       _pmic = pmic_t::pmic_adc;
       _adc_ratio = 25.1f / 5.1f;
       break;
 
     case board_t::board_M5Paper:
-      _pwrHoldPin = M5Paper_POWER_HOLD_PIN;
       m5gfx::pinMode(M5Paper_EXT5V_ENABLE_PIN, m5gfx::pin_mode_t::output);
       _wakeupPin = GPIO_NUM_36; // touch panel INT;
-      _batAdc = (adc1_channel_t) ADC1_GPIO35_CHANNEL;
+      _batAdcCh = ADC1_GPIO35_CHANNEL;
+      _batAdcUnit = 1;
       _pmic = pmic_t::pmic_adc;
       _adc_ratio = 2.0f;
       break;
@@ -149,9 +152,10 @@ namespace m5
       break;
 
     case board_t::board_M5StickCPlus2:
-      _pwrHoldPin = StickCPlus2_POWER_HOLD_PIN;
+      _wakeupPin = GPIO_NUM_35; // power button;
       m5gfx::pinMode(StickCPlus2_LED_PIN, m5gfx::pin_mode_t::output);
-      _batAdc = (adc1_channel_t) ADC1_GPIO38_CHANNEL;
+      _batAdcCh = ADC1_GPIO38_CHANNEL;
+      _batAdcUnit = 1;
       _pmic = pmic_t::pmic_adc;
       _adc_ratio = 2.0f;
       break;
@@ -268,6 +272,11 @@ namespace m5
 
         , 0x35, 0xA2    // reg35h Enable RTC BAT charge 
         , 0x36, 0x0C    // reg36h 128ms power on, 4s power off
+        , 0x40, 0x00    // reg40h IRQ 1, all disable
+        , 0x41, 0x00    // reg41h IRQ 2, all disable
+        , 0x42, 0x03    // reg42h IRQ 3, power key irq enable
+        , 0x43, 0x00    // reg43h IRQ 4, all disable
+        , 0x44, 0x00    // reg44h IRQ 5, all disable
         , 0x82, 0xFF    // reg82h ADC all on
         , 0x83, 0x80    // reg83h ADC temp on
         , 0x84, 0x32    // reg84h ADC 25Hz
@@ -310,6 +319,7 @@ namespace m5
 
       case board_t::board_M5Station:
         {
+          Axp192.setLDO2(3300);
           static constexpr std::uint8_t reg92h_96h[] = 
           { 0x00 // GPIO1 NMOS OpenDrain
           , 0x00 // GPIO2 NMOS OpenDrain
@@ -318,6 +328,8 @@ namespace m5
           , 0x00 // GPIO3 low, GPIO4 low
           };
           Axp192.writeRegister(0x92, reg92h_96h, sizeof(reg92h_96h));
+          Ina3221[0].begin();
+          Ina3221[1].begin();
         }
         break;
 
@@ -340,17 +352,13 @@ namespace m5
       Axp2101.writeRegister8Array(reg_data_array, sizeof(reg_data_array));
 
       // for Core2 v1.1 (AXP2101+INA3221)
-      if (Ina3221.begin())
+      if (Ina3221[0].begin())
       {}
     }
 
 
 #endif
 
-    if (_pwrHoldPin < GPIO_NUM_MAX)
-    {
-      gpio_hold_en( (gpio_num_t)_pwrHoldPin );
-    }
 #endif
     return (_pmic != pmic_t::pmic_unknown);
   }
@@ -415,7 +423,7 @@ namespace m5
       {
         bool cancel = false;
         if (_pmic == pmic_axp2101) {
-          cancel = (enable && (Ina3221.getShuntVoltage(0) < 0.0f || Ina3221.getShuntVoltage(1) < 0.0f) && (8 >= Axp2101.getBatteryLevel()));
+          cancel = (enable && (Ina3221[0].getShuntVoltage(0) < 0.0f || Ina3221[0].getShuntVoltage(1) < 0.0f) && (8 >= Axp2101.getBatteryLevel()));
           if (!cancel) {
             Axp2101.setBLDO2(enable * 3300);
             break;
@@ -539,6 +547,21 @@ namespace m5
   void Power_Class::setLed(uint8_t brightness)
   {
 #if defined (M5UNIFIED_PC_BUILD)
+#elif defined (CONFIG_IDF_TARGET_ESP32C6)
+    static std::unique_ptr<m5gfx::Light_PWM> led;
+
+    if (led.get() == nullptr)
+    {
+      led.reset(new m5gfx::Light_PWM());
+      auto cfg = led->config();
+      cfg.invert = false;
+      cfg.pwm_channel = 7;
+      cfg.pin_bl = M5NanoC6_LED_PIN;
+      led->config(cfg);
+      led->init(brightness);
+    }
+    led->setBrightness(brightness);
+
 #elif !defined (CONFIG_IDF_TARGET) || defined (CONFIG_IDF_TARGET_ESP32)
     static std::unique_ptr<m5gfx::Light_PWM> led;
 
@@ -633,13 +656,20 @@ namespace m5
 
       case pmic_t::pmic_unknown:
       default:
+#if SOC_PM_SUPPORT_EXT_WAKEUP
+        if(_rtcIntPin == GPIO_NUM_MAX && _wakeupPin < GPIO_NUM_MAX)
+        {
+          esp_sleep_enable_ext0_wakeup((gpio_num_t)_wakeupPin, false);
+        }
+#endif
         break;
       }
     }
 
-    if (_pwrHoldPin < GPIO_NUM_MAX)
+    uint8_t pwrHoldPin = M5.getPin(pin_name_t::power_hold);
+    if (pwrHoldPin < GPIO_NUM_MAX)
     {
-      m5gfx::gpio_lo( _pwrHoldPin );
+      m5gfx::gpio_lo( pwrHoldPin );
     }
 
     if (use_deepsleep) { esp_deep_sleep_start(); }
@@ -652,10 +682,6 @@ namespace m5
   {
 #if !defined (M5UNIFIED_PC_BUILD)
 
-    if (_pwrHoldPin < GPIO_NUM_MAX)
-    {
-      gpio_hold_dis( (gpio_num_t)_pwrHoldPin );
-    }
     M5.Display.sleep();
     M5.Display.waitDisplay();
 
@@ -664,15 +690,6 @@ namespace m5
     {
     case board_t::board_M5StickC:
     case board_t::board_M5StickCPlus:
-      /// RTCタイマーは指定時間になるとGPIO35をLOWにすることで通知を行うが、;
-      /// 回路設計の問題でINTピン(GPIO35)がプルアップされておらず、そのままでは利用できない。;
-      /// そのため、同じくGPIO35に接続されているMPU6886のINTピンを利用してプルアップを実施する。;
-      /// IMUの種類がSH200Qの個体では対応できない (MPU6886が必要);
-      m5gfx::pinMode(GPIO_NUM_35, m5gfx::pin_mode_t::input);
-      for (int i = 1; i >= 0; --i) {
-        M5.Imu.setINTPinActiveLogic(i);
-        if (m5gfx::gpio_in(GPIO_NUM_35)) { break; }
-      }
       esp_sleep_enable_ext0_wakeup(GPIO_NUM_35, 0);
       esp_deep_sleep_start();
       return;
@@ -695,9 +712,10 @@ namespace m5
   void Power_Class::deepSleep(std::uint64_t micro_seconds, bool touch_wakeup)
   {
     M5.Display.sleep();
+    M5.Display.waitDisplay();
 #if !defined (M5UNIFIED_PC_BUILD)
     ESP_LOGD("Power","deepSleep");
-#if defined (CONFIG_IDF_TARGET_ESP32C3)
+#if defined (CONFIG_IDF_TARGET_ESP32C3) || defined (CONFIG_IDF_TARGET_ESP32C6)
 
 #else
 
@@ -714,6 +732,8 @@ namespace m5
       esp_sleep_enable_ext0_wakeup((gpio_num_t)wpin, false);
       while (m5gfx::gpio_in(wpin) == false)
       {
+        // Issue #91, ( M5Paper wakes too soon from deep sleep when touch wakeup is enabled - with solution )
+        M5.update();
         m5gfx::delay(10);
       }
     }
@@ -734,7 +754,7 @@ namespace m5
   {
 #if !defined (M5UNIFIED_PC_BUILD)
     ESP_LOGD("Power","lightSleep");
-#if defined (CONFIG_IDF_TARGET_ESP32C3)
+#if defined (CONFIG_IDF_TARGET_ESP32C3) || defined (CONFIG_IDF_TARGET_ESP32C6)
 
 #else
 
@@ -798,7 +818,7 @@ namespace m5
 
 #if !defined (M5UNIFIED_PC_BUILD)
 
-  static std::int32_t getBatteryAdcRaw(adc1_channel_t adc_ch)
+  static std::int32_t getBatteryAdcRaw(uint8_t adc_ch, uint8_t adc_unit)
   {
 #if !defined (CONFIG_IDF_TARGET) || defined (CONFIG_IDF_TARGET_ESP32) || defined (CONFIG_IDF_TARGET_ESP32S3)
     static constexpr int BASE_VOLATAGE = 3600;
@@ -806,12 +826,22 @@ namespace m5
     static esp_adc_cal_characteristics_t* adc_chars = nullptr;
     if (adc_chars == nullptr)
     {
-      adc1_config_width(ADC_WIDTH_BIT_12);
-      adc1_config_channel_atten(adc_ch, ADC_ATTEN_DB_11);
+      if (adc_unit == 2) {
+        adc2_config_channel_atten((adc2_channel_t)adc_ch, ADC_ATTEN_DB_11);
+      } else {
+        adc1_config_width(ADC_WIDTH_BIT_12);
+        adc1_config_channel_atten((adc1_channel_t)adc_ch, ADC_ATTEN_DB_11);
+      }
       adc_chars = (esp_adc_cal_characteristics_t*)calloc(1, sizeof(esp_adc_cal_characteristics_t));
-      esp_adc_cal_characterize(ADC_UNIT_1, ADC_ATTEN_DB_11, ADC_WIDTH_BIT_12, BASE_VOLATAGE, adc_chars);
+      esp_adc_cal_characterize((adc_unit_t)adc_unit, ADC_ATTEN_DB_11, ADC_WIDTH_BIT_12, BASE_VOLATAGE, adc_chars);
     }
-    return esp_adc_cal_raw_to_voltage(adc1_get_raw(adc_ch), adc_chars);
+    int raw;
+    if (adc_unit == 2) {
+      adc2_get_raw((adc2_channel_t)adc_ch, adc_bits_width_t::ADC_WIDTH_BIT_12, &raw);
+    } else {
+      raw = adc1_get_raw((adc1_channel_t)adc_ch);
+    }
+    return esp_adc_cal_raw_to_voltage(raw, adc_chars);
 #else
     return 0;
 #endif
@@ -825,7 +855,7 @@ namespace m5
     switch (_pmic)
     {
 
-#if defined (CONFIG_IDF_TARGET_ESP32C3)
+#if defined (CONFIG_IDF_TARGET_ESP32C3) || defined (CONFIG_IDF_TARGET_ESP32C6)
 #else
 #if !defined (CONFIG_IDF_TARGET) || defined (CONFIG_IDF_TARGET_ESP32)
     case pmic_t::pmic_ip5306:
@@ -842,7 +872,7 @@ namespace m5
 #endif
 
     case pmic_t::pmic_adc:
-      return getBatteryAdcRaw(_batAdc) * _adc_ratio;
+      return getBatteryAdcRaw(_batAdcCh, _batAdcUnit) * _adc_ratio;
 
     default:
       return 0;
@@ -860,7 +890,7 @@ namespace m5
     switch (_pmic)
     {
 
-#if defined (CONFIG_IDF_TARGET_ESP32C3)
+#if defined (CONFIG_IDF_TARGET_ESP32C3) || defined (CONFIG_IDF_TARGET_ESP32C6)
 #else
 #if !defined (CONFIG_IDF_TARGET) || defined (CONFIG_IDF_TARGET_ESP32)
     case pmic_t::pmic_ip5306:
@@ -879,7 +909,7 @@ namespace m5
 #endif
 
     case pmic_t::pmic_adc:
-      mv = getBatteryAdcRaw(_batAdc) * _adc_ratio;
+      mv = getBatteryAdcRaw(_batAdcCh, _batAdcUnit) * _adc_ratio;
       break;
 
     default:
@@ -898,7 +928,7 @@ namespace m5
   {
     switch (_pmic)
     {
-#if defined (CONFIG_IDF_TARGET_ESP32C3)
+#if defined (CONFIG_IDF_TARGET_ESP32C3) || defined (CONFIG_IDF_TARGET_ESP32C6)
 #else
 #if !defined (CONFIG_IDF_TARGET) || defined (CONFIG_IDF_TARGET_ESP32)
     case pmic_t::pmic_ip5306:
@@ -926,7 +956,7 @@ namespace m5
   {
     switch (_pmic)
     {
-#if defined (CONFIG_IDF_TARGET_ESP32C3)
+#if defined (CONFIG_IDF_TARGET_ESP32C3) || defined (CONFIG_IDF_TARGET_ESP32C6)
 #else
 #if !defined (CONFIG_IDF_TARGET) || defined (CONFIG_IDF_TARGET_ESP32)
     case pmic_t::pmic_ip5306:
@@ -954,7 +984,7 @@ namespace m5
   {
     switch (_pmic)
     {
-#if defined (CONFIG_IDF_TARGET_ESP32C3)
+#if defined (CONFIG_IDF_TARGET_ESP32C3) || defined (CONFIG_IDF_TARGET_ESP32C6)
 #else
 
 #if !defined (CONFIG_IDF_TARGET) || defined (CONFIG_IDF_TARGET_ESP32)
@@ -976,7 +1006,7 @@ namespace m5
 #else
 
       // for Core2 v1.1
-      return 1000.0f * Ina3221.getCurrent(0); // 0=CH1. CH1=BAT Current.
+      return 1000.0f * Ina3221[0].getCurrent(0); // 0=CH1. CH1=BAT Current.
 
 #endif
 
@@ -991,7 +1021,7 @@ namespace m5
   {
     switch (_pmic)
     {
-#if defined (CONFIG_IDF_TARGET_ESP32C3)
+#if defined (CONFIG_IDF_TARGET_ESP32C3) || defined (CONFIG_IDF_TARGET_ESP32C6)
 #else
 #if !defined (CONFIG_IDF_TARGET) || defined (CONFIG_IDF_TARGET_ESP32)
 
@@ -1020,7 +1050,7 @@ namespace m5
   {
     switch (_pmic)
     {
-#if defined (CONFIG_IDF_TARGET_ESP32C3)
+#if defined (CONFIG_IDF_TARGET_ESP32C3) || defined (CONFIG_IDF_TARGET_ESP32C6)
 #else
 #if !defined (CONFIG_IDF_TARGET) || defined (CONFIG_IDF_TARGET_ESP32)
 
@@ -1048,7 +1078,7 @@ namespace m5
     switch (_pmic)
     {
 
-#if defined (CONFIG_IDF_TARGET_ESP32C3)
+#if defined (CONFIG_IDF_TARGET_ESP32C3) || defined (CONFIG_IDF_TARGET_ESP32C6)
 #else
 #if !defined (CONFIG_IDF_TARGET) || defined (CONFIG_IDF_TARGET_ESP32)
 

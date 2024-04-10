@@ -101,7 +101,8 @@ ctor). The shield must be eiter the
 
 
 #define STANDARD_MOTOR_SHIELD F("STANDARD_MOTOR_SHIELD"),                                                 \
-                              new MotorDriver(11, 13, UNUSED_PIN, UNUSED_PIN, A0, 8.31, 4500, UNUSED_PIN)
+                              new MotorDriver( 3, 12, UNUSED_PIN, UNUSED_PIN, A0, 2.99, 3000, UNUSED_PIN), \
+                              new MotorDriver(11, 13, UNUSED_PIN, UNUSED_PIN, A1, 2.99, 3000, UNUSED_PIN)
 
 
 

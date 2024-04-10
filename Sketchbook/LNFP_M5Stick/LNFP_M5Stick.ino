@@ -1,12 +1,11 @@
 #define  StickPlus
-//#define DialKnob
-
-#if defined ( DialKnob )
-  #define PowerSys M5.Power.Axp2101
-#endif
+//#define  StickPlus2
 
 #if defined ( StickPlus )
   #define PowerSys M5.Power.Axp192
+#endif
+
+#if defined ( StickPlus2 )
 #endif
 
 //#define measurePerformance //uncomment this to display the number of loop cycles per second
@@ -15,14 +14,11 @@
 
 //Arduino published libraries. Install using the Arduino IDE or download from Github and install manually
 #include <Arduino.h>
-#include <SD.h>
+//#include <SD.h>
+#include <FS.h>
 #include <SPIFFS.h>
 #include <M5Unified.h>
-#if defined ( DialKnob )
-  #include <M5Dial.h>
-#endif
 #include <math.h>
-
 #include <Wire.h>
 #include <WiFi.h>
 #include <ArduinoUniqueID.h>
@@ -35,22 +31,24 @@
 #include <ESPmDNS.h>
 #include <ESPAsyncWiFiManager.h>         //https://github.com/alanswx/ESPAsyncWiFiManager
 #include <ArduinoJson.h> //standard JSON library, can be installed in the Arduino IDE. Make sure to use version 6.x
+#include <TJpg_Decoder.h>
 
 //following libraries can be downloaded from https://github.com/tanner87661?tab=repositories
 #include <IoTT_CommDef.h>
 #include <IoTT_DigitraxBuffers.h> //as introduced in video # 30
 #include <IoTT_LocoNetHBESP32.h> //this is a hybrid library introduced in video #29
 #include <IoTT_MQTTESP32.h> //as introduced in video # 29
-//#include <IoTT_Gateway.h> //LocoNet Gateway as introduced in video # 29
 #include <IoTT_RemoteButtons.h> //as introduced in video # 29, special version for Wire connection via 328P
 #include <IoTT_LocoNetButtons.h> //as introduced in video # 29
 #include <IoTT_LEDChain.h> //as introduced in video # 30
 #include <IoTT_SerInjector.h> //Serial USB Port to make it an interface for LocoNet and OpenLCB
 //#include <IoTT_OpenLCB.h> //CAN port for OpenLCB
 #include <IoTT_Switches.h>
-#ifdef useSecEl
+
+#if defined useSecEl
 #include <IoTT_SecurityElements.h> //not ready yet. This is the support for ABS/APB as described in Videos #20, 21, 23, 24
 #endif
+
 #include <NmraDcc.h> //install via Arduino IDE
 //#include <OneDimKalman.h>
 #include <IoTT_lbServer.h>
@@ -60,6 +58,7 @@
 #endif
 
 String BBVersion = "1.6.6Dev";
+
 
 //library object pointers. Libraries will be dynamically initialized as needed during the setup() function
 AsyncWebServer * myWebServer = NULL; //(80)
@@ -143,8 +142,15 @@ uint32_t myTimer = millis() + 1000;
 #define groveTxD 32 //pin 2 white TxD for LocoNet, DCC
 constexpr gpio_num_t groveRxCAN = GPIO_NUM_33; //for OpenLCB CAN
 constexpr gpio_num_t groveTxCAN = GPIO_NUM_32; //for OpenLCB CAN
- 
-#define stickLED 10 //red LED on stick
+
+#if defined StickPlus
+  #define stickLED 10 //red LED on stick / stick plus
+  #define LedON false
+#endif
+#if defined StickPlus2
+  #define stickLED 19 //red LED on stick plus2
+  #define  LedON true
+#endif
 #define hatSDA 26 //changes between input and output by I2C master
 #define hatSCL 0 //pull SCL low while sending non I2C data over SDA
 #define hatRxD 0
@@ -212,6 +218,7 @@ bool dataValid = false;
 
 File uploadFile; //used for web server to upload files
 
+//#if defined StickPlus || defined StickPlus2
 //this is the outgoing communication function for IoTT_DigitraxBuffers.h, routing the outgoing messages to the correct interface
 uint16_t sendMsg(lnTransmitMsg txData)
 {
@@ -259,6 +266,8 @@ uint16_t sendMQTTMsg(char * topic, char * payload) //used for native MQTT only
   }
   return 0;
 }
+//#endif
+
 /*
 void resetPin(uint8_t pinNr)
 {
@@ -270,7 +279,8 @@ void resetPin(uint8_t pinNr)
 
 void setup() 
 {
-  // put your setup code here, to run once:
+//#if defined StickPlus || defined StickPlus2
+// put your setup code here, to run once:
 //  resetPin(0);
 //  resetPin(26);
 //  resetPin(32);
@@ -279,6 +289,7 @@ void setup()
 
   wsRxBuffer = (char*) malloc(wsBufferSize); 
   wsTxBuffer = (char*) malloc(wsBufferSize); 
+
   auto cfg = M5.config();
   cfg.serial_baudrate = 115200;   // default=115200. if "Serial" is not needed, set it to 0.
   cfg.clear_display = true;  // default=true. clear the screen when begin.
@@ -293,16 +304,16 @@ void setup()
   cfg.led_brightness = 0;   // default= 0. system LED brightness (0=off / 255=max) (※ not NeoPixel)
 
   M5.begin(cfg);
-
+  Serial.println(M5.getBoard()); //Stick: 3  Plus: 4  Plus2: 12
+//  Serial.println("Init SPIFFS");
+  SPIFFS.begin(); //File System. Size is set to 1 MB during compile time and loaded with configuration data and web pages
   initDisplay();
-  digitalWrite(stickLED, 1);
+  digitalWrite(stickLED, !LedON);
   getRTCTime();
   char time_output[30];
   strftime(time_output, 30, "%a  %d-%m-%y %T", localtime(&now));
   Serial.println(time_output);
   Serial.println("IoTT Stick Version " + BBVersion);
-  Serial.println("Init SPIFFS");
-  SPIFFS.begin(); //File System. Size is set to 1 MB during compile time and loaded with configuration data and web pages
   UniqueIDdump(Serial);
   digitraxBuffer = new IoTT_DigitraxBuffers(sendMsg); //initialization with standard LocoNet communication function
   //load switch status data from file. If not Cmd Stn mode, slot buffer is cleared, otherwise, load slot buffer from previous session
@@ -313,13 +324,13 @@ void setup()
   uint16_t wsRequest = 0;
   ws = new AsyncWebSocket("/ws");
   //verify some library settings
-  if (MQTT_MAX_PACKET_SIZE < 480)
-  {
-    Serial.printf("PubSubClient.h MQTT_MAX_PACKET_SIZE only %i. Should be >= 480\n", MQTT_MAX_PACKET_SIZE);
-    delay(5000);
+//  if (MQTT_MAX_PACKET_SIZE < 480)
+//  {
+//    Serial.printf("PubSubClient.h MQTT_MAX_PACKET_SIZE only %i. Should be >= 480\n", MQTT_MAX_PACKET_SIZE);
+//    delay(5000);
 //    hard_restart();
-  ESP.restart(); //configuration update requires restart to be sure dynamic allocation of objects is not messed up
-  }
+//  ESP.restart(); //configuration update requires restart to be sure dynamic allocation of objects is not messed up
+//  }
   DynamicJsonDocument * jsonConfigObj = NULL;
   DynamicJsonDocument * jsonDataObj = NULL;
   jsonConfigObj = getDocPtr("/configdata/node.cfg", true); //read and decode the master config file. See ConfigLoader tab. Make data copy
@@ -529,7 +540,7 @@ void setup()
         lnSerial->setNetworkType(subnetMode); 
         Serial.printf("LocoNet Prio Mode: %i\n", subnetMode);
       }
-      lnSerial->setBusyLED(stickLED, false);
+      lnSerial->setBusyLED(stickLED, LedON);
 //      lnSerial->setLNCallback(callbackLocoNetMessage);
     } 
     else 
@@ -679,7 +690,7 @@ void setup()
         digitraxBuffer->setLocoNetMode(false); //switch off Slot query
         lnSubnet->setNetworkType(subnetMode); 
         lnSubnet->setUpstreamMode(true);
-        lnSubnet->setBusyLED(stickLED, false);
+        lnSubnet->setBusyLED(stickLED, LedON);
         Serial.printf("LocoNet Prio Mode: %i\n", subnetMode);
       }
     }
@@ -808,7 +819,7 @@ void setup()
           Serial.println("Init LocoNet Loopback for local buttons");  
           lnSerial = new LocoNetESPSerial(); //UART2 by default
           lnSerial->begin(); //Initialize as Loopback
-          lnSerial->setBusyLED(stickLED, false);
+          lnSerial->setBusyLED(stickLED, LedON);
 //          lnSerial->setLNCallback(callbackLocoNetMessage);
         } 
         uint8_t numBoards = 0;
@@ -1072,12 +1083,11 @@ void setup()
   }
   randomSeed((uint32_t)ESP.getEfuseMac()); //initialize random generator with MAC
   pinMode(0, INPUT);
-
 }
 
+//#if defined StickPlus || defined StickPlus2
 void loop() 
 {
-  
   // put your main code here, to run repeatedly:
 #ifdef measurePerformance
   loopCtr++;
@@ -1191,5 +1201,5 @@ void loop()
 //  }
   yield();
   digitraxBuffer->processLoop(); //updating DigitraxBuffers by querying information from LocoNet, e.g. slot statuses
-
 }
+//#endif

@@ -1,3 +1,4 @@
+
 void mqttTransmit(byte txMode, char* topic, char* payload) //mode (0:send, 1:subscribe), topic, payload
 {
   switch (txMode)

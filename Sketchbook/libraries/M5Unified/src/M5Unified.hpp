@@ -42,6 +42,7 @@ namespace m5
     sd_spi_cipo,   sd_spi_miso = sd_spi_cipo,
     sd_spi_cs,     sd_spi_ss  = sd_spi_cs,
     rgb_led,
+    power_hold,
     pin_name_max,
   };
 };
@@ -302,7 +303,6 @@ namespace m5
     /// Perform initialization process at startup.
     void begin(void)
     {
-      if (_board != m5gfx::board_t::board_unknown) { return; }
       config_t cfg;
       begin(cfg);
     }
@@ -365,6 +365,8 @@ namespace m5
 
       // Speaker selection is performed after the Module Display has been determined.
       _begin_spk(cfg);
+
+      update();
 
       bool port_a_used = _begin_rtc_imu(cfg);
       (void)port_a_used;
@@ -513,8 +515,6 @@ namespace m5
       {
         Display.setBrightness(brightness);
       }
-
-      update();
     }
 
   private:

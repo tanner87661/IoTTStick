@@ -56,9 +56,9 @@ int8_t getWSClientByPage(uint8_t startFrom, char * toWebPage)
   return -1;
 }
 
-#ifdef LNDebug
 bool verifySyntax(uint8_t * msgData)
 {
+#ifdef LNDebug
 	if ((msgData[0] & 0x80) == 0)
 		return false;
 	uint8_t msgLen = ((msgData[0] & 0x60) >> 4) + ((msgData[0] & 0x80) >> 7); //-1 for indexing
@@ -68,10 +68,13 @@ bool verifySyntax(uint8_t * msgData)
 		if ((msgData[i] & 0x80) > 0)
 			return false;
 	return getXORCheck(msgData, msgLen + 1);
+#endif
+	return true;
 }
 
 void dispMsg(uint8_t * msgData, uint8_t targetLen)
 {
+#ifdef LNDebug
 	uint8_t msgLen = ((msgData[0] & 0x60) >> 4) + 2;
 	if (msgLen == 8)
 		msgLen = (msgData[1] & 0x7F); 
@@ -79,16 +82,17 @@ void dispMsg(uint8_t * msgData, uint8_t targetLen)
 	for (uint8_t i = 0; i < msgLen; i++)
 		Serial.printf("%2X ", msgData[i]);
 	Serial.println();
+#endif
 }
 
 void dispSlot(uint8_t * slotBytes)
 {
-	
+#ifdef LNDebug
 	for (uint8_t i = 0; i < 10; i++)
 		Serial.printf("%2X ", slotBytes[i]);
 	Serial.println();
-}
 #endif
+}
 
 void untokstr(char* strList[], uint8_t listLen, char* inpStr, const char* token)
 {

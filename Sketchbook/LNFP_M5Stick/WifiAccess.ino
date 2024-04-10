@@ -1,3 +1,4 @@
+
 void establishWifiConnection(AsyncWebServer * webServer,DNSServer * dnsServer)
 {
     AsyncWiFiManager wifiManager(webServer,dnsServer);
@@ -17,7 +18,7 @@ void establishWifiConnection(AsyncWebServer * webServer,DNSServer * dnsServer)
         //useful to make it all retry or go to sleep
         //in seconds
         Serial.println("Set STA Mode");
-        wifiManager.setTimeout(120); 
+        wifiManager.setTimeout(240); 
         String hlpStr = "New_IoTT-Stick_" + String((uint32_t)ESP.getEfuseMac());
         if (!wifiManager.autoConnect(hlpStr.c_str()))
         {

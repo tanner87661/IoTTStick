@@ -1,5 +1,6 @@
-#include "iottlogo8080.c"
-#include "Nickel4020.c"
+//jpeg functions: https://github.com/pix3lize/M5Stick-ImageViewerSPIFFS/blob/master/src/main.cpp
+
+//display size Dial 240 x 240 px
 
 #define pwrOffTimeout 30000
 #define pwrDispInterval 2000
@@ -12,6 +13,11 @@ uint32_t pwrOffTimer = millis();
 uint32_t pwrDispTimer = millis();
 uint32_t dccDispTimer = millis();
 uint32_t pwrRefreshTimer = millis();
+
+long curEncoderPos = 0;
+static m5::touch_state_t prev_state;
+int prev_x = -1;
+int prev_y = -1;
 
 float axpVBUSVoltage = 0;
 //float axpInVoltage = 0;
@@ -32,7 +38,6 @@ uint8_t pwrRefreshCtr = 0;
 
 uint8_t screenDef = 1; //0 for Stick; 1 for Stick C Plus
 
-
 void initDisplay()
 {
   uint16_t devType = M5.getBoard(); //4: stick c 5: stick c plus 12: Stamp-S3
@@ -40,50 +45,62 @@ void initDisplay()
   USBSerial.println(devType);
   M5.Display.setRotation(0);
   screenDef = 1;
+  // The jpeg image can be scaled by a factor of 1, 2, 4, or 8
+  TJpgDec.setJpgScale(1);
+
+  // The byte order can be swapped (set true for TFT_eSPI)
+  TJpgDec.setSwapBytes(true);
+
+  // The decoder must be given the exact name of the rendering function above
+  TJpgDec.setCallback(tft_output);
+
   setOpeningPage();
 }
 
 void processDisplay()
 {
+
+  long newPosition = M5Dial.Encoder.read();
+  if (newPosition != curEncoderPos) 
+  {
+        M5Dial.Speaker.tone(8000, 20);
+        curEncoderPos = newPosition;
+        USBSerial.println(newPosition);
+  }
+
+  auto t = M5Dial.Touch.getDetail();
+  if (prev_state != t.state) 
+  {
+    prev_state = t.state;
+    static constexpr const char* state_name[16] = {
+          "none", "touch", "touch_end", "touch_begin",
+          "___",  "hold",  "hold_end",  "hold_begin",
+          "___",  "flick", "flick_end", "flick_begin",
+          "___",  "drag",  "drag_end",  "drag_begin"};
+    M5_LOGI("%s", state_name[t.state]);
+    USBSerial.println(state_name[t.state]);
+  }
+  if (prev_x != t.x || prev_y != t.y) 
+  {
+    prev_x = t.x;
+    prev_y = t.y;
+//    M5Dial.Display.drawPixel(prev_x, prev_y);
+    USBSerial.print(prev_x);
+    USBSerial.print(" ");
+    USBSerial.println(prev_y);
+  }
+
   int state = M5.BtnA.wasHold() ? 1
         : M5.BtnA.wasClicked() ? 2
         : M5.BtnA.wasPressed() ? 3
         : M5.BtnA.wasReleased() ? 4
-        : M5.BtnA.wasDeciedClickCount() ? 5
+        : M5.BtnA.wasDecideClickCount() ? 5
         : 0;
-//  switch (state)
-//  {
-//    case 3: btnAClick(); break;
-//  }
+  switch (state)
+  {
+    case 2: USBSerial.println("Btn A Clicked"); break;
+  }
 
-  state = M5.BtnB.wasHold() ? 1
-        : M5.BtnB.wasClicked() ? 2
-        : M5.BtnB.wasPressed() ? 3
-        : M5.BtnB.wasReleased() ? 4
-        : M5.BtnB.wasDeciedClickCount() ? 5
-        : 0;
-//  switch (state)
-//  {
-//    case 3: btnBClick(); break;
-//    case 5: btnBDblClick(M5.BtnB.getClickCount());
-//            break;
-//  }
-
-  state = M5.BtnPWR.wasHold() ? 1
-        : M5.BtnPWR.wasClicked() ? 2
-        : M5.BtnPWR.wasPressed() ? 3
-        : M5.BtnPWR.wasReleased() ? 4
-        : M5.BtnPWR.wasDeciedClickCount() ? 5
-        : 0;
-
-//  switch (state)
-//  {
-//    case 1: btnCOnHold(0); break;
-//    case 3: btnCClick(); btnCClickCount++;  break;
-//    case 5: btnCDblClick(M5.BtnPWR.getClickCount());
-//            btnCClickCount = 0;
-//            break;
-//  }
 
   if (pwrRefreshTimer < millis())
   {
@@ -199,14 +216,10 @@ void processDisplay()
 */
 }
 
-void drawLogo(int x, int y, int logoSize)
+void drawLogo(int x, int y, int logoScale)
 {
-  switch (logoSize)
-  {
-    case 0 : M5.Display.pushImage( x,y,20,20, (uint16_t *)image_data_iottlogo8080); break;
-    case 1 : M5.Display.pushImage( x,y,30,30, (uint16_t *)image_data_iottlogo8080); break;
-    case 2 : M5.Display.pushImage( x,y,80,80, (uint16_t *)image_data_iottlogo8080); break;
-  }
+  String fileName = "/www/iottlogo120120.jpg";
+  loadJpgFile(x,y,logoScale, fileName.c_str());
 }
 
 void drawText(const char * payload, int x, int y, int what)
@@ -221,15 +234,14 @@ void drawText(const char * payload, int x, int y, int what)
 
 void drawBackground()
 {
-  for (int x = 0; x < 6; x++)
-    for (int y = 0; y < 12; y++)
-      M5.Display.pushImage( 40 * x,20 * y,40,20, (uint16_t *)image_data_Nickel4020); 
+  String fileName = "/www/Nickel240240.jpg";
+  loadJpgFile(0,0,1, fileName.c_str());
 }
 
 void setOpeningPage()
 {
   drawBackground();
-  drawLogo(80, 80, 2); //80x80
+  drawLogo(60, 60, 1); //120x120 in the middle of 240 x 240
 }
 
 uint16_t getXCoord(uint16_t ofValue)
@@ -253,20 +265,54 @@ uint16_t getYCoord(uint16_t ofValue)
 void setWifiConnectPage()
 {
   char outText[50];
-  M5.Display.fillScreen(TFT_LIGHTGREY);
+  drawBackground();
+  drawLogo(90, 30, 2);
+//  M5.Display.fillScreen(TFT_LIGHTGREY);
   M5.Display.setTextColor(TFT_BLACK, TFT_LIGHTGREY);
-  switch (screenDef)
-  {
-    case 0: 
-      drawLogo(140, 60, 0);
-      break;
-    case 1: 
-      drawLogo(210, 105, 0);
-      break;
-  }
-  drawText("Connect to AP", 5, 3, 2);
+  drawText("Connect to AP", 50, 60, 2);
   String hlpStr = "IoTT_Dial_M5_" + String((uint32_t)ESP.getEfuseMac());
   sprintf(outText, hlpStr.c_str());
-  drawText(outText, 5, 18, 2);
-  drawText("to set Wifi credentials", 5, 33, 2);
+  drawText(outText, 20, 75, 2);
+  drawText("to set Wifi credentials", 30, 90, 2);
+}
+
+//====================================================================================
+//                                    tft_output
+//====================================================================================
+// This next function will be called during decoding of the jpeg file to
+// render each block to the TFT.  If you use a different TFT library
+// you will need to adapt this function to suit.
+bool tft_output(int16_t x, int16_t y, uint16_t w, uint16_t h, uint16_t* bitmap)
+{
+  // Stop further decoding as image is running off bottom of screen
+  if ( y >= M5.Display.height() ) return 0;
+
+  // This function will clip the image block rendering automatically at the TFT boundaries
+  M5.Display.pushImage(x, y, w, h, bitmap);
+
+  // This might work instead if you adapt the sketch to use the Adafruit_GFX library
+  // M5.Lcd.drawRGBBitmap(x, y, bitmap, w, h);
+
+  // Return 1 to decode next block
+  return 1;
+}
+
+void loadJpgFile(uint16_t x, uint16_t y, uint8_t shrinkby, const char *name) //shrinkby is 1,2,4,8
+{
+  // Time recorded for test purposes
+//  uint32_t t = millis();
+
+  // Get the width and height in pixels of the jpeg if you wish
+//  uint16_t w = 0, h = 0, scale;
+//  TJpgDec.getFsJpgSize(&w, &h, name); // Note name preceded with "/"
+  TJpgDec.setJpgScale(shrinkby);
+
+  // Draw the image, top left at 0,0
+  TJpgDec.drawFsJpg(x, y, name);
+  // How much time did rendering take
+//  t = millis() - t;
+
+//  char buf[80];
+//  sprintf(buf, "%s %dx%d 1:%d %u ms", name, w, h, scale, t);
+//  Serial.println(buf);
 }

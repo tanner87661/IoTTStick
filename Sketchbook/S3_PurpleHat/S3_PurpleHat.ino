@@ -1,5 +1,4 @@
 #include <Arduino.h>
-#include <SD.h>
 #include <SPIFFS.h>
 #include <M5Unified.h>
 #include <M5Dial.h>
@@ -16,11 +15,12 @@
 #include <ESPmDNS.h>
 #include <ESPAsyncWiFiManager.h>         //https://github.com/alanswx/ESPAsyncWiFiManager
 #include <ArduinoJson.h> //standard JSON library, can be installed in the Arduino IDE. Make sure to use version 6.x
+#include <TJpg_Decoder.h>
 
 #include <IoTT_CommDef.h>
 
 #define PowerSys M5.Power.Axp2101
-
+#define USBSerial Serial
 String BBVersion = "0.1";
 
 AsyncWebServer * myWebServer = NULL; //(80)
@@ -92,6 +92,8 @@ uint8_t wifiMode = 0;
 uint8_t wifiStatus = 0;
 bool dataValid = false;
 
+bool tft_output(int16_t x, int16_t y, uint16_t w, uint16_t h, uint16_t* bitmap);
+
 void setup() 
 {
   wsRxBuffer = (char*) malloc(wsBufferSize); 
@@ -108,12 +110,14 @@ void setup()
   cfg.external_rtc  = false;  // default=false. use Unit RTC.
   cfg.external_spk  = false; // default=false. use SPK_HAT / ATOMIC_SPK
   cfg.led_brightness = 0;   // default= 0. system LED brightness (0=off / 255=max) (※ not NeoPixel)
-  M5Dial.begin(cfg);
+//  M5Dial.begin(cfg);
+  M5Dial.begin(cfg, true, false);
   USBSerial.begin(115200);
+  delay(100);
+  SPIFFS.begin(); //File System. Size is set to 1 MB during compile time and loaded with configuration data and web pages
   delay(100);
   initDisplay();
 
-  SPIFFS.begin(); //File System. Size is set to 1 MB during compile time and loaded with configuration data and web pages
   UniqueIDdump(USBSerial);
   myWebServer = new AsyncWebServer(80);
   dnsServer = new DNSServer();

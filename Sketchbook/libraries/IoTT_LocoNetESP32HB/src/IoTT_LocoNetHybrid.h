@@ -25,7 +25,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #define IoTT_LocoNetHybrid_h
 
 #include <inttypes.h>
-#include <arduino.h>
+#include <Arduino.h>
 #include <IoTT_CommDef.h>
 #include <HardwareSerial.h>
 

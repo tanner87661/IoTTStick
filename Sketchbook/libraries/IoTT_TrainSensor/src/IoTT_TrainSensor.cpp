@@ -487,6 +487,10 @@ void IoTT_TrainSensor::startTest(float_t trackLen, float_t vMax, std::vector<flo
 		speedSample.adminData.testState[1].testSpeedMax = 0;
 		speedSample.adminData.testState[0].maxSpeedCtr = 0;
 		speedSample.adminData.testState[1].maxSpeedCtr = 0;
+		speedSample.adminData.testState[0].maxTestSpeedStep = 0;
+		speedSample.adminData.testState[1].maxTestSpeedStep = 0;
+		speedSample.adminData.testState[0].trackLimitViolation = false;
+		speedSample.adminData.testState[1].trackLimitViolation = false;
 		//reset speed recording data
 		clrSpeedTable();
 		//reset distance counter
@@ -630,6 +634,11 @@ bool IoTT_TrainSensor::processSpeedTest() //returns false if complete
 				{
 					speedSample.adminData.masterPhase = 1;
 					speedSample.adminData.testState[upDirIndex].testPhase = 0; //prepare for reentry
+					//verify track length limit condition
+					if (speedSample.adminData.currSpeedStep <= speedSample.adminData.testState[upDirIndex].maxTestSpeedStep)
+						speedSample.adminData.testState[upDirIndex].trackLimitViolation = true;
+					else
+						speedSample.adminData.testState[upDirIndex].maxTestSpeedStep = speedSample.adminData.currSpeedStep;
 					return true;
 				}
 				//if there's room, proceed
@@ -686,7 +695,7 @@ bool IoTT_TrainSensor::processSpeedTest() //returns false if complete
 								speedSample.adminData.testState[upDirIndex].maxSpeedCtr++;
 							speedSample.adminData.testState[upDirIndex].lastSpeedStep = speedSample.adminData.currSpeedStep;
 
-							bool endTest = (speedSample.adminData.currSpeedStep >= maxSpeedSteps) || (speedSample.adminData.testState[upDirIndex].maxSpeedCtr > noIncreaseLimit);
+							bool endTest = (speedSample.adminData.currSpeedStep >= maxSpeedSteps) || (speedSample.adminData.testState[upDirIndex].maxSpeedCtr > noIncreaseLimit) || speedSample.adminData.testState[upDirIndex].trackLimitViolation;
 							if (!endTest)
 							{
 								if (speedSample.adminData.testState[upDirIndex].poiIndex == 0) //regular phase
@@ -787,7 +796,6 @@ void IoTT_TrainSensor::programmerReturn(uint8_t * programmerSlot)
 	if (currClient >= 0)
 	{
 		DynamicJsonDocument doc(200);
-		char myMqttMsg[200];
 		doc["Cmd"] = "ProgReturn";
 		JsonObject Data = doc.createNestedObject("Data");
 		if (programmerSlot[11] == 0xB4)
@@ -802,11 +810,12 @@ void IoTT_TrainSensor::programmerReturn(uint8_t * programmerSlot)
 		Data["OpsAddr"] = opsAddr;
 		Data["CVNr"] = cvNr;
 		Data["CVVal"]= cvVal;
-		serializeJson(doc, myMqttMsg);
+		char myMQTTMsg[400];
+		serializeJson(doc, myMQTTMsg);
 //		Serial.println(myMqttMsg);
 		while (currClient >= 0)
 		{
-			globalClients[currClient].wsClient->text(myMqttMsg);
+			globalClients[currClient].wsClient->text(myMQTTMsg);
 			currClient = getWSClientByPage(currClient + 1, "pgPrplHatCfg");
 		}
 	}
@@ -823,7 +832,6 @@ void IoTT_TrainSensor::sendSpeedTableDataToWeb(bool isFinal)
 	if (currClient >= 0)
 	{
 		DynamicJsonDocument doc(6000);
-		char myMqttMsg[2000];
 		doc["Cmd"] = "SpeedTableData";
 		JsonObject Data = doc.createNestedObject("Data");
 		Data["Dir"] = speedSample.adminData.upDir;
@@ -840,11 +848,12 @@ void IoTT_TrainSensor::sendSpeedTableDataToWeb(bool isFinal)
 			fwArray.add(speedSample.fw[i]);
 			bwArray.add(speedSample.bw[i]);
 		}
-		serializeJson(doc, myMqttMsg);
-//		Serial.println(myMqttMsg);
+		char myMQTTMsg[3000];
+		serializeJson(doc, myMQTTMsg);
+		Serial.println(strlen(myMQTTMsg));
 		while (currClient >= 0)
 		{
-			globalClients[currClient].wsClient->text(myMqttMsg);
+			globalClients[currClient].wsClient->text(myMQTTMsg);
 			currClient = getWSClientByPage(currClient + 1, "pgPrplHatCfg");
 		}
 	}	
@@ -867,7 +876,6 @@ void IoTT_TrainSensor::sendSensorDataToWeb(uint16_t updateRate)
 	{
 		sensorData cpyData = getSensorData();
 		DynamicJsonDocument doc(400);
-		char myMqttMsg[400];
 		doc["Cmd"] = "SensorData";
 		JsonObject Data = doc.createNestedObject("Data");
 		Data["RR"] = updateRate;
@@ -908,10 +916,11 @@ void IoTT_TrainSensor::sendSensorDataToWeb(uint16_t updateRate)
 				}
 			}
 		}
-		serializeJson(doc, myMqttMsg);
+		char myMQTTMsg[800];
+		serializeJson(doc, myMQTTMsg);
 		while (currClient >= 0)
 		{
-			globalClients[currClient].wsClient->text(myMqttMsg);
+			globalClients[currClient].wsClient->text(myMQTTMsg);
 			currClient = getWSClientByPage(currClient + 1, "pgPrplHatCfg");
 		}
 		lastWebRefresh += refreshRate;

@@ -2,15 +2,7 @@
 
 TCP Access library to send LocoNet commands to an lbServer or act as lbServer
 * 
-* The library makes use of two topics to deal with LocoNet commands:
-* 
-* Broadcast command (default is lnIn) is used for regular message flow. A Loconet device within the MQTT network can send a message using the broadcast topic to send it
-* to the gateway. The gateway will send it to LocoNet. 
-* 
-* Echo topic (default is nlEcho) is used by teh gateway to send confirmation that a received message has been sent to the gateway. This way any application can have positive confirmation that a 
-* sent message was indeed sent to Loconet.
 
-Concept and implementation by Hans Tanner. See https://youtu.be/e6NgUr4GQrk for more information
 See Digitrax LocoNet PE documentation for more information
 
 This library is free software; you can redistribute it and/or

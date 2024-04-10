@@ -160,6 +160,8 @@ MQTTESP32::MQTTESP32(Client& client):PubSubClient(client)
 void MQTTESP32::initializeMQTT(uint8_t newMode)
 {
 	Serial.printf("Init MQTT %i \n", newMode);
+    if (MQTT_MAX_PACKET_SIZE < 512)
+		setBufferSize(512);
 	workMode = newMode; // //0: LN Gateway; 1: DCC Client; 2: NativeMQTT; 3: LN Client; 4: DCC Server
 	switch (workMode)
 	{

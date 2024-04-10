@@ -35,8 +35,13 @@ Contributors:
 #include <esp_timer.h>
 
 #if !defined ( REG_SPI_BASE )
-//#define REG_SPI_BASE(i) (DR_REG_SPI0_BASE - (i) * 0x1000)
-#define REG_SPI_BASE(i)     (DR_REG_SPI2_BASE)
+ /// ESP32-S3をターゲットにした際にREG_SPI_BASEが定義されていなかったので応急処置 5.3まで;
+ #if defined ( CONFIG_IDF_TARGET_ESP32S3 )
+  #define REG_SPI_BASE(i)   (DR_REG_SPI1_BASE + (((i)>1) ? (((i)* 0x1000) + 0x20000) : (((~(i)) & 1)* 0x1000 )))
+ #else
+  //#define REG_SPI_BASE(i) (DR_REG_SPI0_BASE - (i) * 0x1000)
+  #define REG_SPI_BASE(i)     (DR_REG_SPI2_BASE)
+ #endif
 #endif
 
 #if defined ( ESP_IDF_VERSION_VAL )
@@ -101,7 +106,7 @@ namespace lgfx
     pinMode(pin, mode);
   }
 
-#if defined ( CONFIG_IDF_TARGET_ESP32C3 )
+#if defined ( CONFIG_IDF_TARGET_ESP32C3 ) || defined ( CONFIG_IDF_TARGET_ESP32C6 )
   static inline volatile uint32_t* get_gpio_hi_reg(int_fast8_t pin) { return &GPIO.out_w1ts.val; }
   static inline volatile uint32_t* get_gpio_lo_reg(int_fast8_t pin) { return &GPIO.out_w1tc.val; }
   static inline bool gpio_in(int_fast8_t pin) { return GPIO.in.val & (1 << (pin & 31)); }

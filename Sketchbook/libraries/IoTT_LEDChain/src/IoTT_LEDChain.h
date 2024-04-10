@@ -7,7 +7,7 @@
 #include <Arduino.h>
 #include <Wire.h>
 #include <FastLED.h>
-#include <ArduinoJSON.h>
+#include <ArduinoJson.h>
 //#include <PubSubClient.h>
 #include <IoTT_CommDef.h>
 #include <IoTT_ButtonTypeDef.h>
