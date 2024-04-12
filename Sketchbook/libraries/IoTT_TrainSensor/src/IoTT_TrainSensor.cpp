@@ -489,8 +489,10 @@ void IoTT_TrainSensor::startTest(float_t trackLen, float_t vMax, std::vector<flo
 		speedSample.adminData.testState[1].maxSpeedCtr = 0;
 		speedSample.adminData.testState[0].maxTestSpeedStep = 0;
 		speedSample.adminData.testState[1].maxTestSpeedStep = 0;
-		speedSample.adminData.testState[0].trackLimitViolation = false;
-		speedSample.adminData.testState[1].trackLimitViolation = false;
+//		speedSample.adminData.testState[0].trackLimitViolation = false;
+//		speedSample.adminData.testState[1].trackLimitViolation = false;
+		speedSample.adminData.testState[0].testError = 0;
+		speedSample.adminData.testState[1].testError = 0;
 		//reset speed recording data
 		clrSpeedTable();
 		//reset distance counter
@@ -636,7 +638,11 @@ bool IoTT_TrainSensor::processSpeedTest() //returns false if complete
 					speedSample.adminData.testState[upDirIndex].testPhase = 0; //prepare for reentry
 					//verify track length limit condition
 					if (speedSample.adminData.currSpeedStep <= speedSample.adminData.testState[upDirIndex].maxTestSpeedStep)
-						speedSample.adminData.testState[upDirIndex].trackLimitViolation = true;
+					{
+//						speedSample.adminData.testState[upDirIndex].trackLimitViolation = true;
+						speedSample.adminData.testState[upDirIndex].testError |= 0x01;
+
+					}
 					else
 						speedSample.adminData.testState[upDirIndex].maxTestSpeedStep = speedSample.adminData.currSpeedStep;
 					return true;
@@ -695,7 +701,11 @@ bool IoTT_TrainSensor::processSpeedTest() //returns false if complete
 								speedSample.adminData.testState[upDirIndex].maxSpeedCtr++;
 							speedSample.adminData.testState[upDirIndex].lastSpeedStep = speedSample.adminData.currSpeedStep;
 
-							bool endTest = (speedSample.adminData.currSpeedStep >= maxSpeedSteps) || (speedSample.adminData.testState[upDirIndex].maxSpeedCtr > noIncreaseLimit) || speedSample.adminData.testState[upDirIndex].trackLimitViolation;
+							if (speedSample.adminData.testState[upDirIndex].maxSpeedCtr > noIncreaseLimit)
+								speedSample.adminData.testState[upDirIndex].testError |= 0x02;
+
+							bool endTest = (speedSample.adminData.currSpeedStep >= maxSpeedSteps) || (speedSample.adminData.testState[upDirIndex].testError > 0);
+//							bool endTest = (speedSample.adminData.currSpeedStep >= maxSpeedSteps) || (speedSample.adminData.testState[upDirIndex].maxSpeedCtr > noIncreaseLimit) || speedSample.adminData.testState[upDirIndex].trackLimitViolation;
 							if (!endTest)
 							{
 								if (speedSample.adminData.testState[upDirIndex].poiIndex == 0) //regular phase
@@ -839,6 +849,7 @@ void IoTT_TrainSensor::sendSpeedTableDataToWeb(bool isFinal)
 		Data["CurrStep"] = speedSample.adminData.currSpeedStep;
 		Data["SlotNr"] = digitraxBuffer->getFocusSlotNr();
 		Data["NumSteps"] = speedSample.adminData.testSteps;
+		Data["TestError"] = speedSample.adminData.testState[0].testError | speedSample.adminData.testState[1].testError;
 		JsonArray fwArray = Data.createNestedArray("fw");
 		JsonArray bwArray = Data.createNestedArray("bw");
 		if (isFinal)
@@ -850,7 +861,7 @@ void IoTT_TrainSensor::sendSpeedTableDataToWeb(bool isFinal)
 		}
 		char myMQTTMsg[3000];
 		serializeJson(doc, myMQTTMsg);
-		Serial.println(strlen(myMQTTMsg));
+//		Serial.println(strlen(myMQTTMsg));
 		while (currClient >= 0)
 		{
 			globalClients[currClient].wsClient->text(myMQTTMsg);

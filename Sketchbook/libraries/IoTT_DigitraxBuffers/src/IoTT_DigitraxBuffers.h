@@ -172,7 +172,9 @@ class IoTT_DigitraxBuffers
 		//general functions
 		IoTT_DigitraxBuffers(txFct lnOut = NULL);
 		~IoTT_DigitraxBuffers();
+//		void loadRHCfgJSON(DynamicJsonDocument doc, bool useAltPort);
 		void loadRHCfgJSON(DynamicJsonDocument doc);
+//		void setRedHatMode(txFct lnReply, DynamicJsonDocument doc, bool useAltPort);
 		void setRedHatMode(txFct lnReply, DynamicJsonDocument doc);
 		void setLocoNetMode(bool newMode);
 		void clearSlotBuffer(bool hardReset);

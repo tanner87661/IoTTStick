@@ -1853,6 +1853,10 @@ function processSpeedTableInput(jsonData, processCurve)
 	}
 	validTechSpeedDef = true;
 	drawProfileBox(canvasElementTechSpeed, techSpeedProfileGraph);
+	if (jsonData.testError > 0)
+	{
+		//add code to display error flags
+	}
 	if (jsonData.final != undefined)
 	{
 		calcTable();

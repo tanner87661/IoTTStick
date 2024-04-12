@@ -60,6 +60,7 @@ void processLNValidMsg(lnReceiveBuffer * newData)
 //  for (int i=0; i<newData->lnMsgSize; i++)
 //    Serial.printf("0x%02X ", newData->lnData[i]);
 //  Serial.println();
+  if ((newData->requestID & fromMQTTGW) == 0) return; //we are a client and this message is not from the gateway
   digitraxBuffer->processLocoNetMsg(newData); //send it to DigitraxBuffers
   processDataToWebClient("LN", newData);
   if (useM5Viewer == 1)
@@ -82,7 +83,7 @@ void processLNValidMsg(lnReceiveBuffer * newData)
 //  if (secElHandlerList) secElHandlerList->processLocoNetMsg(newData); //do not call this before buffer processing as it will read new buffer values
   if (lbServer)
     lbServer->lnWriteMsg(newData);
-  if ((lnMQTTServer) && ((newData->requestID & fromMQTTGW) == 0)) //not coming from MQTT Gateway
+  if ((lnMQTTServer) && ((newData->requestID & fromMQTTGW) == 0)) //not coming from MQTT Gateway (ourself)
   {
 //    Serial.println("MQTT Callback");
     lnMQTTServer->lnWriteMsg(newData);

@@ -45,6 +45,8 @@ topicList * clientTopics = NULL;
 bool convertMQTTtoLN(lnReceiveBuffer* recData, char* topic, byte* payload, unsigned int length, topicList * myTopics, bool acceptLoop)
 {
 	DynamicJsonDocument doc(4 * length);
+//	Serial.println((char*)payload);
+//	Serial.println(myTopics->thisNodeName);
 	DeserializationError error = deserializeJson(doc, payload);
 	if (!error)
 	{
@@ -74,7 +76,7 @@ bool convertMQTTtoLN(lnReceiveBuffer* recData, char* topic, byte* payload, unsig
 						recData->requestID = (uint16_t) doc["ReqID"];
 					else
 						recData->requestID = 0;
-					recData->requestID &= 0xF0FF; //clear any bits in the routing space
+//					recData->requestID &= 0xF0FF; //clear any bits in the routing space
 					if (doc.containsKey("ReqRespTime"))
 						recData->reqRespTime = doc["ReqRespTime"];
 					else
@@ -392,7 +394,13 @@ bool MQTTESP32::sendMQTTMessage(lnReceiveBuffer txData)
     doc["ReqRecTime"] = txData.reqRecTime;
     doc["ReqRespTime"] = txData.reqRespTime;
     doc["EchoTime"] = txData.echoTime;
-    doc["ReqID"] = txData.requestID & 0x00FF; //clear routing flags --- needs more work
+    txData.requestID &= 0x00FF; //clear routing flags --- needs more work
+    switch (workMode)
+    {
+		case 0: txData.requestID |= fromMQTTGW; break;
+		case 3: txData.requestID |= dirUpstream; break;
+	}
+    doc["ReqID"] = txData.requestID; 
     doc["ErrorFlags"] = txData.errorFlags;
     switch (txData.msgType)
     {

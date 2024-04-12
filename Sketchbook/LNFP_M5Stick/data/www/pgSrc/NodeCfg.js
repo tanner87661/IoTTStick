@@ -440,6 +440,7 @@ function loadHatOptions(jsonData)
 }
 function loadInterfaceOptions(jsonData)
 {
+//	console.log(jsonData);
 	var optionsArray = [];
 	for (var i = 0; i < jsonData.InterfaceTypeList.length; i++)
 		optionsArray.push(jsonData.InterfaceTypeList[i].Name);
