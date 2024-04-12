@@ -115,7 +115,8 @@ typedef struct
 	float_t testSpeedMax = 0;
 	uint8_t maxSpeedCtr = 0;
 	uint8_t maxTestSpeedStep = 0;
-	bool trackLimitViolation = false;
+//	bool trackLimitViolation = false;
+	uint8_t testError = 0; //0x01: no speed increase  0x02: no step increase
 	bool vMaxComplete = false;
 }dirData;
 

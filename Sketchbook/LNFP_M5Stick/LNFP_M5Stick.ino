@@ -1,5 +1,5 @@
-#define  StickPlus
-//#define  StickPlus2
+//#define  StickPlus  //Always Use No OTA 2MB/2MB memory model
+#define  StickPlus2 //Use 8MB default memory model
 
 #if defined ( StickPlus )
   #define PowerSys M5.Power.Axp192
@@ -57,7 +57,7 @@
   #include <IoTT_VoiceControl.h>
 #endif
 
-String BBVersion = "1.6.6Dev";
+String BBVersion = "1.6.6";
 
 
 //library object pointers. Libraries will be dynamically initialized as needed during the setup() function
@@ -921,8 +921,8 @@ void setup()
       {
         Serial.println("Load DCC++Ex communication interface"); 
         subnetMode = fullMaster;
-        bool useAltPort = (useInterface.devId == 18);  //use alternate port with the LocoNet serial interface
-        digitraxBuffer->setRedHatMode(sendLocoNetReply, *jsonDataObj, useAltPort); //function hooks in DigitraxBuffers
+//        bool useAltPort = (useInterface.devId == 19);  //use alternate port with the LocoNet serial interface
+        digitraxBuffer->setRedHatMode(sendLocoNetReply, *jsonDataObj);//, useAltPort); //function hooks in DigitraxBuffers
         if (lnSerial)
         {
           lnSerial->setNetworkType(subnetMode); 
