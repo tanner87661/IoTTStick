@@ -1,6 +1,5 @@
 # IoTTStick
 This is the code repository for the IoTT Stick, port modules and hat devices with the source code for the latest release. 
-This is the code repository for the IoTT Stick, port modules and hat devices with the source code for the latest release. 
 
 2024/04/12 1.6.6
 - Version 1.6.6
