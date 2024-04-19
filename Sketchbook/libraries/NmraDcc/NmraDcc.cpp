@@ -1005,7 +1005,7 @@ void processMultiFunctionMessage (uint16_t Addr, DCC_ADDR_TYPE AddrType, uint8_t
     DCC_SPEED_STEPS speedSteps ;
 
     uint8_t  CmdMasked = Cmd & 0b11100000 ;
-
+ /*
     // If we are an Accessory Decoder
     if (DccProcState.Flags & FLAGS_DCC_ACCESSORY_DECODER)
     {
@@ -1024,7 +1024,7 @@ void processMultiFunctionMessage (uint16_t Addr, DCC_ADDR_TYPE AddrType, uint8_t
     // We are looking for FLAGS_MY_ADDRESS_ONLY but it does not match and it is not a Broadcast Address then return
     else if ( (DccProcState.Flags & FLAGS_MY_ADDRESS_ONLY) && (Addr != getMyAddr()) && (Addr != 0))
         return ;
-
+*/
     switch (CmdMasked)
     {
     case 0b00000000:  // Decoder Control
@@ -1052,9 +1052,10 @@ void processMultiFunctionMessage (uint16_t Addr, DCC_ADDR_TYPE AddrType, uint8_t
         }
         break ;
 
-    case 0b00100000:  // Advanced Operations
+    case 0b00100000:  // Advanced Operations  32
         switch (Cmd & 0b00011111)
         {
+	Serial.println(Cmd & 0b00011111);
         case 0b00011111:
             if (notifyDccSpeed)
             {
@@ -1077,8 +1078,8 @@ void processMultiFunctionMessage (uint16_t Addr, DCC_ADDR_TYPE AddrType, uint8_t
         }
         break;
 
-    case 0b01000000:
-    case 0b01100000:
+    case 0b01000000: //64
+    case 0b01100000: //96
         //TODO should we cache this info in DCC_PROCESSOR_STATE.Flags ?
         #ifdef NMRA_DCC_ENABLE_14_SPEED_STEP_MODE
         speedSteps = (DccProcState.cv29Value & CV29_F0_LOCATION) ? SPEED_STEP_28 : SPEED_STEP_14 ;
@@ -1129,7 +1130,7 @@ void processMultiFunctionMessage (uint16_t Addr, DCC_ADDR_TYPE AddrType, uint8_t
         #endif
         break;
 
-    case 0b10000000:  // Function Group 0..4
+    case 0b10000000:  // Function Group 0..4  128
         if (notifyDccFunc)
         {
             // function light is controlled by this package (28 or 128 speed steps)
@@ -1137,7 +1138,7 @@ void processMultiFunctionMessage (uint16_t Addr, DCC_ADDR_TYPE AddrType, uint8_t
         }
         break;
 
-    case 0b10100000:  // Function Group 5..8
+    case 0b10100000:  // Function Group 5..8 160
         if (notifyDccFunc)
         {
             if (Cmd & 0b00010000)

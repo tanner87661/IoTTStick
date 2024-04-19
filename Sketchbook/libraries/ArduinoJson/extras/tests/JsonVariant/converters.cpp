@@ -1,5 +1,5 @@
 // ArduinoJson - https://arduinojson.org
-// Copyright © 2014-2023, Benoit BLANCHON
+// Copyright © 2014-2024, Benoit BLANCHON
 // MIT License
 
 #include <ArduinoJson.h>
@@ -32,7 +32,7 @@ bool canConvertFromJson(JsonVariantConst src, const Date&) {
 }  // namespace
 
 TEST_CASE("Custom converter with overloading") {
-  DynamicJsonDocument doc(4096);
+  JsonDocument doc;
 
   SECTION("convert JSON to Date") {
     doc["date"]["day"] = 2;
@@ -107,7 +107,7 @@ struct Converter<Complex> {
 }  // namespace ArduinoJson
 
 TEST_CASE("Custom converter with specialization") {
-  DynamicJsonDocument doc(4096);
+  JsonDocument doc;
 
   SECTION("convert JSON to Complex") {
     doc["value"]["real"] = 2;
@@ -151,17 +151,4 @@ TEST_CASE("ConverterNeedsWriteableRef") {
   CHECK(ConverterNeedsWriteableRef<JsonObjectConst>::value == false);
   CHECK(ConverterNeedsWriteableRef<JsonArray>::value == true);
   CHECK(ConverterNeedsWriteableRef<JsonArrayConst>::value == false);
-}
-
-namespace ArduinoJson {
-void convertToJson(char c, JsonVariant var) {
-  char buf[] = {c, 0};
-  var.set(buf);
-}
-}  // namespace ArduinoJson
-
-TEST_CASE("Convert char to string") {  // issue #1922
-  StaticJsonDocument<64> doc;
-  doc.set('a');
-  REQUIRE(doc.as<std::string>() == "a");
 }

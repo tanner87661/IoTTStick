@@ -8,6 +8,8 @@
 #define oneShotBufferSize 4
 #define refreshBufferSize 100
 
+uint32_t lastTouchAnglePos; //Angle (Hi word) and Radius (Lo word) of last touch position
+
 uint16_t colLocoSel = M5.Display.color24to16(0xFF0000); 
 uint16_t colLocoUnsel = M5.Display.color24to16(0xFF7F7F); 
 uint16_t colSwiSel = M5.Display.color24to16(0x007F00); 
@@ -27,27 +29,28 @@ long curEncoderPos = 0;
 static m5::touch_state_t prev_state;
 int prev_x = -1;
 int prev_y = -1;
+uint32_t prev_rotPos = 0;
 
-
-/*
-uint16_t getXCoord(uint16_t ofValue)
+uint32_t getRotPosOfCoord(int16_t x, int16_t y)
 {
-  switch (screenDef)
+  int16_t effX = x-120;
+  int16_t effY = y-120;
+  float Radius = sqrt(sq(effX) + sq(effY));
+  float Alpha = asin((effX)/Radius);
+  if (effY >=0)
   {
-//    case 1: return round(1.5 * ofValue);
-    default: return ofValue;
+    Alpha = PI - Alpha;
   }
+  else
+    if (effX < 0)
+    {
+      Alpha = 2*PI + Alpha;
+    }
+  effX = round(Alpha * 180/PI); 
+  effY = round(Radius);
+  return ((effY<<16) + effX); //Radius - Alpha in degrees
 }
 
-uint16_t getYCoord(uint16_t ofValue)
-{
-  switch (screenDef)
-  {
-//    case 1: return round(1.6875 * ofValue);
-    default: return ofValue;
-  }
-}
-*/
 #define pwrOffTimeout 30000
 #define pwrDispInterval 2000
 #define speedDispInterval 500
@@ -171,8 +174,7 @@ void btnAClick()
 //      setPwrStatusPage();
       break;
     case 6:
-        pwrDispTimer = millis() + speedDispInterval;
-        throttlePage();
+        setThrottlePage();
         break;
     case 7:
       switch (useInterface.devId)
@@ -214,36 +216,63 @@ void btnAOnHold(uint8_t evtCtr)
 //  Serial.printf("Button A %i Hold\n", evtCtr);
 }
 
+void processEncoder(long currPos)
+{
+  M5Dial.Speaker.tone(8000, 20);
+  Serial.println(currPos);
+}
+
+void processTouch(uint16_t x, uint16_t y, uint8_t state)
+{
+  if (m5CurrentPage == 6)
+  {
+    uint32_t rotPos = getRotPosOfCoord(x, y); //Radius - Angle
+    uint16_t Radius = rotPos>>16;
+    uint16_t Angle = rotPos & 0x0000FFFF;
+    if ((state == 1) && (Radius > 75) &&((Angle >= 270) || (Angle < 90)))
+    {
+      uint16_t throttleSel = round((Angle / 45)-2);
+      throttleSel %= 4;
+      if (m5ThrottleMenu != throttleSel)
+      {
+        Serial.println(throttleSel);
+        m5ThrottleMenu = throttleSel;
+        updateMainMenuRing(m5ThrottleMenu);
+      }
+    }
+/*
+    Serial.print(" ");
+    Serial.println(state);
+    Serial.print(rotPos>>16);
+    Serial.print(" ");
+    Serial.println(rotPos & 0x0000FFFF); 
+*/    
+  }
+}
+
 void processDisplay()
 {
   long newPosition = M5Dial.Encoder.read();
   if (newPosition != curEncoderPos) 
   {
-        M5Dial.Speaker.tone(8000, 20);
         curEncoderPos = newPosition;
-        Serial.println(newPosition);
+        processEncoder(newPosition);
   }
 
   auto t = M5Dial.Touch.getDetail();
-  if (prev_state != t.state) 
+  if (prev_state != t.state || prev_x != t.x || prev_y != t.y)  
   {
     prev_state = t.state;
+    prev_x = t.x;
+    prev_y = t.y;
     static constexpr const char* state_name[16] = {
           "none", "touch", "touch_end", "touch_begin",
           "___",  "hold",  "hold_end",  "hold_begin",
           "___",  "flick", "flick_end", "flick_begin",
           "___",  "drag",  "drag_end",  "drag_begin"};
-    M5_LOGI("%s", state_name[t.state]);
-    Serial.println(state_name[t.state]);
-  }
-  if (prev_x != t.x || prev_y != t.y) 
-  {
-    prev_x = t.x;
-    prev_y = t.y;
-//    M5Dial.Display.drawPixel(prev_x, prev_y);
-    Serial.print(prev_x);
-    Serial.print(" ");
-    Serial.println(prev_y);
+//    M5_LOGI("%s", state_name[t.state]);
+//    Serial.println(state_name[t.state]);
+    processTouch(t.x, t.y, t.state);
   }
 
   int state = M5.BtnA.wasHold() ? 1
@@ -384,7 +413,7 @@ void processDisplay()
   {
     if (millis() > pwrDispTimer)
     {
-      throttlePage(); 
+      updateThrottlePage(); 
       pwrDispTimer = millis() + speedDispInterval;
     }
   }
@@ -394,18 +423,15 @@ void initDisplay()
 {
   uint16_t devType = M5.getBoard(); //4: stick c 5: stick c plus
   M5.Display.setRotation(0);
-  if (M5.Display.width() == 160)
-    screenDef = 0;
-  else
-    screenDef = 1;
+  screenDef = 1;
   // The jpeg image can be scaled by a factor of 1, 2, 4, or 8
-//  TJpgDec.setJpgScale(1);
+  TJpgDec.setJpgScale(1);
 
   // The byte order can be swapped (set true for TFT_eSPI)
-//  TJpgDec.setSwapBytes(true);
+  TJpgDec.setSwapBytes(true);
 
   // The decoder must be given the exact name of the rendering function above
-//  TJpgDec.setCallback(tft_output);
+  TJpgDec.setCallback(tft_output);
   setOpeningPage();
 }
 
@@ -654,32 +680,80 @@ void mqttViewerPage()
 //  Serial.println("done");
 }
 
-void throttlePage()
+void updateThrottlePage()
+{
+  
+}
+
+void drawLocoScreen()
+{
+  M5.Display.startWrite();
+  drawBackground();
+  drawMainMenuSegment(0,true);
+  drawMainMenuSegment(1,false);
+  drawMainMenuSegment(2,false);
+  drawMainMenuSegment(3,false);
+  
+  drawFunctionSegment(0,1,false);
+  drawFunctionSegment(1,2,true);
+  drawFunctionSegment(2,3,false);
+  drawFunctionSegment(3,4,true);
+  
+  M5.Display.setTextColor(TFT_BLACK, TFT_LIGHTGREY);
+  M5.Display.endWrite();
+}
+
+void drawSwitchScreen()
+{
+  M5.Display.startWrite();
+  drawBackground();
+  drawMainMenuSegment(0,false);
+  drawMainMenuSegment(1,true);
+  drawMainMenuSegment(2,false);
+  drawMainMenuSegment(3,false);
+  M5.Display.endWrite();
+}
+
+void drawSignalScreen()
+{
+  M5.Display.startWrite();
+  drawBackground();
+  drawMainMenuSegment(0,false);
+  drawMainMenuSegment(1,false);
+  drawMainMenuSegment(2,true);
+  drawMainMenuSegment(3,false);
+  M5.Display.endWrite();
+}
+
+void drawRouteScreen()
 {
   M5.Display.startWrite();
   drawBackground();
   drawMainMenuSegment(0,false);
   drawMainMenuSegment(1,false);
   drawMainMenuSegment(2,false);
-  drawMainMenuSegment(3,false);
-  
-//  drawMenuSegment(225, 270, 40, colSwiUnsel);
-//  drawMenuSegment(270, 315, 40, colRteUnsel);
-//  drawMenuSegment(315, 0, 40, colSensUnsel);
-
-//  drawCenterTextAngled(M5.Display, "Loco", 30, 85, -67.5, 2);
-//  drawCenterTextAngled(M5.Display, "Switches", 85, 30, -22.5, 2);
-//  drawCenterTextAngled(M5.Display, "Routes", 155, 30, 22.5, 2);
-//  drawCenterTextAngled(M5.Display, "Sensors", 210, 85, 67.5, 2);
-//drawFile("/www/Throttle240240.jpg",0,0);
-
-  drawFunctionSegment(0,1,false);
-  drawFunctionSegment(1,2,true);
-  drawFunctionSegment(2,10,false);
-  drawFunctionSegment(3,11,true);
-  
-  M5.Display.setTextColor(TFT_BLACK, TFT_LIGHTGREY);
+  drawMainMenuSegment(3,true);
   M5.Display.endWrite();
+}
+
+
+void setThrottlePage()
+{
+  switch (m5ThrottleMenu)
+  {
+    case 0: //loco
+      drawLocoScreen();
+    break;
+    case 1: //switch
+      drawSwitchScreen();
+    break;
+    case 2: //signal
+      drawSignalScreen();
+    break;
+    case 3: //routes
+      drawRouteScreen();
+    break;
+  }
 }
 
 String getLNString(lnReceiveBuffer * newData)

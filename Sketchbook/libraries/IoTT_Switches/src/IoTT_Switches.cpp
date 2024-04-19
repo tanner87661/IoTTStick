@@ -885,7 +885,7 @@ void IoTT_GreenHat::loadGreenHatCfgJSON(uint8_t fileNr, JsonObject thisObj, bool
 		case 2: //button handler
 			if (thisObj.containsKey("ButtonHandler"))
 				if (buttonHandler != NULL)
-					buttonHandler->loadButtonCfgJSON(thisObj, false);
+					buttonHandler->loadButtonCfgJSONObj(thisObj, false);
 				else
 					Serial.println("No Button Handler defined");
 			else

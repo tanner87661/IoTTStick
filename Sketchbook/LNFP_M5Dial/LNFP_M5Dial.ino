@@ -54,7 +54,6 @@
 
 String BBVersion = "0.0.1Dev";
 
-
 //library object pointers. Libraries will be dynamically initialized as needed during the setup() function
 AsyncWebServer * myWebServer = NULL; //(80)
 DNSServer * dnsServer = NULL;
@@ -192,6 +191,7 @@ uint32_t useServer = 0; //bit mask configuration list
 uint32_t useALM = 0; //bit mask configuration list
 
 uint8_t m5CurrentPage = 0;
+uint8_t m5ThrottleMenu = 0;
 uint16_t oldWifiStatus = 0;
 uint8_t useM5Viewer = 0;
 uint8_t m5DispLine = 0;
@@ -289,10 +289,9 @@ void setup()
   cfg.external_spk  = false; // default=false. use SPK_HAT / ATOMIC_SPK
   cfg.led_brightness = 0;   // default= 0. system LED brightness (0=off / 255=max) (※ not NeoPixel)
 
-
   M5Dial.begin(cfg, true, false);
   Serial.println(M5.getBoard());
-//  Serial.println("Init SPIFFS");
+  Serial.println("Init SPIFFS");
   SPIFFS.begin(); //File System. Size is set to 1 MB during compile time and loaded with configuration data and web pages
   initDisplay();
   digitalWrite(stickLED, !LedON);

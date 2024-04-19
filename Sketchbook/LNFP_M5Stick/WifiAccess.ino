@@ -82,7 +82,7 @@ void getInternetTime() //periodically connect to an NTP server and get the curre
     thisIntervall = ntpIntervallShort;
   if (millis() > (ntpTimer + thisIntervall))
   {
-    if (WiFi.status() == WL_CONNECTED)
+    if (wifiStatus == WL_CONNECTED)
     {
       time(&now);
       localtime_r(&now, &timeinfo);

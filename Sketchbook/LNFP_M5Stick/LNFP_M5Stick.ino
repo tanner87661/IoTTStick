@@ -57,7 +57,7 @@
   #include <IoTT_VoiceControl.h>
 #endif
 
-String BBVersion = "1.6.6";
+String BBVersion = "1.6.7";
 
 
 //library object pointers. Libraries will be dynamically initialized as needed during the setup() function
@@ -517,8 +517,8 @@ void setup()
       // Setup which External Interrupt, the Pin it's associated with that we're using and enable the Pull-Up 
       myDcc->pin(groveRxD, 1);
       // Call the main DCC Init function to enable the DCC Receiver
-      myDcc->init(MAN_ID_DIY, 10, FLAGS_CV29_BITS, 0 );
-//  myDcc->init( MAN_ID_DIY, 10, CV29_ACCESSORY_DECODER | CV29_OUTPUT_ADDRESS_MODE, 0 );
+//      myDcc->init(MAN_ID_DIY, 10, FLAGS_CV29_BITS, 0 );
+  myDcc->init( MAN_ID_DIY, 10, CV29_ACCESSORY_DECODER | CV29_OUTPUT_ADDRESS_MODE, 0 );
       Serial.println("DCC Init Done");
     }
     else 

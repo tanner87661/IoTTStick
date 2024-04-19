@@ -288,7 +288,7 @@ void    notifyDccFunc(uint16_t Addr, DCC_ADDR_TYPE AddrType, FN_GROUP FuncGrp, u
 {
   char dispStr[150];  
   sprintf(dispStr, "#%i T%i G%i F%02X", Addr, AddrType, FuncGrp, FuncState); 
-//    Serial.println(dispStr);
+//  Serial.println(dispStr);
   uint16_t thisID = Addr & 0x3FFF;
   switch (FuncGrp)
   {
@@ -304,7 +304,6 @@ void    notifyDccFunc(uint16_t Addr, DCC_ADDR_TYPE AddrType, FN_GROUP FuncGrp, u
       lnMQTTServer->sendDCCMsg(dispStr);
     }
 }
-
 
 void    notifyDccMsg (DCC_MSG * Msg)
 {
