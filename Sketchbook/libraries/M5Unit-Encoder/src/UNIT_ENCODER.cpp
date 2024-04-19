@@ -8,7 +8,7 @@ void Unit_Encoder::begin(TwoWire *wire, uint8_t addr, uint8_t sda, uint8_t scl,
     _sda   = sda;
     _scl   = scl;
     _speed = speed;
-    _wire->begin(_sda, _scl, _speed);
+    _wire->begin((int)_sda, (int)_scl, _speed);
 }
 
 /*! @brief Write a certain length of data to the specified register address. */

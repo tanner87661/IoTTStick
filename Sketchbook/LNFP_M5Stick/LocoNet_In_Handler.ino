@@ -60,7 +60,8 @@ void processLNValidMsg(lnReceiveBuffer * newData)
 //  for (int i=0; i<newData->lnMsgSize; i++)
 //    Serial.printf("0x%02X ", newData->lnData[i]);
 //  Serial.println();
-  if ((newData->requestID & fromMQTTGW) == 0) return; //we are a client and this message is not from the gateway
+  if (lnMQTTClient)
+    if ((newData->requestID & fromMQTTGW) == 0) return; //we are a client and this message is not from the gateway
   digitraxBuffer->processLocoNetMsg(newData); //send it to DigitraxBuffers
   processDataToWebClient("LN", newData);
   if (useM5Viewer == 1)
@@ -69,9 +70,12 @@ void processLNValidMsg(lnReceiveBuffer * newData)
   {
     switch (usbSerial->getMsgType())
     {
-      case DCCEx:
-//      Serial.println("USB");
+      case LocoNet:
+//        Serial.println("Loconet USB");
         usbSerial->lnWriteMsg(*newData);
+        break;
+      case DCCEx:
+//        usbSerial->lnWriteMsg(*newData);
         break;
       case DCCBoost:
 //        Serial.println("Booster");

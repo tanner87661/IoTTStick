@@ -410,7 +410,7 @@ void processDisplay()
         case 22: axpBattLevel = M5.Power.getBatteryLevel(); break;
       #endif
       case 24: wifiMode = WiFi.getMode(); break; 
-      case 26: wifiStatus = WiFi.status(); yield(); break;
+      case 26: wifiStatus = WiFi.status(); break;
       case 30:
           axpBattCurr = axpBattChargeCurrent == 0? - axpBattDischargeCurrent : axpBattChargeCurrent;
           hatPresent = axpACInVoltage > 0.5;

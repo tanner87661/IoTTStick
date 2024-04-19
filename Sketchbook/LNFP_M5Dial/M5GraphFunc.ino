@@ -28,8 +28,8 @@ void drawCenterText(M5Canvas* targetDisp, const char * payload, int x, int y, in
 void drawBackground()
 {
   String fileName = "/www/Nickel240240.jpg";
-//  loadJpgFile(0,0,1, fileName.c_str());
-  M5.Display.drawJpgFile(fs::SPIFFSFS, fileName.c_str());//,0,0,240,240,0,0);
+  loadJpgFile(0,0,1, fileName.c_str());
+//  M5.Display.drawJpgFile(fs::SPIFFSFS, fileName.c_str());//,0,0,240,240,0,0);
 }
 
 void drawCenterTextAngled(M5Canvas* targetDisp, char* payload, uint16_t x, uint16_t y, float_t dispAngle, int what)
@@ -99,6 +99,12 @@ void drawFunctionSegment(uint8_t fctPos, uint8_t fctNr, bool fctState)
   mySprite.setPivot(120, 120);
   mySprite.pushRotated(pivotAngle, TFT_PINK);  
   mySprite.deleteSprite();
+}
+
+void updateMainMenuRing(uint8_t menuNr)
+{
+  for (uint8_t i = 0; i < 3; i++)
+    drawMainMenuSegment(i, i == menuNr);
 }
 
 void drawMainMenuSegment(uint8_t menuNr, bool selState)
