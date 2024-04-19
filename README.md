@@ -1,5 +1,9 @@
 # IoTTStick
 This is the code repository for the IoTT Stick, port modules and hat devices with the source code for the latest release. 
+2024/04/19 1.6.7
+- Version 1.6.7
+- Some problems in 1.6.6 with Loconet, DCC and MQTT communication fixed
+
 2024/04/12 1.6.6
 - Version 1.6.6
 - adding support for M5 Stick C Plus2 hardware
