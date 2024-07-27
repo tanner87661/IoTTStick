@@ -1,4 +1,4 @@
-﻿This file contains The IoTT Stick software Version 1.6.6
+﻿This file contains The IoTT Stick software Version 1.6.8
 
 Installation on Linux and MacOs.  
 This distribution includes an installer script, call update.mac.  
