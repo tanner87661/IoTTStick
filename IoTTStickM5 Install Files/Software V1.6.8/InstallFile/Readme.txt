@@ -1,4 +1,4 @@
-This file contains The IoTT Stick software Version 1.6.6
+This file contains The IoTT Stick software Version 1.6.8
 To install, connect your M5 Stick C to the computer's USB port.
 
 Use the M5Update.zip for IoTT Stick and IoTT Stick Plus
