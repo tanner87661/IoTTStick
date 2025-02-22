@@ -1,36 +1,38 @@
 #include <SPI.h>
-#include <TMAG5170.h>
+#include <TMAG5273.h>
+#include <Wire.h>  
 
-TMAG5170 * magSensor = NULL;
+TMAG5273 * magSensor = NULL;
 float sensorData[3] = {0,0,0};
 
 void setup() {
   Serial.begin(115200);
   delay(500);
-  Serial.println("Initializing TMAG5170 3 axis hall effect sensor");
+  Wire.begin(<sdaPin>, <sclPin>, 400000);
+  Serial.println("Initializing TMAG5273 3 axis hall effect sensor");
 
-  magSensor = new TMAG5170(13);
+  magSensor = new TMAG5273(&Wire);
   if (!magSensor)
   {
     /* There was a problem detecting the BNO055 ... check your connections */
-    Serial.print("Ooops, no TMAG5170 detected ... Check your hardware!");
+    Serial.print("Ooops, no TMAG5273 detected ... Check your hardware!");
     while (1) {}
   }
-  magSensor->initTMAG5170_forEval();
+  magSensor->setDeviceConfig(2);
   delay(500); // give the sensor time to set up:
 }
 
 void loop() {
   // put your main code here, to run repeatedly:
   // Read X and Z, do math, then print
-    sensorData[0] = magSensor->getFluxdensity(axis_X);
-    sensorData[1] = magSensor->getFluxdensity(axis_Y);
-    sensorData[2] = magSensor->getFluxdensity(axis_Z);
+    sensorData[0] = magSensor->getFluxDensity(axis_X);
+    sensorData[1] = magSensor->getFluxDensity(axis_Y);
+    sensorData[2] = magSensor->getFluxDensity(axis_Z);
 
-    uint16_t angleData =  magSensor->getAngledataRaw() >> 3;
+    float angleData =  magSensor->getAngleData();
     char dispText[120];
-    sprintf(dispText, "%f %f\n", sensorData[1], sensorData[2]);
+    sprintf(dispText, "%.2f %.2f %.2f %.2f \n", sensorData[0], sensorData[1], sensorData[2], angleData/360);
     Serial.print(dispText);
-    delay(10);
+    delay(50);
 
 }
